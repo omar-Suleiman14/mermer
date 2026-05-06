@@ -99,6 +99,7 @@ export const createPatient = mutation({
     age: v.number(),
     phone: v.string(),
     chronicConditions: v.array(v.string()),
+    notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await ctx.db
@@ -113,6 +114,7 @@ export const createPatient = mutation({
       age: args.age,
       phone: args.phone,
       chronicConditions: args.chronicConditions,
+      notes: args.notes,
       createdAt: Date.now(),
     });
   },
@@ -126,6 +128,7 @@ export const updatePatient = mutation({
     age: v.number(),
     phone: v.string(),
     chronicConditions: v.array(v.string()),
+    notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await ctx.db
@@ -142,7 +145,22 @@ export const updatePatient = mutation({
       age: args.age,
       phone: args.phone,
       chronicConditions: args.chronicConditions,
+      notes: args.notes,
     });
+  },
+});
+
+export const deletePatient = mutation({
+  args: { clerkId: v.string(), patientId: v.id("patients") },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .unique();
+    if (!user) throw new Error("User not found");
+    const patient = await ctx.db.get(args.patientId);
+    if (!patient || patient.doctorId !== user._id) throw new Error("Not found");
+    await ctx.db.delete(args.patientId);
   },
 });
 

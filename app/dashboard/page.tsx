@@ -7,11 +7,47 @@ import { PageHeader } from "@/components/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { MessageCircle, CheckCheck, PlusCircle, User, Clock, TrendingUp } from "lucide-react";
+import {
+  MessageCircle,
+  CheckCheck,
+  PlusCircle,
+  User,
+  TrendingUp,
+  Crown,
+  CalendarCheck,
+  ClipboardList,
+  Zap,
+  CheckCircle,
+  ChevronRight,
+} from "lucide-react";
 import Link from "next/link";
 import { AddToQueueDrawer } from "@/components/add-to-queue-drawer";
 import { useState } from "react";
 import { Id } from "@/convex/_generated/dataModel";
+import { motion } from "framer-motion";
+
+// ─── Free / Premium feature lists ────────────────────────────────────────────
+const FREE_FEATURES = [
+  { label: "Patient records & visit history", done: true },
+  { label: "Smart drag-to-reorder queue", done: true },
+  { label: "Manual WhatsApp reminders (1 tap)", done: true },
+  { label: "Branded prescription PDFs", done: true },
+  { label: "QR feedback page & ratings", done: true },
+];
+const PREMIUM_ONLY = [
+  "Auto WhatsApp confirmation (YES/NO reply)",
+  "Auto next-patient WhatsApp (no tap needed)",
+  "Prescription PDF auto-sent after visit",
+  "Public doctor profile in patient search",
+  "Online appointment booking calendar",
+];
+
+// ─── Visits vs Appointments explainer ────────────────────────────────────────
+// VISITS  = internal clinical records (stored per patient, contain Rx, notes, labs)
+// APPOINTMENTS = patient-facing bookings from the public profile (premium)
+// The QUEUE is the live daily workflow — it can be populated manually OR
+// automatically when a confirmed appointment is due.
+// Both visits and appointments end up in the patient's visit timeline.
 
 export default function DashboardPage() {
   const { user } = useUser();
@@ -21,6 +57,10 @@ export default function DashboardPage() {
   const recentVisits = useQuery(api.visits.getRecentVisits, clerkId ? { clerkId, limit: 5 } : "skip");
   const stats = useQuery(api.visits.getVisitStats, clerkId ? { clerkId } : "skip");
   const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
+  const upcomingAppts = useQuery(
+    api.appointments.listUpcomingAppointments,
+    clerkId ? { clerkId } : "skip"
+  );
 
   const markDone = useMutation(api.queue.markDone);
   const markReminder = useMutation(api.queue.markReminderSent);
@@ -28,15 +68,18 @@ export default function DashboardPage() {
   const [addQueueOpen, setAddQueueOpen] = useState(false);
 
   const current = queue?.find((q) => q.status === "in-progress");
-  const next = queue?.find((q) => q.status === "waiting" && q.position === (current?.position ?? 0) + 1);
+  const next = queue?.find(
+    (q) => q.status === "waiting" && q.position === (current?.position ?? 0) + 1
+  );
   const waiting = queue?.filter((q) => q.status === "waiting") ?? [];
+  const showWhatsApp = !!current && waiting.length >= 1 && !!next;
 
-  // Show WhatsApp card when current is being seen and exactly 1 is waiting
-  const showWhatsApp = !!current && waiting.length === 1;
+  const isPremium = currentUser?.tier === "premium";
 
   function buildWhatsAppLink(phone: string, patientName: string) {
-    const template = currentUser?.whatsappTemplate ??
-      "Hello {{name}}, this is a reminder that you are next in line at the clinic. Please make your way over now. Thank you!";
+    const template =
+      currentUser?.whatsappTemplate ??
+      "Hello {{name}}, you are next in line at the clinic. Please make your way over now. Thank you!";
     const message = template.replace("{{name}}", patientName);
     const cleanPhone = phone.replace(/\D/g, "");
     return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
@@ -59,6 +102,16 @@ export default function DashboardPage() {
 
   const isLoading = queue === undefined || recentVisits === undefined || stats === undefined;
 
+  const todayAppts = (upcomingAppts ?? []).filter((a) => {
+    const d = new Date(a.date);
+    const today = new Date();
+    return (
+      d.getFullYear() === today.getFullYear() &&
+      d.getMonth() === today.getMonth() &&
+      d.getDate() === today.getDate()
+    );
+  });
+
   return (
     <div className="flex flex-col h-full">
       <PageHeader
@@ -74,7 +127,33 @@ export default function DashboardPage() {
         </button>
       </PageHeader>
 
-      <div className="flex-1 overflow-auto p-4 sm:p-6">
+      <div className="flex-1 overflow-auto p-4 sm:p-6 space-y-4">
+
+        {/* ── Tier Banner (free users only) ── */}
+        {!isLoading && !isPremium && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-gradient-to-r from-[#007AFF] to-[#5856D6] rounded-2xl p-5 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+          >
+            <div className="flex items-start gap-3">
+              <Crown className="w-5 h-5 mt-0.5 flex-shrink-0 text-yellow-300" />
+              <div>
+                <p className="font-bold text-sm">You&apos;re on the Free plan</p>
+                <p className="text-white/80 text-xs mt-0.5 leading-relaxed">
+                  Upgrade to Premium for automatic WhatsApp, online bookings, and your public profile.
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/dashboard/settings"
+              className="flex-shrink-0 text-xs font-bold bg-white text-[#007AFF] px-4 py-2 rounded-xl hover:bg-white/90 transition-colors whitespace-nowrap"
+            >
+              See Premium →
+            </Link>
+          </motion.div>
+        )}
+
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-48 rounded-xl" />)}
@@ -82,18 +161,20 @@ export default function DashboardPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
 
-            {/* TODAY'S QUEUE CARD */}
+            {/* ── TODAY'S QUEUE ── */}
             <div className="bg-card border border-border rounded-xl p-5 col-span-1">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-semibold">Today&apos;s Queue</h2>
                 <Badge variant="secondary" className="text-xs">
-                  {queue.length} active
+                  {queue.filter((q) => q.status !== "done").length} active
                 </Badge>
               </div>
 
-              {queue.length === 0 ? (
+              {queue.filter((q) => q.status !== "done").length === 0 ? (
                 <div className="text-center py-6 text-muted-foreground">
-                  <ClipboardEmpty />
+                  <div className="w-10 h-10 rounded-xl bg-muted/60 flex items-center justify-center mx-auto mb-2">
+                    <User className="w-5 h-5 text-muted-foreground" />
+                  </div>
                   <p className="text-sm mt-2">Queue is empty</p>
                   <button
                     onClick={() => setAddQueueOpen(true)}
@@ -137,9 +218,7 @@ export default function DashboardPage() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="font-medium text-sm truncate">{next.patient?.name}</p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {next.patient?.age}y
-                          </p>
+                          <p className="text-xs text-muted-foreground truncate">{next.patient?.age}y</p>
                         </div>
                         <button
                           onClick={() => handleMarkDone(next._id)}
@@ -160,18 +239,15 @@ export default function DashboardPage() {
               )}
 
               <div className="mt-4 pt-4 border-t border-border">
-                <Link
-                  href="/dashboard/queue"
-                  className="text-xs text-[#007AFF] hover:underline font-medium"
-                >
+                <Link href="/dashboard/queue" className="text-xs text-[#007AFF] hover:underline font-medium">
                   View full queue →
                 </Link>
               </div>
             </div>
 
-            {/* WHATSAPP REMINDER CARD */}
+            {/* ── WHATSAPP REMINDER ── */}
             {showWhatsApp && next ? (
-              <div className="bg-card border border-[#007AFF]/30 rounded-xl p-5 whatsapp-glow col-span-1">
+              <div className="bg-card border border-[#007AFF]/30 rounded-xl p-5 col-span-1">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-7 h-7 rounded-lg bg-[#007AFF]/10 flex items-center justify-center">
                     <MessageCircle className="w-4 h-4 text-[#007AFF]" />
@@ -188,7 +264,13 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <button
-                    onClick={() => handleSendReminder(next._id as Id<"queue">, next.patient?.phone ?? "", next.patient?.name ?? "")}
+                    onClick={() =>
+                      handleSendReminder(
+                        next._id as Id<"queue">,
+                        next.patient?.phone ?? "",
+                        next.patient?.name ?? ""
+                      )
+                    }
                     className="w-full flex items-center justify-center gap-2 bg-[#25D366] text-white font-semibold text-sm py-2.5 px-4 rounded-lg hover:bg-[#1ebe5d] transition-colors shadow-sm"
                   >
                     <WhatsAppIcon />
@@ -197,16 +279,61 @@ export default function DashboardPage() {
                 )}
               </div>
             ) : (
-              /* Quick Stats fills the spot when no WhatsApp card */
               <QuickStatsCard stats={stats} />
             )}
 
-            {/* QUICK STATS — shown separately if WhatsApp card is active */}
             {showWhatsApp && <QuickStatsCard stats={stats} />}
 
-            {/* RECENT PATIENTS CARD */}
+            {/* ── UPCOMING APPOINTMENTS (premium shows real data, free shows promo) ── */}
+            {isPremium ? (
+              <div className="bg-card border border-border rounded-xl p-5 col-span-1">
+                <div className="flex items-center gap-2 mb-4">
+                  <CalendarCheck className="w-4 h-4 text-[#007AFF]" />
+                  <h2 className="text-sm font-semibold">Today&apos;s Appointments</h2>
+                  {todayAppts.length > 0 && (
+                    <Badge variant="secondary" className="text-xs ml-auto">{todayAppts.length}</Badge>
+                  )}
+                </div>
+                {todayAppts.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-6">No online appointments today</p>
+                ) : (
+                  <div className="space-y-2">
+                    {todayAppts.slice(0, 5).map((a) => (
+                      <div key={a._id} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-muted/40 transition-colors">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{a.patientName}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(a.date).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}
+                          </p>
+                        </div>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                          a.status === "confirmed"
+                            ? "bg-[#34c759]/10 text-[#34c759] border-[#34c759]/30"
+                            : "bg-muted/60 text-muted-foreground border-border"
+                        }`}>
+                          {a.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="mt-4 pt-4 border-t border-border">
+                  <Link href="/dashboard/appointments" className="text-xs text-[#007AFF] hover:underline font-medium">
+                    View all appointments →
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              /* Free users: show premium features teaser */
+              <PremiumTeaserCard />
+            )}
+
+            {/* ── RECENT PATIENTS ── */}
             <div className="bg-card border border-border rounded-xl p-5 col-span-1 md:col-span-2 xl:col-span-1">
-              <h2 className="text-sm font-semibold mb-4">Recent Patients</h2>
+              <div className="flex items-center gap-2 mb-4">
+                <ClipboardList className="w-4 h-4 text-[#007AFF]" />
+                <h2 className="text-sm font-semibold">Recent Visits</h2>
+              </div>
               {recentVisits.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-6">No visits yet</p>
               ) : (
@@ -227,7 +354,7 @@ export default function DashboardPage() {
                           {v.patient?.name}
                         </p>
                         <p className="text-xs text-muted-foreground truncate">
-                          {v.reasonForVisit}
+                          {v.reasonForVisit ?? "Visit recorded"}
                         </p>
                       </div>
                       <span className="text-[10px] text-muted-foreground flex-shrink-0">
@@ -244,6 +371,51 @@ export default function DashboardPage() {
               </div>
             </div>
 
+            {/* ── HOW IT ALL CONNECTS (visits vs appointments explained) ── */}
+            <div className="bg-card border border-border rounded-xl p-5 col-span-1 md:col-span-2 xl:col-span-2">
+              <h2 className="text-sm font-semibold mb-4">How the workflow connects</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                <div className="bg-muted/30 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-7 h-7 rounded-lg bg-[#007AFF]/10 flex items-center justify-center">
+                      <User className="w-3.5 h-3.5 text-[#007AFF]" />
+                    </div>
+                    <span className="font-semibold text-xs">Queue</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Your live daily list. Add patients manually or they appear automatically when an appointment is confirmed. Drag to reorder, mark done, send WhatsApp alerts.
+                  </p>
+                </div>
+                <div className="bg-muted/30 rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-7 h-7 rounded-lg bg-[#34c759]/10 flex items-center justify-center">
+                      <ClipboardList className="w-3.5 h-3.5 text-[#34c759]" />
+                    </div>
+                    <span className="font-semibold text-xs">Visits</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Clinical records attached to a patient. Every time you mark a queue patient as done, a visit is created — recording the date, reason, prescription photo, notes, and labs.
+                  </p>
+                </div>
+                <div className={`rounded-xl p-4 ${isPremium ? "bg-muted/30" : "bg-[#f5a623]/5 border border-[#f5a623]/20"}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-7 h-7 rounded-lg bg-[#f5a623]/10 flex items-center justify-center">
+                      <CalendarCheck className="w-3.5 h-3.5 text-[#f5a623]" />
+                    </div>
+                    <span className="font-semibold text-xs">Appointments</span>
+                    {!isPremium && (
+                      <span className="text-[9px] font-bold text-[#f5a623] bg-[#f5a623]/10 px-1.5 py-0.5 rounded-full border border-[#f5a623]/30 ml-auto">
+                        PREMIUM
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Online bookings from patients who find you on the Ibn Sina landing page. They pick a slot, get a WhatsApp confirmation, and appear in your queue automatically on the day.
+                  </p>
+                </div>
+              </div>
+            </div>
+
           </div>
         )}
       </div>
@@ -252,6 +424,8 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+// ── Sub-components ──────────────────────────────────────────────────────────
 
 function QuickStatsCard({ stats }: { stats?: { today: number; week: number; month: number } }) {
   return (
@@ -277,15 +451,50 @@ function QuickStatsCard({ stats }: { stats?: { today: number; week: number; mont
           </div>
         ))}
       </div>
-      <p className="text-xs text-muted-foreground mt-4">Patients seen</p>
+      <p className="text-xs text-muted-foreground mt-4">Patients seen (visits logged)</p>
     </div>
   );
 }
 
-function ClipboardEmpty() {
+function PremiumTeaserCard() {
   return (
-    <div className="w-10 h-10 rounded-xl bg-muted/60 flex items-center justify-center mx-auto">
-      <User className="w-5 h-5 text-muted-foreground" />
+    <div className="bg-card border border-border rounded-xl p-5 col-span-1">
+      <div className="flex items-center gap-2 mb-1">
+        <Crown className="w-4 h-4 text-[#f5a623]" />
+        <h2 className="text-sm font-semibold">Unlock Premium</h2>
+      </div>
+      <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
+        Everything you have now, plus full automation.
+      </p>
+
+      <div className="space-y-2 mb-5">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">You have</p>
+        {FREE_FEATURES.map((f) => (
+          <div key={f.label} className="flex items-center gap-2 text-xs">
+            <CheckCircle className="w-3.5 h-3.5 text-[#34c759] flex-shrink-0" />
+            <span>{f.label}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="space-y-2 mb-5">
+        <p className="text-[10px] font-bold uppercase tracking-widest text-[#f5a623] mb-2">Premium adds</p>
+        {PREMIUM_ONLY.map((f) => (
+          <div key={f} className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Zap className="w-3.5 h-3.5 text-[#f5a623] flex-shrink-0" />
+            <span>{f}</span>
+          </div>
+        ))}
+      </div>
+
+      <Link
+        href="/dashboard/settings"
+        className="flex items-center justify-center gap-1.5 w-full bg-[#f5a623] text-white text-xs font-bold py-2.5 rounded-xl hover:bg-[#e09520] transition-colors"
+      >
+        <Crown className="w-3.5 h-3.5" />
+        Contact admin to upgrade
+        <ChevronRight className="w-3.5 h-3.5" />
+      </Link>
     </div>
   );
 }

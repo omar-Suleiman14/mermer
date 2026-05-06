@@ -9,10 +9,23 @@ import { Id } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
 import { PatientIntakeDrawer } from "@/components/patient-intake-drawer";
 import { VisitDrawer } from "@/components/visit-drawer";
+import { VisitCompletionModal } from "@/components/visit-completion-modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Phone, Edit, UserPlus, PlusCircle, Clock, Pill, FlaskConical, FileText } from "lucide-react";
+import {
+  Phone,
+  Edit,
+  UserPlus,
+  PlusCircle,
+  Clock,
+  Pill,
+  FlaskConical,
+  FileText,
+  Download,
+  ImageIcon,
+  StickyNote,
+} from "lucide-react";
 
 export default function PatientProfilePage() {
   const params = useParams();
@@ -22,6 +35,10 @@ export default function PatientProfilePage() {
 
   const [editOpen, setEditOpen] = useState(false);
   const [visitOpen, setVisitOpen] = useState(false);
+  const [completionTarget, setCompletionTarget] = useState<{
+    visitId: Id<"visits">;
+    visitDate: number;
+  } | null>(null);
 
   const patient = useQuery(api.patients.getPatient, clerkId ? { patientId, clerkId } : "skip");
   const visits = useQuery(api.visits.getVisitsByPatient, clerkId ? { patientId, clerkId } : "skip");
@@ -118,6 +135,12 @@ export default function PatientProfilePage() {
                   ))}
                 </div>
               )}
+              {(patient as any).notes && (
+                <div className="mt-3 text-sm text-muted-foreground bg-muted/40 rounded-lg px-3 py-2 flex items-start gap-2">
+                  <StickyNote className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-[#007AFF]" />
+                  <span className="leading-relaxed">{(patient as any).notes}</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -150,51 +173,79 @@ export default function PatientProfilePage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {visits.map((visit) => (
+              {(visits as any[]).map((visit) => (
                 <div
                   key={visit._id}
-                  className="bg-card border border-border rounded-xl p-5 border-l-2 border-l-[#007AFF]"
+                  className="bg-card border border-border rounded-xl p-5 border-l-2 border-l-[#007AFF] space-y-3"
                 >
-                  <div className="flex items-start justify-between gap-3 mb-3">
-                    <span className="text-[11px] text-muted-foreground flex-shrink-0 font-mono">
+                  {/* Date header */}
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-[11px] text-muted-foreground font-mono">
                       {new Date(visit.date).toLocaleDateString("en-US", {
                         weekday: "short",
                         year: "numeric",
                         month: "long",
                         day: "numeric",
                         hour: "numeric",
-                        minute: "2-digit"
+                        minute: "2-digit",
                       })}
                     </span>
+                    <div className="flex items-center gap-2">
+                      {visit.prescriptionPdfUrl && (
+                        <a
+                          href={visit.prescriptionPdfUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex items-center gap-1.5 text-[11px] font-semibold text-[#007AFF] border border-[#007AFF]/30 px-2.5 py-1 rounded-lg hover:bg-[#007AFF]/10 transition-colors"
+                        >
+                          <Download className="w-3 h-3" />
+                          Rx PDF
+                        </a>
+                      )}
+                      {!visit.prescriptionPdfUrl && (
+                        <button
+                          onClick={() =>
+                            setCompletionTarget({
+                              visitId: visit._id,
+                              visitDate: visit.date,
+                            })
+                          }
+                          className="flex items-center gap-1.5 text-[11px] text-muted-foreground border border-border px-2.5 py-1 rounded-lg hover:border-[#007AFF]/40 hover:text-[#007AFF] transition-colors"
+                        >
+                          <ImageIcon className="w-3 h-3" />
+                          Add Rx
+                        </button>
+                      )}
+                    </div>
                   </div>
 
+                  {visit.reasonForVisit && (
+                    <p className="text-sm font-medium">{visit.reasonForVisit}</p>
+                  )}
+
                   {visit.prescribedMedications && visit.prescribedMedications.length > 0 && (
-                    <div className="mb-2.5">
+                    <div>
                       <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
                         <Pill className="w-3 h-3" />
                         Medications
                       </div>
                       <div className="flex flex-wrap gap-1.5">
-                        {visit.prescribedMedications.map((m) => (
-                          <span key={m} className="text-xs bg-muted/60 px-2 py-0.5 rounded-full">
-                            {m}
-                          </span>
+                        {visit.prescribedMedications.map((m: string) => (
+                          <span key={m} className="text-xs bg-muted/60 px-2 py-0.5 rounded-full">{m}</span>
                         ))}
                       </div>
                     </div>
                   )}
 
                   {visit.analysisRequested && visit.analysisRequested.length > 0 && (
-                    <div className="mb-2.5">
+                    <div>
                       <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
                         <FlaskConical className="w-3 h-3" />
                         Analysis
                       </div>
                       <div className="flex flex-wrap gap-1.5">
-                        {visit.analysisRequested.map((a) => (
-                          <span key={a} className="text-xs bg-[#007AFF]/8 text-[#007AFF] px-2 py-0.5 rounded-full">
-                            {a}
-                          </span>
+                        {visit.analysisRequested.map((a: string) => (
+                          <span key={a} className="text-xs bg-[#007AFF]/8 text-[#007AFF] px-2 py-0.5 rounded-full">{a}</span>
                         ))}
                       </div>
                     </div>
@@ -209,6 +260,49 @@ export default function PatientProfilePage() {
                       <p className="text-xs text-muted-foreground leading-relaxed">{visit.notes}</p>
                     </div>
                   )}
+
+                  {/* Prescription photo thumbnail */}
+                  {visit.prescriptionImageUrl && (
+                    <div>
+                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+                        <ImageIcon className="w-3 h-3" />
+                        Prescription Photo
+                      </div>
+                      <a href={visit.prescriptionImageUrl} target="_blank" rel="noreferrer">
+                        <img
+                          src={visit.prescriptionImageUrl}
+                          alt="Prescription"
+                          className="w-24 h-32 object-cover rounded-lg border border-border hover:opacity-80 transition-opacity"
+                        />
+                      </a>
+                    </div>
+                  )}
+
+                  {/* Extra documents */}
+                  {visit.documentUrls && visit.documentUrls.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+                        <FileText className="w-3 h-3" />
+                        Attached Documents
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {visit.documentUrls.map((url: string | null, i: number) =>
+                          url ? (
+                            <a
+                              key={i}
+                              href={url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center gap-1.5 text-xs text-[#007AFF] border border-[#007AFF]/30 px-2.5 py-1 rounded-lg hover:bg-[#007AFF]/10 transition-colors"
+                            >
+                              <Download className="w-3 h-3" />
+                              Doc {i + 1}
+                            </a>
+                          ) : null
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -216,21 +310,24 @@ export default function PatientProfilePage() {
         </div>
       </div>
 
-      {/* Edit patient drawer */}
+      {/* Drawers */}
       <PatientIntakeDrawer
         open={editOpen}
         onOpenChange={setEditOpen}
         clerkId={clerkId}
-        editPatient={patient ? {
-          _id: patient._id,
-          name: patient.name,
-          age: patient.age,
-          phone: patient.phone,
-          chronicConditions: patient.chronicConditions,
-        } : null}
+        editPatient={
+          patient
+            ? {
+                _id: patient._id,
+                name: patient.name,
+                age: patient.age,
+                phone: patient.phone,
+                chronicConditions: patient.chronicConditions,
+              }
+            : null
+        }
       />
 
-      {/* New visit drawer */}
       <VisitDrawer
         open={visitOpen}
         onOpenChange={setVisitOpen}
@@ -238,6 +335,19 @@ export default function PatientProfilePage() {
         patientId={patientId}
         patientName={patient.name}
       />
+
+      {completionTarget && (
+        <VisitCompletionModal
+          open={!!completionTarget}
+          onClose={() => setCompletionTarget(null)}
+          clerkId={clerkId}
+          visitId={completionTarget.visitId}
+          patientName={patient.name}
+          patientAge={patient.age}
+          visitDate={completionTarget.visitDate}
+          onComplete={() => setCompletionTarget(null)}
+        />
+      )}
     </div>
   );
 }

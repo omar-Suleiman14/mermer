@@ -8,6 +8,10 @@
  * @module
  */
 
+import type * as appointments from "../appointments.js";
+import type * as feedback from "../feedback.js";
+import type * as feedbackActions from "../feedbackActions.js";
+import type * as files from "../files.js";
 import type * as patients from "../patients.js";
 import type * as queue from "../queue.js";
 import type * as users from "../users.js";
@@ -20,6 +24,10 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  appointments: typeof appointments;
+  feedback: typeof feedback;
+  feedbackActions: typeof feedbackActions;
+  files: typeof files;
   patients: typeof patients;
   queue: typeof queue;
   users: typeof users;

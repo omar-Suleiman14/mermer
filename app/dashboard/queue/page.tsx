@@ -7,10 +7,11 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
 import { AddToQueueDrawer } from "@/components/add-to-queue-drawer";
+import { VisitCompletionModal } from "@/components/visit-completion-modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { PlusCircle, GripVertical, CheckCircle2, MessageCircle } from "lucide-react";
+import { PlusCircle, GripVertical, CheckCircle2, MessageCircle, Clock } from "lucide-react";
 import Link from "next/link";
 import {
   DndContext,
@@ -35,6 +36,7 @@ type QueueItem = {
   position: number;
   status: "waiting" | "in-progress" | "done";
   reminderSent: boolean;
+  scheduledTime?: number;
   patient?: {
     _id: Id<"patients">;
     name: string;
@@ -43,6 +45,14 @@ type QueueItem = {
     chronicConditions: string[];
   } | null;
 };
+
+function formatTime(ts: number) {
+  return new Date(ts).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
 
 function SortableRow({
   item,
@@ -83,7 +93,7 @@ function SortableRow({
       ref={setNodeRef}
       style={style}
       className={`flex items-center gap-3 p-4 bg-card border rounded-xl transition-shadow ${
-        item.status === "in-progress" ? "border-[#007AFF]/30" : "border-border"
+        item.status === "in-progress" ? "border-[#007AFF]/30 shadow-[0_0_0_1px_rgba(0,122,255,0.15)]" : "border-border"
       } ${isDragging ? "shadow-lg" : ""}`}
     >
       {/* Drag handle */}
@@ -113,15 +123,20 @@ function SortableRow({
         >
           {item.patient?.name}
         </Link>
-        <p className="text-xs text-muted-foreground">
-          {item.patient?.age}y
-          {item.patient?.chronicConditions?.[0] && ` · ${item.patient.chronicConditions[0]}`}
-        </p>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+          <span>{item.patient?.age}y{item.patient?.chronicConditions?.[0] ? ` · ${item.patient.chronicConditions[0]}` : ""}</span>
+          {item.scheduledTime && (
+            <span className="flex items-center gap-0.5 text-[#007AFF] font-medium">
+              <Clock className="w-2.5 h-2.5" />
+              {formatTime(item.scheduledTime)}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Status badge */}
       <Badge className={`text-[10px] border ${statusColor} hidden sm:flex`}>
-        {item.status === "in-progress" ? "● In Progress" : "Waiting"}
+        {item.status === "in-progress" ? "● Now" : "Waiting"}
       </Badge>
 
       {/* Controls */}
@@ -131,17 +146,16 @@ function SortableRow({
             onClick={() => {
               if (item.reminderSent) return;
               const phone = encodeURIComponent(item.patient?.phone ?? "");
-              const rawTemplate = whatsappTemplate || "Hi {name}, it's your turn at the clinic soon. Please wait nearby.";
-              const text = encodeURIComponent(rawTemplate.replace("{name}", item.patient?.name ?? ""));
+              const rawTemplate = whatsappTemplate || "Hi {{name}}, it's your turn soon. Please come over now.";
+              const text = encodeURIComponent(rawTemplate.replace("{{name}}", item.patient?.name ?? ""));
               if (onReminderSent) onReminderSent(item._id);
               window.open(`https://wa.me/${phone}?text=${text}`, "_blank");
             }}
             className={`flex items-center gap-1.5 text-[11px] font-semibold border px-2.5 py-1 rounded-lg transition-colors hidden sm:flex ${
-              item.reminderSent 
-                ? "bg-muted/60 text-muted-foreground border-border/50 cursor-not-allowed" 
+              item.reminderSent
+                ? "bg-muted/60 text-muted-foreground border-border/50 cursor-not-allowed"
                 : "text-[#007AFF] border-[#007AFF]/30 hover:bg-[#007AFF]/10 cursor-pointer"
             }`}
-            title={item.reminderSent ? "Reminder already sent" : "Send WhatsApp Reminder"}
           >
             <MessageCircle className="w-3.5 h-3.5" />
             {item.reminderSent ? "Sent" : "Remind"}
@@ -164,9 +178,17 @@ export default function QueuePage() {
   const clerkId = user?.id ?? "";
   const [addOpen, setAddOpen] = useState(false);
 
+  // Visit completion modal state
+  const [completionModal, setCompletionModal] = useState<{
+    visitId: Id<"visits">;
+    patientName: string;
+    patientAge?: number;
+  } | null>(null);
+
   const userQuery = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
   const rawQueue = useQuery(api.queue.getTodayQueue, clerkId ? { clerkId } : "skip");
   const markDone = useMutation(api.queue.markDone);
+  const createVisit = useMutation(api.visits.createVisit);
   const reorder = useMutation(api.queue.reorderQueue);
   const markReminderSent = useMutation(api.queue.markReminderSent);
 
@@ -177,7 +199,6 @@ export default function QueuePage() {
     })
   );
 
-  // Local order state for optimistic updates
   const [localIds, setLocalIds] = useState<Id<"queue">[] | null>(null);
 
   const queue = rawQueue ?? [];
@@ -187,7 +208,6 @@ export default function QueuePage() {
         .filter(Boolean) as typeof queue
     : queue;
 
-  // Sync local state when server updates
   if (
     rawQueue &&
     localIds &&
@@ -215,9 +235,23 @@ export default function QueuePage() {
   }
 
   async function handleMarkDone(queueId: Id<"queue">) {
+    const item = displayQueue.find((q) => q._id === queueId);
+    const patientId = item?.patient?._id;
+
     try {
       await markDone({ clerkId, queueId });
-      toast.success("Patient marked as done");
+
+      // Create a visit record and open completion modal
+      if (patientId) {
+        const visitId = await createVisit({ clerkId, patientId });
+        setCompletionModal({
+          visitId,
+          patientName: item?.patient?.name ?? "",
+          patientAge: item?.patient?.age,
+        });
+      } else {
+        toast.success("Patient marked as done");
+      }
     } catch {
       toast.error("Failed to update");
     }
@@ -225,7 +259,7 @@ export default function QueuePage() {
 
   return (
     <div className="flex flex-col h-full">
-      <PageHeader title="Today's Queue" description="Drag to reorder · live updates">
+      <PageHeader title="Today's Queue" description="Drag to reorder · times cascade automatically">
         <button
           id="add-to-queue-btn"
           onClick={() => setAddOpen(true)}
@@ -247,30 +281,20 @@ export default function QueuePage() {
               <CheckCircle2 className="w-6 h-6 text-muted-foreground" />
             </div>
             <p className="text-base font-medium mb-1">Queue is clear</p>
-            <p className="text-sm text-muted-foreground mb-4">
-              Add patients to start your day.
-            </p>
-            <button
-              onClick={() => setAddOpen(true)}
-              className="text-sm font-medium text-[#007AFF] hover:underline"
-            >
+            <p className="text-sm text-muted-foreground mb-4">Add patients to start your day.</p>
+            <button onClick={() => setAddOpen(true)} className="text-sm font-medium text-[#007AFF] hover:underline">
               Add first patient
             </button>
           </div>
         ) : (
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={displayQueue.map((q) => q._id)}
-              strategy={verticalListSortingStrategy}
-            >
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={displayQueue.map((q) => q._id)} strategy={verticalListSortingStrategy}>
               <div className="space-y-2 max-w-2xl">
                 {displayQueue.map((item) => {
-                  const isNext = item.status === "waiting" && displayQueue.find(q => q.status === "waiting")?._id === item._id;
-                  
+                  const isNext =
+                    item.status === "waiting" &&
+                    displayQueue.find((q) => q.status === "waiting")?._id === item._id;
+
                   return (
                     <SortableRow
                       key={item._id}
@@ -278,7 +302,9 @@ export default function QueuePage() {
                       onMarkDone={handleMarkDone}
                       isNext={isNext}
                       whatsappTemplate={userQuery?.whatsappTemplate}
-                      onReminderSent={(queueId) => markReminderSent({ clerkId, queueId }).catch(console.error)}
+                      onReminderSent={(queueId) =>
+                        markReminderSent({ clerkId, queueId }).catch(console.error)
+                      }
                     />
                   );
                 })}
@@ -289,6 +315,19 @@ export default function QueuePage() {
       </div>
 
       <AddToQueueDrawer open={addOpen} onOpenChange={setAddOpen} clerkId={clerkId} />
+
+      {completionModal && (
+        <VisitCompletionModal
+          open={!!completionModal}
+          onClose={() => setCompletionModal(null)}
+          clerkId={clerkId}
+          visitId={completionModal.visitId}
+          patientName={completionModal.patientName}
+          patientAge={completionModal.patientAge}
+          visitDate={Date.now()}
+          onComplete={() => setCompletionModal(null)}
+        />
+      )}
     </div>
   );
 }

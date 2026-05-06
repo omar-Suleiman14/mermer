@@ -13,11 +13,29 @@ export const getVisitsByPatient = query({
     const patient = await ctx.db.get(args.patientId);
     if (!patient || patient.doctorId !== user._id) return [];
 
-    return await ctx.db
+    const visits = await ctx.db
       .query("visits")
       .withIndex("by_patient", (q) => q.eq("patientId", args.patientId))
       .order("desc")
       .collect();
+
+    // Resolve storage URLs
+    return await Promise.all(
+      visits.map(async (v) => {
+        const prescriptionImageUrl = v.prescriptionImageId
+          ? await ctx.storage.getUrl(v.prescriptionImageId)
+          : null;
+        const prescriptionPdfUrl = v.prescriptionPdfId
+          ? await ctx.storage.getUrl(v.prescriptionPdfId)
+          : null;
+        const documentUrls = v.documentIds
+          ? await Promise.all(
+              v.documentIds.map((id) => ctx.storage.getUrl(id))
+            )
+          : [];
+        return { ...v, prescriptionImageUrl, prescriptionPdfUrl, documentUrls };
+      })
+    );
   },
 });
 
@@ -36,7 +54,6 @@ export const getRecentVisits = query({
       .order("desc")
       .take(args.limit ?? 5);
 
-    // Join with patient data
     return await Promise.all(
       visits.map(async (v) => {
         const patient = await ctx.db.get(v.patientId);
@@ -55,7 +72,6 @@ export const getVisitStats = query({
       .unique();
     if (!user) return { today: 0, week: 0, month: 0 };
 
-    const now = Date.now();
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
     const startOfWeek = new Date();
@@ -105,5 +121,48 @@ export const createVisit = mutation({
       notes: args.notes,
       createdAt: Date.now(),
     });
+  },
+});
+
+export const addVisitFiles = mutation({
+  args: {
+    clerkId: v.string(),
+    visitId: v.id("visits"),
+    prescriptionImageId: v.optional(v.id("_storage")),
+    prescriptionPdfId: v.optional(v.id("_storage")),
+    documentIds: v.optional(v.array(v.id("_storage"))),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .unique();
+    if (!user) throw new Error("User not found");
+
+    const visit = await ctx.db.get(args.visitId);
+    if (!visit || visit.doctorId !== user._id) throw new Error("Not found");
+
+    const existingDocIds = visit.documentIds ?? [];
+    const newDocIds = args.documentIds ?? [];
+
+    await ctx.db.patch(args.visitId, {
+      ...(args.prescriptionImageId ? { prescriptionImageId: args.prescriptionImageId } : {}),
+      ...(args.prescriptionPdfId ? { prescriptionPdfId: args.prescriptionPdfId } : {}),
+      documentIds: [...existingDocIds, ...newDocIds],
+    });
+  },
+});
+
+export const deleteVisit = mutation({
+  args: { clerkId: v.string(), visitId: v.id("visits") },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .unique();
+    if (!user) throw new Error("User not found");
+    const visit = await ctx.db.get(args.visitId);
+    if (!visit || visit.doctorId !== user._id) throw new Error("Not found");
+    await ctx.db.delete(args.visitId);
   },
 });
