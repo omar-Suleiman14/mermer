@@ -66,6 +66,8 @@ export const updateProfile = mutation({
     credentials: v.optional(v.string()),
     clinicAddress: v.optional(v.string()),
     workingHours: v.optional(v.string()),
+    workingHoursStart: v.optional(v.number()),
+    workingHoursEnd: v.optional(v.number()),
     slotDurationMinutes: v.optional(v.number()),
     bio: v.optional(v.string()),
   },
@@ -83,6 +85,8 @@ export const updateProfile = mutation({
       credentials: args.credentials,
       clinicAddress: args.clinicAddress,
       workingHours: args.workingHours,
+      workingHoursStart: args.workingHoursStart,
+      workingHoursEnd: args.workingHoursEnd,
       slotDurationMinutes: args.slotDurationMinutes,
       bio: args.bio,
     });
@@ -177,31 +181,52 @@ export const setAdmin = mutation({
   },
 });
 
-// Public: search premium doctors
+// Public: search premium doctors (resolves profile photo URL)
 export const searchPremiumDoctors = query({
   args: { search: v.string() },
   handler: async (ctx, args) => {
     const all = await ctx.db.query("users").collect();
     const premium = all.filter((u) => u.tier === "premium" && u.publicProfile);
-    if (!args.search.trim()) return premium;
-    const q = args.search.toLowerCase();
-    return premium.filter(
-      (u) =>
-        u.name.toLowerCase().includes(q) ||
-        (u.specialty ?? "").toLowerCase().includes(q) ||
-        (u.clinicName ?? "").toLowerCase().includes(q)
+    const filtered = args.search.trim()
+      ? (() => {
+          const q = args.search.toLowerCase();
+          return premium.filter(
+            (u) =>
+              u.name.toLowerCase().includes(q) ||
+              (u.specialty ?? "").toLowerCase().includes(q) ||
+              (u.clinicName ?? "").toLowerCase().includes(q)
+          );
+        })()
+      : premium;
+
+    return await Promise.all(
+      filtered.map(async (u) => ({
+        _id: u._id,
+        name: u.name,
+        specialty: u.specialty,
+        clinicName: u.clinicName,
+        qrSlug: u.qrSlug,
+        profilePhotoUrl: u.profilePhotoId
+          ? await ctx.storage.getUrl(u.profilePhotoId)
+          : null,
+      }))
     );
   },
 });
 
-// Public: get doctor by qrSlug
+// Public: get doctor by qrSlug (includes resolved profile photo URL)
 export const getDoctorBySlug = query({
   args: { slug: v.string() },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const doctor = await ctx.db
       .query("users")
       .withIndex("by_qr_slug", (q) => q.eq("qrSlug", args.slug))
       .unique();
+    if (!doctor) return null;
+    const profilePhotoUrl = doctor.profilePhotoId
+      ? await ctx.storage.getUrl(doctor.profilePhotoId)
+      : null;
+    return { ...doctor, profilePhotoUrl };
   },
 });
 
@@ -258,6 +283,30 @@ export const getLogoUrl = query({
       .unique();
     if (!user?.logoStorageId) return null;
     return await ctx.storage.getUrl(user.logoStorageId);
+  },
+});
+
+export const getProfilePhotoUrl = query({
+  args: { clerkId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .unique();
+    if (!user?.profilePhotoId) return null;
+    return await ctx.storage.getUrl(user.profilePhotoId);
+  },
+});
+
+export const saveProfilePhoto = mutation({
+  args: { clerkId: v.string(), storageId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .unique();
+    if (!user) throw new Error("User not found");
+    await ctx.db.patch(user._id, { profilePhotoId: args.storageId });
   },
 });
 

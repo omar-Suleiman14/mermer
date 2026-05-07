@@ -5,7 +5,8 @@ import { useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { PageHeader } from "@/components/page-header";
 import { motion } from "framer-motion";
-import { Star, QrCode, Link2, MessageSquare, Loader2 } from "lucide-react";
+import { Star, QrCode, Link2, MessageSquare } from "lucide-react";
+import { IOSSpinner } from "@/components/ui/spinner";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -103,7 +104,7 @@ export default function FeedbackDashboard() {
                 />
               ) : isGenerating ? (
                 <div className="w-32 h-32 rounded-xl bg-muted/40 flex flex-col items-center justify-center">
-                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground mb-2" />
+                  <IOSSpinner size={24} color="var(--muted-foreground)" className="mb-2" />
                   <span className="text-[10px] text-muted-foreground font-medium">Generating...</span>
                 </div>
               ) : (

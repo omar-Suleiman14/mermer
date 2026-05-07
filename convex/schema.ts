@@ -21,8 +21,13 @@ export default defineSchema({
     credentials: v.optional(v.string()),       // e.g. "MD, FRCS"
     clinicAddress: v.optional(v.string()),
     workingHours: v.optional(v.string()),
+    workingHoursStart: v.optional(v.number()), // hour integer 0-23 (e.g. 9 = 9am)
+    workingHoursEnd: v.optional(v.number()),   // hour integer 0-23 (e.g. 17 = 5pm)
     publicProfile: v.optional(v.boolean()),    // whether profile is indexable
     bio: v.optional(v.string()),               // short doctor bio
+
+    // Doctor profile photo
+    profilePhotoId: v.optional(v.id("_storage")),
 
     // Stored feedback QR code (generated once, stored in Convex storage)
     feedbackQrStorageId: v.optional(v.id("_storage")),
@@ -84,7 +89,7 @@ export default defineSchema({
     doctorId: v.id("users"),
     patientId: v.id("patients"),
     // The calendar date this queue entry belongs to (start-of-day timestamp in UTC)
-    queueDate: v.number(),
+    queueDate: v.optional(v.number()),
     position: v.number(),
     status: v.union(
       v.literal("waiting"),
@@ -111,6 +116,7 @@ export default defineSchema({
 
   appointments: defineTable({
     doctorId: v.id("users"),
+    patientId: v.optional(v.id("patients")),    // New: Link to patient profile
     patientName: v.string(),
     patientPhone: v.string(),
     patientAge: v.optional(v.number()),
@@ -118,9 +124,15 @@ export default defineSchema({
     status: v.union(
       v.literal("pending"),
       v.literal("confirmed"),
-      v.literal("cancelled")
+      v.literal("cancelled"),
+      v.literal("completed")                    // New: for done visits
     ),
-    // Set to true once a patient record + queue entry have been created
+    source: v.optional(v.union(v.literal("online"), v.literal("manual"))), // New: origin
+    notes: v.optional(v.string()),              // New: visit notes
+    prescriptionImageId: v.optional(v.id("_storage")), // New: raw photo
+    documentIds: v.optional(v.array(v.id("_storage"))), // New: extra docs
+    
+    // Set to true once a patient record + queue entry have been created (legacy)
     processedToQueue: v.optional(v.boolean()),
     whatsappConfirmed: v.optional(v.boolean()), // true=YES, false=NO, undefined=no reply
     reminderSentAt: v.optional(v.number()),

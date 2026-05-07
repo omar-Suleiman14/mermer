@@ -55,40 +55,24 @@ export const searchPatients = query({
       .unique();
     if (!user) return [];
 
-    if (!args.search.trim()) {
-      return await ctx.db
-        .query("patients")
-        .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
-        .take(20);
-    }
-
-    const byName = await ctx.db
-      .query("patients")
-      .withSearchIndex("search_patients", (q) =>
-        q.search("name", args.search).eq("doctorId", user._id)
-      )
-      .take(10);
-
-    // Also search by phone (manual filter)
     const allPatients = await ctx.db
       .query("patients")
       .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
       .collect();
 
-    const byPhone = allPatients.filter((p) =>
-      p.phone.includes(args.search)
+    if (!args.search.trim()) {
+      return allPatients.sort((a, b) => b.createdAt - a.createdAt).slice(0, 20);
+    }
+
+    const term = args.search.toLowerCase().trim();
+
+    const results = allPatients.filter(
+      (p) =>
+        p.name.toLowerCase().includes(term) ||
+        p.phone.includes(term)
     );
 
-    // Merge and deduplicate
-    const seen = new Set(byName.map((p) => p._id));
-    const results = [...byName];
-    for (const p of byPhone) {
-      if (!seen.has(p._id)) {
-        results.push(p);
-        seen.add(p._id);
-      }
-    }
-    return results.slice(0, 20);
+    return results.sort((a, b) => b.createdAt - a.createdAt).slice(0, 20);
   },
 });
 

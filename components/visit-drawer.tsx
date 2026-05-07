@@ -33,7 +33,7 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
     notes: "",
   });
   const [loading, setLoading] = useState(false);
-  const createVisit = useMutation(api.visits.createVisit);
+  const addManualAppointment = useMutation(api.appointments.addManualAppointment);
 
   function set(field: string, value: unknown) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -54,7 +54,7 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     try {
-      await createVisit({
+      await addManualAppointment({
         clerkId,
         patientId,
         date: new Date(`${form.visitDate}T${form.visitTime}`).getTime(),

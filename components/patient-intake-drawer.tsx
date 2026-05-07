@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useMutation, useConvex } from "convex/react";
+import { useState, useMemo } from "react";
+import { useMutation, useConvex, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import {
@@ -16,12 +16,12 @@ import {
 import { TagInput } from "@/components/tag-input";
 import { toast } from "sonner";
 import { Label } from "@/components/ui/label";
+import { Clock } from "lucide-react";
 
 interface PatientIntakeDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   clerkId: string;
-  // If provided, pre-fills patient data for editing (no visit fields)
   editPatient?: {
     _id: Id<"patients">;
     name: string;
@@ -31,15 +31,38 @@ interface PatientIntakeDrawerProps {
   } | null;
 }
 
-const now = new Date();
+function formatTime(ts: number) {
+  return new Date(ts).toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+function startOfDay(ts: number) {
+  const d = new Date(ts);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
+function buildDaySlots(dayTs: number, startHour: number, endHour: number, slotMin: number): number[] {
+  const slots: number[] = [];
+  const cursor = new Date(dayTs);
+  cursor.setHours(startHour, 0, 0, 0);
+  const end = new Date(dayTs);
+  end.setHours(endHour, 0, 0, 0);
+  while (cursor < end) {
+    slots.push(cursor.getTime());
+    cursor.setMinutes(cursor.getMinutes() + slotMin);
+  }
+  return slots;
+}
 
 const defaultForm = {
   name: "",
   age: "",
   phone: "",
   chronicConditions: [] as string[],
-  visitDate: now.toLocaleDateString("en-CA"),
-  visitTime: now.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" }),
   notes: "",
 };
 
@@ -50,6 +73,7 @@ export function PatientIntakeDrawer({
   editPatient,
 }: PatientIntakeDrawerProps) {
   const isEdit = !!editPatient;
+
   const [form, setForm] = useState(() =>
     isEdit
       ? { ...defaultForm, ...editPatient, age: String(editPatient?.age ?? "") }
@@ -57,28 +81,56 @@ export function PatientIntakeDrawer({
   );
   const [loading, setLoading] = useState(false);
 
+  // Visit date & slot
+  const [visitDate, setVisitDate] = useState(() => startOfDay(Date.now()));
+  const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
+
+  // Doctor profile for slot generation
+  const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
+
+  // Get booked slots for selected day (appointments + queue entries)
+  const bookedAppointments = useQuery(
+    api.appointments.getAppointmentsByDate,
+    clerkId ? { clerkId, dayStart: visitDate } : "skip"
+  );
+  
+  const takenTimestamps = useMemo(() => {
+    if (!bookedAppointments) return new Set<number>();
+    return new Set(
+      bookedAppointments
+        .filter((a) => a.status !== "cancelled")
+        .map((a) => a.date)
+    );
+  }, [bookedAppointments]);
+
+  const daySlots = useMemo(() => {
+    const startHour = (currentUser as any)?.workingHoursStart ?? 9;
+    const endHour = (currentUser as any)?.workingHoursEnd ?? 17;
+    const slotMin = currentUser?.slotDurationMinutes ?? 30;
+    return buildDaySlots(visitDate, startHour, endHour, slotMin);
+  }, [currentUser, visitDate]);
+
   const createPatient = useMutation(api.patients.createPatient);
   const updatePatient = useMutation(api.patients.updatePatient);
-  const createVisit = useMutation(api.visits.createVisit);
+  const addManualAppointment = useMutation(api.appointments.addManualAppointment);
   const convex = useConvex();
 
-  // Reset form when drawer opens
-  function handleOpen(open: boolean) {
-    if (open && isEdit && editPatient) {
+  function handleOpen(v: boolean) {
+    if (v && isEdit && editPatient) {
       setForm({
         ...defaultForm,
         name: editPatient.name,
         age: String(editPatient.age),
         phone: editPatient.phone,
         chronicConditions: editPatient.chronicConditions,
-        visitDate: defaultForm.visitDate,
-        visitTime: defaultForm.visitTime,
         notes: "",
       });
-    } else if (open && !isEdit) {
+    } else if (v && !isEdit) {
       setForm(defaultForm);
+      setVisitDate(startOfDay(Date.now()));
+      setSelectedSlot(null);
     }
-    onOpenChange(open);
+    onOpenChange(v);
   }
 
   function set(field: string, value: unknown) {
@@ -104,10 +156,13 @@ export function PatientIntakeDrawer({
         });
         toast.success("Patient updated");
       } else {
-        // Check for existing patient
-        const existing = await checkExisting();
-        let patientId: Id<"patients">;
+        const existing = await convex.query(api.patients.findPatientByNameAndPhone, {
+          clerkId,
+          name: form.name.trim(),
+          phone: form.phone.trim(),
+        });
 
+        let patientId: Id<"patients">;
         if (existing) {
           patientId = existing._id;
           toast.success("Returning patient — visit added to history");
@@ -122,45 +177,47 @@ export function PatientIntakeDrawer({
           toast.success("New patient created");
         }
 
-        // Create the visit if there are notes
-        if (form.notes.trim() || !isEdit) {
-          await createVisit({
-            clerkId,
-            patientId,
-            date: new Date(`${form.visitDate}T${form.visitTime}`).getTime(),
-            notes: form.notes,
-          });
-        }
+        // The appointment date = selected slot OR noon of selected day
+        const visitTs = selectedSlot ?? (visitDate + 12 * 60 * 60 * 1000);
+        
+        await addManualAppointment({
+          clerkId,
+          patientId,
+          date: visitTs,
+          notes: form.notes || undefined,
+        });
       }
       onOpenChange(false);
-    } catch (err) {
-      toast.error("Something went wrong");
+    } catch (err: any) {
+      const msg = err?.message ?? "";
+      if (msg.includes("already booked")) {
+        toast.error("This time slot is already taken — pick another");
+      } else {
+        toast.error("Something went wrong");
+      }
       console.error(err);
     } finally {
       setLoading(false);
     }
   }
 
-  // Imperatively fetch to see if patient already exists
-  async function checkExisting() {
-    return await convex.query(api.patients.findPatientByNameAndPhone, {
-      clerkId,
-      name: form.name.trim(),
-      phone: form.phone.trim(),
-    });
-  }
+  // Build 7-day strip for date selection
+  const todayTs = startOfDay(Date.now());
+  const dayStrip = useMemo(() => {
+    const days: number[] = [];
+    for (let i = -1; i <= 5; i++) days.push(todayTs + i * 86400000);
+    return days;
+  }, [todayTs]);
 
   return (
     <Drawer open={open} onOpenChange={handleOpen}>
       <DrawerContent className="max-h-[92vh]">
         <DrawerHeader>
-          <DrawerTitle>
-            {isEdit ? "Edit Patient" : "Patient Intake"}
-          </DrawerTitle>
+          <DrawerTitle>{isEdit ? "Edit Patient" : "Patient Intake"}</DrawerTitle>
           <DrawerDescription>
             {isEdit
               ? "Update patient information."
-              : "Register a new patient or add a visit for a returning one."}
+              : "Register a new patient and log their visit."}
           </DrawerDescription>
         </DrawerHeader>
 
@@ -196,7 +253,7 @@ export function PatientIntakeDrawer({
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="intake-phone">Phone Number *</Label>
+                <Label htmlFor="intake-phone">Phone *</Label>
                 <input
                   id="intake-phone"
                   value={form.phone}
@@ -224,35 +281,87 @@ export function PatientIntakeDrawer({
               <>
                 <div className="pt-2 border-t border-border">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                    Visit Details
+                    Visit Date &amp; Time
                   </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="intake-date">Visit Date</Label>
-                    <input
-                      id="intake-date"
-                      type="date"
-                      value={form.visitDate}
-                      onChange={(e) => set("visitDate", e.target.value)}
-                      className="w-full px-3 py-2 text-sm bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="intake-time">Visit Time</Label>
-                    <input
-                      id="intake-time"
-                      type="time"
-                      value={form.visitTime}
-                      onChange={(e) => set("visitTime", e.target.value)}
-                      className="w-full px-3 py-2 text-sm bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent"
-                      required
-                    />
+                {/* Day strip */}
+                <div>
+                  <div className="flex gap-1.5 overflow-x-auto pb-1">
+                    {dayStrip.map((dayTs) => {
+                      const isSelected = visitDate === dayTs;
+                      const isToday = dayTs === todayTs;
+                      return (
+                        <button
+                          key={dayTs}
+                          type="button"
+                          onClick={() => {
+                            setVisitDate(dayTs);
+                            setSelectedSlot(null); // reset slot when date changes
+                          }}
+                          className={`flex-shrink-0 flex flex-col items-center py-2 px-3 rounded-xl text-xs transition-all min-w-[52px] ${
+                            isSelected
+                              ? "bg-[#007AFF] text-white"
+                              : isToday
+                              ? "bg-[#007AFF]/10 text-[#007AFF] font-semibold"
+                              : "text-muted-foreground hover:bg-muted/60"
+                          }`}
+                        >
+                          <span className="font-medium">
+                            {new Date(dayTs).toLocaleDateString("en-US", { weekday: "short" })}
+                          </span>
+                          <span className="text-base font-bold mt-0.5">
+                            {new Date(dayTs).getDate()}
+                          </span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
+                {/* Slot picker */}
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground block mb-2 flex items-center gap-1">
+                    <Clock className="w-3 h-3" /> Time Slot
+                  </label>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSlot(null)}
+                      className={`py-2 px-1 rounded-xl text-xs font-semibold transition-all border ${
+                        selectedSlot === null
+                          ? "bg-[#007AFF] text-white border-[#007AFF]"
+                          : "border-border text-muted-foreground hover:border-[#007AFF]/40"
+                      }`}
+                    >
+                      No time
+                    </button>
+                    {daySlots.map((ts) => {
+                      const isTaken = takenTimestamps.has(ts);
+                      const isSelected = selectedSlot === ts;
+                      return (
+                        <button
+                          key={ts}
+                          type="button"
+                          onClick={() => { if (!isTaken) setSelectedSlot(ts); }}
+                          disabled={isTaken}
+                          className={`py-2 px-1 rounded-xl text-xs font-semibold transition-all border flex flex-col items-center gap-0.5 ${
+                            isTaken
+                              ? "border-border/40 bg-muted/40 text-muted-foreground/40 cursor-not-allowed line-through"
+                              : isSelected
+                              ? "bg-[#007AFF] text-white border-[#007AFF]"
+                              : "border-border hover:border-[#007AFF]/40 hover:text-[#007AFF]"
+                          }`}
+                        >
+                          {formatTime(ts)}
+                          {isTaken && <span className="text-[9px]" style={{ textDecoration: "none" }}>Taken</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Notes */}
                 <div className="space-y-1.5">
                   <Label htmlFor="intake-notes">Notes</Label>
                   <textarea

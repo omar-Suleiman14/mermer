@@ -5,7 +5,8 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { Star, CheckCircle2, Loader2 } from "lucide-react";
+import { Star, CheckCircle2 } from "lucide-react";
+import { IOSSpinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 
 export default function FeedbackPage() {
@@ -46,7 +47,7 @@ export default function FeedbackPage() {
   if (doctor === undefined) {
     return (
       <div className="min-h-screen bg-[#f0efea] dark:bg-[#111110] flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-[#007AFF]" />
+        <IOSSpinner size={24} className="text-[#007AFF]" />
       </div>
     );
   }
@@ -155,7 +156,7 @@ export default function FeedbackPage() {
                 disabled={submitting || rating === 0}
                 className="w-full bg-[#007AFF] text-white text-sm font-semibold py-3 rounded-xl hover:bg-[#0062cc] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Submit Feedback"}
+                {submitting ? <IOSSpinner size={16} className="text-white" /> : "Submit Feedback"}
               </button>
             </div>
           )}

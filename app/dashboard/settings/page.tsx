@@ -10,13 +10,12 @@ import { toast } from "sonner";
 import {
   User,
   MessageSquare,
-  FileText,
   Upload,
-  Loader2,
   CheckCircle2,
-  Crown,
   Clock,
+  Camera,
 } from "lucide-react";
+import { IOSSpinner } from "@/components/ui/spinner";
 
 function Section({ title, icon: Icon, children }: { title: string; icon: React.ElementType; children: React.ReactNode }) {
   return (
@@ -74,11 +73,11 @@ export default function SettingsPage() {
   const clerkId = user?.id ?? "";
 
   const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
-  const logoUrl = useQuery(api.users.getLogoUrl, clerkId ? { clerkId } : "skip");
+  const profilePhotoUrl = useQuery(api.users.getProfilePhotoUrl, clerkId ? { clerkId } : "skip");
   const updateProfile = useMutation(api.users.updateProfile);
   const updateWhatsappTemplate = useMutation(api.users.updateWhatsappTemplate);
-  const updatePrescriptionTemplate = useMutation(api.users.updatePrescriptionTemplate);
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
+  const saveProfilePhoto = useMutation(api.users.saveProfilePhoto);
   const makeAdmin = useMutation(api.users.makeAdmin);
 
   // Profile state
@@ -88,7 +87,9 @@ export default function SettingsPage() {
   const [specialty, setSpecialty] = useState("");
   const [credentials, setCredentials] = useState("");
   const [clinicAddress, setClinicAddress] = useState("");
-  const [workingHours, setWorkingHours] = useState("");
+  const [workingHoursStart, setWorkingHoursStart] = useState("9");
+  const [workingHoursEnd, setWorkingHoursEnd] = useState("17");
+  const [isAlwaysOpen, setIsAlwaysOpen] = useState(false);
   const [slotDurationMinutes, setSlotDurationMinutes] = useState("30");
   const [bio, setBio] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
@@ -97,18 +98,9 @@ export default function SettingsPage() {
   const [template, setTemplate] = useState("");
   const [savingTemplate, setSavingTemplate] = useState(false);
 
-  // Prescription template
-  const [rxDoctorName, setRxDoctorName] = useState("");
-  const [rxSpecialty, setRxSpecialty] = useState("");
-  const [rxCredentials, setRxCredentials] = useState("");
-  const [rxClinicName, setRxClinicName] = useState("");
-  const [rxAddress, setRxAddress] = useState("");
-  const [rxPhone, setRxPhone] = useState("");
-  const [rxHours, setRxHours] = useState("");
-  const [logoStorageId, setLogoStorageId] = useState<Id<"_storage"> | undefined>();
-  const [savingRx, setSavingRx] = useState(false);
-  const [uploadingLogo, setUploadingLogo] = useState(false);
-  const logoInputRef = useRef<HTMLInputElement>(null);
+  // Profile photo
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   // Load data from current user
   useEffect(() => {
@@ -119,19 +111,12 @@ export default function SettingsPage() {
     setSpecialty(currentUser.specialty ?? "");
     setCredentials(currentUser.credentials ?? "");
     setClinicAddress(currentUser.clinicAddress ?? "");
-    setWorkingHours(currentUser.workingHours ?? "");
+    setWorkingHoursStart(String((currentUser as any).workingHoursStart ?? 9));
+    setWorkingHoursEnd(String((currentUser as any).workingHoursEnd ?? 17));
+    setIsAlwaysOpen((currentUser as any).workingHoursStart === 0 && (currentUser as any).workingHoursEnd === 24);
     setSlotDurationMinutes(String(currentUser.slotDurationMinutes ?? 30));
     setBio((currentUser as any).bio ?? "");
     setTemplate(currentUser.whatsappTemplate ?? "");
-
-    setRxDoctorName(currentUser.prescriptionDoctorName ?? currentUser.name ?? "");
-    setRxSpecialty(currentUser.prescriptionSpecialty ?? currentUser.specialty ?? "");
-    setRxCredentials(currentUser.prescriptionCredentials ?? currentUser.credentials ?? "");
-    setRxClinicName(currentUser.prescriptionClinicName ?? currentUser.clinicName ?? "");
-    setRxAddress(currentUser.prescriptionAddress ?? currentUser.clinicAddress ?? "");
-    setRxPhone(currentUser.prescriptionPhone ?? currentUser.phone ?? "");
-    setRxHours(currentUser.prescriptionWorkingHours ?? currentUser.workingHours ?? "");
-    setLogoStorageId(currentUser.logoStorageId);
   }, [currentUser]);
 
   async function saveProfile() {
@@ -145,7 +130,8 @@ export default function SettingsPage() {
         specialty: specialty || undefined,
         credentials: credentials || undefined,
         clinicAddress: clinicAddress || undefined,
-        workingHours: workingHours || undefined,
+        workingHoursStart: isAlwaysOpen ? 0 : (workingHoursStart ? Number(workingHoursStart) : undefined),
+        workingHoursEnd: isAlwaysOpen ? 24 : (workingHoursEnd ? Number(workingHoursEnd) : undefined),
         slotDurationMinutes: slotDurationMinutes ? Number(slotDurationMinutes) : undefined,
         bio: bio || undefined,
       });
@@ -169,30 +155,8 @@ export default function SettingsPage() {
     }
   }
 
-  async function savePrescriptionTemplate() {
-    setSavingRx(true);
-    try {
-      await updatePrescriptionTemplate({
-        clerkId,
-        logoStorageId: logoStorageId ?? undefined,
-        prescriptionDoctorName: rxDoctorName || undefined,
-        prescriptionSpecialty: rxSpecialty || undefined,
-        prescriptionCredentials: rxCredentials || undefined,
-        prescriptionClinicName: rxClinicName || undefined,
-        prescriptionAddress: rxAddress || undefined,
-        prescriptionPhone: rxPhone || undefined,
-        prescriptionWorkingHours: rxHours || undefined,
-      });
-      toast.success("Prescription template saved");
-    } catch {
-      toast.error("Failed to save");
-    } finally {
-      setSavingRx(false);
-    }
-  }
-
-  async function handleLogoUpload(file: File) {
-    setUploadingLogo(true);
+  async function handleProfilePhotoUpload(file: File) {
+    setUploadingPhoto(true);
     try {
       const uploadUrl = await generateUploadUrl();
       const res = await fetch(uploadUrl, {
@@ -201,12 +165,12 @@ export default function SettingsPage() {
         body: file,
       });
       const { storageId: sid } = await res.json();
-      setLogoStorageId(sid as Id<"_storage">);
-      toast.success("Logo uploaded");
+      await saveProfilePhoto({ clerkId, storageId: sid as Id<"_storage"> });
+      toast.success("Profile photo updated");
     } catch {
-      toast.error("Failed to upload logo");
+      toast.error("Failed to upload photo");
     } finally {
-      setUploadingLogo(false);
+      setUploadingPhoto(false);
     }
   }
 
@@ -226,18 +190,52 @@ export default function SettingsPage() {
       <PageHeader title="Settings" description="Manage your profile, templates, and preferences" />
 
       <div className="flex-1 overflow-auto p-4 sm:p-6 space-y-5 max-w-2xl">
-        {/* Tier badge */}
-        <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold ${
-          tier === "premium"
-            ? "bg-[#f5a623]/10 text-[#f5a623] border border-[#f5a623]/20"
-            : "bg-muted/60 text-muted-foreground border border-border"
-        }`}>
-          <Crown className="w-4 h-4" />
-          {tier === "premium" ? "Premium Plan — Full automation enabled" : "Free Plan — Contact admin to upgrade to Premium"}
-        </div>
 
         {/* Profile */}
         <Section title="Practice Profile" icon={User}>
+          {/* Profile photo */}
+          <div className="flex items-center gap-4 pb-2">
+            <div className="relative w-20 h-20 rounded-full overflow-hidden border-2 border-border bg-[#007AFF]/10 flex items-center justify-center flex-shrink-0">
+              {profilePhotoUrl ? (
+                <img src={profilePhotoUrl} alt="Profile" className="w-full h-full object-cover" />
+              ) : (
+                <span className="text-2xl font-bold text-[#007AFF]">
+                  {name.charAt(0).toUpperCase() || "?"}
+                </span>
+              )}
+              <button
+                onClick={() => photoInputRef.current?.click()}
+                disabled={uploadingPhoto}
+                className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center rounded-full"
+                title="Change photo"
+              >
+                {uploadingPhoto ? <IOSSpinner size={20} className="text-white" /> : <Camera className="w-5 h-5 text-white" />}
+              </button>
+            </div>
+            <div>
+              <p className="text-sm font-semibold">{name || "Your Name"}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Shown in patient search results</p>
+              <button
+                onClick={() => photoInputRef.current?.click()}
+                disabled={uploadingPhoto}
+                className="mt-2 flex items-center gap-1.5 text-xs text-[#007AFF] hover:underline disabled:opacity-60"
+              >
+                <Upload className="w-3 h-3" />
+                {profilePhotoUrl ? "Change photo" : "Upload photo"}
+              </button>
+            </div>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) handleProfilePhotoUpload(f);
+              }}
+            />
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Doctor Name" value={name} onChange={setName} placeholder="Dr. Mohamed Ahmed" />
             <Field label="Phone" value={phone} onChange={setPhone} placeholder="+20 1XX XXX XXXX" />
@@ -245,7 +243,62 @@ export default function SettingsPage() {
             <Field label="Specialty" value={specialty} onChange={setSpecialty} placeholder="General Practitioner" />
             <Field label="Credentials" value={credentials} onChange={setCredentials} placeholder="MD, MRCGP" />
             <Field label="Clinic Address" value={clinicAddress} onChange={setClinicAddress} placeholder="123 Street, Cairo" />
-            <Field label="Working Hours" value={workingHours} onChange={setWorkingHours} placeholder="Sat–Thu 9am–5pm" />
+            {/* 24/7 toggle */}
+            <div className="sm:col-span-2">
+              <label className="flex items-center gap-3 cursor-pointer group">
+                <div
+                  onClick={() => setIsAlwaysOpen((v) => !v)}
+                  className={`relative w-10 h-5.5 rounded-full transition-colors flex-shrink-0 cursor-pointer ${isAlwaysOpen ? "bg-[#007AFF]" : "bg-muted-foreground/30"}`}
+                  style={{ height: "22px", width: "42px" }}
+                >
+                  <span
+                    className={`absolute top-0.5 w-[18px] h-[18px] bg-white rounded-full shadow transition-transform ${
+                      isAlwaysOpen ? "translate-x-5" : "translate-x-0.5"
+                    }`}
+                  />
+                </div>
+                <span className="text-sm font-medium">
+                  24/7 — Open around the clock
+                </span>
+              </label>
+            </div>
+
+            {!isAlwaysOpen && (
+              <>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground block mb-1.5 flex items-center gap-1">
+                    <Clock className="w-3 h-3" /> Clinic Opens
+                  </label>
+                  <select
+                    value={workingHoursStart}
+                    onChange={(e) => setWorkingHoursStart(e.target.value)}
+                    className="w-full px-4 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF]"
+                  >
+                    {Array.from({ length: 24 }, (_, h) => (
+                      <option key={h} value={h}>
+                        {h === 0 ? "12:00 AM (midnight)" : h === 12 ? "12:00 PM" : h < 12 ? `${h}:00 AM` : `${h - 12}:00 PM`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground block mb-1.5 flex items-center gap-1">
+                    <Clock className="w-3 h-3" /> Clinic Closes
+                  </label>
+                  <select
+                    value={workingHoursEnd}
+                    onChange={(e) => setWorkingHoursEnd(e.target.value)}
+                    className="w-full px-4 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF]"
+                  >
+                    {Array.from({ length: 24 }, (_, i) => i + 1).map((h) => (
+                      <option key={h} value={h}>
+                        {h === 24 ? "12:00 AM (midnight)" : h === 12 ? "12:00 PM" : h < 12 ? `${h}:00 AM` : `${h - 12}:00 PM`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
             <div>
               <label className="text-xs font-medium text-muted-foreground block mb-1.5 flex items-center gap-1">
                 <Clock className="w-3 h-3" /> Appointment Slot Duration (minutes)
@@ -274,7 +327,7 @@ export default function SettingsPage() {
             disabled={savingProfile}
             className="flex items-center gap-2 bg-[#007AFF] text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-[#0062cc] transition-colors disabled:opacity-60"
           >
-            {savingProfile ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+            {savingProfile ? <IOSSpinner size={16} className="text-white" /> : <CheckCircle2 className="w-4 h-4" />}
             Save Profile
           </button>
         </Section>
@@ -300,118 +353,11 @@ export default function SettingsPage() {
             disabled={savingTemplate}
             className="flex items-center gap-2 bg-[#007AFF] text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-[#0062cc] transition-colors disabled:opacity-60"
           >
-            {savingTemplate ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+            {savingTemplate ? <IOSSpinner size={16} className="text-white" /> : <CheckCircle2 className="w-4 h-4" />}
             Save Template
           </button>
         </Section>
 
-        {/* Prescription Template */}
-        <Section title="Prescription Template" icon={FileText}>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            These details appear on the branded PDF generated when you complete a visit. Upload your clinic logo and fill in the details below.
-          </p>
-
-          {/* Logo upload */}
-          <div>
-            <label className="text-xs font-medium text-muted-foreground block mb-2">Clinic Logo</label>
-            <div className="flex items-center gap-3">
-              {logoUrl ? (
-                <img
-                  src={logoUrl}
-                  alt="Clinic logo"
-                  className="w-16 h-16 rounded-xl object-contain border border-border bg-white p-1"
-                />
-              ) : (
-                <div className="w-16 h-16 rounded-xl border-2 border-dashed border-border flex items-center justify-center bg-muted/30">
-                  <Upload className="w-5 h-5 text-muted-foreground" />
-                </div>
-              )}
-              <button
-                onClick={() => logoInputRef.current?.click()}
-                disabled={uploadingLogo}
-                className="flex items-center gap-2 text-sm border border-border px-4 py-2 rounded-xl hover:bg-muted/40 transition-colors disabled:opacity-60"
-              >
-                {uploadingLogo ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                {logoUrl ? "Replace Logo" : "Upload Logo"}
-              </button>
-            </div>
-            <input
-              ref={logoInputRef}
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) handleLogoUpload(f);
-              }}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Doctor Name (on Rx)" value={rxDoctorName} onChange={setRxDoctorName} placeholder="Dr. Mohamed Ahmed" />
-            <Field label="Specialty (on Rx)" value={rxSpecialty} onChange={setRxSpecialty} placeholder="General Practitioner" />
-            <Field label="Credentials (on Rx)" value={rxCredentials} onChange={setRxCredentials} placeholder="MD, MRCGP" />
-            <Field label="Clinic Name (on Rx)" value={rxClinicName} onChange={setRxClinicName} placeholder="Al Nour Clinic" />
-            <Field label="Address (on Rx)" value={rxAddress} onChange={setRxAddress} placeholder="123 Street, Cairo" />
-            <Field label="Phone (on Rx)" value={rxPhone} onChange={setRxPhone} placeholder="+20 1XX XXX XXXX" />
-            <div className="sm:col-span-2">
-              <Field label="Working Hours (on Rx)" value={rxHours} onChange={setRxHours} placeholder="Sat–Thu 9am–5pm" />
-            </div>
-          </div>
-
-          {/* Rx Preview header */}
-          <div className="rounded-xl overflow-hidden border border-border">
-            <div className="bg-[#007AFF] px-5 py-4 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                {logoUrl && (
-                  <img src={logoUrl} alt="" className="w-10 h-10 rounded-lg object-contain bg-white/20 p-1" />
-                )}
-                <div className="text-white">
-                  <p className="font-bold text-sm">{rxDoctorName || "Dr. Name"}</p>
-                  <p className="text-xs text-white/80">{rxSpecialty || "Specialty"}</p>
-                  <p className="text-xs text-white/60">{rxCredentials || "Credentials"}</p>
-                </div>
-              </div>
-              <div className="text-right text-xs text-white/70">
-                <p>{rxClinicName || "Clinic Name"}</p>
-                <p>{rxAddress || "Address"}</p>
-                <p>{rxPhone || "Phone"}</p>
-                <p>{rxHours || "Working Hours"}</p>
-              </div>
-            </div>
-            <div className="bg-[#f0f7ff] px-5 py-2 text-xs text-[#1a1916] flex justify-between">
-              <span><strong>Patient:</strong> Ahmad Ibrahim · Age: 42</span>
-              <span><strong>Date:</strong> {new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}</span>
-            </div>
-            <div className="px-5 py-4 bg-white">
-              <p className="text-2xl font-bold text-[#007AFF] mb-2">Rx</p>
-              <div className="h-px bg-[#007AFF]/20 mb-3" />
-              <p className="text-xs text-muted-foreground italic">[Prescription content will appear here]</p>
-            </div>
-          </div>
-
-          <button
-            onClick={savePrescriptionTemplate}
-            disabled={savingRx}
-            className="flex items-center gap-2 bg-[#007AFF] text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-[#0062cc] transition-colors disabled:opacity-60"
-          >
-            {savingRx ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-            Save Prescription Template
-          </button>
-        </Section>
-
-        {/* Dev tools section (hidden in production) */}
-        {process.env.NODE_ENV === "development" && (
-          <div className="border border-dashed border-border rounded-xl p-4">
-            <p className="text-xs text-muted-foreground mb-2 font-mono">DEV ONLY</p>
-            <button
-              onClick={handleMakeAdmin}
-              className="text-xs text-[#007AFF] hover:underline"
-            >
-              Make this account admin (dev)
-            </button>
-          </div>
-        )}
       </div>
     </div>
   );

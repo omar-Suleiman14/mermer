@@ -4,17 +4,11 @@ import { useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Doc } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
-import { PatientIntakeDrawer } from "@/components/patient-intake-drawer";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
-import { Search, UserPlus } from "lucide-react";
+import { Search, UserPlus, Phone, Clock, ChevronRight } from "lucide-react";
 import Link from "next/link";
-
-type PatientWithLastVisit = Doc<"patients"> & {
-  lastVisit: Doc<"visits"> | null;
-};
+import { PatientIntakeDrawer } from "@/components/patient-intake-drawer";
 
 export default function PatientsPage() {
   const { user } = useUser();
@@ -22,130 +16,114 @@ export default function PatientsPage() {
   const [search, setSearch] = useState("");
   const [intakeOpen, setIntakeOpen] = useState(false);
 
-  const allPatients = useQuery(api.patients.listPatients, clerkId ? { clerkId } : "skip");
-  const searchResults = useQuery(
+  const patients = useQuery(
     api.patients.searchPatients,
-    clerkId && search.trim() ? { clerkId, search } : "skip"
+    clerkId ? { clerkId, search } : "skip"
   );
-
-  const patients = (search.trim() ? searchResults : allPatients) as PatientWithLastVisit[] | undefined;
+  const allPatients = useQuery(
+    api.patients.searchPatients,
+    clerkId ? { clerkId, search: "" } : "skip"
+  );
 
   return (
     <div className="flex flex-col h-full">
-      <PageHeader title="Patients" description="All your patients in one place">
+      <PageHeader
+        title="Patients"
+        description={`${allPatients?.length ?? "…"} registered`}
+      >
         <button
-          id="new-patient-btn"
           onClick={() => setIntakeOpen(true)}
-          className="flex items-center gap-1.5 text-xs font-medium bg-[#007AFF] text-white px-3 py-1.5 rounded-lg hover:bg-[#0062cc] transition-colors"
+          className="flex items-center gap-2 bg-[#007AFF] hover:bg-[#007AFF]/90 text-white px-3 py-1.5 rounded-xl font-semibold transition-colors shadow-sm text-sm"
         >
-          <UserPlus className="w-3.5 h-3.5" />
-          New Patient
+          <UserPlus className="w-4 h-4" />
+          <span className="hidden sm:inline">New Patient</span>
         </button>
       </PageHeader>
 
       <div className="flex-1 overflow-auto p-4 sm:p-6">
-        {/* Search */}
-        <div className="relative mb-5 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            id="patient-search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or phone..."
-            className="w-full pl-9 pr-4 py-2.5 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent"
-          />
-        </div>
-
-        {patients === undefined ? (
-          <div className="space-y-3">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <Skeleton key={i} className="h-20 rounded-xl" />
-            ))}
+        <div className="max-w-4xl mx-auto space-y-4">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name or phone…"
+              className="w-full pl-11 pr-4 py-3 text-sm bg-white dark:bg-[#1c1c1a] border border-black/5 dark:border-white/5 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent"
+            />
           </div>
-        ) : patients.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="w-12 h-12 rounded-2xl bg-muted/60 flex items-center justify-center mx-auto mb-3">
-              <UserPlus className="w-6 h-6 text-muted-foreground" />
+
+          {patients === undefined ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <Skeleton key={i} className="h-28 rounded-2xl" />
+              ))}
             </div>
-            <p className="text-base font-medium mb-1">
-              {search ? "No patients found" : "No patients yet"}
-            </p>
-            <p className="text-sm text-muted-foreground mb-4">
-              {search ? "Try a different search term." : "Add your first patient to get started."}
-            </p>
-            {!search && (
-              <button
-                onClick={() => setIntakeOpen(true)}
-                className="text-sm font-medium text-[#007AFF] hover:underline"
-              >
-                Add first patient
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {patients.map((patient) => {
-              const initials = patient.name
-                .split(" ")
-                .map((n) => n[0])
-                .join("")
-                .slice(0, 2)
-                .toUpperCase();
-              const lastVisitDate = patient.lastVisit
-                ? new Date(patient.lastVisit.date).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })
-                : null;
+          ) : patients.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-[#007AFF]/10 flex items-center justify-center mb-4">
+                <UserPlus className="w-8 h-8 text-[#007AFF]" />
+              </div>
+              <p className="font-semibold text-base mb-1">
+                {search ? `No results for "${search}"` : "No patients yet"}
+              </p>
+              <p className="text-sm text-muted-foreground mb-5">
+                {search ? "Try a different name or phone." : "Add your first patient to get started."}
+              </p>
+              {!search && (
+                <button onClick={() => setIntakeOpen(true)} className="text-sm font-semibold text-[#007AFF] hover:underline">
+                  + Add first patient
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {patients.map((patient) => {
+                const initials = patient.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+                const palettes = [
+                  { bg: "bg-[#007AFF]/10", text: "text-[#007AFF]" },
+                  { bg: "bg-[#34c759]/10", text: "text-[#34c759]" },
+                  { bg: "bg-[#FF9500]/10", text: "text-[#FF9500]" },
+                  { bg: "bg-[#5856D6]/10", text: "text-[#5856D6]" },
+                  { bg: "bg-[#FF2D55]/10", text: "text-[#FF2D55]" },
+                ];
+                const pal = palettes[patient.name.charCodeAt(0) % palettes.length];
 
-              return (
-                <Link
-                  key={patient._id}
-                  href={`/dashboard/patients/${patient._id}`}
-                  className="flex items-center gap-4 p-4 bg-card border border-border rounded-xl hover:border-[#007AFF]/30 hover:shadow-sm transition-all group"
-                >
-                  {/* Avatar */}
-                  <div className="w-11 h-11 rounded-full bg-[#007AFF]/10 flex items-center justify-center flex-shrink-0">
-                    <span className="text-sm font-bold text-[#007AFF]">{initials}</span>
-                  </div>
-
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-semibold text-sm group-hover:text-[#007AFF] transition-colors truncate">
-                        {patient.name}
-                      </p>
-                      <span className="text-xs text-muted-foreground">{patient.age}y</span>
-                      {patient.chronicConditions[0] && (
-                        <Badge
-                          variant="secondary"
-                          className="text-[10px] px-1.5 py-0 h-4 bg-[#007AFF]/10 text-[#007AFF] border-0"
-                        >
-                          {patient.chronicConditions[0]}
-                        </Badge>
+                return (
+                  <Link
+                    key={patient._id}
+                    href={`/dashboard/patients/${patient._id}`}
+                    className="group bg-white dark:bg-[#1c1c1a] border border-black/5 dark:border-white/5 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-[#007AFF]/20 transition-all flex items-center gap-4"
+                  >
+                    <div className={`w-12 h-12 rounded-full ${pal.bg} flex items-center justify-center flex-shrink-0`}>
+                      <span className={`text-base font-bold ${pal.text}`}>{initials}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm group-hover:text-[#007AFF] transition-colors truncate">{patient.name}</p>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{patient.age}y</span>
+                        <span className="flex items-center gap-1 truncate"><Phone className="w-3 h-3" />{patient.phone}</span>
+                      </div>
+                      {patient.chronicConditions.length > 0 && (
+                        <div className="flex gap-1 mt-1.5 flex-wrap">
+                          {patient.chronicConditions.slice(0, 2).map((c) => (
+                            <span key={c} className="text-[10px] bg-muted/60 px-1.5 py-0.5 rounded-full text-muted-foreground">{c}</span>
+                          ))}
+                          {patient.chronicConditions.length > 2 && (
+                            <span className="text-[10px] bg-muted/60 px-1.5 py-0.5 rounded-full text-muted-foreground">+{patient.chronicConditions.length - 2}</span>
+                          )}
+                        </div>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5 truncate">{patient.phone}</p>
-                  </div>
-
-                  {/* Last visit */}
-                  <div className="text-right flex-shrink-0 hidden sm:block">
-                    <p className="text-[11px] text-muted-foreground">Last visit</p>
-                    <p className="text-xs font-medium">{lastVisitDate ?? "No visits"}</p>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        )}
+                    <ChevronRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-[#007AFF] flex-shrink-0 transition-colors" />
+                  </Link>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
-      <PatientIntakeDrawer
-        open={intakeOpen}
-        onOpenChange={setIntakeOpen}
-        clerkId={clerkId}
-      />
+      <PatientIntakeDrawer open={intakeOpen} onOpenChange={setIntakeOpen} clerkId={clerkId} />
     </div>
   );
 }

@@ -36,7 +36,7 @@ export const generateAndStoreFeedbackQr = action({
     });
 
     // Upload to Convex storage
-    const blob = new Blob([pngBuffer], { type: "image/png" });
+    const blob = new Blob([new Uint8Array(pngBuffer)], { type: "image/png" });
     const storageId = await ctx.storage.store(blob);
 
     // Persist the storageId on the user record

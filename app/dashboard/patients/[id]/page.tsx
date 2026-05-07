@@ -36,21 +36,16 @@ export default function PatientProfilePage() {
   const [editOpen, setEditOpen] = useState(false);
   const [visitOpen, setVisitOpen] = useState(false);
   const [completionTarget, setCompletionTarget] = useState<{
-    visitId: Id<"visits">;
+    appointmentId: Id<"appointments">;
     visitDate: number;
   } | null>(null);
 
   const patient = useQuery(api.patients.getPatient, clerkId ? { patientId, clerkId } : "skip");
-  const visits = useQuery(api.visits.getVisitsByPatient, clerkId ? { patientId, clerkId } : "skip");
-  const addToQueue = useMutation(api.queue.addToQueue);
+  const visits = useQuery(api.appointments.getVisitsByPatient, clerkId ? { patientId, clerkId } : "skip");
 
   async function handleAddToQueue() {
-    try {
-      await addToQueue({ clerkId, patientId });
-      toast.success(`${patient?.name} added to queue`);
-    } catch {
-      toast.error("Failed to add to queue");
-    }
+    // Queue table is being phased out — appointments table is the single source.
+    // This button is kept for UX but could be wired to addManualAppointment in a future update.
   }
 
   if (patient === undefined) {
@@ -180,16 +175,28 @@ export default function PatientProfilePage() {
                 >
                   {/* Date header */}
                   <div className="flex items-center justify-between gap-3">
-                    <span className="text-[11px] text-muted-foreground font-mono">
-                      {new Date(visit.date).toLocaleDateString("en-US", {
-                        weekday: "short",
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                        hour: "numeric",
-                        minute: "2-digit",
-                      })}
-                    </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[11px] text-muted-foreground font-mono">
+                        {new Date(visit.date).toLocaleDateString("en-US", {
+                          weekday: "short",
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                      {/* Source badge */}
+                      {visit.source === "appointment" ? (
+                        <span className="text-[9px] font-bold uppercase tracking-wider bg-[#007AFF]/10 text-[#007AFF] border border-[#007AFF]/20 px-1.5 py-0.5 rounded-full">
+                          Online
+                        </span>
+                      ) : (
+                        <span className="text-[9px] font-bold uppercase tracking-wider bg-muted/60 text-muted-foreground border border-border px-1.5 py-0.5 rounded-full">
+                          Manual
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2">
                       {visit.prescriptionPdfUrl && (
                         <a
@@ -206,7 +213,7 @@ export default function PatientProfilePage() {
                         <button
                           onClick={() =>
                             setCompletionTarget({
-                              visitId: visit._id,
+                              appointmentId: visit._id,
                               visitDate: visit.date,
                             })
                           }
@@ -339,12 +346,11 @@ export default function PatientProfilePage() {
       {completionTarget && (
         <VisitCompletionModal
           open={!!completionTarget}
-          onClose={() => setCompletionTarget(null)}
+          onOpenChange={(v) => !v && setCompletionTarget(null)}
           clerkId={clerkId}
-          visitId={completionTarget.visitId}
+          appointmentId={completionTarget.appointmentId}
           patientName={patient.name}
           patientAge={patient.age}
-          visitDate={completionTarget.visitDate}
           onComplete={() => setCompletionTarget(null)}
         />
       )}

@@ -11,7 +11,7 @@ function startOfDay(ts: number): number {
 // ─── Get queue for a specific date ──────────────────────────────────────────
 
 export const getQueueByDate = query({
-  args: { clerkId: v.string(), date: v.number() },
+  args: { clerkId: v.string(), date: v.number(), includeDone: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
     const user = await ctx.db
       .query("users")
@@ -28,12 +28,21 @@ export const getQueueByDate = query({
       )
       .collect();
 
-    const activeItems = queueItems
-      .filter((q) => q.status !== "done")
-      .sort((a, b) => a.position - b.position);
+    const items = args.includeDone
+      ? queueItems
+      : queueItems.filter((q) => q.status !== "done");
+
+    // Sort by scheduledTime (nulls last), then position
+    const sorted = [...items].sort((a, b) => {
+      if (a.scheduledTime != null && b.scheduledTime != null)
+        return a.scheduledTime - b.scheduledTime;
+      if (a.scheduledTime != null) return -1;
+      if (b.scheduledTime != null) return 1;
+      return a.position - b.position;
+    });
 
     return await Promise.all(
-      activeItems.map(async (item) => {
+      sorted.map(async (item) => {
         const patient = await ctx.db.get(item.patientId);
         return { ...item, patient };
       })
@@ -104,6 +113,14 @@ export const addToQueue = mutation({
     const alreadyIn = active.find((q) => q.patientId === args.patientId);
     if (alreadyIn) return alreadyIn._id;
 
+    // Reject if the requested slot is already taken by another patient
+    if (args.scheduledTime != null) {
+      const slotConflict = active.find(
+        (q) => q.scheduledTime === args.scheduledTime && q.patientId !== args.patientId
+      );
+      if (slotConflict) throw new Error("This time slot is already booked");
+    }
+
     const maxPos = active.reduce((m, q) => Math.max(m, q.position), 0);
 
     // Calculate scheduled time based on existing queue + slot duration
@@ -152,19 +169,22 @@ export const markDone = mutation({
     });
 
     // Promote the next waiting patient to in-progress (same date)
-    const remaining = await ctx.db
-      .query("queue")
-      .withIndex("by_doctor_date", (q) =>
-        q.eq("doctorId", user._id).eq("queueDate", item.queueDate)
-      )
-      .collect();
+    // queueDate may be undefined on legacy documents — skip promotion if so
+    if (item.queueDate !== undefined) {
+      const remaining = await ctx.db
+        .query("queue")
+        .withIndex("by_doctor_date", (q) =>
+          q.eq("doctorId", user._id).eq("queueDate", item.queueDate!)
+        )
+        .collect();
 
-    const waiting = remaining
-      .filter((q) => q.status === "waiting" && q._id !== args.queueId)
-      .sort((a, b) => a.position - b.position);
+      const waiting = remaining
+        .filter((q) => q.status === "waiting" && q._id !== args.queueId)
+        .sort((a, b) => a.position - b.position);
 
-    if (waiting.length > 0) {
-      await ctx.db.patch(waiting[0]._id, { status: "in-progress" });
+      if (waiting.length > 0) {
+        await ctx.db.patch(waiting[0]._id, { status: "in-progress" });
+      }
     }
   },
 });
@@ -183,23 +203,16 @@ export const reorderQueue = mutation({
       .unique();
     if (!user) throw new Error("User not found");
 
-    const items = await Promise.all(args.orderedIds.map((id) => ctx.db.get(id)));
-    const firstItem = items[0];
-    const baseTime = firstItem?.scheduledTime ?? null;
-    const slotMin = user.slotDurationMinutes ?? 30;
-
     await Promise.all(
       args.orderedIds.map(async (id, idx) => {
         const item = await ctx.db.get(id);
         if (item && item.doctorId === user._id) {
-          let scheduledTime: number | undefined = undefined;
-          if (baseTime !== null) {
-            scheduledTime = baseTime + idx * slotMin * 60 * 1000;
-          }
           await ctx.db.patch(id, {
             position: idx + 1,
             status: idx === 0 ? "in-progress" : "waiting",
-            ...(scheduledTime !== undefined ? { scheduledTime } : {}),
+            // scheduledTime is intentionally NOT touched here.
+            // A patient's slot is fixed when they are added to the queue.
+            // The only way to change it is to remove and re-add them.
           });
         }
       })
@@ -287,7 +300,7 @@ export const getQueueDates = query({
       .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
       .take(200);
 
-    const uniqueDates = [...new Set(all.map((q) => q.queueDate))].sort();
+    const uniqueDates = [...new Set(all.map((q) => q.queueDate).filter((d): d is number => d !== undefined))].sort();
     return uniqueDates;
   },
 });
