@@ -109,12 +109,18 @@ export default function LandingPage() {
           <div className="flex flex-wrap gap-4 md:gap-8">
             <Link href="/privacy" className="hover:line-through decoration-2">{t("landing.privacy")}</Link>
             <Link href="/terms" className="hover:line-through decoration-2">{t("landing.terms")}</Link>
-            <SignedOut>
+            {!mounted ? (
               <Link href="/sign-in" className="hover:text-[#007AFF] transition-colors">{t("landing.doctorLogin")}</Link>
-            </SignedOut>
-            <SignedIn>
-              <Link href="/dashboard" className="hover:text-[#007AFF] transition-colors">{t("nav.dashboard")}</Link>
-            </SignedIn>
+            ) : (
+              <>
+                <SignedOut>
+                  <Link href="/sign-in" className="hover:text-[#007AFF] transition-colors">{t("landing.doctorLogin")}</Link>
+                </SignedOut>
+                <SignedIn>
+                  <Link href="/dashboard" className="hover:text-[#007AFF] transition-colors">{t("nav.dashboard")}</Link>
+                </SignedIn>
+              </>
+            )}
           </div>
         </motion.footer>
 
