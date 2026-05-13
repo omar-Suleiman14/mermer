@@ -19,6 +19,7 @@ export default function SignUpPage() {
           </p>
         </div>
         <SignUp
+          fallbackRedirectUrl="/dashboard"
           appearance={{
             baseTheme: theme === "dark" ? dark : undefined,
             elements: {

@@ -17,6 +17,7 @@ export default function SignInPage() {
           <p className="text-sm text-[#6b6a63] mt-2">Welcome back, Doctor.</p>
         </div>
         <SignIn
+          fallbackRedirectUrl="/dashboard"
           appearance={{
             baseTheme: theme === "dark" ? dark : undefined,
             elements: {
