@@ -202,6 +202,88 @@ function cardClass() {
   return "rounded-3xl border border-border/70 bg-card/90 shadow-sm backdrop-blur-sm";
 }
 
+function RevenueSourcesChart({
+  sources,
+  fmt,
+  t,
+}: {
+  sources: { label: string; value: number; color: string; pct: number }[];
+  fmt: (n: number) => string;
+  t: (k: string) => string;
+}) {
+  const total = sources.reduce((s, x) => s + x.value, 0);
+  // Simple SVG donut (no external deps)
+  const R = 48;
+  const cx = 64;
+  const cy = 64;
+  let startAngle = -90;
+  const segments = sources.map((s) => {
+    const angle = total > 0 ? (s.value / total) * 360 : 0;
+    const endAngle = startAngle + angle;
+    const sa = startAngle;
+    startAngle = endAngle;
+    return { ...s, sa, ea: endAngle, angle };
+  });
+
+  function polarToXY(angle: number, r: number) {
+    const rad = (angle * Math.PI) / 180;
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+  }
+
+  return (
+    <div className="flex items-center gap-6">
+      {/* Donut */}
+      <svg width={128} height={128} viewBox="0 0 128 128" className="flex-shrink-0">
+        {total === 0 ? (
+          <circle cx={cx} cy={cy} r={R} fill="none" stroke="currentColor" strokeWidth={20} className="text-muted/40" />
+        ) : (
+          segments.map((seg, i) => {
+            if (seg.angle < 0.5) return null;
+            const start = polarToXY(seg.sa, R);
+            const end = polarToXY(seg.ea, R);
+            const largeArc = seg.angle > 180 ? 1 : 0;
+            const d = `M ${start.x} ${start.y} A ${R} ${R} 0 ${largeArc} 1 ${end.x} ${end.y}`;
+            return (
+              <path key={i} d={d} fill="none" stroke={seg.color} strokeWidth={22}
+                strokeLinecap="butt" />
+            );
+          })
+        )}
+        <text x={cx} y={cy - 6} textAnchor="middle" className="fill-foreground" fontSize={10} fontWeight={700}>
+          {t("stats.total")}
+        </text>
+        <text x={cx} y={cy + 9} textAnchor="middle" className="fill-muted-foreground" fontSize={9}>
+          {total > 0 ? fmt(total) : "—"}
+        </text>
+      </svg>
+      {/* Legend */}
+      <div className="flex-1 space-y-2.5">
+        {sources.map((s) => (
+          <div key={s.label}>
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
+                <span className="text-xs font-medium text-muted-foreground">{s.label}</span>
+              </div>
+              <span className="text-xs font-semibold tabular-nums">{s.pct}%</span>
+            </div>
+            <div className="h-1.5 bg-muted/40 rounded-full overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${s.pct}%` }}
+                transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+                className="h-full rounded-full"
+                style={{ backgroundColor: s.color }}
+              />
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-0.5 tabular-nums">{fmt(s.value)}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function StatisticsPage() {
   const { user } = useUser();
   const clerkId = user?.id ?? "";
@@ -212,6 +294,8 @@ export default function StatisticsPage() {
 
   const allAppointments = useQuery(api.appointments.listAppointments, clerkId ? { clerkId } : "skip");
   const revenueData = useQuery(api.doctors.getRevenueData, clerkId ? { clerkId } : "skip");
+  const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
+  const allContracts = useQuery(api.contracts.listContracts, clerkId ? { clerkId } : "skip");
 
   const fmt = (n: number) => formatMoney(n, lang, currencyLabel);
 
@@ -607,6 +691,170 @@ export default function StatisticsPage() {
               </div>
             </section>
           )}
+
+          {/* Revenue Sources Breakdown */}
+          {!isLoading && analytics && revenueData && revenueData !== null && (() => {
+            const fee = revenueData.consultationFee ?? 0;
+            const completed = (allAppointments ?? []).filter((a) => a.status === "completed");
+            const regularVisits = completed.filter((a) => !a.source || a.source === "manual" || a.source === "online");
+            const contractVisits = completed.filter((a) => a.source === "contract" && (a as any).isPaid !== false);
+            const regularRev = regularVisits.length * fee;
+            const contractRev = contractVisits.reduce((s, a) => s + ((a as any).costPerVisit ?? fee), 0);
+            const total = regularRev + contractRev;
+            const pct = (v: number) => total > 0 ? Math.round((v / total) * 100) : 0;
+            const sources = [
+              { label: t("stats.sourceRegular"), value: regularRev, color: "#007AFF", pct: pct(regularRev) },
+              { label: t("stats.sourceContracts"), value: contractRev, color: "#AF52DE", pct: pct(contractRev) },
+            ].filter((s) => s.value > 0);
+            return (
+              <section className={cn(cardClass(), "p-5 sm:p-6")}>
+                <h2 className="font-semibold text-sm flex items-center gap-2 mb-5">
+                  <DollarSign className="w-4 h-4 text-emerald-500" />
+                  {t("stats.revenueSources")}
+                </h2>
+                {total === 0 ? (
+                  <p className="text-sm text-muted-foreground">{t("stats.notSet")}</p>
+                ) : (
+                  <RevenueSourcesChart sources={sources} fmt={fmt} t={t} />
+                )}
+                <div className="mt-4 pt-4 border-t border-border/50 grid grid-cols-3 gap-3 text-center">
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">{t("stats.sourceRegular")}</p>
+                    <p className="text-sm font-bold tabular-nums mt-0.5">{regularVisits.length}</p>
+                    <p className="text-[10px] text-muted-foreground">{t("stats.visits")}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">{t("stats.sourceContracts")}</p>
+                    <p className="text-sm font-bold tabular-nums mt-0.5">{contractVisits.length}</p>
+                    <p className="text-[10px] text-muted-foreground">{t("stats.visits")}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">{t("stats.feePerVisit")}</p>
+                    <p className="text-sm font-bold tabular-nums mt-0.5">{fee > 0 ? fmt(fee) : "—"}</p>
+                    <p className="text-[10px] text-muted-foreground">{t("stats.perVisit")}</p>
+                  </div>
+                </div>
+              </section>
+            );
+          })()}
+
+
+          {/* Contract Income Breakdown */}
+          {!isLoading && allContracts && allContracts.length > 0 && (() => {
+            const now = Date.now();
+            const monthStart = now - 30 * DAY_MS;
+
+            const active = allContracts.filter((c) => c.status === "active");
+            const expired = allContracts.filter((c) => c.status === "expired");
+
+            // Total contracted amount (all contracts)
+            const totalContractedValue = allContracts.reduce((s, c) => s + (c.totalAmount ?? 0), 0);
+
+            // Collected = completed paid visits * costPerVisit + down payments
+            const totalCollected = allContracts.reduce((s, c) => {
+              const dp = c.downPaymentType === "percentage"
+                ? ((c.totalAmount ?? 0) * ((c.downPayment ?? 0) / 100))
+                : (c.downPayment ?? 0);
+              const paidVisitRev = (c.paidVisits ?? 0) * (c.costPerVisit ?? 0);
+              return s + dp + paidVisitRev;
+            }, 0);
+
+            const outstanding = allContracts.reduce((s, c) => s + (c.unpaidBalance ?? 0), 0);
+
+            // Monthly contract revenue: contract visits completed this month
+            const contractVisitsThisMonth = (allAppointments ?? []).filter(
+              (a) => a.source === "contract" && a.status === "completed" && a.date >= monthStart
+            );
+            const monthlyContractRev = contractVisitsThisMonth.reduce(
+              (s, a) => s + ((a as any).costPerVisit ?? 0),
+              0
+            );
+
+            return (
+              <section className={cn(cardClass(), "p-5 sm:p-6")}>
+                <h2 className="font-semibold text-sm flex items-center gap-2 mb-5">
+                  <TrendingUp className="w-4 h-4 text-violet-500" />
+                  {t("stats.contractIncome")}
+                </h2>
+
+                {/* Summary tiles */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+                  <div className="rounded-2xl bg-violet-500/8 border border-violet-500/15 p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">{t("stats.activeContracts")}</p>
+                    <p className="text-xl font-bold mt-0.5">{active.length}</p>
+                  </div>
+                  <div className="rounded-2xl bg-emerald-500/8 border border-emerald-500/15 p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">{t("stats.collected")}</p>
+                    <p className="text-base font-bold mt-0.5 tabular-nums">{fmt(totalCollected)}</p>
+                  </div>
+                  <div className="rounded-2xl bg-amber-500/8 border border-amber-500/15 p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">{t("stats.outstanding")}</p>
+                    <p className="text-base font-bold mt-0.5 tabular-nums">{fmt(outstanding)}</p>
+                  </div>
+                  <div className="rounded-2xl bg-sky-500/8 border border-sky-500/15 p-3 text-center">
+                    <p className="text-[10px] text-muted-foreground">{t("stats.monthlyContractRev")}</p>
+                    <p className="text-base font-bold mt-0.5 tabular-nums">{fmt(monthlyContractRev)}</p>
+                  </div>
+                </div>
+
+                {/* Progress bar: collected vs total */}
+                {totalContractedValue > 0 && (
+                  <div className="mb-5">
+                    <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
+                      <span>{t("stats.collected")} / {t("stats.totalContractValue")}</span>
+                      <span className="tabular-nums font-semibold">{fmt(totalCollected)} / {fmt(totalContractedValue)}</span>
+                    </div>
+                    <div className="h-2.5 bg-muted/40 rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min(100, Math.round((totalCollected / totalContractedValue) * 100))}%` }}
+                        transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
+                        className="h-full rounded-full bg-gradient-to-r from-violet-500 to-emerald-500"
+                      />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      {Math.round((totalCollected / totalContractedValue) * 100)}% {t("stats.collectedPct")}
+                    </p>
+                  </div>
+                )}
+
+                {/* Per-contract rows */}
+                <div className="space-y-2">
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("stats.activeContracts")}</p>
+                  {active.slice(0, 5).map((c) => {
+                    const dp = c.downPaymentType === "percentage"
+                      ? ((c.totalAmount ?? 0) * ((c.downPayment ?? 0) / 100))
+                      : (c.downPayment ?? 0);
+                    const paid = dp + (c.paidVisits ?? 0) * (c.costPerVisit ?? 0);
+                    const total = c.totalAmount ?? 0;
+                    const paidPct = total > 0 ? Math.round((paid / total) * 100) : 0;
+                    return (
+                      <div key={c._id} className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 border border-border/50">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold truncate">{c.patientName}</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            {c.completedVisits ?? 0}/{c.numVisits ?? "?"} {t("stats.visits")} · {t("stats.feePerVisit")} {fmt(c.costPerVisit ?? 0)}
+                          </p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-xs font-bold tabular-nums">{fmt(paid)}</p>
+                          <p className="text-[9px] text-muted-foreground">{paidPct}%</p>
+                        </div>
+                        <div className="w-12 flex-shrink-0">
+                          <div className="h-1.5 bg-muted/60 rounded-full overflow-hidden">
+                            <div className="h-full bg-violet-500 rounded-full" style={{ width: `${paidPct}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {active.length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center py-3">{t("stats.noActiveContracts")}</p>
+                  )}
+                </div>
+              </section>
+            );
+          })()}
 
           {/* Booking mix + busiest weekday */}
           {!isLoading && analytics && (

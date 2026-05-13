@@ -71,6 +71,9 @@ export const updateProfile = mutation({
     slotDurationMinutes: v.optional(v.number()),
     bio: v.optional(v.string()),
     publicProfile: v.optional(v.boolean()),
+    // Working days & fee per visit
+    workingDays: v.optional(v.array(v.string())),
+    feePerVisit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const user = await ctx.db
@@ -92,6 +95,8 @@ export const updateProfile = mutation({
       slotDurationMinutes: args.slotDurationMinutes,
       bio: args.bio,
       ...(args.publicProfile !== undefined ? { publicProfile: args.publicProfile } : {}),
+      ...(args.workingDays !== undefined ? { availableDays: args.workingDays } : {}),
+      ...(args.feePerVisit !== undefined ? { consultationFee: args.feePerVisit } : {}),
     });
   },
 });

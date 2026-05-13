@@ -92,6 +92,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
   const [openFrom, setOpenFrom] = useState("09:00");
   const [openTo, setOpenTo] = useState("17:00");
   const [slotDuration, setSlotDuration] = useState("30");
+  const [feePerVisit, setFeePerVisit] = useState("");
 
   // Step 3 — Bio & photo (optional)
   const [bio, setBio] = useState("");
@@ -165,6 +166,8 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
         workingHoursEnd: endHour,
         slotDurationMinutes: Number(slotDuration),
         bio: bio || undefined,
+        workingDays: selectedDays.length > 0 ? selectedDays : undefined,
+        feePerVisit: feePerVisit ? Number(feePerVisit) : undefined,
       });
 
       if (profileStorageId) {
@@ -338,6 +341,25 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
                 <select value={slotDuration} onChange={(e) => setSlotDuration(e.target.value)} className={inputClass}>
                   {[10, 15, 20, 30, 45, 60].map((m) => <option key={m} value={m}>{m} minutes</option>)}
                 </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1.5">
+                  {t("onboarding.feePerVisit")} <span className="font-normal">({t("onboarding.optional")})</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    value={feePerVisit}
+                    onChange={(e) => setFeePerVisit(e.target.value)}
+                    placeholder="350"
+                    className={inputClass}
+                    dir="ltr"
+                  />
+                  <span className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium pointer-events-none">EGP</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">{t("onboarding.feeDesc")}</p>
               </div>
             </motion.div>
           )}

@@ -14,21 +14,14 @@ import {
   Users,
   CalendarDays,
   Settings,
-  Sun,
-  Moon,
   Star,
   Shield,
   BarChart3,
   FileText,
-  Package,
-  Calculator,
-  AlertTriangle,
-  DollarSign,
 } from "lucide-react";
 
 import { useTheme } from "next-themes";
 import { useI18n } from "@/lib/i18n";
-import { LanguageToggle } from "@/components/language-toggle";
 import {
   Sidebar,
   SidebarContent,
@@ -44,7 +37,7 @@ import {
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
   const { user } = useUser();
-  const { theme, setTheme } = useTheme();
+  const { theme } = useTheme();
   const { t } = useI18n();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -54,7 +47,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     clerkId ? { clerkId } : "skip"
   );
 
-
   const isAdmin = currentUser?.isAdmin ?? false;
 
   const navItems = [
@@ -63,25 +55,33 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     { title: t("nav.schedule"), href: "/dashboard/queue", icon: CalendarDays },
     { title: t("nav.contracts"), href: "/dashboard/contracts", icon: FileText },
     { title: t("nav.feedback"), href: "/dashboard/feedback", icon: Star },
-    {
-      title: t("nav.analytics"),
-      href: "/dashboard/stats",
-      icon: BarChart3,
-    },
+    { title: t("nav.analytics"), href: "/dashboard/stats", icon: BarChart3 },
     { title: t("nav.settings"), href: "/dashboard/settings", icon: Settings },
   ];
-
 
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader className="pb-0">
         <div className="flex items-center gap-3 px-2 py-3">
-          {/* Clerk avatar in place of the person icon */}
-          <div className="flex-shrink-0">
+          {/* Clerk UserButton — force popup z-index above SidebarInset */}
+          <div
+            className="flex-shrink-0"
+            style={{ position: "relative", zIndex: 9999, isolation: "isolate" }}
+          >
             <UserButton
               afterSignOutUrl="/"
               appearance={{
                 baseTheme: theme === "dark" ? dark : undefined,
+                elements: {
+                  // Ensure the popup card floats above everything
+                  userButtonPopoverCard: {
+                    zIndex: 99999,
+                    pointerEvents: "auto",
+                  },
+                  userButtonPopoverActionButton: {
+                    pointerEvents: "auto",
+                  },
+                },
               }}
             />
           </div>
@@ -137,8 +137,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="px-2 pb-3 gap-1">
-      </SidebarFooter>
+      <SidebarFooter className="px-2 pb-3 gap-1" />
       <SidebarRail />
     </Sidebar>
   );

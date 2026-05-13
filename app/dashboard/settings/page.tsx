@@ -6,7 +6,7 @@ import { Id } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
-import { Camera, Clock, Upload, MapPin, Link as LinkIcon, MessageSquare, Globe, Moon, Sun, MonitorSmartphone, Palette, Building2 } from "lucide-react";
+import { Camera, Clock, Upload, MapPin, Link as LinkIcon, MessageSquare, Globe, Moon, Sun, MonitorSmartphone, Palette, Building2, CalendarDays } from "lucide-react";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { MessageTemplatesSection } from "@/components/message-templates-section";
@@ -31,6 +31,8 @@ const SPECIALTIES = [
   "Pediatrician", "Psychiatrist", "Pulmonologist", "Radiologist",
   "Rheumatologist", "Surgeon", "Urologist", "Other",
 ];
+
+const ALL_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export default function SettingsPage() {
   const { user } = useUser();
@@ -58,6 +60,7 @@ export default function SettingsPage() {
   const [workingHoursEnd, setWHE] = useState("17");
   const [isAlwaysOpen, setIsAlwaysOpen] = useState(false);
   const [slotMin, setSlotMin] = useState("30");
+  const [workingDays, setWorkingDays] = useState<string[]>([]);
   const [bio, setBio] = useState("");
   const [publicProfile, setPublicProfile] = useState(false);  
   
@@ -86,6 +89,7 @@ export default function SettingsPage() {
     setWHE(String((currentUser as any).workingHoursEnd ?? 17));
     setIsAlwaysOpen((currentUser as any).workingHoursStart === 0 && (currentUser as any).workingHoursEnd === 24);
     setSlotMin(String(currentUser.slotDurationMinutes ?? 30));
+    setWorkingDays((currentUser as any).availableDays ?? []);
     setBio((currentUser as any).bio ?? "");
     setPublicProfile(currentUser.publicProfile ?? false);
   }, [currentUser]);
@@ -108,10 +112,12 @@ export default function SettingsPage() {
         slotDurationMinutes: slotMin ? Number(slotMin) : 30,
         bio: bio || undefined,
         publicProfile,
+        workingDays: workingDays.length > 0 ? workingDays : undefined,
+        feePerVisit: consultationFee ? Number(consultationFee) : undefined,
       });
       toast.success(t("toast.settingsSaved"));
     } catch { toast.error(t("toast.settingsSaveFailed")); }
-  }, [clerkId, currentUser, name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, publicProfile, updateProfile, t]);
+  }, [clerkId, currentUser, name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, publicProfile, workingDays, consultationFee, updateProfile, t]);
 
   function triggerSave() {
     if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -122,12 +128,12 @@ export default function SettingsPage() {
   const prevValues = useRef("");
   useEffect(() => {
     if (!initialised.current) return;
-    const key = JSON.stringify({ name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, publicProfile });
+    const key = JSON.stringify({ name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, publicProfile, workingDays, consultationFee });
     if (prevValues.current && key !== prevValues.current) {
       triggerSave();
     }
     prevValues.current = key;
-  }, [name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, publicProfile]);
+  }, [name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, publicProfile, workingDays, consultationFee]);
 
   async function handlePhotoUpload(file: File) {
     setUploadingPhoto(true);
@@ -301,6 +307,35 @@ export default function SettingsPage() {
         <section>
           <h3 className={sectionTitleClass}>{t("settings.availabilitySection")}</h3>
           <div className={blockClass}>
+
+            {/* Working Days Picker */}
+            <div className={`${rowClass} flex-col !items-start gap-3`}>
+              <label className={`${labelClass} flex items-center gap-2`}>
+                <CalendarDays className="w-4 h-4 text-muted-foreground" />
+                {t("settings.workingDays")}
+              </label>
+              <div className="flex flex-wrap gap-1.5 w-full">
+                {ALL_DAYS.map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() =>
+                      setWorkingDays((prev) =>
+                        prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]
+                      )
+                    }
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                      workingDays.includes(d)
+                        ? "bg-[#007AFF] text-white border-[#007AFF]"
+                        : "border-border hover:border-[#007AFF]/40 text-muted-foreground"
+                    }`}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className={rowClass}>
               <label className={labelClass}>{t("settings.open247")}</label>
               <div className="flex-1 flex justify-end">

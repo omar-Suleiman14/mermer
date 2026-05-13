@@ -75,10 +75,15 @@ function formatFullDate(ts: number, lang: Lang) {
   });
 }
 
-/** Returns 7 day timestamps starting from anchorDay */
-function getWeekDays(anchorDay: number): number[] {
-  return Array.from({ length: 7 }, (_, i) => anchorDay + i * 86400000);
+/** Returns N day timestamps starting from anchorDay */
+function getWeekDays(anchorDay: number, count = 7): number[] {
+  return Array.from({ length: count }, (_, i) => anchorDay + i * 86400000);
 }
+
+/** Map JS getDay() (0=Sun…6=Sat) to our day abbreviations */
+const DOW_MAP: Record<number, string> = {
+  0: "Sun", 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat",
+};
 
 function DroppableSlot({ id, children }: { id: number, children: React.ReactNode }) {
   const { setNodeRef, isOver } = useDroppable({ id });
@@ -291,7 +296,25 @@ export default function SchedulePage() {
 
   const todayTs = startOfDay(Date.now());
 
-  // Single week offset: 0 = this week, -7 = last week, +7 = next week, etc.
+  // Strip container ref — used to measure how many days fit
+  const stripContainerRef = useRef<HTMLDivElement>(null);
+  const [daysInView, setDaysInView] = useState(7);
+
+  useEffect(() => {
+    const el = stripContainerRef.current;
+    if (!el) return;
+    const DAY_BTN_W = 52; // px per day button (approx)
+    const CHEVRON_W = 72; // both chevrons combined
+    const obs = new ResizeObserver(([entry]) => {
+      const available = (entry?.contentRect.width ?? 320) - CHEVRON_W;
+      const count = Math.max(3, Math.min(14, Math.floor(available / DAY_BTN_W)));
+      setDaysInView(count);
+    });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
+  // Single week offset: steps by daysInView instead of 7
   const [weekOffset, setWeekOffset] = useState(0);
   const [selectedDay, setSelectedDay] = useState<number>(todayTs);
 
@@ -337,9 +360,9 @@ export default function SchedulePage() {
 
   const [activeAppt, setActiveAppt] = useState<any | null>(null);
 
-  // Week strip
+  // Dynamic week strip
   const weekAnchor = todayTs + weekOffset * 86400000;
-  const weekDays = getWeekDays(weekAnchor);
+  const weekDays = getWeekDays(weekAnchor, daysInView);
 
   // Fetch appointments for selected day
   const rawAppointments = useQuery(
@@ -483,6 +506,19 @@ export default function SchedulePage() {
   const isSelectedDayPast = selectedDay < todayTs;
   const isSelectedDayToday = selectedDay === todayTs;
 
+  // Working days from doctor profile
+  const workingDays: string[] = (currentUser as any)?.availableDays ?? [];
+  const hasWorkingDays = workingDays.length > 0;
+
+  /** Is the currently selected day a working day? (true if no days configured) */
+  const isWorkingDay =
+    !hasWorkingDays || workingDays.includes(DOW_MAP[new Date(selectedDay).getDay()]);
+
+  /** Filter week strip to only working days (if configured) */
+  const visibleWeekDays = hasWorkingDays
+    ? weekDays.filter((ts) => workingDays.includes(DOW_MAP[new Date(ts).getDay()]))
+    : weekDays;
+
   const WeekChevronPrev = dir === "rtl" ? ChevronRight : ChevronLeft;
   const WeekChevronNext = dir === "rtl" ? ChevronLeft : ChevronRight;
 
@@ -503,14 +539,13 @@ export default function SchedulePage() {
           <div className="bg-white dark:bg-[#1c1c1a] border border-black/5 dark:border-white/5 rounded-2xl shadow-sm overflow-hidden">
 
             {/* Week strip */}
-            <div className="px-5 pt-5 pb-4 border-b border-border/50">
+            <div className="px-5 pt-5 pb-4 border-b border-border/50" ref={stripContainerRef}>
               <div className="flex items-center gap-2">
                 {/* Back week */}
                 <button
                   onClick={() => {
-                    const newOffset = weekOffset - 7;
+                    const newOffset = weekOffset - daysInView;
                     setWeekOffset(newOffset);
-                    // Select first day of the new week
                     setSelectedDay(todayTs + newOffset * 86400000);
                   }}
                   className="p-1.5 rounded-lg hover:bg-muted/60 transition-colors"
@@ -520,7 +555,7 @@ export default function SchedulePage() {
 
                 {/* Day buttons */}
                 <div className="flex-1 flex gap-1 overflow-x-auto pb-0.5 no-scrollbar">
-                  {weekDays.map((dayTs) => {
+                  {visibleWeekDays.map((dayTs) => {
                     const d = new Date(dayTs);
                     const isSelected = selectedDay === dayTs;
                     const isToday = dayTs === todayTs;
@@ -554,7 +589,7 @@ export default function SchedulePage() {
                 {/* Forward week */}
                 <button
                   onClick={() => {
-                    const newOffset = weekOffset + 7;
+                    const newOffset = weekOffset + daysInView;
                     setWeekOffset(newOffset);
                     setSelectedDay(todayTs + newOffset * 86400000);
                   }}
@@ -600,6 +635,20 @@ export default function SchedulePage() {
                 Array.from({ length: 5 }).map((_, i) => (
                   <Skeleton key={i} className="h-14 w-full rounded-xl bg-black/5 dark:bg-white/5" />
                 ))
+              ) : !isWorkingDay ? (
+                <div className="text-center py-14">
+                  <div className="w-12 h-12 rounded-2xl bg-muted/40 flex items-center justify-center mx-auto mb-3">
+                    <Clock className="w-6 h-6 text-muted-foreground/40" />
+                  </div>
+                  <p className="text-sm font-semibold text-muted-foreground">{t("schedule.clinicClosed")}</p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">{t("schedule.notWorkingDay")}</p>
+                  <button
+                    onClick={() => { setWeekOffset(0); setSelectedDay(todayTs); }}
+                    className="text-[#007AFF] hover:underline text-xs mt-3 inline-block font-semibold"
+                  >
+                    {t("schedule.today")}
+                  </button>
+                </div>
               ) : daySlots.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <Clock className="w-8 h-8 mx-auto mb-3 opacity-20" />

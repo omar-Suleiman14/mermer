@@ -29,7 +29,7 @@ function startOfDay(ts: number) {
 }
 
 function formatTime(ts: number) {
-  return new Date(ts).toLocaleTimeString("en-US", {
+  return new Date(ts).toLocaleTimeString("ar-EG", {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
@@ -37,7 +37,7 @@ function formatTime(ts: number) {
 }
 
 function formatDate(ts: number) {
-  return new Date(ts).toLocaleDateString("en-US", {
+  return new Date(ts).toLocaleDateString("ar-EG", {
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -55,6 +55,11 @@ function getWeekDays(startOffset = 0) {
   }
   return days;
 }
+
+/** Map JS getDay() (0=Sun…6=Sat) to our abbreviations */
+const DOW_MAP: Record<number, string> = {
+  0: "Sun", 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat",
+};
 
 /** Normalise Egyptian phone: user types 01xxxxxxxxx → stored as +201xxxxxxxxx */
 function normalisePhone(raw: string) {
@@ -82,7 +87,22 @@ export default function DoctorPublicProfile() {
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
 
   const weekDays = getWeekDays(weekOffset);
-  const activeDayTs = selectedDay ?? weekDays[0];
+
+  // Working days from doctor profile
+  const workingDays: string[] = (doctor as any)?.availableDays ?? [];
+  const hasWorkingDays = workingDays.length > 0;
+
+  /** Filter week strip to working days only (if doctor configured them) */
+  const visibleWeekDays = hasWorkingDays
+    ? weekDays.filter((ts) => workingDays.includes(DOW_MAP[new Date(ts).getDay()]))
+    : weekDays;
+
+  // Default to first visible day
+  const activeDayTs = selectedDay ?? (visibleWeekDays[0] ?? weekDays[0]);
+
+  /** Is the currently selected day a working day? */
+  const isWorkingDay =
+    !hasWorkingDays || workingDays.includes(DOW_MAP[new Date(activeDayTs).getDay()]);
 
   const bookedSlots = useQuery(
     api.appointments.getAvailableSlots,
@@ -91,7 +111,7 @@ export default function DoctorPublicProfile() {
 
   const takenTimestamps = new Set(bookedSlots ?? []);
 
-  const daySlots = doctor
+  const daySlots = doctor && isWorkingDay
     ? (() => {
         const startHour = (doctor as any).workingHoursStart ?? 9;
         const endHour = (doctor as any).workingHoursEnd ?? 17;
@@ -109,7 +129,7 @@ export default function DoctorPublicProfile() {
       })()
     : [];
 
-  // Booking form — no age field
+  // Booking form
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [isBooking, setIsBooking] = useState(false);
@@ -128,11 +148,11 @@ export default function DoctorPublicProfile() {
           patientName: name.trim(),
           doctorName: doctor.name,
           clinicName: (doctor as any).clinicName,
-          dateStr: `${formatDate(selectedSlot)} at ${formatTime(selectedSlot)}`,
+          dateStr: `${formatDate(selectedSlot)} الساعة ${formatTime(selectedSlot)}`,
         }),
       });
     } catch {
-      // WhatsApp failure is non-blocking — booking already succeeded
+      // non-blocking
     }
   }
 
@@ -148,16 +168,15 @@ export default function DoctorPublicProfile() {
         date: selectedSlot,
       });
       setBooked(true);
-      // Fire-and-forget WhatsApp confirmation
       sendWhatsApp(fullPhone);
     } catch (e: any) {
       const msg = e?.message ?? "";
       if (msg.includes("already booked")) {
-        toast.error("This slot was just taken — please pick another.");
+        toast.error("هذا الموعد محجوز — يرجى اختيار وقت آخر.");
         setSelectedSlot(null);
         setBookingOpen(false);
       } else {
-        toast.error("Booking failed. Please try again.");
+        toast.error("فشل الحجز. يرجى المحاولة مرة أخرى.");
       }
     } finally {
       setIsBooking(false);
@@ -176,14 +195,14 @@ export default function DoctorPublicProfile() {
 
   if (!doctor) {
     return (
-      <div className="min-h-screen bg-[#f0efea] dark:bg-[#111110] flex items-center justify-center text-center px-6">
+      <div className="min-h-screen bg-[#f0efea] dark:bg-[#111110] flex items-center justify-center text-center px-6" dir="rtl">
         <div>
-          <p className="text-lg font-semibold mb-2">Doctor not found</p>
+          <p className="text-lg font-semibold mb-2">الطبيب غير موجود</p>
           <p className="text-sm text-muted-foreground mb-6">
-            This profile doesn&apos;t exist or is not publicly available.
+            هذا الملف الشخصي غير موجود أو غير متاح للعموم.
           </p>
           <Link href="/" className="text-sm text-[#007AFF] hover:underline">
-            ← Back
+            → العودة
           </Link>
         </div>
       </div>
@@ -194,7 +213,7 @@ export default function DoctorPublicProfile() {
   const profilePhotoUrl = (doctor as any).profilePhotoUrl as string | null;
 
   return (
-    <div className="min-h-screen bg-[#f0efea] dark:bg-[#111110] text-[#1a1916] dark:text-[#f0efea]">
+    <div className="min-h-screen bg-[#f0efea] dark:bg-[#111110] text-[#1a1916] dark:text-[#f0efea]" dir="rtl">
       {/* Nav */}
       <nav className="sticky top-0 z-40 bg-[#f0efea]/80 dark:bg-[#111110]/80 backdrop-blur-md border-b border-black/5 dark:border-white/5">
         <div className="max-w-3xl mx-auto px-6 h-14 flex items-center gap-4">
@@ -202,10 +221,10 @@ export default function DoctorPublicProfile() {
             href="/"
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            <ChevronLeft className="w-4 h-4" />
-            Back
+            <ChevronRight className="w-4 h-4" />
+            رجوع
           </Link>
-          <span className="font-bold text-[#007AFF] ml-auto">Ibn Sina</span>
+          <span className="font-bold text-[#007AFF] me-auto">ابن سينا</span>
         </div>
       </nav>
 
@@ -221,7 +240,7 @@ export default function DoctorPublicProfile() {
               <div className="w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 border border-black/5 dark:border-white/5 shadow-sm">
                 <Image
                   src={profilePhotoUrl}
-                  alt={`Dr. ${doctor.name}`}
+                  alt={`د. ${doctor.name}`}
                   width={80}
                   height={80}
                   className="w-full h-full object-cover"
@@ -238,9 +257,8 @@ export default function DoctorPublicProfile() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap mb-1">
                 <h1 className="text-2xl font-bold tracking-tight">
-                  Dr. {doctor.name}
+                  د. {doctor.name}
                 </h1>
-
               </div>
               {doctor.specialty && (
                 <p className="text-base text-[#007AFF] font-medium mb-0.5">
@@ -263,8 +281,8 @@ export default function DoctorPublicProfile() {
                       stroke={s <= Math.round(feedbackStats.average) ? "#f5a623" : "#d1d5db"}
                     />
                   ))}
-                  <span className="text-sm text-muted-foreground ml-1">
-                    {feedbackStats.average.toFixed(1)} ({feedbackStats.count} reviews)
+                  <span className="text-sm text-muted-foreground me-1">
+                    {feedbackStats.average.toFixed(1)} ({feedbackStats.count} تقييم)
                   </span>
                 </div>
               )}
@@ -280,10 +298,10 @@ export default function DoctorPublicProfile() {
                       target="_blank"
                       rel="noreferrer"
                       className="flex items-center gap-1.5 hover:text-[#FF3B30] transition-colors cursor-pointer"
-                      title="Open in Google Maps"
+                      title="فتح في خرائط جوجل"
                     >
                       <MapPin className="w-3.5 h-3.5 text-[#FF3B30]" />
-                      {doctor.clinicAddress || "View Location"}
+                      {doctor.clinicAddress || "عرض الموقع"}
                     </a>
                   ) : (
                     <span className="flex items-center gap-1.5">
@@ -309,6 +327,12 @@ export default function DoctorPublicProfile() {
                 )}
               </div>
 
+              {(doctor as any).consultationFee && (
+                <div className="mt-3 inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 px-3 py-1.5 rounded-full text-sm font-medium">
+                  رسم الكشف: {(doctor as any).consultationFee} ج.م
+                </div>
+              )}
+
               {(doctor as any).bio && (
                 <p className="text-sm text-muted-foreground leading-relaxed mt-4 pt-4 border-t border-border/50">
                   {(doctor as any).bio}
@@ -329,14 +353,14 @@ export default function DoctorPublicProfile() {
             <Star className="w-5 h-5 text-[#FF9500]" fill="currentColor" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-sm">Visited before?</p>
-            <p className="text-xs text-muted-foreground mt-0.5">Help others by sharing your experience.</p>
+            <p className="font-semibold text-sm">زرت هذه العيادة من قبل؟</p>
+            <p className="text-xs text-muted-foreground mt-0.5">ساعد الآخرين بمشاركة تجربتك.</p>
           </div>
           <Link
             href={`/feedback/${params.slug}`}
             className="flex-shrink-0 text-xs font-semibold text-[#FF9500] border border-[#FF9500]/30 px-3 py-1.5 rounded-lg hover:bg-[#FF9500]/10 transition-colors"
           >
-            Leave a Review →
+            اترك تقييماً ←
           </Link>
         </motion.div>
 
@@ -349,11 +373,51 @@ export default function DoctorPublicProfile() {
         >
           <h2 className="font-semibold text-base flex items-center gap-2 mb-5">
             <CalendarDays className="w-4 h-4 text-[#007AFF]" />
-            Book an Appointment
+            احجز موعداً
           </h2>
 
           {/* Week navigation */}
           <div className="flex items-center gap-2 mb-4">
+            {/* Next week (→ in RTL = forward) */}
+            <button
+              onClick={() => { setWeekOffset((o) => o + 7); setSelectedDay(null); setSelectedSlot(null); }}
+              className="p-1.5 rounded-lg hover:bg-muted/60 transition-colors"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+
+            <div className="flex-1 flex gap-1.5 overflow-x-auto pb-1" dir="ltr">
+              {weekDays.map((dayTs) => {
+                const d = new Date(dayTs);
+                const dow = DOW_MAP[d.getDay()];
+                const isWorkingDayBtn = !hasWorkingDays || workingDays.includes(dow);
+                const isSelected = (selectedDay ?? visibleWeekDays[0] ?? weekDays[0]) === dayTs;
+                const isPast = dayTs < startOfDay(Date.now());
+                const isDisabled = isPast || !isWorkingDayBtn;
+                return (
+                  <button
+                    key={dayTs}
+                    onClick={() => { if (!isDisabled) { setSelectedDay(dayTs); setSelectedSlot(null); } }}
+                    disabled={isDisabled}
+                    className={`flex-shrink-0 flex flex-col items-center py-2 px-3 rounded-xl text-xs transition-all ${
+                      isSelected && isWorkingDayBtn
+                        ? "bg-[#007AFF] text-white"
+                        : isDisabled
+                        ? "text-muted-foreground/30 cursor-not-allowed"
+                        : "hover:bg-muted/60 text-muted-foreground"
+                    }`}
+                  >
+                    <span className="font-medium">{d.toLocaleDateString("ar-EG", { weekday: "short" })}</span>
+                    <span className="text-base font-bold mt-0.5">{d.getDate()}</span>
+                    {!isWorkingDayBtn && !isPast && (
+                      <span className="text-[8px] font-medium text-muted-foreground/40 mt-0.5">مغلق</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Prev week (← in RTL = back) */}
             <button
               onClick={() => { setWeekOffset((o) => Math.max(0, o - 7)); setSelectedDay(null); setSelectedSlot(null); }}
               disabled={weekOffset === 0}
@@ -361,43 +425,25 @@ export default function DoctorPublicProfile() {
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <div className="flex-1 flex gap-1.5 overflow-x-auto pb-1">
-              {weekDays.map((dayTs) => {
-                const d = new Date(dayTs);
-                const isSelected = (selectedDay ?? weekDays[0]) === dayTs;
-                const isPast = dayTs < startOfDay(Date.now());
-                return (
-                  <button
-                    key={dayTs}
-                    onClick={() => { setSelectedDay(dayTs); setSelectedSlot(null); }}
-                    disabled={isPast}
-                    className={`flex-shrink-0 flex flex-col items-center py-2 px-3 rounded-xl text-xs transition-all disabled:opacity-30 ${
-                      isSelected ? "bg-[#007AFF] text-white" : "hover:bg-muted/60 text-muted-foreground"
-                    }`}
-                  >
-                    <span className="font-medium">{d.toLocaleDateString("en-US", { weekday: "short" })}</span>
-                    <span className="text-base font-bold mt-0.5">{d.getDate()}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <button
-              onClick={() => { setWeekOffset((o) => o + 7); setSelectedDay(null); setSelectedSlot(null); }}
-              className="p-1.5 rounded-lg hover:bg-muted/60 transition-colors"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
           </div>
 
           <p className="text-xs text-muted-foreground mb-4 font-medium">{formatDate(activeDayTs)}</p>
 
           {/* Slots */}
-          {bookedSlots === undefined ? (
+          {!isWorkingDay ? (
+            <div className="text-center py-10">
+              <div className="w-12 h-12 rounded-2xl bg-muted/40 flex items-center justify-center mx-auto mb-3">
+                <Clock className="w-6 h-6 text-muted-foreground/40" />
+              </div>
+              <p className="text-sm font-semibold text-muted-foreground">العيادة مغلقة هذا اليوم</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">هذا اليوم ليس ضمن أيام العمل.</p>
+            </div>
+          ) : bookedSlots === undefined ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <IOSSpinner size={16} /> Loading slots…
+              <IOSSpinner size={16} /> جارٍ تحميل المواعيد…
             </div>
           ) : daySlots.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No slots available for this day.</p>
+            <p className="text-sm text-muted-foreground">لا توجد مواعيد متاحة لهذا اليوم.</p>
           ) : (
             <>
               <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
@@ -409,7 +455,7 @@ export default function DoctorPublicProfile() {
                       key={ts}
                       onClick={() => { if (!isTaken) { setSelectedSlot(ts); setBookingOpen(true); } }}
                       disabled={isTaken}
-                      title={isTaken ? "Slot taken" : undefined}
+                      title={isTaken ? "محجوز" : undefined}
                       className={`py-2.5 px-1 rounded-xl text-xs font-semibold transition-all border flex flex-col items-center gap-0.5 ${
                         isTaken
                           ? "border-border/40 bg-muted/40 text-muted-foreground/40 cursor-not-allowed"
@@ -419,14 +465,14 @@ export default function DoctorPublicProfile() {
                       }`}
                     >
                       {formatTime(ts)}
-                      {isTaken && <span className="text-[9px]">Taken</span>}
+                      {isTaken && <span className="text-[9px]">محجوز</span>}
                     </button>
                   );
                 })}
               </div>
               <p className="text-[11px] text-muted-foreground mt-3">
-                <span className="inline-block w-3 h-3 rounded bg-muted/40 border border-border/40 mr-1 align-middle" />
-                Greyed slots are taken. Tap an available slot to book.
+                <span className="inline-block w-3 h-3 rounded bg-muted/40 border border-border/40 ms-1 align-middle" />
+                المواعيد الرمادية محجوزة. اضغط على موعد متاح للحجز.
               </p>
             </>
           )}
@@ -457,9 +503,9 @@ export default function DoctorPublicProfile() {
                     <div className="w-16 h-16 rounded-full bg-[#34c759]/10 flex items-center justify-center mb-4">
                       <CheckCircle2 className="w-8 h-8 text-[#34c759]" />
                     </div>
-                    <h3 className="font-bold text-lg mb-2">Booking Confirmed!</h3>
+                    <h3 className="font-bold text-lg mb-2">تم تأكيد الحجز!</h3>
                     <p className="text-sm text-muted-foreground mb-1">
-                      Dr. {doctor.name} · {formatTime(selectedSlot)}
+                      د. {doctor.name} · {formatTime(selectedSlot)}
                     </p>
                     <p className="text-sm text-muted-foreground">{formatDate(selectedSlot)}</p>
 
@@ -467,7 +513,7 @@ export default function DoctorPublicProfile() {
                       onClick={() => { setBookingOpen(false); setBooked(false); setSelectedSlot(null); setName(""); setPhone(""); }}
                       className="mt-6 text-sm text-[#007AFF] hover:underline font-medium"
                     >
-                      Done
+                      تم
                     </button>
                   </div>
                 ) : (
@@ -476,7 +522,7 @@ export default function DoctorPublicProfile() {
                     <div className="flex items-center gap-3 mb-5 p-3 bg-muted/30 rounded-xl">
                       {profilePhotoUrl ? (
                         <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0">
-                          <Image src={profilePhotoUrl} alt={`Dr. ${doctor.name}`} width={40} height={40} className="w-full h-full object-cover" />
+                          <Image src={profilePhotoUrl} alt={`د. ${doctor.name}`} width={40} height={40} className="w-full h-full object-cover" />
                         </div>
                       ) : (
                         <div className="w-10 h-10 rounded-xl bg-[#007AFF]/10 flex items-center justify-center flex-shrink-0">
@@ -484,26 +530,27 @@ export default function DoctorPublicProfile() {
                         </div>
                       )}
                       <div>
-                        <p className="font-semibold text-sm">Dr. {doctor.name}</p>
+                        <p className="font-semibold text-sm">د. {doctor.name}</p>
                         <p className="text-xs text-muted-foreground">{formatTime(selectedSlot)} · {formatDate(selectedSlot)}</p>
                       </div>
                     </div>
 
-                    <h3 className="font-bold text-base mb-4">Complete Your Booking</h3>
+                    <h3 className="font-bold text-base mb-4">أكمل بيانات الحجز</h3>
 
                     <div className="space-y-3">
                       <div>
-                        <label className="text-xs font-medium text-muted-foreground block mb-1">Full Name *</label>
+                        <label className="text-xs font-medium text-muted-foreground block mb-1">الاسم الكامل *</label>
                         <input
                           value={name}
                           onChange={(e) => setName(e.target.value)}
-                          placeholder="Your full name"
+                          placeholder="اسمك الكامل"
+                          dir="rtl"
                           className="w-full px-4 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent"
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-medium text-muted-foreground block mb-1">WhatsApp Number *</label>
-                        <div className="flex items-center border border-border rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-[#007AFF] bg-background">
+                        <label className="text-xs font-medium text-muted-foreground block mb-1">رقم الواتساب *</label>
+                        <div className="flex items-center border border-border rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-[#007AFF] bg-background" dir="ltr">
                           <span className="px-3 py-2.5 text-sm font-semibold text-muted-foreground bg-muted/30 border-r border-border select-none">
                             +20
                           </span>
@@ -516,7 +563,7 @@ export default function DoctorPublicProfile() {
                             className="flex-1 px-3 py-2.5 text-sm bg-transparent focus:outline-none"
                           />
                         </div>
-                        <p className="text-[11px] text-muted-foreground mt-1">We&apos;ll send a WhatsApp confirmation to this number.</p>
+                        <p className="text-[11px] text-muted-foreground mt-1">سنرسل تأكيداً على هذا الرقم عبر الواتساب.</p>
                       </div>
                     </div>
 
@@ -525,14 +572,14 @@ export default function DoctorPublicProfile() {
                         onClick={() => setBookingOpen(false)}
                         className="flex-1 border border-border text-sm font-medium py-2.5 rounded-xl hover:bg-muted/40 transition-colors"
                       >
-                        Cancel
+                        إلغاء
                       </button>
                       <button
                         onClick={handleBook}
                         disabled={isBooking || !name.trim() || phone.trim().length < 8}
                         className="flex-1 bg-[#007AFF] text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-[#0062cc] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                       >
-                        {isBooking ? <IOSSpinner size={16} className="text-white" /> : "Confirm Booking"}
+                        {isBooking ? <IOSSpinner size={16} className="text-white" /> : "تأكيد الحجز"}
                       </button>
                     </div>
                   </>

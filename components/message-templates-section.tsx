@@ -8,6 +8,7 @@ import { Plus, Pencil, Trash2, Check, X, MessageSquare, Copy } from "lucide-reac
 import { IOSSpinner } from "@/components/ui/spinner";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n";
+import { createPortal } from "react-dom";
 
 function getTemplateVariables(t: (key: string) => string) {
   return [
@@ -39,9 +40,9 @@ export function MessageTemplatesSection({ clerkId, clinicAddressLink }: { clerkI
     seeded.current = true;
     setSeeding(true);
     const defaults = [
-      { name: "Next In Line", body: "Hello {patient_name}, you are next in line! Please make your way to the clinic. See you in a moment! 🏥" },
-      { name: "Today's Appointment", body: "Hello {patient_name}, this is a reminder that your appointment is today at {time}. Our address: {clinic_address}. See you soon! 📍" },
-      { name: "Missed Appointment", body: "Hello {patient_name}, it looks like you missed your appointment on {date}. Would you like to rebook? Please reply or call us to reschedule. 🙏" },
+      { name: "الدور القادم", body: "مرحباً {patient_name}، دورك القادم الآن. يرجى التوجه إلى العيادة في أقرب وقت." },
+      { name: "تذكير بالموعد", body: "مرحباً {patient_name}، نذكّرك بموعدك اليوم الساعة {time}. عنوان العيادة: {clinic_address}. نراك قريباً." },
+      { name: "موعد فائت", body: "مرحباً {patient_name}، يبدو أنك لم تحضر موعدك بتاريخ {date}. يسعدنا إعادة الحجز عند اتصالك بنا." },
     ];
     Promise.all(defaults.map((d) => createTemplate({ clerkId, name: d.name, body: d.body })))
       .then(() => setSeeding(false))
@@ -178,6 +179,8 @@ function EditorForm({ name, setName, body, setBody, onSave, onCancel, preview, s
   const [mentionFilter, setMentionFilter] = useState("");
   const [mentionIdx, setMentionIdx] = useState(0);
   const [mentionStart, setMentionStart] = useState(-1);
+  // Fixed position for the popup (escapes overflow:hidden parents)
+  const [popupPos, setPopupPos] = useState<{ top: number; left: number; width: number } | null>(null);
 
   const variables = useMemo(() => getTemplateVariables(t), [t]);
 
@@ -186,18 +189,23 @@ function EditorForm({ name, setName, body, setBody, onSave, onCancel, preview, s
     v.key.toLowerCase().includes(mentionFilter.toLowerCase())
   );
 
+  // Recompute popup position whenever the mention opens
+  useEffect(() => {
+    if (!showMention || !textareaRef.current) { setPopupPos(null); return; }
+    const rect = textareaRef.current.getBoundingClientRect();
+    setPopupPos({ top: rect.top - 8, left: rect.left, width: rect.width });
+  }, [showMention]);
+
   const handleBodyChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
     const pos = e.target.selectionStart;
     setBody(val);
 
-    // Check if we just typed @ or are continuing after @
     const before = val.slice(0, pos);
     const atIdx = before.lastIndexOf("@");
 
     if (atIdx >= 0) {
       const afterAt = before.slice(atIdx + 1);
-      // Only show if @ is at start or preceded by space, and no space in the filter
       const precededBySpace = atIdx === 0 || before[atIdx - 1] === " " || before[atIdx - 1] === "\n";
       if (precededBySpace && !afterAt.includes(" ") && !afterAt.includes("\n")) {
         setShowMention(true);
@@ -220,8 +228,6 @@ function EditorForm({ name, setName, body, setBody, onSave, onCancel, preview, s
     setBody(newBody);
     setShowMention(false);
     setMentionFilter("");
-
-    // Refocus and set cursor position
     requestAnimationFrame(() => {
       ta.focus();
       const newPos = mentionStart + variable.key.length + 1;
@@ -231,7 +237,6 @@ function EditorForm({ name, setName, body, setBody, onSave, onCancel, preview, s
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (!showMention || filtered.length === 0) return;
-
     if (e.key === "ArrowDown") {
       e.preventDefault();
       setMentionIdx((i) => Math.min(i + 1, filtered.length - 1));
@@ -271,20 +276,29 @@ function EditorForm({ name, setName, body, setBody, onSave, onCancel, preview, s
           className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007AFF] resize-none font-mono"
         />
 
-        {/* @-mention dropdown */}
-        <AnimatePresence>
-          {showMention && filtered.length > 0 && (
+        {/* @-mention dropdown — rendered via portal to escape overflow:hidden parents */}
+        {showMention && filtered.length > 0 && popupPos && typeof window !== "undefined" && createPortal(
+          <AnimatePresence>
             <motion.div
-              initial={{ opacity: 0, y: -4, scale: 0.97 }}
+              key="mention-popup"
+              initial={{ opacity: 0, y: 4, scale: 0.97 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -4, scale: 0.97 }}
+              exit={{ opacity: 0, y: 4, scale: 0.97 }}
               transition={{ duration: 0.12 }}
-              className="absolute left-0 right-0 bottom-full mb-1 bg-[var(--background)] border border-border rounded-xl shadow-lg overflow-hidden z-20"
+              style={{
+                position: "fixed",
+                top: popupPos.top,
+                left: popupPos.left,
+                width: popupPos.width,
+                transform: "translateY(-100%)",
+                zIndex: 9999,
+              }}
+              className="bg-[var(--background)] border border-border rounded-xl shadow-2xl overflow-hidden"
             >
               {filtered.map((v, i) => (
                 <button
                   key={v.key}
-                  onClick={() => insertVariable(v)}
+                  onMouseDown={(e) => { e.preventDefault(); insertVariable(v); }}
                   onMouseEnter={() => setMentionIdx(i)}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
                     i === mentionIdx ? "bg-[#007AFF]/10" : "hover:bg-muted/40"
@@ -300,8 +314,9 @@ function EditorForm({ name, setName, body, setBody, onSave, onCancel, preview, s
                 </button>
               ))}
             </motion.div>
-          )}
-        </AnimatePresence>
+          </AnimatePresence>,
+          document.body
+        )}
       </div>
 
       {/* Live preview */}

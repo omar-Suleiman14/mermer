@@ -54,6 +54,14 @@ export function VisitCompletionModal({
   const isContractVisit = !!contractId;
   const { t } = useI18n();
 
+  /** Working days from doctor profile */
+  const workingDayAbbrs: string[] = (currentUser as any)?.availableDays ?? [];
+  const DOW_ABBR: Record<number, string> = { 0: "Sun", 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat" };
+  function isNonWorkingDay(d: Date): boolean {
+    if (workingDayAbbrs.length === 0) return false;
+    return !workingDayAbbrs.includes(DOW_ABBR[d.getDay()]);
+  }
+
   // Follow-up date for slot availability check
   const [fuDate, setFuDate] = useState<Date | undefined>(undefined);
   const [fuCalOpen, setFuCalOpen] = useState(false);
@@ -433,7 +441,7 @@ export function VisitCompletionModal({
                                         </button>
                                       </PopoverTrigger>
                                       <PopoverContent className="w-auto p-0" align="start">
-                                        <Calendar mode="single" selected={nextContractDate} onSelect={(d) => { if (d) { setNextContractDate(d); setNextContractCalOpen(false); } }} disabled={(d) => d < new Date()} />
+                                        <Calendar mode="single" selected={nextContractDate} onSelect={(d) => { if (d) { setNextContractDate(d); setNextContractCalOpen(false); } }} disabled={(d) => d < new Date() || isNonWorkingDay(d)} />
                                       </PopoverContent>
                                     </Popover>
                                   </div>
@@ -493,7 +501,7 @@ export function VisitCompletionModal({
                                     </button>
                                   </PopoverTrigger>
                                   <PopoverContent className="w-auto p-0" align="start">
-                                    <Calendar mode="single" selected={fuDate} onSelect={(d) => { if (d) { setFuDate(d); setFuCalOpen(false); } }} disabled={(d) => d < new Date()} />
+                                    <Calendar mode="single" selected={fuDate} onSelect={(d) => { if (d) { setFuDate(d); setFuCalOpen(false); } }} disabled={(d) => d < new Date() || isNonWorkingDay(d)} />
                                   </PopoverContent>
                                 </Popover>
                               </div>

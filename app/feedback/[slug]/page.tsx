@@ -5,9 +5,12 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { motion } from "framer-motion";
 import { useState } from "react";
-import { Star, CheckCircle2 } from "lucide-react";
+import { Star, CheckCircle2, ChevronRight } from "lucide-react";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
+import Link from "next/link";
+
+const RATING_LABELS = ["", "ضعيف", "مقبول", "جيد", "جيد جداً", "ممتاز"];
 
 export default function FeedbackPage() {
   const params = useParams();
@@ -25,7 +28,7 @@ export default function FeedbackPage() {
 
   async function handleSubmit() {
     if (rating === 0) {
-      toast.error("Please select a rating");
+      toast.error("يرجى اختيار تقييم");
       return;
     }
     setSubmitting(true);
@@ -38,7 +41,7 @@ export default function FeedbackPage() {
       });
       setSubmitted(true);
     } catch {
-      toast.error("Failed to submit feedback");
+      toast.error("فشل إرسال التقييم. يرجى المحاولة مرة أخرى.");
     } finally {
       setSubmitting(false);
     }
@@ -54,19 +57,33 @@ export default function FeedbackPage() {
 
   if (!doctor) {
     return (
-      <div className="min-h-screen bg-[#f0efea] dark:bg-[#111110] flex items-center justify-center text-center px-6">
-        <p className="text-muted-foreground">Feedback page not found.</p>
+      <div className="min-h-screen bg-[#f0efea] dark:bg-[#111110] flex items-center justify-center text-center px-6" dir="rtl">
+        <p className="text-muted-foreground">صفحة التقييم غير موجودة.</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#f0efea] dark:bg-[#111110] text-[#1a1916] dark:text-[#f0efea] flex items-center justify-center px-6 py-12">
+    <div
+      className="min-h-screen bg-[#f0efea] dark:bg-[#111110] text-[#1a1916] dark:text-[#f0efea] flex items-center justify-center px-6 py-12"
+      dir="rtl"
+    >
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         className="w-full max-w-md"
       >
+        {/* Back link */}
+        <div className="mb-6">
+          <Link
+            href={`/doctors/${slug}`}
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ChevronRight className="w-4 h-4" />
+            العودة للملف الشخصي
+          </Link>
+        </div>
+
         {/* Header */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 rounded-2xl bg-[#007AFF]/10 flex items-center justify-center mx-auto mb-4">
@@ -74,9 +91,9 @@ export default function FeedbackPage() {
               {doctor.name.charAt(0).toUpperCase()}
             </span>
           </div>
-          <h1 className="text-xl font-bold mb-1">Rate Your Visit</h1>
+          <h1 className="text-xl font-bold mb-1">قيّم زيارتك</h1>
           <p className="text-sm text-muted-foreground">
-            Dr. {doctor.name}
+            د. {doctor.name}
             {doctor.specialty ? ` · ${doctor.specialty}` : ""}
           </p>
           {doctor.clinicName && (
@@ -90,16 +107,22 @@ export default function FeedbackPage() {
               <div className="w-14 h-14 rounded-full bg-[#34c759]/10 flex items-center justify-center mb-3">
                 <CheckCircle2 className="w-7 h-7 text-[#34c759]" />
               </div>
-              <h2 className="font-bold text-base mb-2">Thank you!</h2>
+              <h2 className="font-bold text-base mb-2">شكراً لك!</h2>
               <p className="text-sm text-muted-foreground">
-                Your feedback helps Dr. {doctor.name} improve.
+                تقييمك يساعد د. {doctor.name} على تقديم تجربة أفضل.
               </p>
+              <Link
+                href={`/doctors/${slug}`}
+                className="mt-5 text-sm text-[#007AFF] hover:underline font-medium"
+              >
+                العودة للملف الشخصي
+              </Link>
             </div>
           ) : (
             <div className="space-y-5">
               {/* Star rating */}
               <div>
-                <p className="text-sm font-medium mb-3 text-center">How was your visit?</p>
+                <p className="text-sm font-medium mb-3 text-center">كيف كانت زيارتك؟</p>
                 <div className="flex items-center justify-center gap-2">
                   {[1, 2, 3, 4, 5].map((s) => (
                     <button
@@ -118,8 +141,8 @@ export default function FeedbackPage() {
                   ))}
                 </div>
                 {rating > 0 && (
-                  <p className="text-center text-xs text-muted-foreground mt-2">
-                    {["", "Poor", "Fair", "Good", "Very Good", "Excellent"][rating]}
+                  <p className="text-center text-xs text-[#007AFF] font-semibold mt-2">
+                    {RATING_LABELS[rating]}
                   </p>
                 )}
               </div>
@@ -127,13 +150,14 @@ export default function FeedbackPage() {
               {/* Comment */}
               <div>
                 <label className="text-xs font-medium text-muted-foreground block mb-1.5">
-                  Comment <span className="font-normal">(optional)</span>
+                  تعليق <span className="font-normal">(اختياري)</span>
                 </label>
                 <textarea
                   value={comment}
                   onChange={(e) => setComment(e.target.value)}
-                  placeholder="Share your experience…"
+                  placeholder="شاركنا تجربتك…"
                   rows={3}
+                  dir="rtl"
                   className="w-full px-4 py-3 text-sm bg-[#f0efea] dark:bg-[#111110] border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] resize-none"
                 />
               </div>
@@ -141,12 +165,13 @@ export default function FeedbackPage() {
               {/* Name (optional) */}
               <div>
                 <label className="text-xs font-medium text-muted-foreground block mb-1.5">
-                  Your name <span className="font-normal">(optional — stays anonymous if blank)</span>
+                  اسمك <span className="font-normal">(اختياري — يبقى مجهولاً إن تركته فارغاً)</span>
                 </label>
                 <input
                   value={patientName}
                   onChange={(e) => setPatientName(e.target.value)}
-                  placeholder="First name"
+                  placeholder="الاسم الأول"
+                  dir="rtl"
                   className="w-full px-4 py-2.5 text-sm bg-[#f0efea] dark:bg-[#111110] border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF]"
                 />
               </div>
@@ -156,14 +181,14 @@ export default function FeedbackPage() {
                 disabled={submitting || rating === 0}
                 className="w-full bg-[#007AFF] text-white text-sm font-semibold py-3 rounded-xl hover:bg-[#0062cc] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {submitting ? <IOSSpinner size={16} className="text-white" /> : "Submit Feedback"}
+                {submitting ? <IOSSpinner size={16} className="text-white" /> : "إرسال التقييم"}
               </button>
             </div>
           )}
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-4">
-          Powered by <span className="text-[#007AFF] font-medium">Ibn Sina</span>
+          مدعوم بـ <span className="text-[#007AFF] font-medium">ابن سينا</span>
         </p>
       </motion.div>
     </div>

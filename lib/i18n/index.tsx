@@ -47,6 +47,7 @@ const translations: Record<Lang, Record<string, string>> = {
     "nav.lightMode": "Light mode",
     "nav.darkMode": "Dark mode",
     "nav.language": "العربية",
+    "nav.signOut": "Account & Sign out",
 
     // Dashboard
     "dashboard.title": "Dashboard",
@@ -73,6 +74,8 @@ const translations: Record<Lang, Record<string, string>> = {
     "schedule.updateSettings": "Update Settings →",
     "schedule.today": "Today",
     "schedule.past": "Past",
+    "schedule.clinicClosed": "Clinic Closed",
+    "schedule.notWorkingDay": "This day is not a working day.",
 
     // Contracts
     "contracts.title": "Contracts",
@@ -196,6 +199,18 @@ const translations: Record<Lang, Record<string, string>> = {
 
     "stats.revenue30d": "Revenue (30d)",
     "stats.projectedNext30": "Next 30 days (est.)",
+    "stats.revenueSources": "Revenue Sources",
+    "stats.sourceRegular": "Regular Visits",
+    "stats.sourceContracts": "Contract Visits",
+    "stats.total": "Total",
+    "stats.contractIncome": "Contract Income",
+    "stats.activeContracts": "Active Contracts",
+    "stats.collected": "Collected",
+    "stats.outstanding": "Outstanding",
+    "stats.monthlyContractRev": "This Month (Contracts)",
+    "stats.totalContractValue": "Total Value",
+    "stats.collectedPct": "collected",
+    "stats.noActiveContracts": "No active contracts",
     "stats.visits30d": "Visits (30d)",
     "stats.dayOverDay": "Day over day",
     "stats.yesterday": "Yesterday",
@@ -260,6 +275,8 @@ const translations: Record<Lang, Record<string, string>> = {
     "onboarding.finishSetup": "Finish Setup",
     "onboarding.saving": "Saving…",
     "onboarding.welcomeSuccess": "Welcome to Ibn Sina! Your profile is ready.",
+    "onboarding.feePerVisit": "Fee Per Visit (EGP)",
+    "onboarding.feeDesc": "Used in analytics and shown on your public profile.",
 
     // Visit Drawer / Completion Modal
     "visit.newVisit": "New Visit",
@@ -449,6 +466,7 @@ const translations: Record<Lang, Record<string, string>> = {
     "settings.feeEgp": "Fee (EGP)",
     "settings.clinicHint": "The maps link will be shown to patients when they book online.",
     "settings.availabilitySection": "Availability",
+    "settings.workingDays": "Working Days",
     "settings.open247": "Open 24/7",
     "settings.opensAt": "Opens at",
     "settings.closesAt": "Closes at",
@@ -616,6 +634,7 @@ const translations: Record<Lang, Record<string, string>> = {
     "nav.lightMode": "الوضع الفاتح",
     "nav.darkMode": "الوضع الداكن",
     "nav.language": "English",
+    "nav.signOut": "الحساب وتسجيل الخروج",
 
     // Dashboard
     "dashboard.title": "لوحة التحكم",
@@ -642,6 +661,8 @@ const translations: Record<Lang, Record<string, string>> = {
     "schedule.updateSettings": "تحديث الإعدادات ←",
     "schedule.today": "اليوم",
     "schedule.past": "السابق",
+    "schedule.clinicClosed": "العيادة مغلقة",
+    "schedule.notWorkingDay": "هذا اليوم ليس يوم عمل.",
 
     // Contracts
     "contracts.title": "العقود",
@@ -704,7 +725,7 @@ const translations: Record<Lang, Record<string, string>> = {
     "stats.bookingSource": "مصدر الحجز",
     "stats.online": "أونلاين",
     "stats.manual": "يدوي (بدون حجز)",
-    "stats.visits": "زيارات",
+    "stats.visits": "زيارة",
     "stats.onlinePctDesc": "% من زياراتك المكتملة تم حجزها أونلاين.",
     "stats.onlineGreat": " حضور رائع على الإنترنت!",
     "stats.onlineConsider": " فكر في مشاركة رابط الحجز مع المزيد من المرضى.",
@@ -751,6 +772,18 @@ const translations: Record<Lang, Record<string, string>> = {
     "stats.insightBestDay": "أفضل يوم إيراداً هو",
     "stats.insightAvg": "بمتوسط",
     "stats.perVisit": "لكل زيارة",
+    "stats.revenueSources": "مصادر الإيرادات",
+    "stats.sourceRegular": "زيارات عادية",
+    "stats.sourceContracts": "زيارات عقود",
+    "stats.total": "الإجمالي",
+    "stats.contractIncome": "إيرادات العقود",
+    "stats.activeContracts": "عقود نشطة",
+    "stats.collected": "تم تحصيله",
+    "stats.outstanding": "مستحق معلّق",
+    "stats.monthlyContractRev": "هذا الشهر (عقود)",
+    "stats.totalContractValue": "إجمالي العقود",
+    "stats.collectedPct": "محصّل",
+    "stats.noActiveContracts": "لا توجد عقود نشطة",
     "stats.insightGrowthUp": "الإيرادات في اتجاه صاعد",
     "stats.insightGrowthDown": "الإيرادات في اتجاه هابط",
     "stats.insightGrowthFlat": "الإيرادات مستقرة",
@@ -829,6 +862,8 @@ const translations: Record<Lang, Record<string, string>> = {
     "onboarding.finishSetup": "إنهاء الإعداد",
     "onboarding.saving": "جارٍ الحفظ…",
     "onboarding.welcomeSuccess": "مرحباً في ابن سينا! ملفك جاهز.",
+    "onboarding.feePerVisit": "رسم الكشف (ج.م)",
+    "onboarding.feeDesc": "يُستخدم في التحليلات ويظهر في ملفك العام.",
 
     // Visit Drawer / Completion Modal
     "visit.newVisit": "زيارة جديدة",
@@ -985,6 +1020,7 @@ const translations: Record<Lang, Record<string, string>> = {
     "settings.feeEgp": "الكشف (ج.م)",
     "settings.clinicHint": "يُعرض رابط الخريطة للمرضى عند الحجز أونلاين.",
     "settings.availabilitySection": "المواعيد والجدولة",
+    "settings.workingDays": "أيام العمل",
     "settings.open247": "مفتوح 24/7",
     "settings.opensAt": "يفتح الساعة",
     "settings.closesAt": "يغلق الساعة",

@@ -108,6 +108,13 @@ export function PatientIntakeDrawer({
   // Doctor profile for slot generation
   const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
 
+  /** Working days from doctor profile (e.g. ["Mon","Tue","Wed"]) */
+  const workingDays: string[] = (currentUser as any)?.availableDays ?? [];
+  const hasWorkingDays = workingDays.length > 0;
+
+  /** JS getDay() → abbreviation map */
+  const DOW_ABBR: Record<number, string> = { 0: "Sun", 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat" };
+
   // Chronic conditions options
   const conditionOptions = useQuery(api.chronicConditions.listOptions, clerkId ? { clerkId } : "skip");
   const addConditionOption = useMutation(api.chronicConditions.addOption);
@@ -421,18 +428,25 @@ export function PatientIntakeDrawer({
                 </p>
               </div>
 
-              {/* Day strip */}
+              {/* Day strip — working days only */}
               <div className="flex gap-1.5 overflow-x-auto pb-1">
-                {dayStrip.map((dayTs) => {
-                  const isSelected = visitDate === dayTs;
-                  const isToday = dayTs === todayTs;
+                {dayStrip.map((ts) => {
+                  const isSelected = visitDate === ts;
+                  const isToday = ts === todayTs;
+                  const isPast = ts < todayTs;
+                  const dow = DOW_ABBR[new Date(ts).getDay()];
+                  const isWorking = !hasWorkingDays || workingDays.includes(dow);
+                  const isDisabled = isPast || !isWorking;
                   return (
                     <button
-                      key={dayTs}
+                      key={ts}
                       type="button"
-                      onClick={() => { setVisitDate(dayTs); setSelectedSlot(null); }}
+                      onClick={() => { if (!isDisabled) { setVisitDate(ts); setSelectedSlot(null); } }}
+                      disabled={isDisabled}
                       className={`flex-shrink-0 flex flex-col items-center py-2 px-3 rounded-xl text-xs transition-all min-w-[52px] ${
-                        isSelected
+                        isDisabled
+                          ? "text-muted-foreground/30 cursor-not-allowed"
+                          : isSelected
                           ? "bg-[#007AFF] text-white"
                           : isToday
                           ? "bg-[#007AFF]/10 text-[#007AFF] font-semibold"
@@ -440,11 +454,16 @@ export function PatientIntakeDrawer({
                       }`}
                     >
                       <span className="font-medium">
-                        {new Date(dayTs).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { weekday: "short" })}
+                        {new Date(ts).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { weekday: "short" })}
                       </span>
                       <span className="text-base font-bold mt-0.5">
-                        {new Date(dayTs).getDate()}
+                        {new Date(ts).getDate()}
                       </span>
+                      {!isWorking && !isPast && (
+                        <span className="text-[8px] font-medium text-muted-foreground/40 mt-0.5">
+                          {lang === "ar" ? "مغلق" : "Off"}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
