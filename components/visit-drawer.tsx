@@ -13,9 +13,9 @@ import {
   DrawerFooter,
   DrawerClose,
 } from "@/components/ui/drawer";
-import { TagInput } from "@/components/tag-input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { useI18n } from "@/lib/i18n";
 
 interface VisitDrawerProps {
   open: boolean;
@@ -26,14 +26,16 @@ interface VisitDrawerProps {
 }
 
 export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientName }: VisitDrawerProps) {
+  const { t } = useI18n();
   const now = new Date();
   const [form, setForm] = useState({
     visitDate: now.toLocaleDateString("en-CA"),
     visitTime: now.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" }),
+    reasonForVisit: "",
     notes: "",
   });
   const [loading, setLoading] = useState(false);
-  const addManualAppointment = useMutation(api.appointments.addManualAppointment);
+  const createVisit = useMutation(api.visits.createVisit);
 
   function set(field: string, value: unknown) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -42,10 +44,11 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
   function handleOpen(v: boolean) {
     if (v) {
       const n = new Date();
-      setForm({ 
-        visitDate: n.toLocaleDateString("en-CA"), 
-        visitTime: n.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" }), 
-        notes: "" 
+      setForm({
+        visitDate: n.toLocaleDateString("en-CA"),
+        visitTime: n.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" }),
+        reasonForVisit: "",
+        notes: "",
       });
     }
     onOpenChange(v);
@@ -53,12 +56,15 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setLoading(true);
     try {
-      await addManualAppointment({
+      await createVisit({
         clerkId,
         patientId,
         date: new Date(`${form.visitDate}T${form.visitTime}`).getTime(),
-        notes: form.notes,
+        source: "manual",
+        reasonForVisit: form.reasonForVisit || undefined,
+        notes: form.notes || undefined,
       });
       toast.success("Visit recorded");
       onOpenChange(false);
@@ -73,15 +79,15 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
     <Drawer open={open} onOpenChange={handleOpen}>
       <DrawerContent className="max-h-[88vh]">
         <DrawerHeader>
-          <DrawerTitle>New Visit</DrawerTitle>
-          <DrawerDescription>Recording a visit for {patientName}</DrawerDescription>
+          <DrawerTitle>{t("visit.newVisit")}</DrawerTitle>
+          <DrawerDescription>{t("visit.recordingFor")} {patientName}</DrawerDescription>
         </DrawerHeader>
 
         <form onSubmit={handleSubmit} className="overflow-y-auto flex-1">
           <div className="px-4 space-y-4 pb-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label htmlFor="visit-date">Visit Date</Label>
+                <Label htmlFor="visit-date">{t("visit.visitDate")}</Label>
                 <input
                   id="visit-date"
                   type="date"
@@ -92,7 +98,7 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
                 />
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="visit-time">Visit Time</Label>
+                <Label htmlFor="visit-time">{t("visit.visitTime")}</Label>
                 <input
                   id="visit-time"
                   type="time"
@@ -105,7 +111,19 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="visit-notes">Notes</Label>
+              <Label htmlFor="visit-reason">{t("visit.reasonForVisit")}</Label>
+              <input
+                id="visit-reason"
+                type="text"
+                value={form.reasonForVisit}
+                onChange={(e) => set("reasonForVisit", e.target.value)}
+                placeholder="e.g. Follow-up, checkup, acute complaint…"
+                className="w-full px-3 py-2 text-sm bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="visit-notes">{t("visit.notes")}</Label>
               <textarea
                 id="visit-notes"
                 value={form.notes}
@@ -124,10 +142,10 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
             disabled={loading}
             className="flex-1 bg-[#007AFF] text-white text-sm font-semibold py-2.5 px-4 rounded-lg hover:bg-[#0062cc] transition-colors disabled:opacity-60"
           >
-            {loading ? "Saving..." : "Save Visit"}
+            {loading ? t("onboarding.saving") : t("visit.saveVisit")}
           </button>
           <DrawerClose className="flex-shrink-0 text-sm text-muted-foreground border border-border rounded-lg px-4 py-2.5 hover:text-foreground">
-            Cancel
+            {t("common.cancel")}
           </DrawerClose>
         </DrawerFooter>
       </DrawerContent>

@@ -9,10 +9,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Search, UserPlus, Phone, Clock, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { PatientIntakeDrawer } from "@/components/patient-intake-drawer";
+import { useI18n } from "@/lib/i18n";
 
 export default function PatientsPage() {
   const { user } = useUser();
   const clerkId = user?.id ?? "";
+  const { t, dir } = useI18n();
   const [search, setSearch] = useState("");
   const [intakeOpen, setIntakeOpen] = useState(false);
 
@@ -28,27 +30,27 @@ export default function PatientsPage() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Patients"
-        description={`${allPatients?.length ?? "…"} registered`}
+        title={t("patients.title")}
+        description={`${allPatients?.length ?? "…"} ${t("patients.registered")}`}
       >
         <button
           onClick={() => setIntakeOpen(true)}
           className="flex items-center gap-2 bg-[#007AFF] hover:bg-[#007AFF]/90 text-white px-3 py-1.5 rounded-xl font-semibold transition-colors shadow-sm text-sm"
         >
           <UserPlus className="w-4 h-4" />
-          <span className="hidden sm:inline">New Patient</span>
+          <span className="hidden sm:inline">{t("patients.newPatient")}</span>
         </button>
       </PageHeader>
 
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="max-w-4xl mx-auto space-y-4">
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Search className={`absolute ${dir === "rtl" ? "right-4" : "left-4"} top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground`} />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name or phone…"
-              className="w-full pl-11 pr-4 py-3 text-sm bg-white dark:bg-[#1c1c1a] border border-black/5 dark:border-white/5 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent"
+              placeholder={t("patients.search")}
+              className={`w-full ${dir === "rtl" ? "pr-11 pl-4" : "pl-11 pr-4"} py-3 text-sm bg-white dark:bg-[#1c1c1a] border border-black/5 dark:border-white/5 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent`}
             />
           </div>
 
@@ -64,14 +66,14 @@ export default function PatientsPage() {
                 <UserPlus className="w-8 h-8 text-[#007AFF]" />
               </div>
               <p className="font-semibold text-base mb-1">
-                {search ? `No results for "${search}"` : "No patients yet"}
+                {search ? t("patients.noResults").replace("{q}", search) : t("patients.noPatients")}
               </p>
               <p className="text-sm text-muted-foreground mb-5">
-                {search ? "Try a different name or phone." : "Add your first patient to get started."}
+                {search ? t("patients.tryDifferent") : t("patients.addFirst")}
               </p>
               {!search && (
                 <button onClick={() => setIntakeOpen(true)} className="text-sm font-semibold text-[#007AFF] hover:underline">
-                  + Add first patient
+                  + {t("patients.addFirstAction")}
                 </button>
               )}
             </div>
@@ -114,7 +116,7 @@ export default function PatientsPage() {
                         </div>
                       )}
                     </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground/40 group-hover:text-[#007AFF] flex-shrink-0 transition-colors" />
+                    <ChevronRight className={`w-4 h-4 text-muted-foreground/40 group-hover:text-[#007AFF] flex-shrink-0 transition-colors ${dir === "rtl" ? "rotate-180" : ""}`} />
                   </Link>
                 );
               })}

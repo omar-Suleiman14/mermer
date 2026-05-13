@@ -4,13 +4,17 @@ import { useTheme } from "next-themes"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon } from "lucide-react"
 import { IOSSpinner } from "@/components/ui/spinner"
+import { useI18n } from "@/lib/i18n"
 
-const Toaster = ({ ...props }: ToasterProps) => {
+const Toaster = ({ position, ...props }: ToasterProps) => {
   const { theme = "system" } = useTheme()
+  const { dir } = useI18n()
 
   return (
     <Sonner
       theme={theme as ToasterProps["theme"]}
+      position={position || (dir === "rtl" ? "top-left" : "top-right")}
+      dir={dir}
       className="toaster group"
       icons={{
         success: (

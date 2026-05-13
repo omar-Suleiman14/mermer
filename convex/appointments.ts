@@ -1,12 +1,8 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
-// ─── Public booking ──────────────────────────────────────────────────────────
+// ─── Public booking (online) ─────────────────────────────────────────────────
 
-/**
- * Patient-facing online booking.
- * Creates an appointment and immediately marks it confirmed.
- */
 export const createAppointment = mutation({
   args: {
     doctorSlug: v.string(),
@@ -20,17 +16,16 @@ export const createAppointment = mutation({
       .query("users")
       .withIndex("by_qr_slug", (q) => q.eq("qrSlug", args.doctorSlug))
       .unique();
-    if (!doctor || doctor.tier !== "premium")
-      throw new Error("Doctor not found or not premium");
+    if (!doctor) throw new Error("Doctor not found");
 
-    // Conflict check
+    // Conflict check against visits table
     const existing = await ctx.db
-      .query("appointments")
+      .query("visits")
       .withIndex("by_doctor_date", (q) =>
         q.eq("doctorId", doctor._id).eq("date", args.date)
       )
       .collect();
-    if (existing.some((a) => a.status !== "cancelled")) {
+    if (existing.some((v) => v.status !== "cancelled")) {
       throw new Error("This time slot is already booked");
     }
 
@@ -53,7 +48,8 @@ export const createAppointment = mutation({
       });
     }
 
-    const appointmentId = await ctx.db.insert("appointments", {
+    // Create a visit directly
+    const visitId = await ctx.db.insert("visits", {
       doctorId: doctor._id,
       patientId,
       patientName: args.patientName,
@@ -65,13 +61,12 @@ export const createAppointment = mutation({
       createdAt: Date.now(),
     });
 
-    return appointmentId;
+    return visitId;
   },
 });
 
-/**
- * Doctor manually schedules a patient from the dashboard.
- */
+// ─── Doctor manually adds a visit ────────────────────────────────────────────
+
 export const addManualAppointment = mutation({
   args: {
     clerkId: v.string(),
@@ -89,9 +84,9 @@ export const addManualAppointment = mutation({
     const patient = await ctx.db.get(args.patientId);
     if (!patient) throw new Error("Patient not found");
 
-    // Conflict check (only for exact same timestamp)
+    // Conflict check
     const conflict = await ctx.db
-      .query("appointments")
+      .query("visits")
       .withIndex("by_doctor_date", (q) =>
         q.eq("doctorId", doctor._id).eq("date", args.date)
       )
@@ -100,7 +95,7 @@ export const addManualAppointment = mutation({
       throw new Error("This time slot is already booked");
     }
 
-    return await ctx.db.insert("appointments", {
+    return await ctx.db.insert("visits", {
       doctorId: doctor._id,
       patientId: args.patientId,
       patientName: patient.name,
@@ -115,11 +110,13 @@ export const addManualAppointment = mutation({
   },
 });
 
+// ─── Swap two visits ─────────────────────────────────────────────────────────
+
 export const swapAppointments = mutation({
   args: {
     clerkId: v.string(),
-    appointmentId1: v.id("appointments"),
-    appointmentId2: v.id("appointments"),
+    appointmentId1: v.id("visits"),
+    appointmentId2: v.id("visits"),
   },
   handler: async (ctx, args) => {
     const user = await ctx.db
@@ -128,15 +125,14 @@ export const swapAppointments = mutation({
       .unique();
     if (!user) throw new Error("Unauthorized");
 
-    const appt1 = await ctx.db.get(args.appointmentId1);
-    const appt2 = await ctx.db.get(args.appointmentId2);
+    const v1 = await ctx.db.get(args.appointmentId1);
+    const v2 = await ctx.db.get(args.appointmentId2);
 
-    if (!appt1 || appt1.doctorId !== user._id) throw new Error("Not found 1");
-    if (!appt2 || appt2.doctorId !== user._id) throw new Error("Not found 2");
+    if (!v1 || v1.doctorId !== user._id) throw new Error("Not found 1");
+    if (!v2 || v2.doctorId !== user._id) throw new Error("Not found 2");
 
-    // Swap the dates
-    await ctx.db.patch(appt1._id, { date: appt2.date });
-    await ctx.db.patch(appt2._id, { date: appt1.date });
+    await ctx.db.patch(v1._id, { date: v2.date });
+    await ctx.db.patch(v2._id, { date: v1.date });
   },
 });
 
@@ -151,21 +147,13 @@ export const listAppointments = query({
       .unique();
     if (!user) return [];
     return await ctx.db
-      .query("appointments")
+      .query("visits")
       .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
       .order("desc")
       .take(200);
   },
 });
 
-/**
- * Fetch appointments for a specific day.
- *
- * IMPORTANT: Pass `dayStart` as the client-computed midnight timestamp
- * (i.e. startOfDay(Date.now()) from the browser). This avoids server-side
- * timezone mismatches — the server uses the range [dayStart, dayStart + 24h)
- * directly without any local-time conversion.
- */
 export const getAppointmentsByDate = query({
   args: { clerkId: v.string(), dayStart: v.number() },
   handler: async (ctx, args) => {
@@ -175,10 +163,10 @@ export const getAppointmentsByDate = query({
       .unique();
     if (!user) return [];
 
-    const dayEnd = args.dayStart + 86400000 - 1; // 24 hours later minus 1ms
+    const dayEnd = args.dayStart + 86400000 - 1;
 
-    const appointments = await ctx.db
-      .query("appointments")
+    const visits = await ctx.db
+      .query("visits")
       .withIndex("by_doctor_date", (q) =>
         q
           .eq("doctorId", user._id)
@@ -189,21 +177,20 @@ export const getAppointmentsByDate = query({
 
     // Populate patient records
     return await Promise.all(
-      appointments.map(async (appt) => {
-        const patient = appt.patientId ? await ctx.db.get(appt.patientId) : null;
-        return { ...appt, patient };
+      visits.map(async (visit) => {
+        const patient = visit.patientId ? await ctx.db.get(visit.patientId) : null;
+        return {
+          ...visit,
+          patientName: visit.patientName ?? patient?.name ?? "Unknown",
+          patientPhone: visit.patientPhone ?? patient?.phone ?? "",
+          patientAge: visit.patientAge ?? patient?.age,
+          patient,
+        };
       })
     );
   },
 });
 
-/**
- * Get booked slot timestamps for a day (for the public booking page).
- * Pass `date` as any timestamp within the desired day — the server uses
- * [dayStart, dayEnd] relative to midnight UTC of that timestamp.
- *
- * To avoid timezone issues the client should pass its local midnight.
- */
 export const getAvailableSlots = query({
   args: { slug: v.string(), date: v.number() },
   handler: async (ctx, args) => {
@@ -211,14 +198,13 @@ export const getAvailableSlots = query({
       .query("users")
       .withIndex("by_qr_slug", (q) => q.eq("qrSlug", args.slug))
       .unique();
-    if (!doctor || doctor.tier !== "premium") return [];
+    if (!doctor) return [];
 
-    // Use the passed timestamp directly as dayStart (client sends local midnight)
     const dayStart = args.date;
     const dayEnd = dayStart + 86400000 - 1;
 
     const booked = await ctx.db
-      .query("appointments")
+      .query("visits")
       .withIndex("by_doctor_date", (q) =>
         q.eq("doctorId", doctor._id).gte("date", dayStart).lte("date", dayEnd)
       )
@@ -230,16 +216,15 @@ export const getAvailableSlots = query({
   },
 });
 
-// ─── Update / delete ──────────────────────────────────────────────────────────
+// ─── Update / delete ─────────────────────────────────────────────────────────
 
 export const updateAppointment = mutation({
   args: {
     clerkId: v.string(),
-    appointmentId: v.id("appointments"),
+    appointmentId: v.id("visits"),
     updates: v.object({
       status: v.optional(
         v.union(
-          v.literal("pending"),
           v.literal("confirmed"),
           v.literal("cancelled"),
           v.literal("completed")
@@ -259,17 +244,17 @@ export const updateAppointment = mutation({
       .unique();
     if (!user) throw new Error("User not found");
 
-    const appt = await ctx.db.get(args.appointmentId);
-    if (!appt || appt.doctorId !== user._id) throw new Error("Not authorized");
+    const visit = await ctx.db.get(args.appointmentId);
+    if (!visit || visit.doctorId !== user._id) throw new Error("Not authorized");
 
     if (args.updates.date) {
       const conflict = await ctx.db
-        .query("appointments")
+        .query("visits")
         .withIndex("by_doctor_date", (q) =>
           q.eq("doctorId", user._id).eq("date", args.updates.date as number)
         )
         .collect();
-      if (conflict.some((c) => c._id !== appt._id && c.status !== "cancelled")) {
+      if (conflict.some((c) => c._id !== visit._id && c.status !== "cancelled")) {
         throw new Error("This time slot is already booked");
       }
     }
@@ -279,39 +264,33 @@ export const updateAppointment = mutation({
 });
 
 export const deleteAppointment = mutation({
-  args: { clerkId: v.string(), appointmentId: v.id("appointments") },
+  args: { clerkId: v.string(), appointmentId: v.id("visits") },
   handler: async (ctx, args) => {
     const user = await ctx.db
       .query("users")
       .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
       .unique();
     if (!user) throw new Error("User not found");
-    const appt = await ctx.db.get(args.appointmentId);
-    if (!appt || appt.doctorId !== user._id) throw new Error("Not authorized");
+    const visit = await ctx.db.get(args.appointmentId);
+    if (!visit || visit.doctorId !== user._id) throw new Error("Not authorized");
     await ctx.db.delete(args.appointmentId);
   },
 });
 
 export const cancelAppointmentByPhone = mutation({
   args: {
-    appointmentId: v.id("appointments"),
+    appointmentId: v.id("visits"),
     patientPhone: v.string(),
   },
   handler: async (ctx, args) => {
-    const appt = await ctx.db.get(args.appointmentId);
-    if (!appt || appt.patientPhone !== args.patientPhone)
+    const visit = await ctx.db.get(args.appointmentId);
+    if (!visit || visit.patientPhone !== args.patientPhone)
       throw new Error("Not found");
-    await ctx.db.patch(args.appointmentId, {
-      status: "cancelled",
-      whatsappConfirmed: false,
-    });
+    await ctx.db.patch(args.appointmentId, { status: "cancelled" });
   },
 });
 
 // ─── Visit history (per patient) ─────────────────────────────────────────────
-// "Visits" and "appointments" are the same data — appointments table is the
-// single source of truth. These helpers surface appointment history in a
-// visit-centric view (with linked patient record and resolved storage URLs).
 
 export const getVisitsByPatient = query({
   args: { patientId: v.id("patients"), clerkId: v.string() },
@@ -325,35 +304,36 @@ export const getVisitsByPatient = query({
     const patient = await ctx.db.get(args.patientId);
     if (!patient || patient.doctorId !== user._id) return [];
 
-    // All appointments for this patient, newest first
-    const appointments = await ctx.db
-      .query("appointments")
-      .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+    const visits = await ctx.db
+      .query("visits")
+      .withIndex("by_patient", (q) => q.eq("patientId", args.patientId))
       .order("desc")
-      .take(100);
-
-    const forPatient = appointments.filter(
-      (a) => a.patientId === args.patientId
-    );
+      .take(500);
 
     return await Promise.all(
-      forPatient.map(async (appt) => {
-        const prescriptionImageUrl = appt.prescriptionImageId
-          ? await ctx.storage.getUrl(appt.prescriptionImageId)
+      visits.map(async (v) => {
+        const prescriptionImageUrl = v.prescriptionImageId
+          ? await ctx.storage.getUrl(v.prescriptionImageId)
           : null;
-        // Map appointment fields to visit-shaped response
+        const prescriptionPdfUrl = v.prescriptionPdfId
+          ? await ctx.storage.getUrl(v.prescriptionPdfId)
+          : null;
+        const documentUrls = v.documentIds
+          ? await Promise.all(v.documentIds.map((id) => ctx.storage.getUrl(id)))
+          : [];
         return {
-          _id: appt._id,
-          date: appt.date,
-          source: appt.source === "online" ? "appointment" : "manual",
-          status: appt.status,
-          reasonForVisit: undefined as string | undefined,
-          prescribedMedications: undefined as string[] | undefined,
-          analysisRequested: undefined as string[] | undefined,
-          notes: appt.notes,
+          _id: v._id as string,
+          date: v.date,
+          source: v.source ?? "manual",
+          status: v.status ?? "confirmed",
+          reasonForVisit: v.reasonForVisit,
+          prescribedMedications: v.prescribedMedications,
+          analysisRequested: v.analysisRequested,
+          notes: v.notes,
           prescriptionImageUrl,
-          prescriptionPdfUrl: null as string | null,
-          documentUrls: [] as (string | null)[],
+          prescriptionPdfUrl,
+          documentUrls,
+          contractId: v.contractId as string | undefined,
         };
       })
     );
@@ -370,20 +350,20 @@ export const getVisitStats = query({
     if (!user) return { today: 0, week: 0, month: 0 };
 
     const now = Date.now();
-    const todayStart = now - (now % 86400000); // rough UTC day start
+    const todayStart = now - (now % 86400000);
     const weekStart = todayStart - 6 * 86400000;
     const monthStart = todayStart - 29 * 86400000;
 
     const all = await ctx.db
-      .query("appointments")
+      .query("visits")
       .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
       .take(500);
 
-    const completed = all.filter((a) => a.status === "completed");
+    const completed = all.filter((v) => v.status === "completed");
     return {
-      today: completed.filter((a) => a.date >= todayStart).length,
-      week: completed.filter((a) => a.date >= weekStart).length,
-      month: completed.filter((a) => a.date >= monthStart).length,
+      today: completed.filter((v) => v.date >= todayStart).length,
+      week: completed.filter((v) => v.date >= weekStart).length,
+      month: completed.filter((v) => v.date >= monthStart).length,
     };
   },
 });

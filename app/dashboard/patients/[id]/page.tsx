@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { useMutation, useQuery } from "convex/react";
+import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
@@ -12,11 +12,9 @@ import { VisitDrawer } from "@/components/visit-drawer";
 import { VisitCompletionModal } from "@/components/visit-completion-modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
 import {
   Phone,
   Edit,
-  UserPlus,
   PlusCircle,
   Clock,
   Pill,
@@ -36,17 +34,13 @@ export default function PatientProfilePage() {
   const [editOpen, setEditOpen] = useState(false);
   const [visitOpen, setVisitOpen] = useState(false);
   const [completionTarget, setCompletionTarget] = useState<{
-    appointmentId: Id<"appointments">;
+    visitId: Id<"visits">;
     visitDate: number;
+    contractId?: string;
   } | null>(null);
 
   const patient = useQuery(api.patients.getPatient, clerkId ? { patientId, clerkId } : "skip");
-  const visits = useQuery(api.appointments.getVisitsByPatient, clerkId ? { patientId, clerkId } : "skip");
-
-  async function handleAddToQueue() {
-    // Queue table is being phased out — appointments table is the single source.
-    // This button is kept for UX but could be wired to addManualAppointment in a future update.
-  }
+  const visits = useQuery(api.visits.getVisitsByPatient, clerkId ? { patientId, clerkId } : "skip");
 
   if (patient === undefined) {
     return (
@@ -83,13 +77,13 @@ export default function PatientProfilePage() {
           <Edit className="w-3.5 h-3.5" />
           Edit
         </button>
-        <button
+        {/* <button
           onClick={handleAddToQueue}
           className="flex items-center gap-1.5 text-xs border border-border text-foreground px-3 py-1.5 rounded-lg hover:border-[#007AFF]/40 hover:text-[#007AFF] transition-colors"
         >
           <UserPlus className="w-3.5 h-3.5" />
           Add to Queue
-        </button>
+        </button> */}
         <button
           onClick={() => setVisitOpen(true)}
           className="flex items-center gap-1.5 text-xs bg-[#007AFF] text-white px-3 py-1.5 rounded-lg hover:bg-[#0062cc] transition-colors"
@@ -191,6 +185,14 @@ export default function PatientProfilePage() {
                         <span className="text-[9px] font-bold uppercase tracking-wider bg-[#007AFF]/10 text-[#007AFF] border border-[#007AFF]/20 px-1.5 py-0.5 rounded-full">
                           Online
                         </span>
+                      ) : visit.source === "contract" ? (
+                        <span className="text-[9px] font-bold uppercase tracking-wider bg-purple-500/10 text-purple-500 border border-purple-500/20 px-1.5 py-0.5 rounded-full">
+                          Contract
+                        </span>
+                      ) : visit.source === "follow-up" ? (
+                        <span className="text-[9px] font-bold uppercase tracking-wider bg-[#FF9500]/10 text-[#FF9500] border border-[#FF9500]/20 px-1.5 py-0.5 rounded-full">
+                          Follow-up
+                        </span>
                       ) : (
                         <span className="text-[9px] font-bold uppercase tracking-wider bg-muted/60 text-muted-foreground border border-border px-1.5 py-0.5 rounded-full">
                           Manual
@@ -213,8 +215,9 @@ export default function PatientProfilePage() {
                         <button
                           onClick={() =>
                             setCompletionTarget({
-                              appointmentId: visit._id,
+                              visitId: visit._id as Id<"visits">,
                               visitDate: visit.date,
+                              contractId: visit.contractId,
                             })
                           }
                           className="flex items-center gap-1.5 text-[11px] text-muted-foreground border border-border px-2.5 py-1 rounded-lg hover:border-[#007AFF]/40 hover:text-[#007AFF] transition-colors"
@@ -348,9 +351,11 @@ export default function PatientProfilePage() {
           open={!!completionTarget}
           onOpenChange={(v) => !v && setCompletionTarget(null)}
           clerkId={clerkId}
-          appointmentId={completionTarget.appointmentId}
+          visitId={completionTarget.visitId}
+          patientId={patientId}
           patientName={patient.name}
           patientAge={patient.age}
+          contractId={completionTarget.contractId as Id<"contracts"> | undefined}
           onComplete={() => setCompletionTarget(null)}
         />
       )}

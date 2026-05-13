@@ -9,11 +9,17 @@
  */
 
 import type * as appointments from "../appointments.js";
+import type * as chronicConditions from "../chronicConditions.js";
+import type * as contracts from "../contracts.js";
+import type * as doctors from "../doctors.js";
 import type * as feedback from "../feedback.js";
 import type * as feedbackActions from "../feedbackActions.js";
 import type * as files from "../files.js";
+import type * as followUps from "../followUps.js";
+import type * as messageTemplates from "../messageTemplates.js";
 import type * as patients from "../patients.js";
 import type * as queue from "../queue.js";
+import type * as queueDisplay from "../queueDisplay.js";
 import type * as users from "../users.js";
 import type * as visits from "../visits.js";
 
@@ -25,11 +31,17 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   appointments: typeof appointments;
+  chronicConditions: typeof chronicConditions;
+  contracts: typeof contracts;
+  doctors: typeof doctors;
   feedback: typeof feedback;
   feedbackActions: typeof feedbackActions;
   files: typeof files;
+  followUps: typeof followUps;
+  messageTemplates: typeof messageTemplates;
   patients: typeof patients;
   queue: typeof queue;
+  queueDisplay: typeof queueDisplay;
   users: typeof users;
   visits: typeof visits;
 }>;

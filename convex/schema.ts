@@ -11,25 +11,34 @@ export default defineSchema({
     whatsappTemplate: v.string(),
     createdAt: v.number(),
 
-    // Tier & admin
-    tier: v.optional(v.union(v.literal("free"), v.literal("premium"))),
     isAdmin: v.optional(v.boolean()),
+    tier: v.optional(v.string()), // Kept to allow existing records to pass validation
 
     // Doctor public profile
-    qrSlug: v.optional(v.string()),           // unique slug for QR code + feedback URL
+    qrSlug: v.optional(v.string()),
     specialty: v.optional(v.string()),
-    credentials: v.optional(v.string()),       // e.g. "MD, FRCS"
+    credentials: v.optional(v.string()),
     clinicAddress: v.optional(v.string()),
+    clinicAddressLink: v.optional(v.string()),
+    city: v.optional(v.string()),
     workingHours: v.optional(v.string()),
-    workingHoursStart: v.optional(v.number()), // hour integer 0-23 (e.g. 9 = 9am)
-    workingHoursEnd: v.optional(v.number()),   // hour integer 0-23 (e.g. 17 = 5pm)
-    publicProfile: v.optional(v.boolean()),    // whether profile is indexable
-    bio: v.optional(v.string()),               // short doctor bio
+    workingHoursStart: v.optional(v.number()),
+    workingHoursEnd: v.optional(v.number()),
+    publicProfile: v.optional(v.boolean()),
+    bio: v.optional(v.string()),
+    consultationFee: v.optional(v.number()),
+    languages: v.optional(v.array(v.string())),
+    availableDays: v.optional(v.array(v.string())),
+    availableFrom: v.optional(v.string()),
+    availableTo: v.optional(v.string()),
+
+    // Admin controls
+    isBanned: v.optional(v.boolean()),
 
     // Doctor profile photo
     profilePhotoId: v.optional(v.id("_storage")),
 
-    // Stored feedback QR code (generated once, stored in Convex storage)
+    // Stored feedback QR code
     feedbackQrStorageId: v.optional(v.id("_storage")),
 
     // Prescription template fields
@@ -44,9 +53,21 @@ export default defineSchema({
 
     // Queue settings
     slotDurationMinutes: v.optional(v.number()),
+
+    // Contract defaults
+    contractDefaultDownPayment: v.optional(v.number()),
+    contractDefaultDownPaymentType: v.optional(v.union(v.literal("fixed"), v.literal("percentage"))),
+    contractDefaultCostPerVisit: v.optional(v.number()),
+    contractDefaultVisitFrequency: v.optional(v.string()),
+    contractDefaultDurationDays: v.optional(v.number()),
+
+    // Queue display token (for the waiting room screen)
+    queueDisplayToken: v.optional(v.string()),
   })
     .index("by_clerk_id", ["clerkId"])
-    .index("by_qr_slug", ["qrSlug"]),
+    .index("by_qr_slug", ["qrSlug"])
+    .index("by_queue_token", ["queueDisplayToken"])
+    .index("by_public_profile", ["publicProfile"]),
 
   patients: defineTable({
     doctorId: v.id("users"),
@@ -63,32 +84,64 @@ export default defineSchema({
       filterFields: ["doctorId"],
     }),
 
+  // ── VISITS — single source of truth for all patient encounters ────────────
   visits: defineTable({
     patientId: v.id("patients"),
     doctorId: v.id("users"),
     date: v.number(),
-    // How this visit was created: "manual" (doctor added directly) or "appointment" (patient booked online)
-    source: v.optional(v.union(v.literal("manual"), v.literal("appointment"))),
-    appointmentId: v.optional(v.id("appointments")), // linked appointment if source="appointment"
+
+    // Where the visit came from
+    source: v.optional(
+      v.union(
+        v.literal("manual"),
+        v.literal("online"),
+        v.literal("contract"),
+        v.literal("follow-up")
+      )
+    ),
+
+    // Status
+    status: v.optional(
+      v.union(
+        v.literal("confirmed"),
+        v.literal("completed"),
+        v.literal("cancelled")
+      )
+    ),
+
+    // Denormalized patient info for schedule display (avoids extra lookups)
+    patientName: v.optional(v.string()),
+    patientPhone: v.optional(v.string()),
+    patientAge: v.optional(v.number()),
+
+    // Links
+    contractId: v.optional(v.id("contracts")),
+
+    // Payment (for contract visits)
+    isPaid: v.optional(v.boolean()),
+
+    // Clinical data
     reasonForVisit: v.optional(v.string()),
     prescribedMedications: v.optional(v.array(v.string())),
     analysisRequested: v.optional(v.array(v.string())),
     notes: v.optional(v.string()),
-    createdAt: v.number(),
 
     // Prescription & documents
-    prescriptionImageId: v.optional(v.id("_storage")),   // raw photo
-    prescriptionPdfId: v.optional(v.id("_storage")),     // processed PDF
-    documentIds: v.optional(v.array(v.id("_storage"))),  // extra docs
+    prescriptionImageId: v.optional(v.id("_storage")),
+    prescriptionPdfId: v.optional(v.id("_storage")),
+    documentIds: v.optional(v.array(v.id("_storage"))),
+
+    createdAt: v.number(),
   })
     .index("by_patient", ["patientId"])
     .index("by_doctor", ["doctorId"])
-    .index("by_doctor_date", ["doctorId", "date"]),
+    .index("by_doctor_date", ["doctorId", "date"])
+    .index("by_contract", ["contractId"]),
 
+  // ── QUEUE (waiting room) ──────────────────────────────────────────────────
   queue: defineTable({
     doctorId: v.id("users"),
     patientId: v.id("patients"),
-    // The calendar date this queue entry belongs to (start-of-day timestamp in UTC)
     queueDate: v.optional(v.number()),
     position: v.number(),
     status: v.union(
@@ -97,10 +150,9 @@ export default defineSchema({
       v.literal("done")
     ),
     addedAt: v.number(),
-    scheduledTime: v.optional(v.number()),      // timestamp for scheduled slot
+    scheduledTime: v.optional(v.number()),
     reminderSent: v.boolean(),
-    appointmentId: v.optional(v.id("appointments")), // linked online booking
-    visitId: v.optional(v.id("visits")),             // visit created when marked done
+    visitId: v.optional(v.id("visits")),
   })
     .index("by_doctor", ["doctorId"])
     .index("by_doctor_status", ["doctorId", "status"])
@@ -108,36 +160,93 @@ export default defineSchema({
 
   feedback: defineTable({
     doctorId: v.id("users"),
-    rating: v.number(),                         // 1–5
+    rating: v.number(),
     comment: v.optional(v.string()),
-    patientName: v.optional(v.string()),        // anonymous if omitted
+    patientName: v.optional(v.string()),
     createdAt: v.number(),
   }).index("by_doctor", ["doctorId"]),
 
-  appointments: defineTable({
+  // ── CONTRACTS ─────────────────────────────────────────────────────────────
+  contracts: defineTable({
     doctorId: v.id("users"),
-    patientId: v.optional(v.id("patients")),    // New: Link to patient profile
+    patientId: v.id("patients"),
     patientName: v.string(),
-    patientPhone: v.string(),
-    patientAge: v.optional(v.number()),
-    date: v.number(),                           // scheduled timestamp
+
     status: v.union(
-      v.literal("pending"),
-      v.literal("confirmed"),
-      v.literal("cancelled"),
-      v.literal("completed")                    // New: for done visits
+      v.literal("active"),
+      v.literal("expired")
     ),
-    source: v.optional(v.union(v.literal("online"), v.literal("manual"))), // New: origin
-    notes: v.optional(v.string()),              // New: visit notes
-    prescriptionImageId: v.optional(v.id("_storage")), // New: raw photo
-    documentIds: v.optional(v.array(v.id("_storage"))), // New: extra docs
-    
-    // Set to true once a patient record + queue entry have been created (legacy)
-    processedToQueue: v.optional(v.boolean()),
-    whatsappConfirmed: v.optional(v.boolean()), // true=YES, false=NO, undefined=no reply
-    reminderSentAt: v.optional(v.number()),
+
+    // Financial
+    totalAmount: v.optional(v.number()),
+    downPayment: v.optional(v.number()),
+    downPaymentType: v.optional(v.union(v.literal("fixed"), v.literal("percentage"))),
+    costPerVisit: v.optional(v.number()),
+    numVisits: v.optional(v.number()),
+
+    // Payment tracking (updated as visits are completed)
+    completedVisits: v.optional(v.number()),  // how many visits done so far
+    paidVisits: v.optional(v.number()),        // how many visits marked as paid
+    unpaidBalance: v.optional(v.number()),     // accumulated unpaid amount
+
+    // Visit scheduling
+    visitFrequency: v.optional(v.string()),
+    customIntervalDays: v.optional(v.number()),
+    startDate: v.number(),
+    endDate: v.optional(v.number()),
+    durationDays: v.optional(v.number()),
+
+    nextVisitDate: v.optional(v.number()),
+
+    // Uploaded contract file
+    contractFileId: v.optional(v.id("_storage")),
+    contractFileName: v.optional(v.string()),
+
+    notes: v.optional(v.string()),
     createdAt: v.number(),
   })
     .index("by_doctor", ["doctorId"])
-    .index("by_doctor_date", ["doctorId", "date"]),
+    .index("by_patient", ["patientId"])
+    .index("by_doctor_status", ["doctorId", "status"]),
+
+  // ── FOLLOW-UPS ────────────────────────────────────────────────────────────
+  followUps: defineTable({
+    doctorId: v.id("users"),
+    patientId: v.id("patients"),
+    visitId: v.optional(v.id("visits")),
+    patientName: v.string(),
+
+    followUpDate: v.number(),
+    followUpTime: v.string(),
+    type: v.union(
+      v.literal("in-person"),
+      v.literal("call"),
+      v.literal("whatsapp")
+    ),
+    note: v.optional(v.string()),
+
+    status: v.union(v.literal("scheduled"), v.literal("done"), v.literal("cancelled")),
+    createdAt: v.number(),
+  })
+    .index("by_doctor", ["doctorId"])
+    .index("by_patient", ["patientId"])
+    .index("by_visit", ["visitId"])
+    .index("by_doctor_date", ["doctorId", "followUpDate"]),
+
+  // ── MESSAGE TEMPLATES ─────────────────────────────────────────────────────
+  messageTemplates: defineTable({
+    doctorId: v.id("users"),
+    name: v.string(),
+    body: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_doctor", ["doctorId"]),
+
+  // ── CHRONIC CONDITION OPTIONS ──────────────────────────────────────────────
+  chronicConditionOptions: defineTable({
+    doctorId: v.id("users"),
+    name: v.string(),
+  })
+    .index("by_doctor", ["doctorId"]),
 });

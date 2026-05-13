@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -20,8 +20,18 @@ import {
   XCircle,
   MessageCircle,
   GripVertical,
+  X,
+  MoreHorizontal,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import Link from "next/link";
+import { useI18n } from "@/lib/i18n";
 import {
   DndContext,
   useDraggable,
@@ -34,6 +44,7 @@ import {
   DragEndEvent,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
+import { motion, AnimatePresence } from "framer-motion";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -95,9 +106,10 @@ function DraggableApptItem({
   isDone: boolean;
   initials: string;
   onComplete: () => void;
-  onReminder: () => void;
+  onReminder: (e: React.MouseEvent) => void;
   onCancel: () => void;
 }) {
+  const { t, dir } = useI18n();
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: appt._id,
     disabled: isSelectedDayPast || isDone,
@@ -130,19 +142,19 @@ function DraggableApptItem({
         <div
           {...attributes}
           {...listeners}
-          className="flex-shrink-0 -ml-2 p-1 text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors cursor-grab active:cursor-grabbing outline-none"
+          className="flex-shrink-0 -ms-2 p-1 text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors cursor-grab active:cursor-grabbing outline-none"
         >
           <GripVertical className="w-4 h-4" />
         </div>
       )}
 
-      <span className="text-xs font-bold w-14 flex-shrink-0">{formatTime(ts)}</span>
+      <span className="text-xs font-bold w-14 flex-shrink-0 text-start">{formatTime(ts)}</span>
 
       <div className="w-8 h-8 rounded-full bg-[#007AFF]/10 flex items-center justify-center flex-shrink-0">
         <span className="text-xs font-bold text-[#007AFF]">{initials}</span>
       </div>
 
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 text-start">
         <div className="flex items-center gap-1.5 flex-wrap">
           {appt.patientId ? (
             <Link
@@ -156,11 +168,19 @@ function DraggableApptItem({
           )}
           {appt.source === "online" ? (
             <span className="text-[9px] font-bold uppercase tracking-wider bg-[#007AFF]/10 text-[#007AFF] border border-[#007AFF]/20 px-1.5 py-0.5 rounded-full">
-              Online
+              {t("dashboard.online")}
+            </span>
+          ) : appt.source === "contract" ? (
+            <span className="text-[9px] font-bold uppercase tracking-wider bg-[#AF52DE]/10 text-[#AF52DE] border border-[#AF52DE]/20 px-1.5 py-0.5 rounded-full">
+              Contract
+            </span>
+          ) : appt.source === "follow-up" ? (
+            <span className="text-[9px] font-bold uppercase tracking-wider bg-[#FF9500]/10 text-[#FF9500] border border-[#FF9500]/20 px-1.5 py-0.5 rounded-full">
+              Follow-up
             </span>
           ) : (
             <span className="text-[9px] font-bold uppercase tracking-wider bg-muted/60 text-muted-foreground border border-border px-1.5 py-0.5 rounded-full">
-              Manual
+              {t("dashboard.manual")}
             </span>
           )}
         </div>
@@ -171,39 +191,77 @@ function DraggableApptItem({
 
       {isDone ? (
         <Badge className="text-[10px] border bg-[#34c759]/10 text-[#34c759] border-[#34c759]/30 flex-shrink-0">
-          Done
+          {t("dashboard.done")}
         </Badge>
       ) : (
         <div className="flex items-center gap-1 flex-shrink-0">
-          {!isSelectedDayPast ? (
-            <>
-              <button
-                onClick={onComplete}
-                className="flex items-center gap-1 text-[11px] font-semibold text-[#34c759] border border-[#34c759]/30 px-2 py-1 rounded-lg hover:bg-[#34c759]/10 transition-colors"
-              >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                Done
-              </button>
-              <button
-                onClick={onReminder}
-                title="Send WhatsApp reminder"
-                className="p-1.5 rounded-lg text-[#25D366] hover:bg-[#25D366]/10 transition-colors"
-              >
-                <MessageCircle className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={onCancel}
-                title="Cancel"
-                className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
-              >
-                <XCircle className="w-3.5 h-3.5" />
-              </button>
-            </>
-          ) : (
-            <Badge className="text-[10px] border bg-amber-500/10 text-amber-600 border-amber-500/30">
-              Missed
-            </Badge>
-          )}
+          <div className="flex items-center gap-1 max-[500px]:hidden">
+            {!isSelectedDayPast ? (
+              <>
+                <button
+                  onClick={onComplete}
+                  className="flex items-center gap-1 text-[11px] font-semibold text-[#34c759] border border-[#34c759]/30 px-2 py-1 rounded-lg hover:bg-[#34c759]/10 transition-colors"
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  {t("dashboard.done")}
+                </button>
+                <button
+                  onClick={onReminder}
+                  title="Send WhatsApp reminder"
+                  className="p-1.5 rounded-lg text-[#25D366] hover:bg-[#25D366]/10 transition-colors"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={onCancel}
+                  title="Cancel"
+                  className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                >
+                  <XCircle className="w-3.5 h-3.5" />
+                </button>
+              </>
+            ) : (
+              <Badge className="text-[10px] border bg-amber-500/10 text-amber-600 border-amber-500/30">
+                {t("schedule.missed")}
+              </Badge>
+            )}
+          </div>
+          <div className="hidden max-[500px]:block">
+            <DropdownMenu dir={dir}>
+              <DropdownMenuTrigger asChild>
+                <button className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted/80 text-muted-foreground transition-colors">
+                  <MoreHorizontal className="w-4 h-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                {!isSelectedDayPast ? (
+                  <>
+                    <DropdownMenuItem onClick={onComplete} className="gap-2 cursor-pointer font-medium text-[#34c759] focus:text-[#34c759]">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>{t("dashboard.done")}</span>
+                    </DropdownMenuItem>
+                    {appt.patientPhone && (
+                      <DropdownMenuItem onClick={onReminder} className="gap-2 cursor-pointer font-medium text-[#25D366] focus:text-[#25D366]">
+                        <MessageCircle className="w-4 h-4" />
+                        <span>{t("schedule.sendReminder") || "Send Reminder"}</span>
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={onCancel} className="gap-2 cursor-pointer font-medium text-red-500 focus:text-red-500 focus:bg-red-500/10">
+                      <XCircle className="w-4 h-4" />
+                      <span>{t("common.cancel") || "Cancel"}</span>
+                    </DropdownMenuItem>
+                  </>
+                ) : (
+                  <DropdownMenuItem disabled className="gap-2 font-medium text-amber-600">
+                    <Badge className="text-[10px] border bg-amber-500/10 text-amber-600 border-amber-500/30">
+                      {t("schedule.missed")}
+                    </Badge>
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       )}
     </div>
@@ -215,9 +273,15 @@ function DraggableApptItem({
 export default function SchedulePage() {
   const { user } = useUser();
   const clerkId = user?.id ?? "";
+  const { t, dir } = useI18n();
 
   const currentUser = useQuery(
     api.users.getCurrentUser,
+    clerkId ? { clerkId } : "skip"
+  );
+
+  const messageTemplates = useQuery(
+    api.messageTemplates.listTemplates,
     clerkId ? { clerkId } : "skip"
   );
 
@@ -231,10 +295,34 @@ export default function SchedulePage() {
   const [preselectedSlot, setPreselectedSlot] = useState<number | null>(null);
 
   const [completionModal, setCompletionModal] = useState<{
-    appointmentId: Id<"appointments">;
+    appointmentId: Id<"visits">;
+    patientId?: Id<"patients">;
     patientName: string;
     patientAge?: number;
+    contractId?: Id<"contracts">;
   } | null>(null);
+
+  // Template picker state
+  const [templatePicker, setTemplatePicker] = useState<{
+    patientName: string;
+    patientPhone: string;
+    appointmentDate: number;
+    anchorX: number;
+    anchorY: number;
+  } | null>(null);
+  const pickerRef = useRef<HTMLDivElement>(null);
+
+  // Close picker on click outside
+  useEffect(() => {
+    if (!templatePicker) return;
+    function handleClick(e: MouseEvent) {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setTemplatePicker(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [templatePicker]);
 
   const updateAppointment = useMutation(api.appointments.updateAppointment);
   const swapAppointments = useMutation(api.appointments.swapAppointments);
@@ -310,7 +398,7 @@ export default function SchedulePage() {
     }
   }
 
-  async function handleCancel(appointmentId: Id<"appointments">) {
+  async function handleCancel(appointmentId: Id<"visits">) {
     try {
       await updateAppointment({
         clerkId,
@@ -334,7 +422,7 @@ export default function SchedulePage() {
 
     const targetTs = over.id as number;
     const targetAppt = appointmentsBySlot.get(targetTs);
-    const draggedApptId = active.id as Id<"appointments">;
+    const draggedApptId = active.id as Id<"visits">;
 
     try {
       if (targetAppt) {
@@ -351,13 +439,22 @@ export default function SchedulePage() {
     }
   };
 
-  function sendReminder(patientName: string, patientPhone: string, appointmentDate: number) {
-    const firstName = patientName.split(" ")[0];
-    const defaultMsg = `Hello ${firstName}, this is a reminder that your appointment is at ${formatTime(appointmentDate)} today. See you soon! 🏥`;
-    const template = currentUser?.whatsappTemplate || defaultMsg;
-    const message = template.replace("{{name}}", firstName);
+  function openTemplatePicker(patientName: string, patientPhone: string, appointmentDate: number, e: React.MouseEvent) {
+    setTemplatePicker({ patientName, patientPhone, appointmentDate, anchorX: e.clientX, anchorY: e.clientY });
+  }
 
-    // Normalise to international format (Egyptian numbers: 01x → 201x)
+  function sendWithTemplate(templateBody: string) {
+    if (!templatePicker) return;
+    const { patientName, patientPhone, appointmentDate } = templatePicker;
+    const firstName = patientName.split(" ")[0];
+    const now = new Date(appointmentDate);
+    const message = templateBody
+      .replace(/\{patient_name\}/g, patientName)
+      .replace(/\{date\}/g, now.toLocaleDateString("en-US", { month: "short", day: "numeric" }))
+      .replace(/\{time\}/g, formatTime(appointmentDate))
+      .replace(/\{clinic_address\}/g, (currentUser as any)?.clinicAddressLink || "")
+      .replace(/\{\{name\}\}/g, firstName);
+
     let num = patientPhone.replace(/[\s\-\(\)]/g, "");
     if (num.startsWith("+")) num = num.slice(1);
     if (num.startsWith("0")) num = "20" + num.slice(1);
@@ -366,6 +463,15 @@ export default function SchedulePage() {
     const url = `https://wa.me/${num}?text=${encodeURIComponent(message)}`;
     window.open(url, "_blank");
     toast.success(`Opening WhatsApp for ${firstName}`);
+    setTemplatePicker(null);
+  }
+
+  function sendQuickReminder() {
+    if (!templatePicker) return;
+    const { patientName, appointmentDate } = templatePicker;
+    const firstName = patientName.split(" ")[0];
+    const defaultMsg = `Hello ${firstName}, this is a reminder that your appointment is at ${formatTime(appointmentDate)} today. See you soon! 🏥`;
+    sendWithTemplate(currentUser?.whatsappTemplate || defaultMsg);
   }
 
   const isSelectedDayPast = selectedDay < todayTs;
@@ -376,18 +482,9 @@ export default function SchedulePage() {
   return (
     <div className="flex flex-col h-full">
       <PageHeader
-        title="Schedule"
-        description="All appointments — past and future."
+        title={t("schedule.title")}
+        description={t("schedule.subtitle")}
       >
-        {!isSelectedDayPast && (
-          <button
-            onClick={() => setAddOpen(true)}
-            className="flex items-center gap-2 bg-[#007AFF] hover:bg-[#007AFF]/90 text-white px-3 py-1.5 rounded-xl font-semibold transition-colors shadow-sm text-sm"
-          >
-            <PlusCircle className="w-4 h-4" />
-            <span className="hidden sm:inline">Add Patient</span>
-          </button>
-        )}
       </PageHeader>
 
       <div className="flex-1 overflow-auto p-4 sm:p-6">
@@ -458,22 +555,21 @@ export default function SchedulePage() {
                 </button>
               </div>
 
-              {/* Day label row */}
               <div className="flex items-center justify-between mt-3">
                 <div>
                   <span className="font-bold text-sm">
-                    {isSelectedDayToday ? "Today — " : ""}{formatFullDate(selectedDay)}
+                    {isSelectedDayToday ? t("schedule.today") + " — " : ""}{formatFullDate(selectedDay)}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
                   {isSelectedDayToday && (
                     <span className="text-[10px] font-bold uppercase tracking-wider bg-[#007AFF]/10 text-[#007AFF] border border-[#007AFF]/20 px-2 py-0.5 rounded-full">
-                      Today
+                      {t("schedule.today")}
                     </span>
                   )}
                   {isSelectedDayPast && (
                     <span className="text-[10px] font-bold uppercase tracking-wider bg-muted text-muted-foreground border border-border px-2 py-0.5 rounded-full">
-                      Past
+                      {t("schedule.past")}
                     </span>
                   )}
                   {/* Jump to today */}
@@ -482,7 +578,7 @@ export default function SchedulePage() {
                       onClick={() => { setWeekOffset(0); setSelectedDay(todayTs); }}
                       className="text-[11px] font-semibold text-[#007AFF] hover:underline"
                     >
-                      Today
+                      {t("schedule.today")}
                     </button>
                   )}
                 </div>
@@ -498,12 +594,12 @@ export default function SchedulePage() {
               ) : daySlots.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <Clock className="w-8 h-8 mx-auto mb-3 opacity-20" />
-                  <p className="text-sm">No working hours configured.</p>
+                  <p className="text-sm">{t("schedule.noHours")}</p>
                   <Link
                     href="/dashboard/settings"
                     className="text-[#007AFF] hover:underline text-xs mt-1 inline-block"
                   >
-                    Update Settings →
+                    {t("schedule.updateSettings")}
                   </Link>
                 </div>
               ) : (
@@ -519,14 +615,14 @@ export default function SchedulePage() {
                       return (
                         <DroppableSlot key={ts} id={ts}>
                           <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-border/50 bg-muted/10 transition-colors">
-                            <span className="text-xs font-bold w-14 text-muted-foreground/60">{formatTime(ts)}</span>
-                            <span className="text-xs text-muted-foreground/40 italic flex-1">Available</span>
+                            <span className="text-xs font-bold w-14 text-muted-foreground/60 text-start">{formatTime(ts)}</span>
+                            <span className="text-xs text-muted-foreground/40 italic flex-1 text-start">{t("schedule.available")}</span>
                             {!isSelectedDayPast && (
                               <button
                                 onClick={() => { setPreselectedSlot(ts); setAddOpen(true); }}
                                 className="text-xs font-semibold text-[#007AFF] hover:underline px-2 py-1"
                               >
-                                + Add
+                                + {t("common.add")}
                               </button>
                             )}
                           </div>
@@ -550,8 +646,8 @@ export default function SchedulePage() {
                           isSelectedDayPast={isSelectedDayPast}
                           isDone={isDone}
                           initials={initials}
-                          onComplete={() => setCompletionModal({ appointmentId: appt._id, patientName: appt.patientName, patientAge: appt.patientAge })}
-                          onReminder={() => appt.patientPhone && sendReminder(appt.patientName, appt.patientPhone, appt.date)}
+                          onComplete={() => setCompletionModal({ appointmentId: appt._id, patientId: appt.patientId ?? undefined, patientName: appt.patientName, patientAge: appt.patientAge, contractId: appt.contractId ?? undefined })}
+                          onReminder={(e: React.MouseEvent) => appt.patientPhone && openTemplatePicker(appt.patientName, appt.patientPhone, appt.date, e)}
                           onCancel={() => handleCancel(appt._id)}
                         />
                       </DroppableSlot>
@@ -569,7 +665,7 @@ export default function SchedulePage() {
                             isDone={activeAppt.status === "completed"}
                             initials={(activeAppt.patientName ?? "?").split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}
                             onComplete={() => {}}
-                            onReminder={() => {}}
+                            onReminder={(e) => {}}
                             onCancel={() => {}}
                           />
                         </div>
@@ -580,7 +676,7 @@ export default function SchedulePage() {
                   {cancelledToday.length > 0 && (
                     <div className="pt-3 mt-2 border-t border-border/40">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">
-                        Cancelled
+                        {t("schedule.cancelled")}
                       </p>
                       {cancelledToday.map((appt) => (
                         <div key={appt._id} className="flex items-center gap-3 px-4 py-2.5 rounded-lg opacity-40">
@@ -610,11 +706,97 @@ export default function SchedulePage() {
         open={!!completionModal}
         onOpenChange={(v) => !v && setCompletionModal(null)}
         clerkId={clerkId}
-        appointmentId={completionModal?.appointmentId as Id<"appointments">}
+        visitId={completionModal?.appointmentId as any}
+        patientId={completionModal?.patientId}
         patientName={completionModal?.patientName ?? ""}
         patientAge={completionModal?.patientAge}
-        onComplete={handleCompleteVisit}
+        contractId={completionModal?.contractId}
+        onComplete={() => {
+          if (completionModal && !completionModal.contractId) {
+            handleCompleteVisit();
+          }
+          setCompletionModal(null);
+        }}
       />
+
+      {/* Template Picker Popover */}
+      <AnimatePresence>
+        {templatePicker && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          >
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setTemplatePicker(null)} />
+            <motion.div
+              ref={pickerRef}
+              initial={{ y: 40, opacity: 0, scale: 0.95 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: 40, opacity: 0, scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              className="relative z-10 w-full sm:max-w-sm bg-[var(--background)] rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="sm:hidden w-10 h-1 rounded-full bg-border mx-auto mt-2.5 mb-1" />
+              <div className="px-5 pt-4 pb-2">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-sm font-semibold">Send to {templatePicker.patientName.split(" ")[0]}</p>
+                  <button onClick={() => setTemplatePicker(null)} className="p-1 rounded-lg hover:bg-muted/60 transition-colors">
+                    <X className="w-3.5 h-3.5 text-muted-foreground" />
+                  </button>
+                </div>
+                <p className="text-[11px] text-muted-foreground">Choose a template to send via WhatsApp</p>
+              </div>
+              <div className="px-3 pb-3 space-y-1 max-h-[50vh] overflow-y-auto">
+                <button
+                  onClick={sendQuickReminder}
+                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#25D366]/8 transition-colors text-left group"
+                >
+                  <div className="w-8 h-8 rounded-full bg-[#25D366]/10 flex items-center justify-center flex-shrink-0">
+                    <MessageCircle className="w-4 h-4 text-[#25D366]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium">Quick Reminder</p>
+                    <p className="text-[11px] text-muted-foreground truncate">Default appointment reminder</p>
+                  </div>
+                </button>
+
+                {(messageTemplates ?? []).map((tpl) => (
+                  <button
+                    key={tpl._id}
+                    onClick={() => sendWithTemplate(tpl.body)}
+                    className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#007AFF]/8 transition-colors text-left group"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-[#007AFF]/10 flex items-center justify-center flex-shrink-0">
+                      <MessageCircle className="w-4 h-4 text-[#007AFF]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium">{tpl.name}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">{tpl.body}</p>
+                    </div>
+                  </button>
+                ))}
+
+                {(messageTemplates ?? []).length === 0 && (
+                  <div className="px-3 py-2">
+                    <p className="text-[11px] text-muted-foreground">Create templates in Settings → Message Templates</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-border px-5 py-3">
+                <Link
+                  href="/dashboard/settings"
+                  onClick={() => setTemplatePicker(null)}
+                  className="text-[11px] text-[#007AFF] font-medium hover:underline"
+                >
+                  Manage templates in Settings →
+                </Link>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -19,8 +19,16 @@ import {
   Star,
   Shield,
   BarChart3,
+  FileText,
+  Package,
+  Calculator,
+  AlertTriangle,
+  DollarSign,
 } from "lucide-react";
+
 import { useTheme } from "next-themes";
+import { useI18n } from "@/lib/i18n";
+import { LanguageToggle } from "@/components/language-toggle";
 import {
   Sidebar,
   SidebarContent,
@@ -37,6 +45,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
   const { user } = useUser();
   const { theme, setTheme } = useTheme();
+  const { t } = useI18n();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const clerkId = user?.id ?? "";
@@ -45,22 +54,23 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     clerkId ? { clerkId } : "skip"
   );
 
-  const tier = currentUser?.tier ?? "free";
-  const isPremium = tier === "premium";
+
   const isAdmin = currentUser?.isAdmin ?? false;
 
   const navItems = [
-    { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { title: "Patients", href: "/dashboard/patients", icon: Users },
-    { title: "Schedule", href: "/dashboard/queue", icon: CalendarDays },
-    ...(isPremium
-      ? [
-          { title: "Feedback", href: "/dashboard/feedback", icon: Star },
-          { title: "Statistics", href: "/dashboard/stats", icon: BarChart3 },
-        ]
-      : []),
-    { title: "Settings", href: "/dashboard/settings", icon: Settings },
+    { title: t("nav.dashboard"), href: "/dashboard", icon: LayoutDashboard },
+    { title: t("nav.patients"), href: "/dashboard/patients", icon: Users },
+    { title: t("nav.schedule"), href: "/dashboard/queue", icon: CalendarDays },
+    { title: t("nav.contracts"), href: "/dashboard/contracts", icon: FileText },
+    { title: t("nav.feedback"), href: "/dashboard/feedback", icon: Star },
+    {
+      title: t("nav.analytics"),
+      href: "/dashboard/stats",
+      icon: BarChart3,
+    },
+    { title: t("nav.settings"), href: "/dashboard/settings", icon: Settings },
   ];
+
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -96,9 +106,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             return (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
-                  <Link href={item.href}>
-                    <item.icon className="w-4 h-4" />
-                    <span>{item.title}</span>
+                  <Link href={item.href} className="flex items-center gap-2 relative">
+                    <item.icon className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+                    <span className="flex-1">{item.title}</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -111,10 +121,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             <SidebarSeparator />
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={pathname.startsWith("/admin")} tooltip="Admin Panel">
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname.startsWith("/admin")}
+                  tooltip={t("nav.admin")}
+                >
                   <Link href="/admin">
-                    <Shield className="w-4 h-4" />
-                    <span>Admin Panel</span>
+                    <Shield className="w-4 h-4" aria-hidden="true" />
+                    <span>{t("nav.admin")}</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -123,24 +137,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="px-2 pb-3">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              tooltip="Toggle theme"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            >
-              {!mounted ? (
-                <Moon className="w-4 h-4" />
-              ) : theme === "dark" ? (
-                <Sun className="w-4 h-4" />
-              ) : (
-                <Moon className="w-4 h-4" />
-              )}
-              <span>{mounted && theme === "dark" ? "Light mode" : "Dark mode"}</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+      <SidebarFooter className="px-2 pb-3 gap-1">
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

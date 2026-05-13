@@ -159,3 +159,96 @@
 .whatsapp-glow {
   animation: whatsapp-pulse 2s ease-in-out infinite;
 }
+
+/* ── Arabic / RTL support ────────────────────────────────────────────────── */
+html[dir="rtl"],
+html[dir="rtl"] body {
+  font-family: var(--font-cairo), var(--font-sans), sans-serif;
+  direction: rtl;
+  text-align: right;
+}
+
+html[dir="ltr"],
+html[dir="ltr"] body {
+  font-family: var(--font-sans), sans-serif;
+  direction: ltr;
+  text-align: left;
+}
+
+[dir="rtl"] .rtl-flip {
+  transform: scaleX(-1);
+}
+
+/* Cairo font for Arabic text */
+:lang(ar) {
+  font-family: var(--font-cairo), sans-serif;
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .whatsapp-glow {
+    animation: none !important;
+  }
+}
+
+/* ── Accessible focus ring ───────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid #007AFF;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Remove default focus style, keep focus-visible */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* ── Skip to main content ────────────────────────────────────────────────── */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #007AFF;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 0 0 8px 0;
+  font-weight: 600;
+  z-index: 9999;
+  transition: top 0.2s;
+}
+.skip-link:focus {
+  top: 0;
+}
+
+/* ── Skeleton shimmer ────────────────────────────────────────────────────── */
+@keyframes skeleton-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(0,0,0,0.06) 25%,
+    rgba(0,0,0,0.02) 50%,
+    rgba(0,0,0,0.06) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.5s ease-in-out infinite;
+}
+.dark .skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.06) 25%,
+    rgba(255,255,255,0.02) 50%,
+    rgba(255,255,255,0.06) 75%
+  );
+  background-size: 200% 100%;
+}

@@ -86,7 +86,7 @@ export default function DoctorPublicProfile() {
 
   const bookedSlots = useQuery(
     api.appointments.getAvailableSlots,
-    doctor && doctor.tier === "premium" ? { slug, date: activeDayTs } : "skip"
+    doctor ? { slug, date: activeDayTs } : "skip"
   );
 
   const takenTimestamps = new Set(bookedSlots ?? []);
@@ -174,7 +174,7 @@ export default function DoctorPublicProfile() {
     );
   }
 
-  if (!doctor || doctor.tier !== "premium") {
+  if (!doctor) {
     return (
       <div className="min-h-screen bg-[#f0efea] dark:bg-[#111110] flex items-center justify-center text-center px-6">
         <div>
@@ -240,9 +240,7 @@ export default function DoctorPublicProfile() {
                 <h1 className="text-2xl font-bold tracking-tight">
                   Dr. {doctor.name}
                 </h1>
-                {/* <span className="text-xs font-semibold text-white bg-[#007AFF] px-2.5 py-0.5 rounded-full">
-                  Premium
-                </span> */}
+
               </div>
               {doctor.specialty && (
                 <p className="text-base text-[#007AFF] font-medium mb-0.5">
@@ -275,11 +273,24 @@ export default function DoctorPublicProfile() {
                 {doctor.clinicName && (
                   <span className="font-medium text-foreground">{doctor.clinicName}</span>
                 )}
-                {doctor.clinicAddress && (
-                  <span className="flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5" />
-                    {doctor.clinicAddress}
-                  </span>
+                {((doctor as any).clinicAddressLink || doctor.clinicAddress) && (
+                  (doctor as any).clinicAddressLink ? (
+                    <a
+                      href={(doctor as any).clinicAddressLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1.5 hover:text-[#FF3B30] transition-colors cursor-pointer"
+                      title="Open in Google Maps"
+                    >
+                      <MapPin className="w-3.5 h-3.5 text-[#FF3B30]" />
+                      {doctor.clinicAddress || "View Location"}
+                    </a>
+                  ) : (
+                    <span className="flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5" />
+                      {doctor.clinicAddress}
+                    </span>
+                  )
                 )}
                 {doctor.phone && (
                   <a
@@ -446,14 +457,12 @@ export default function DoctorPublicProfile() {
                     <div className="w-16 h-16 rounded-full bg-[#34c759]/10 flex items-center justify-center mb-4">
                       <CheckCircle2 className="w-8 h-8 text-[#34c759]" />
                     </div>
-                    <h3 className="font-bold text-lg mb-2">Booking Confirmed! 🎉</h3>
+                    <h3 className="font-bold text-lg mb-2">Booking Confirmed!</h3>
                     <p className="text-sm text-muted-foreground mb-1">
                       Dr. {doctor.name} · {formatTime(selectedSlot)}
                     </p>
                     <p className="text-sm text-muted-foreground">{formatDate(selectedSlot)}</p>
-                    <p className="text-xs text-muted-foreground mt-4 max-w-xs">
-                      A WhatsApp confirmation has been sent to your number.
-                    </p>
+
                     <button
                       onClick={() => { setBookingOpen(false); setBooked(false); setSelectedSlot(null); setName(""); setPhone(""); }}
                       className="mt-6 text-sm text-[#007AFF] hover:underline font-medium"

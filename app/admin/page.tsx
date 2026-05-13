@@ -4,22 +4,29 @@ import { useUser, SignIn } from "@clerk/nextjs";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useState } from "react";
 import {
   Shield,
   Users,
-  Crown,
   Star,
   Search,
   CheckCircle2,
   XCircle,
   Lock,
+  Ban,
+  Globe,
+  TrendingUp,
+  CalendarDays,
+  DollarSign,
+  ChevronRight,
+  ChevronDown,
+  X,
+  BarChart3,
+  Activity,
 } from "lucide-react";
 import { toast } from "sonner";
 import { IOSSpinner } from "@/components/ui/spinner";
-
-
 
 function FullPageSpinner() {
   return (
@@ -31,21 +38,123 @@ function FullPageSpinner() {
   );
 }
 
-// ─── Admin Dashboard ────────────────────────────────────────────────────────
+// ── Doctor analytics drawer ───────────────────────────────────────────────────
+
+function DoctorAnalyticsPanel({
+  clerkId,
+  doctorId,
+  doctorName,
+  onClose,
+}: {
+  clerkId: string;
+  doctorId: Id<"users">;
+  doctorName: string;
+  onClose: () => void;
+}) {
+  const analytics = useQuery(api.doctors.getDoctorAnalytics, { clerkId, targetUserId: doctorId });
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 40 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 40 }}
+      className="fixed inset-y-0 right-0 w-full max-w-sm bg-white dark:bg-[#1c1c1a] border-l border-border shadow-2xl z-50 flex flex-col"
+    >
+      <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+        <div>
+          <p className="font-bold text-sm">Dr. {doctorName}</p>
+          <p className="text-xs text-muted-foreground">Lifetime analytics</p>
+        </div>
+        <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted/40 transition-colors">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-auto p-5 space-y-4">
+        {analytics === undefined ? (
+          <div className="flex items-center justify-center h-32 text-[#007AFF]">
+            <IOSSpinner size={28} />
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { label: "Total visits", value: analytics.totalVisits, icon: CalendarDays, color: "#007AFF" },
+                { label: "This month", value: analytics.monthlyVisits, icon: TrendingUp, color: "#34c759" },
+                { label: "Patients", value: analytics.totalPatients, icon: Users, color: "#5856D6" },
+                { label: "Reviews", value: analytics.reviewCount, icon: Star, color: "#FF9500" },
+              ].map((stat) => (
+                <div key={stat.label} className="bg-muted/20 rounded-xl p-3.5">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <stat.icon className="w-3 h-3" style={{ color: stat.color }} />
+                    <span className="text-[10px] text-muted-foreground">{stat.label}</span>
+                  </div>
+                  <p className="text-xl font-bold" style={{ color: stat.color }}>{stat.value}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex justify-between items-center p-3 bg-muted/20 rounded-xl">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <DollarSign className="w-3 h-3 text-[#34c759]" />
+                  Total revenue (lifetime)
+                </div>
+                <span className="text-sm font-bold">{analytics.totalRevenue.toLocaleString()} EGP</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-muted/20 rounded-xl">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <BarChart3 className="w-3 h-3 text-[#007AFF]" />
+                  Revenue this month
+                </div>
+                <span className="text-sm font-bold">{analytics.monthlyRevenue.toLocaleString()} EGP</span>
+              </div>
+              {analytics.avgRating !== null && (
+                <div className="flex justify-between items-center p-3 bg-muted/20 rounded-xl">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Star className="w-3 h-3 text-[#FF9500]" />
+                    Avg rating
+                  </div>
+                  <span className="text-sm font-bold">{analytics.avgRating.toFixed(1)} / 5</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center p-3 bg-muted/20 rounded-xl">
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Activity className="w-3 h-3 text-[#5856D6]" />
+                  Member since
+                </div>
+                <span className="text-sm font-bold">
+                  {new Date(analytics.joinDate).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
+                </span>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+// ── Admin Dashboard ───────────────────────────────────────────────────────────
+
 function AdminDashboard({ clerkId }: { clerkId: string }) {
   const [search, setSearch] = useState("");
-  const allDoctors = useQuery(api.users.listAllDoctors, { clerkId });
-  const setTier = useMutation(api.users.setTier);
-  const setAdmin = useMutation(api.users.setAdmin);
+  const [selectedDoctorId, setSelectedDoctorId] = useState<Id<"users"> | null>(null);
+  const [selectedDoctorName, setSelectedDoctorName] = useState("");
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
-  async function handleSetTier(targetUserId: Id<"users">, tier: "free" | "premium") {
+  const allDoctors = useQuery(api.users.listAllDoctors, { clerkId });
+  const overview = useQuery(api.doctors.getPlatformOverview, { clerkId });
+  const banDoctor = useMutation(api.doctors.banDoctor);
+  const setAdmin = useMutation(api.users.setAdmin);
+
+  async function handleBan(targetUserId: Id<"users">, banned: boolean) {
     setLoadingId(targetUserId);
     try {
-      await setTier({ clerkId, targetUserId, tier });
-      toast.success(`Moved to ${tier} tier`);
+      await banDoctor({ clerkId, targetUserId, banned });
+      toast.success(banned ? "Doctor banned — profile hidden from feed" : "Doctor unbanned");
     } catch {
-      toast.error("Failed to update tier");
+      toast.error("Failed to update");
     } finally {
       setLoadingId(null);
     }
@@ -67,13 +176,15 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
     (d) =>
       d.name.toLowerCase().includes(search.toLowerCase()) ||
       d.clinicName.toLowerCase().includes(search.toLowerCase()) ||
-      (d.specialty ?? "").toLowerCase().includes(search.toLowerCase())
+      (d.specialty ?? "").toLowerCase().includes(search.toLowerCase()) ||
+      (d.email ?? "").toLowerCase().includes(search.toLowerCase())
   );
-  const premiumCount = (allDoctors ?? []).filter((d) => d.tier === "premium").length;
-  const freeCount = (allDoctors ?? []).filter((d) => (d.tier ?? "free") === "free").length;
+
+  const nonAdmins = filtered.filter((d) => !d.isAdmin);
 
   return (
     <div className="min-h-screen bg-[#f0efea] dark:bg-[#111110] text-[#1a1916] dark:text-[#f0efea]">
+      {/* Header */}
       <div className="border-b border-black/6 dark:border-white/6 px-6 py-4 bg-white/60 dark:bg-[#1a1a18]/60 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -81,8 +192,8 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
               <Shield className="w-4 h-4 text-[#007AFF]" />
             </div>
             <div>
-              <h1 className="text-sm font-bold">Admin Dashboard</h1>
-              <p className="text-xs text-muted-foreground">Ibn Sina superadmin</p>
+              <h1 className="text-sm font-bold">Admin Panel</h1>
+              <p className="text-xs text-muted-foreground">Ibn Sina platform control</p>
             </div>
           </div>
           <span className="text-xs font-semibold text-[#34c759] bg-[#34c759]/10 border border-[#34c759]/20 px-2.5 py-1 rounded-full flex items-center gap-1.5">
@@ -92,33 +203,34 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
       </div>
 
       <div className="max-w-5xl mx-auto px-6 py-8 space-y-6">
-        <div className="grid grid-cols-3 gap-4">
+
+        {/* Platform overview cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {[
-            { label: "Total Doctors", value: (allDoctors ?? []).length, icon: Users, color: "#007AFF" },
-            { label: "Premium", value: premiumCount, icon: Crown, color: "#f5a623" },
-            { label: "Free", value: freeCount, icon: Star, color: "#34c759" },
+            { label: "Total Doctors", value: overview?.totalDoctors, icon: Users, color: "#007AFF" },
+            { label: "Published", value: overview?.publishedDoctors, icon: Globe, color: "#34c759" },
+            { label: "Banned", value: overview?.bannedDoctors, icon: Ban, color: "#FF3B30" },
+            { label: "Visits (month)", value: overview?.totalVisitsThisMonth, icon: CalendarDays, color: "#FF9500" },
+            { label: "Visits (total)", value: overview?.totalVisitsAllTime, icon: TrendingUp, color: "#5856D6" },
           ].map((stat) => (
             <motion.div
               key={stat.label}
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white dark:bg-[#1c1c1a] border border-black/6 dark:border-white/6 rounded-xl p-5"
+              className="bg-white dark:bg-[#1c1c1a] border border-black/6 dark:border-white/6 rounded-xl p-4"
             >
-              <div className="flex items-center gap-2 mb-2">
-                <stat.icon className="w-4 h-4" style={{ color: stat.color }} />
-                <span className="text-xs text-muted-foreground">{stat.label}</span>
+              <div className="flex items-center gap-1.5 mb-2">
+                <stat.icon className="w-3.5 h-3.5" style={{ color: stat.color }} />
+                <span className="text-[10px] text-muted-foreground">{stat.label}</span>
               </div>
-              <div className="text-3xl font-bold" style={{ color: stat.color }}>
-                {allDoctors === undefined ? (
-                  <span className="inline-block text-muted-foreground" style={{ color: stat.color }}>
-                    <IOSSpinner size={24} />
-                  </span>
-                ) : stat.value}
+              <div className="text-2xl font-bold" style={{ color: stat.color }}>
+                {overview === undefined ? <IOSSpinner size={18} /> : (stat.value ?? 0)}
               </div>
             </motion.div>
           ))}
         </div>
 
+        {/* Search */}
         <div className="relative max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
@@ -129,54 +241,88 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
           />
         </div>
 
+        {/* Doctors table */}
         <div className="bg-white dark:bg-[#1c1c1a] rounded-2xl border border-black/6 dark:border-white/6 overflow-hidden shadow-sm">
-          <div className="grid grid-cols-[1fr,auto,auto,auto] text-xs font-semibold text-muted-foreground uppercase tracking-wide px-5 py-3 border-b border-border">
+          <div className="grid grid-cols-[1fr,auto,auto,auto,auto] text-[10px] font-semibold text-muted-foreground uppercase tracking-wide px-5 py-3 border-b border-border">
             <span>Doctor</span>
-            <span className="text-center px-4">Tier</span>
-            <span className="text-center px-4">Admin</span>
-            <span className="text-center px-4">Actions</span>
+            <span className="text-center px-3">Status</span>
+            <span className="text-center px-3">Profile</span>
+            <span className="text-center px-3">Admin</span>
+            <span className="text-center px-3">Actions</span>
           </div>
 
           {allDoctors === undefined ? (
             <div className="flex items-center justify-center py-16 text-[#007AFF]">
               <IOSSpinner size={36} />
             </div>
-          ) : filtered.length === 0 ? (
+          ) : nonAdmins.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground text-sm">No doctors found</div>
           ) : (
             <div className="divide-y divide-border">
-              {filtered.map((doc) => {
+              {nonAdmins.map((doc) => {
                 const isLoading = loadingId === doc._id;
-                const tier = doc.tier ?? "free";
+                const isBanned = (doc as any).isBanned === true;
+                const isPublished = doc.publicProfile === true;
                 return (
-                  <div key={doc._id} className="grid grid-cols-[1fr,auto,auto,auto] items-center px-5 py-4 hover:bg-muted/20 transition-colors">
+                  <div key={doc._id} className="grid grid-cols-[1fr,auto,auto,auto,auto] items-center px-5 py-3.5 hover:bg-muted/20 transition-colors">
+                    {/* Info */}
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-full bg-[#007AFF]/10 flex items-center justify-center flex-shrink-0">
-                        <span className="text-xs font-bold text-[#007AFF]">{doc.name.charAt(0).toUpperCase()}</span>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isBanned ? "bg-red-100 dark:bg-red-900/20" : "bg-[#007AFF]/10"}`}>
+                        <span className={`text-xs font-bold ${isBanned ? "text-red-500" : "text-[#007AFF]"}`}>
+                          {doc.name.charAt(0).toUpperCase()}
+                        </span>
                       </div>
                       <div className="min-w-0">
-                        <p className="font-semibold text-sm truncate">{doc.name}</p>
-                        <p className="text-xs text-muted-foreground truncate">{doc.specialty ?? "—"} · {doc.clinicName}</p>
+                        <p className={`font-semibold text-xs truncate ${isBanned ? "line-through text-muted-foreground" : ""}`}>{doc.name}</p>
+                        <p className="text-[10px] text-muted-foreground truncate">{doc.email ?? doc.specialty ?? doc.clinicName}</p>
+                        <p className="text-[10px] text-muted-foreground/60 truncate">{doc.clinicName}</p>
                       </div>
                     </div>
-                    <div className="flex justify-center px-4">
-                      <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${tier === "premium" ? "bg-[#f5a623]/10 text-[#f5a623] border-[#f5a623]/30" : "bg-muted/60 text-muted-foreground border-border"}`}>
-                        {tier}
+
+                    {/* Status */}
+                    <div className="flex justify-center px-3">
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${
+                        isBanned
+                          ? "bg-red-50 dark:bg-red-900/20 text-red-500 border-red-200 dark:border-red-800"
+                          : "bg-[#34c759]/8 text-[#34c759] border-[#34c759]/20"
+                      }`}>
+                        {isBanned ? "Banned" : "Active"}
                       </span>
                     </div>
-                    <div className="flex justify-center px-4">
-                      {doc.isAdmin ? <CheckCircle2 className="w-4 h-4 text-[#34c759]" /> : <XCircle className="w-4 h-4 text-muted-foreground/40" />}
+
+                    {/* Public profile */}
+                    <div className="flex justify-center px-3">
+                      {isPublished
+                        ? <Globe className="w-3.5 h-3.5 text-[#34c759]" />
+                        : <XCircle className="w-3.5 h-3.5 text-muted-foreground/30" />}
                     </div>
-                    <div className="flex items-center gap-2 px-4">
+
+                    {/* Admin */}
+                    <div className="flex justify-center px-3">
+                      {doc.isAdmin ? <CheckCircle2 className="w-3.5 h-3.5 text-[#34c759]" /> : <XCircle className="w-3.5 h-3.5 text-muted-foreground/30" />}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-1.5 px-3">
                       {isLoading ? (
-                        <span className="text-[#007AFF]"><IOSSpinner size={18} /></span>
+                        <span className="text-[#007AFF]"><IOSSpinner size={16} /></span>
                       ) : (
                         <>
-                          <button onClick={() => handleSetTier(doc._id, tier === "premium" ? "free" : "premium")} className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg border transition-colors ${tier === "premium" ? "border-red-300 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20" : "border-[#f5a623]/40 text-[#f5a623] hover:bg-[#f5a623]/10"}`}>
-                            {tier === "premium" ? "Downgrade" : "↑ Premium"}
+                          <button
+                            onClick={() => handleBan(doc._id, !isBanned)}
+                            className={`text-[10px] font-semibold px-2 py-1 rounded-lg border transition-colors ${
+                              isBanned
+                                ? "border-[#34c759]/40 text-[#34c759] hover:bg-[#34c759]/10"
+                                : "border-red-300 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                            }`}
+                          >
+                            {isBanned ? "Unban" : "Ban"}
                           </button>
-                          <button onClick={() => handleToggleAdmin(doc._id, !doc.isAdmin)} className="text-[11px] font-semibold px-2.5 py-1 rounded-lg border border-border hover:border-[#007AFF]/40 hover:text-[#007AFF] transition-colors">
-                            {doc.isAdmin ? "Revoke" : "Make Admin"}
+                          <button
+                            onClick={() => { setSelectedDoctorId(doc._id); setSelectedDoctorName(doc.name); }}
+                            className="text-[10px] font-semibold px-2 py-1 rounded-lg border border-border hover:border-[#007AFF]/40 hover:text-[#007AFF] transition-colors"
+                          >
+                            Stats
                           </button>
                         </>
                       )}
@@ -188,11 +334,33 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
           )}
         </div>
       </div>
+
+      {/* Doctor analytics slide-over */}
+      <AnimatePresence>
+        {selectedDoctorId && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedDoctorId(null)}
+              className="fixed inset-0 bg-black/20 dark:bg-black/40 z-40"
+            />
+            <DoctorAnalyticsPanel
+              clerkId={clerkId}
+              doctorId={selectedDoctorId}
+              doctorName={selectedDoctorName}
+              onClose={() => setSelectedDoctorId(null)}
+            />
+          </>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
-// ─── Claim Admin ────────────────────────────────────────────────────────────
+// ── Claim Admin ───────────────────────────────────────────────────────────────
+
 function ClaimAdminPage({ clerkId, userName }: { clerkId: string; userName: string }) {
   const claimAdmin = useMutation(api.users.claimAdmin);
   const [loading, setLoading] = useState(false);
@@ -220,7 +388,7 @@ function ClaimAdminPage({ clerkId, userName }: { clerkId: string; userName: stri
           <h2 className="text-xl font-bold mb-2">Admin access granted</h2>
           <p className="text-sm text-muted-foreground mb-6">Reload to open your dashboard.</p>
           <button onClick={() => window.location.reload()} className="bg-[#007AFF] text-white text-sm font-semibold px-6 py-2.5 rounded-xl hover:bg-[#0062cc] transition-colors">
-            Open Admin Dashboard
+            Open Admin Panel
           </button>
         </motion.div>
       </div>
@@ -256,23 +424,20 @@ function ClaimAdminPage({ clerkId, userName }: { clerkId: string; userName: stri
   );
 }
 
-// ─── Root /admin ─────────────────────────────────────────────────────────────
+// ── Root /admin ───────────────────────────────────────────────────────────────
+
 export default function AdminPage() {
   const { user, isLoaded } = useUser();
   const clerkId = user?.id ?? "";
 
-  // These two are fast/parallel — check admin existence and current user status
   const adminExists = useQuery(api.users.getAdminExists);
   const currentUser = useQuery(
     api.users.getCurrentUser,
-    // Only run once Clerk has confirmed a signed-in user
     clerkId ? { clerkId } : "skip"
   );
 
-  // Step 1: Wait only for Clerk to finish loading (fast — local SDK)
   if (!isLoaded) return <FullPageSpinner />;
 
-  // Step 2: If not signed in, show sign-in immediately — no Convex wait needed
   if (!user) {
     return (
       <div className="min-h-screen bg-[#f0efea] dark:bg-[#111110] flex items-center justify-center px-6">
@@ -290,13 +455,10 @@ export default function AdminPage() {
     );
   }
 
-  // Step 3: Signed in — now wait for Convex queries (both run in parallel)
   if (adminExists === undefined || currentUser === undefined) return <FullPageSpinner />;
 
-  // Signed in + IS admin → dashboard
   if (currentUser?.isAdmin) return <AdminDashboard clerkId={clerkId} />;
 
-  // Admin exists but this user isn't it → locked
   if (adminExists && !currentUser?.isAdmin) {
     return (
       <div className="min-h-screen bg-[#f0efea] dark:bg-[#111110] flex items-center justify-center text-center px-6">
@@ -313,7 +475,6 @@ export default function AdminPage() {
     );
   }
 
-  // No admin exists yet → claim page
   return (
     <ClaimAdminPage
       clerkId={clerkId}

@@ -8,11 +8,13 @@ import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { UserSync } from "../../components/user-sync";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { DoctorOnboarding } from "@/components/doctor-onboarding";
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useI18n } from "@/lib/i18n";
 
 function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const { user, isLoaded } = useUser();
   const clerkId = user?.id ?? "";
+  const { dir } = useI18n();
 
   const currentUser = useQuery(
     api.users.getCurrentUser,
@@ -32,11 +34,13 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     currentUser.clinicName === "My Clinic" &&
     !currentUser.specialty;
 
+  const sidebarSide = dir === "rtl" ? "right" : "left";
+
   return (
     <TooltipProvider delayDuration={0}>
       <SidebarProvider>
         <UserSync />
-        <AppSidebar />
+        <AppSidebar side={sidebarSide} />
         <SidebarInset className="bg-background">
           {children}
         </SidebarInset>

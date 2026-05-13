@@ -116,7 +116,7 @@ export const createVisit = mutation({
       patientId: args.patientId,
       doctorId: user._id,
       date: args.date ?? Date.now(),
-      source: args.source ?? "manual",
+      source: (args.source ?? "manual") as any,
       reasonForVisit: args.reasonForVisit,
       prescribedMedications: args.prescribedMedications,
       analysisRequested: args.analysisRequested,
@@ -155,6 +155,35 @@ export const addVisitFiles = mutation({
   },
 });
 
+export const getVisitsByDateRange = query({
+  args: {
+    clerkId: v.string(),
+    startDate: v.number(),
+    endDate: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .unique();
+    if (!user) return [];
+
+    const visits = await ctx.db
+      .query("visits")
+      .withIndex("by_doctor_date", (q) =>
+        q.eq("doctorId", user._id).gte("date", args.startDate).lte("date", args.endDate)
+      )
+      .collect();
+
+    return visits.map((v) => ({
+      _id: v._id,
+      date: v.date,
+      patientId: v.patientId,
+      reasonForVisit: v.reasonForVisit,
+    }));
+  },
+});
+
 export const deleteVisit = mutation({
   args: { clerkId: v.string(), visitId: v.id("visits") },
   handler: async (ctx, args) => {
@@ -166,5 +195,35 @@ export const deleteVisit = mutation({
     const visit = await ctx.db.get(args.visitId);
     if (!visit || visit.doctorId !== user._id) throw new Error("Not found");
     await ctx.db.delete(args.visitId);
+  },
+});
+
+export const updateVisit = mutation({
+  args: {
+    clerkId: v.string(),
+    visitId: v.id("visits"),
+    updates: v.object({
+      status: v.optional(v.string()),
+      notes: v.optional(v.string()),
+      prescriptionImageId: v.optional(v.id("_storage")),
+      date: v.optional(v.number()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .unique();
+    if (!user) throw new Error("User not found");
+    const visit = await ctx.db.get(args.visitId);
+    if (!visit || visit.doctorId !== user._id) throw new Error("Not authorized");
+
+    const patch: Record<string, any> = {};
+    if (args.updates.status) patch.status = args.updates.status;
+    if (args.updates.notes) patch.notes = args.updates.notes;
+    if (args.updates.prescriptionImageId) patch.prescriptionImageId = args.updates.prescriptionImageId;
+    if (args.updates.date) patch.date = args.updates.date;
+
+    await ctx.db.patch(args.visitId, patch);
   },
 });

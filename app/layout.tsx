@@ -1,15 +1,23 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Cairo } from "next/font/google";
 import "./globals.css";
 import ConvexClientProvider from "@/components/ConvexClientProvider";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
+import { I18nProvider } from "@/lib/i18n";
+import { HtmlDirSync } from "@/components/html-dir-sync";
 
 const inter = Inter({
   variable: "--font-sans",
   subsets: ["latin"],
+});
+
+const cairo = Cairo({
+  variable: "--font-cairo",
+  subsets: ["arabic", "latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -31,8 +39,10 @@ export default function RootLayout({
       <body
         className={cn(
           inter.variable,
+          cairo.variable,
           "font-[--font-sans] antialiased"
         )}
+        suppressHydrationWarning
       >
         <ClerkProvider dynamic>
           <ConvexClientProvider>
@@ -42,8 +52,11 @@ export default function RootLayout({
               enableSystem={false}
               disableTransitionOnChange
             >
-              {children}
-              <Toaster richColors position="top-right" />
+              <I18nProvider>
+                <HtmlDirSync />
+                {children}
+                <Toaster richColors />
+              </I18nProvider>
             </ThemeProvider>
           </ConvexClientProvider>
         </ClerkProvider>

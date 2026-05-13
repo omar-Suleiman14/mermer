@@ -9,23 +9,26 @@ import { toast } from "sonner";
 import {
   User,
   Building2,
-  MapPin,
   Clock,
-  FileText,
   Camera,
   CheckCircle2,
   ChevronRight,
   ChevronLeft,
-  X,
+  Link as LinkIcon,
+  MapPin,
 } from "lucide-react";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
 import { IOSSpinner } from "@/components/ui/spinner";
+import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useI18n } from "@/lib/i18n";
+
+function normalisePhone(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("20")) return digits;
+  if (digits.startsWith("0")) return "20" + digits.slice(1);
+  if (digits.length === 10) return "20" + digits;
+  return digits;
+}
 
 interface DoctorOnboardingProps {
   clerkId: string;
@@ -34,23 +37,11 @@ interface DoctorOnboardingProps {
 }
 
 const SPECIALTIES = [
-  "General Practitioner",
-  "Cardiologist",
-  "Dermatologist",
-  "Endocrinologist",
-  "Gastroenterologist",
-  "Neurologist",
-  "Obstetrician / Gynecologist",
-  "Ophthalmologist",
-  "Orthopedic Surgeon",
-  "Otolaryngologist (ENT)",
-  "Pediatrician",
-  "Psychiatrist",
-  "Pulmonologist",
-  "Radiologist",
-  "Rheumatologist",
-  "Urologist",
-  "Other",
+  "General Practitioner", "Cardiologist", "Dermatologist", "Dentist",
+  "ENT Specialist", "Endocrinologist", "Gastroenterologist", "Neurologist",
+  "Obstetrician / Gynecologist", "Ophthalmologist", "Orthopedic Surgeon",
+  "Otolaryngologist (ENT)", "Pediatrician", "Psychiatrist", "Pulmonologist",
+  "Radiologist", "Rheumatologist", "Surgeon", "Urologist", "Other",
 ];
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -75,6 +66,7 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
 }
 
 export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnboardingProps) {
+  const { t, dir } = useI18n();
   const updateProfile = useMutation(api.users.updateProfile);
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   const saveProfilePhoto = useMutation(api.users.saveProfilePhoto);
@@ -92,6 +84,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
   // Step 1 — Clinic info
   const [clinicName, setClinicName] = useState("");
   const [phone, setPhone] = useState("");
+  const [clinicAddressLink, setClinicAddressLink] = useState("");
   const [clinicAddress, setClinicAddress] = useState("");
 
   // Step 2 — Availability
@@ -108,6 +101,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
   const photoRef = useRef<HTMLInputElement>(null);
 
   const [saving, setSaving] = useState(false);
+  const isMobile = useIsMobile();
 
   function toggleDay(d: string) {
     setSelectedDays((prev) =>
@@ -160,11 +154,12 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
       await updateProfile({
         clerkId,
         name,
-        phone,
+        phone: normalisePhone(phone),
         clinicName,
         specialty: effectiveSpecialty || undefined,
         credentials: credentials || undefined,
         clinicAddress: clinicAddress || undefined,
+        clinicAddressLink: clinicAddressLink || undefined,
         workingHours: workingHours || undefined,
         workingHoursStart: startHour,
         workingHoursEnd: endHour,
@@ -185,12 +180,12 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
           prescriptionCredentials: credentials || undefined,
           prescriptionClinicName: clinicName,
           prescriptionAddress: clinicAddress || undefined,
-          prescriptionPhone: phone || undefined,
+          prescriptionPhone: normalisePhone(phone) || undefined,
           prescriptionWorkingHours: workingHours || undefined,
         });
       }
 
-      toast.success("Welcome to Ibn Sina! Your profile is ready.");
+      toast.success(t("onboarding.welcomeSuccess"));
       onComplete();
     } catch (err: any) {
       console.error("Onboarding error:", err);
@@ -203,337 +198,260 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
   const canAdvanceStep0 = name.trim().length > 0 && (specialty !== "Other" ? specialty !== "" : customSpecialty.trim().length > 0);
   const canAdvanceStep1 = clinicName.trim().length > 0 && phone.trim().length > 0;
 
-  return (
-    <Sheet open modal>
-      <SheetContent
-        side="right"
-        className="w-full sm:max-w-md flex flex-col p-0 overflow-hidden"
-        // Prevent closing by clicking outside — must finish setup
-        onInteractOutside={(e) => e.preventDefault()}
-        onEscapeKeyDown={(e) => e.preventDefault()}
-      >
-        {/* Coloured header */}
-        <div className="bg-[#007AFF] px-6 pt-8 pb-6 flex-shrink-0">
-          <p className="text-white/70 text-xs font-semibold tracking-widest uppercase mb-1">
-            Welcome to Ibn Sina
-          </p>
-          <SheetTitle className="text-white text-2xl font-bold tracking-tight">
-            Set up your practice
-          </SheetTitle>
-          <SheetDescription className="text-white/70 text-sm mt-1">
-            Takes 2 minutes. You can update everything later in Settings.
-          </SheetDescription>
-        </div>
+  const inputClass = "w-full px-4 py-2.5 text-sm bg-muted/30 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF]";
 
-        {/* Scrollable step content */}
-        <div className="flex-1 overflow-y-auto p-6">
-          <StepIndicator current={step} total={TOTAL_STEPS} />
+  const content = (
+    <>
+      {/* Coloured header */}
+      <div className={isMobile ? "px-6 pt-6 pb-2 flex-shrink-0" : "bg-[#007AFF] px-6 pt-6 pb-5 flex-shrink-0"}>
+        <p className={isMobile ? "text-[#007AFF] text-xs font-semibold tracking-widest uppercase mb-1" : "text-white/70 text-xs font-semibold tracking-widest uppercase mb-1"}>
+          {t("onboarding.welcome")}
+        </p>
+        <h2 className={isMobile ? "text-foreground text-2xl font-bold tracking-tight" : "text-white text-xl font-bold tracking-tight"}>
+          {t("onboarding.setup")}
+        </h2>
+        <p className={isMobile ? "text-muted-foreground text-xs mt-1" : "text-white/60 text-xs mt-1"}>
+          {t("onboarding.setupDesc")}
+        </p>
+      </div>
 
-          <AnimatePresence mode="wait">
+      {/* Scrollable step content */}
+      <div className="flex-1 overflow-y-auto p-6">
+        <StepIndicator current={step} total={TOTAL_STEPS} />
 
-            {/* ── Step 0: Personal Info ── */}
-            {step === 0 && (
-              <motion.div
-                key="step0"
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -30 }}
-                transition={{ duration: 0.22 }}
-                className="space-y-4"
-              >
-                <div className="flex items-center gap-2 mb-4">
-                  <User className="w-4 h-4 text-[#007AFF]" />
-                  <span className="font-semibold text-sm">Your Details</span>
-                </div>
+        <AnimatePresence mode="wait">
 
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground block mb-1.5">Full Name *</label>
-                  <input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Dr. Mohamed Ahmed"
-                    className="w-full px-4 py-2.5 text-sm bg-muted/30 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF]"
-                  />
-                </div>
+          {/* ── Step 0: Personal Info ── */}
+          {step === 0 && (
+            <motion.div key="step0" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.22 }} className="space-y-4">
+              <div className="flex items-center gap-2 mb-4">
+                <User className="w-4 h-4 text-[#007AFF]" />
+                <span className="font-semibold text-sm">{t("onboarding.yourDetails")}</span>
+              </div>
 
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground block mb-1.5">Specialty *</label>
-                  <select
-                    value={specialty}
-                    onChange={(e) => setSpecialty(e.target.value)}
-                    className="w-full px-4 py-2.5 text-sm bg-muted/30 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF]"
-                  >
-                    <option value="">Select specialty…</option>
-                    {SPECIALTIES.map((s) => (
-                      <option key={s} value={s}>{s}</option>
-                    ))}
-                  </select>
-                </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("onboarding.fullName")} *</label>
+                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Dr. Mohamed Ahmed" className={inputClass} dir="auto" />
+              </div>
 
-                {specialty === "Other" && (
-                  <input
-                    value={customSpecialty}
-                    onChange={(e) => setCustomSpecialty(e.target.value)}
-                    placeholder="Enter your specialty"
-                    className="w-full px-4 py-2.5 text-sm bg-muted/30 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF]"
-                  />
-                )}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("onboarding.specialty")} *</label>
+                <select value={specialty} onChange={(e) => setSpecialty(e.target.value)} className={inputClass}>
+                  <option value="">{t("onboarding.selectSpecialty")}</option>
+                  {SPECIALTIES.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
 
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground block mb-1.5">
-                    Credentials <span className="font-normal">(optional)</span>
-                  </label>
-                  <input
-                    value={credentials}
-                    onChange={(e) => setCredentials(e.target.value)}
-                    placeholder="MD, MRCGP, FRCS…"
-                    className="w-full px-4 py-2.5 text-sm bg-muted/30 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF]"
-                  />
-                </div>
-              </motion.div>
-            )}
-
-            {/* ── Step 1: Clinic Info ── */}
-            {step === 1 && (
-              <motion.div
-                key="step1"
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -30 }}
-                transition={{ duration: 0.22 }}
-                className="space-y-4"
-              >
-                <div className="flex items-center gap-2 mb-4">
-                  <Building2 className="w-4 h-4 text-[#007AFF]" />
-                  <span className="font-semibold text-sm">Your Clinic</span>
-                </div>
-
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground block mb-1.5">Clinic Name *</label>
-                  <input
-                    value={clinicName}
-                    onChange={(e) => setClinicName(e.target.value)}
-                    placeholder="Al Nour Medical Clinic"
-                    className="w-full px-4 py-2.5 text-sm bg-muted/30 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF]"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground block mb-1.5">WhatsApp / Phone Number *</label>
-                  <input
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+20 1XX XXX XXXX"
-                    type="tel"
-                    className="w-full px-4 py-2.5 text-sm bg-muted/30 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF]"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">Used for WhatsApp reminders to patients</p>
-                </div>
-
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground block mb-1.5">
-                    <span className="flex items-center gap-1">
-                      <MapPin className="w-3 h-3" /> Clinic Address <span className="font-normal text-muted-foreground">(optional)</span>
-                    </span>
-                  </label>
-                  <input
-                    value={clinicAddress}
-                    onChange={(e) => setClinicAddress(e.target.value)}
-                    placeholder="123 Street, Cairo, Egypt"
-                    className="w-full px-4 py-2.5 text-sm bg-muted/30 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF]"
-                  />
-                </div>
-              </motion.div>
-            )}
-
-            {/* ── Step 2: Availability ── */}
-            {step === 2 && (
-              <motion.div
-                key="step2"
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -30 }}
-                transition={{ duration: 0.22 }}
-                className="space-y-5"
-              >
-                <div className="flex items-center gap-2 mb-4">
-                  <Clock className="w-4 h-4 text-[#007AFF]" />
-                  <span className="font-semibold text-sm">Availability</span>
-                </div>
-
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-2">Working Days</p>
-                  <div className="flex flex-wrap gap-2">
-                    {DAYS.map((d) => (
-                      <button
-                        key={d}
-                        onClick={() => toggleDay(d)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
-                          selectedDays.includes(d)
-                            ? "bg-[#007AFF] text-white border-[#007AFF]"
-                            : "border-border hover:border-[#007AFF]/40 text-muted-foreground"
-                        }`}
-                      >
-                        {d}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground block mb-1.5">Opens at</label>
-                    <input
-                      type="time"
-                      value={openFrom}
-                      onChange={(e) => setOpenFrom(e.target.value)}
-                      className="w-full px-4 py-2.5 text-sm bg-muted/30 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF]"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground block mb-1.5">Closes at</label>
-                    <input
-                      type="time"
-                      value={openTo}
-                      onChange={(e) => setOpenTo(e.target.value)}
-                      className="w-full px-4 py-2.5 text-sm bg-muted/30 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF]"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground block mb-1.5">Appointment Slot Duration (minutes)</label>
-                  <select
-                    value={slotDuration}
-                    onChange={(e) => setSlotDuration(e.target.value)}
-                    className="w-full px-4 py-2.5 text-sm bg-muted/30 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF]"
-                  >
-                    {[10, 15, 20, 30, 45, 60].map((m) => (
-                      <option key={m} value={m}>{m} minutes</option>
-                    ))}
-                  </select>
-                </div>
-              </motion.div>
-            )}
-
-            {/* ── Step 3: Photo & Bio ── */}
-            {step === 3 && (
-              <motion.div
-                key="step3"
-                initial={{ opacity: 0, x: 30 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -30 }}
-                transition={{ duration: 0.22 }}
-                className="space-y-5"
-              >
-                <div className="flex items-center gap-2 mb-4">
-                  <FileText className="w-4 h-4 text-[#007AFF]" />
-                  <span className="font-semibold text-sm">Profile Photo & Bio <span className="text-muted-foreground font-normal">(optional)</span></span>
-                </div>
-
-                <div className="flex items-center gap-4">
-                  <div
-                    className="w-20 h-20 rounded-2xl bg-[#007AFF]/10 border-2 border-dashed border-[#007AFF]/30 flex items-center justify-center flex-shrink-0 overflow-hidden cursor-pointer hover:bg-[#007AFF]/15 transition-colors"
-                    onClick={() => photoRef.current?.click()}
-                  >
-                    {avatarPreview ? (
-                      <img src={avatarPreview} alt="Profile" className="w-full h-full object-cover" />
-                    ) : uploadingPhoto ? (
-                      <IOSSpinner size={24} className="text-[#007AFF]" />
-                    ) : (
-                      <Camera className="w-6 h-6 text-[#007AFF]/60" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">Profile Photo</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 mb-2">
-                      Used on your prescription header & public profile
-                    </p>
-                    <button
-                      onClick={() => photoRef.current?.click()}
-                      disabled={uploadingPhoto}
-                      className="text-xs text-[#007AFF] hover:underline font-medium disabled:opacity-60"
-                    >
-                      {avatarPreview ? "Change photo" : "Upload photo"}
-                    </button>
-                  </div>
-                  <input
-                    ref={photoRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) handlePhotoUpload(f);
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground block mb-1.5">
-                    Short Bio <span className="font-normal">(optional)</span>
-                  </label>
-                  <textarea
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
-                    placeholder="Tell patients a bit about yourself, your experience, and what you specialize in…"
-                    rows={4}
-                    maxLength={500}
-                    className="w-full px-4 py-2.5 text-sm bg-muted/30 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] resize-none"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1 text-right">{bio.length}/500</p>
-                </div>
-
-                <div className="bg-[#007AFF]/5 border border-[#007AFF]/20 rounded-xl p-3 text-xs text-[#007AFF]">
-                  You&apos;re almost done! This is the last step. You can update all of this later in Settings.
-                </div>
-              </motion.div>
-            )}
-
-          </AnimatePresence>
-        </div>
-
-        {/* Fixed bottom navigation */}
-        <div className="flex-shrink-0 border-t border-border bg-background px-6 py-4 flex items-center gap-3">
-          {step > 0 && (
-            <button
-              onClick={() => setStep((s) => s - 1)}
-              className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2.5 rounded-xl hover:bg-muted/40"
-            >
-              <ChevronLeft className="w-4 h-4" />
-              Back
-            </button>
-          )}
-
-          <div className="flex-1" />
-
-          {step < TOTAL_STEPS - 1 ? (
-            <button
-              onClick={() => setStep((s) => s + 1)}
-              disabled={
-                (step === 0 && !canAdvanceStep0) ||
-                (step === 1 && !canAdvanceStep1)
-              }
-              className="flex items-center gap-1.5 bg-[#007AFF] text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-[#0062cc] transition-colors disabled:opacity-50"
-            >
-              Next
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          ) : (
-            <button
-              onClick={handleFinish}
-              disabled={saving}
-              className="flex items-center gap-2 bg-[#007AFF] text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-[#0062cc] transition-colors disabled:opacity-60"
-            >
-              {saving ? (
-                <><IOSSpinner size={16} className="text-white" /> Saving…</>
-              ) : (
-                <><CheckCircle2 className="w-4 h-4" /> Finish Setup</>
+              {specialty === "Other" && (
+                <input value={customSpecialty} onChange={(e) => setCustomSpecialty(e.target.value)} placeholder="Enter your specialty" className={inputClass} />
               )}
-            </button>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1.5">
+                  {t("onboarding.credentials")} <span className="font-normal">({t("onboarding.optional")})</span>
+                </label>
+                <input value={credentials} onChange={(e) => setCredentials(e.target.value)} placeholder="MD, MRCGP, FRCS…" className={inputClass} />
+              </div>
+            </motion.div>
           )}
-        </div>
-      </SheetContent>
-    </Sheet>
+
+          {/* ── Step 1: Clinic Info ── */}
+          {step === 1 && (
+            <motion.div key="step1" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.22 }} className="space-y-4">
+              <div className="flex items-center gap-2 mb-4">
+                <Building2 className="w-4 h-4 text-[#007AFF]" />
+                <span className="font-semibold text-sm">{t("onboarding.yourClinic")}</span>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("onboarding.clinicName")} *</label>
+                <input value={clinicName} onChange={(e) => setClinicName(e.target.value)} placeholder="Al Nour Medical Clinic" className={inputClass} />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("onboarding.whatsappPhone")} *</label>
+                <div className="flex gap-2">
+                  <span className="flex items-center px-3 bg-muted/60 border border-border rounded-xl text-sm text-muted-foreground font-mono flex-shrink-0">+20</span>
+                  <input value={phone.replace(/^\+?20/, "").replace(/^0/, "")} onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))} placeholder="1142529590" type="tel" className={`flex-1 ${inputClass}`} />
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">{t("onboarding.phoneDesc")}</p>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1.5">
+                  <span className="flex items-center gap-1">
+                    <LinkIcon className="w-3 h-3" /> {t("onboarding.googleMapsLink")} <span className="font-normal text-muted-foreground/60">({t("onboarding.optional")})</span>
+                  </span>
+                </label>
+                <input value={clinicAddressLink} onChange={(e) => setClinicAddressLink(e.target.value)} placeholder="https://maps.google.com/…" className={inputClass} />
+                <p className="text-xs text-muted-foreground mt-1">{t("onboarding.mapDesc")}</p>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1.5">
+                  <span className="flex items-center gap-1">
+                    <MapPin className="w-3 h-3" /> {t("onboarding.addressText")} <span className="font-normal text-muted-foreground/60">({t("onboarding.optional")})</span>
+                  </span>
+                </label>
+                <input value={clinicAddress} onChange={(e) => setClinicAddress(e.target.value)} placeholder="123 Street, Cairo, Egypt" className={inputClass} />
+              </div>
+            </motion.div>
+          )}
+
+          {/* ── Step 2: Availability ── */}
+          {step === 2 && (
+            <motion.div key="step2" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.22 }} className="space-y-5">
+              <div className="flex items-center gap-2 mb-4">
+                <Clock className="w-4 h-4 text-[#007AFF]" />
+                <span className="font-semibold text-sm">{t("onboarding.availability")}</span>
+              </div>
+
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-2">{t("onboarding.workingDays")}</p>
+                <div className="flex flex-wrap gap-2">
+                  {DAYS.map((d) => (
+                    <button key={d} onClick={() => toggleDay(d)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                        selectedDays.includes(d)
+                          ? "bg-[#007AFF] text-white border-[#007AFF]"
+                          : "border-border hover:border-[#007AFF]/40 text-muted-foreground"
+                      }`}>
+                      {d}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("onboarding.opensAt")}</label>
+                  <input type="time" value={openFrom} onChange={(e) => setOpenFrom(e.target.value)} className={inputClass} />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("onboarding.closesAt")}</label>
+                  <input type="time" value={openTo} onChange={(e) => setOpenTo(e.target.value)} className={inputClass} />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("onboarding.slotDuration")}</label>
+                <select value={slotDuration} onChange={(e) => setSlotDuration(e.target.value)} className={inputClass}>
+                  {[10, 15, 20, 30, 45, 60].map((m) => <option key={m} value={m}>{m} minutes</option>)}
+                </select>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ── Step 3: Photo & Bio ── */}
+          {step === 3 && (
+            <motion.div key="step3" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.22 }} className="space-y-5">
+              <div className="flex items-center gap-2 mb-4">
+                <Camera className="w-4 h-4 text-[#007AFF]" />
+                <span className="font-semibold text-sm">{t("onboarding.photoBio")} <span className="text-muted-foreground font-normal">({t("onboarding.optional")})</span></span>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <div
+                  className="w-20 h-20 rounded-2xl bg-[#007AFF]/10 border-2 border-dashed border-[#007AFF]/30 flex items-center justify-center flex-shrink-0 overflow-hidden cursor-pointer hover:bg-[#007AFF]/15 transition-colors"
+                  onClick={() => photoRef.current?.click()}>
+                  {avatarPreview ? (
+                    <img src={avatarPreview} alt="Profile" className="w-full h-full object-cover" />
+                  ) : uploadingPhoto ? (
+                    <IOSSpinner size={24} className="text-[#007AFF]" />
+                  ) : (
+                    <Camera className="w-6 h-6 text-[#007AFF]/60" />
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm font-medium">{t("onboarding.profilePhoto")}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 mb-2">
+                    {t("onboarding.photoDesc")}
+                  </p>
+                  <button onClick={() => photoRef.current?.click()} disabled={uploadingPhoto}
+                    className="text-xs text-[#007AFF] hover:underline font-medium disabled:opacity-60">
+                    {avatarPreview ? t("onboarding.changePhoto") : t("onboarding.uploadPhoto")}
+                  </button>
+                </div>
+                <input ref={photoRef} type="file" accept="image/*" className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePhotoUpload(f); }} />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1.5">
+                  {t("onboarding.shortBio")} <span className="font-normal">({t("onboarding.optional")})</span>
+                </label>
+                <textarea value={bio} onChange={(e) => setBio(e.target.value)}
+                  placeholder={t("onboarding.bioPlaceholder")}
+                  rows={4} maxLength={500}
+                  className={`${inputClass} resize-none`} />
+                <p className="text-xs text-muted-foreground mt-1" style={{ textAlign: dir === "rtl" ? "left" : "right" }}>{bio.length}/500</p>
+              </div>
+
+              <div className="bg-[#007AFF]/5 border border-[#007AFF]/20 rounded-xl p-3 text-xs text-[#007AFF]">
+                {t("onboarding.almostDone")}
+              </div>
+            </motion.div>
+          )}
+
+        </AnimatePresence>
+      </div>
+
+      {/* Fixed bottom navigation */}
+      <div className="flex-shrink-0 border-t border-border bg-background px-6 py-4 flex items-center gap-3">
+        {step > 0 && (
+          <button onClick={() => setStep((s) => s - 1)}
+            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2.5 rounded-xl hover:bg-muted/40">
+            {dir === "rtl" ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />} {t("onboarding.back")}
+          </button>
+        )}
+
+        <div className="flex-1" />
+
+        {step < TOTAL_STEPS - 1 ? (
+          <button onClick={() => setStep((s) => s + 1)}
+            disabled={(step === 0 && !canAdvanceStep0) || (step === 1 && !canAdvanceStep1)}
+            className="flex items-center gap-1.5 bg-[#007AFF] text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-[#0062cc] transition-colors disabled:opacity-50">
+            {t("onboarding.next")} {dir === "rtl" ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          </button>
+        ) : (
+          <button onClick={handleFinish} disabled={saving}
+            className="flex items-center gap-2 bg-[#007AFF] text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-[#0062cc] transition-colors disabled:opacity-60">
+            {saving ? (
+              <><IOSSpinner size={16} className="text-white" /> {t("onboarding.saving")}</>
+            ) : (
+              <><CheckCircle2 className="w-4 h-4" /> {t("onboarding.finishSetup")}</>
+            )}
+          </button>
+        )}
+      </div>
+    </>
+  );
+
+  if (isMobile) {
+    return (
+      <Drawer open={true}>
+        <DrawerContent className="p-0 overflow-hidden bg-[var(--background)] border-t-0 flex flex-col max-h-[95vh]">
+          <DrawerTitle className="sr-only">{t("onboarding.setup")}</DrawerTitle>
+          {content}
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+      {/* Overlay */}
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+
+      {/* Centered Card */}
+      <motion.div
+        initial={{ scale: 0.92, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ type: "spring", stiffness: 400, damping: 30 }}
+        className="relative z-10 w-full max-w-md bg-[var(--background)] rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+      >
+        {content}
+      </motion.div>
+    </div>
   );
 }

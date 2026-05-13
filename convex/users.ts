@@ -37,7 +37,6 @@ export const getOrCreateUser = mutation({
       whatsappTemplate:
         "Hello {{name}}, you are next in line at the clinic. Please make your way over now. Thank you!",
       createdAt: Date.now(),
-      tier: "free",
       isAdmin: false,
       qrSlug: slug,
       publicProfile: false,
@@ -65,11 +64,13 @@ export const updateProfile = mutation({
     specialty: v.optional(v.string()),
     credentials: v.optional(v.string()),
     clinicAddress: v.optional(v.string()),
+    clinicAddressLink: v.optional(v.string()),
     workingHours: v.optional(v.string()),
     workingHoursStart: v.optional(v.number()),
     workingHoursEnd: v.optional(v.number()),
     slotDurationMinutes: v.optional(v.number()),
     bio: v.optional(v.string()),
+    publicProfile: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const user = await ctx.db
@@ -84,11 +85,13 @@ export const updateProfile = mutation({
       specialty: args.specialty,
       credentials: args.credentials,
       clinicAddress: args.clinicAddress,
+      clinicAddressLink: args.clinicAddressLink,
       workingHours: args.workingHours,
       workingHoursStart: args.workingHoursStart,
       workingHoursEnd: args.workingHoursEnd,
       slotDurationMinutes: args.slotDurationMinutes,
       bio: args.bio,
+      ...(args.publicProfile !== undefined ? { publicProfile: args.publicProfile } : {}),
     });
   },
 });
@@ -144,25 +147,6 @@ export const listAllDoctors = query({
   },
 });
 
-// Admin: set tier
-export const setTier = mutation({
-  args: {
-    clerkId: v.string(),
-    targetUserId: v.id("users"),
-    tier: v.union(v.literal("free"), v.literal("premium")),
-  },
-  handler: async (ctx, args) => {
-    const admin = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!admin?.isAdmin) throw new Error("Unauthorized");
-    await ctx.db.patch(args.targetUserId, {
-      tier: args.tier,
-      publicProfile: args.tier === "premium",
-    });
-  },
-});
 
 // Admin: toggle admin
 export const setAdmin = mutation({
@@ -181,23 +165,23 @@ export const setAdmin = mutation({
   },
 });
 
-// Public: search premium doctors (resolves profile photo URL)
-export const searchPremiumDoctors = query({
+// Public: search doctors (resolves profile photo URL)
+export const searchDoctors = query({
   args: { search: v.string() },
   handler: async (ctx, args) => {
     const all = await ctx.db.query("users").collect();
-    const premium = all.filter((u) => u.tier === "premium" && u.publicProfile);
+    const published = all.filter((u) => u.publicProfile && !(u as any).isBanned);
     const filtered = args.search.trim()
       ? (() => {
           const q = args.search.toLowerCase();
-          return premium.filter(
+          return published.filter(
             (u) =>
               u.name.toLowerCase().includes(q) ||
               (u.specialty ?? "").toLowerCase().includes(q) ||
               (u.clinicName ?? "").toLowerCase().includes(q)
           );
         })()
-      : premium;
+      : published;
 
     return await Promise.all(
       filtered.map(async (u) => ({
@@ -222,7 +206,7 @@ export const getDoctorBySlug = query({
       .query("users")
       .withIndex("by_qr_slug", (q) => q.eq("qrSlug", args.slug))
       .unique();
-    if (!doctor) return null;
+    if (!doctor || !doctor.publicProfile || (doctor as any).isBanned) return null;
     const profilePhotoUrl = doctor.profilePhotoId
       ? await ctx.storage.getUrl(doctor.profilePhotoId)
       : null;
