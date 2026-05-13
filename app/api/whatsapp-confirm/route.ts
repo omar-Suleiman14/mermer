@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
     const to = formatEgyptPhone(patientPhone);
 
     const message = customMessage ??
-      `Hello ${patientName}! ✅ Your appointment at *${clinicName ?? doctorName + "'s clinic"}* with *Dr. ${doctorName}* is confirmed for *${dateStr}*. See you soon! 🏥`;
+      `مرحباً ${patientName}، تم تأكيد موعدك في *${clinicName ?? "عيادة الدكتور " + doctorName}* مع *الدكتور ${doctorName}* بتاريخ *${dateStr}*. نراك قريباً.`;
 
     const res = await fetch(
       `https://graph.facebook.com/v19.0/${WA_PHONE_ID}/messages`,

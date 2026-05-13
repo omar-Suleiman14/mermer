@@ -30,6 +30,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import Link from "next/link";
 import { useI18n, type Lang } from "@/lib/i18n";
 import {
@@ -320,6 +330,8 @@ export default function SchedulePage() {
 
   const [addOpen, setAddOpen] = useState(false);
   const [preselectedSlot, setPreselectedSlot] = useState<number | null>(null);
+
+  const [cancelModal, setCancelModal] = useState<Id<"visits"> | null>(null);
 
   const [completionModal, setCompletionModal] = useState<{
     appointmentId: Id<"visits">;
@@ -706,7 +718,7 @@ export default function SchedulePage() {
                           initials={initials}
                           onComplete={() => setCompletionModal({ appointmentId: appt._id, patientId: appt.patientId ?? undefined, patientName: appt.patientName, patientAge: appt.patientAge, contractId: appt.contractId ?? undefined })}
                           onReminder={(e: React.MouseEvent) => appt.patientPhone && openTemplatePicker(appt.patientName, appt.patientPhone, appt.date, e)}
-                          onCancel={() => handleCancel(appt._id)}
+                          onCancel={() => setCancelModal(appt._id)}
                         />
                       </DroppableSlot>
                     );
@@ -759,6 +771,31 @@ export default function SchedulePage() {
         preselectedSlot={preselectedSlot}
         clerkId={clerkId}
       />
+
+      <AlertDialog open={!!cancelModal} onOpenChange={(v) => !v && setCancelModal(null)}>
+        <AlertDialogContent dir={dir}>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-500">{t("dialog.deleteVisitTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("dialog.deleteVisitDesc")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-500 hover:bg-red-600 text-white"
+              onClick={() => {
+                if (cancelModal) {
+                  handleCancel(cancelModal);
+                  setCancelModal(null);
+                }
+              }}
+            >
+              {t("dialog.deleteConfirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <VisitCompletionModal
         open={!!completionModal}

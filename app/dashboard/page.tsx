@@ -35,6 +35,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useI18n } from "@/lib/i18n";
 import { useMemo, useState, useRef, useEffect } from "react";
 import Link from "next/link";
@@ -248,7 +258,7 @@ function SortableApptItem({ appt, onComplete, onReminder, onCancel }: { appt: an
 export default function DashboardPage() {
   const { user } = useUser();
   const clerkId = user?.id ?? "";
-  const { t, lang } = useI18n();
+  const { t, lang, dir } = useI18n();
 
   const todayTs = startOfDay(Date.now());
 
@@ -283,6 +293,8 @@ export default function DashboardPage() {
   );
 
   const cancelAppointment = useMutation(api.appointments.updateAppointment);
+
+  const [cancelModal, setCancelModal] = useState<Id<"visits"> | null>(null);
 
   const [completionModal, setCompletionModal] = useState<{
     appointmentId: Id<"visits">;
@@ -387,7 +399,7 @@ export default function DashboardPage() {
     if (!templatePicker) return;
     const { patientName, appointmentDate } = templatePicker;
     const firstName = patientName.split(" ")[0];
-    const defaultMsg = `Hello ${firstName}, this is a reminder that your appointment is at ${formatTime(appointmentDate)} today. See you soon! 🏥`;
+    const defaultMsg = `مرحباً ${firstName}، هذا تذكير بأن موعدك اليوم الساعة ${formatTime(appointmentDate)}. نراك قريباً.`;
     sendWithTemplate(currentUser?.whatsappTemplate || defaultMsg);
   }
 
@@ -482,7 +494,7 @@ export default function DashboardPage() {
                     appt={appt}
                     onComplete={() => setCompletionModal({ appointmentId: appt._id, patientId: appt.patientId ?? undefined, patientName: appt.patientName, patientAge: appt.patientAge, contractId: appt.contractId ?? undefined })}
                     onReminder={(e: React.MouseEvent) => openTemplatePicker(appt.patientName, appt.patientPhone, appt.date, e)}
-                    onCancel={() => handleCancelVisit(appt._id)}
+                    onCancel={() => setCancelModal(appt._id)}
                   />
                 ))}
               </SortableContext>
@@ -493,6 +505,31 @@ export default function DashboardPage() {
 
       </div>
       </div>
+
+      <AlertDialog open={!!cancelModal} onOpenChange={(v) => !v && setCancelModal(null)}>
+        <AlertDialogContent dir={dir}>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-500">{t("dialog.deleteVisitTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("dialog.deleteVisitDesc")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-500 hover:bg-red-600 text-white"
+              onClick={() => {
+                if (cancelModal) {
+                  handleCancelVisit(cancelModal);
+                  setCancelModal(null);
+                }
+              }}
+            >
+              {t("dialog.deleteConfirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <VisitCompletionModal
         open={!!completionModal}

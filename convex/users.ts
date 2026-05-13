@@ -35,7 +35,7 @@ export const getOrCreateUser = mutation({
       phone: "",
       clinicName: "My Clinic",
       whatsappTemplate:
-        "Hello {{name}}, you are next in line at the clinic. Please make your way over now. Thank you!",
+        "مرحباً {{name}}، دورك التالي في العيادة. يرجى التوجه للعيادة الآن. شكراً لك.",
       createdAt: Date.now(),
       isAdmin: false,
       qrSlug: slug,
