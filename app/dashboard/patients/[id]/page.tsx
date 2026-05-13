@@ -24,12 +24,15 @@ import {
   ImageIcon,
   StickyNote,
 } from "lucide-react";
+import { useI18n } from "@/lib/i18n";
 
 export default function PatientProfilePage() {
   const params = useParams();
   const patientId = params.id as Id<"patients">;
   const { user } = useUser();
   const clerkId = user?.id ?? "";
+  const { t, lang } = useI18n();
+  const dateLocale = lang === "ar" ? "ar-EG" : "en-US";
 
   const [editOpen, setEditOpen] = useState(false);
   const [visitOpen, setVisitOpen] = useState(false);
@@ -45,7 +48,7 @@ export default function PatientProfilePage() {
   if (patient === undefined) {
     return (
       <div className="flex flex-col h-full">
-        <PageHeader title="Patient Profile" />
+        <PageHeader title={t("patient.title")} />
         <div className="p-6 space-y-4">
           <Skeleton className="h-28 rounded-2xl" />
           <Skeleton className="h-48 rounded-2xl" />
@@ -57,9 +60,9 @@ export default function PatientProfilePage() {
   if (!patient) {
     return (
       <div className="flex flex-col h-full">
-        <PageHeader title="Patient Not Found" />
+        <PageHeader title={t("patient.notFoundTitle")} />
         <div className="flex-1 flex items-center justify-center">
-          <p className="text-muted-foreground">This patient doesn&apos;t exist or belongs to another doctor.</p>
+          <p className="text-muted-foreground">{t("patient.notFoundDesc")}</p>
         </div>
       </div>
     );
@@ -75,7 +78,7 @@ export default function PatientProfilePage() {
           className="flex items-center gap-1.5 text-xs border border-border text-foreground px-3 py-1.5 rounded-lg hover:border-[#007AFF]/40 hover:text-[#007AFF] transition-colors"
         >
           <Edit className="w-3.5 h-3.5" />
-          Edit
+          {t("patient.edit")}
         </button>
         {/* <button
           onClick={handleAddToQueue}
@@ -89,7 +92,7 @@ export default function PatientProfilePage() {
           className="flex items-center gap-1.5 text-xs bg-[#007AFF] text-white px-3 py-1.5 rounded-lg hover:bg-[#0062cc] transition-colors"
         >
           <PlusCircle className="w-3.5 h-3.5" />
-          New Visit
+          {t("patient.newVisit")}
         </button>
       </PageHeader>
 
@@ -103,7 +106,7 @@ export default function PatientProfilePage() {
             <div className="flex-1 min-w-0">
               <h2 className="text-xl font-bold tracking-tight mb-1">{patient.name}</h2>
               <div className="flex items-center gap-4 flex-wrap text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">{patient.age} years old</span>
+                <span className="font-medium text-foreground">{t("patient.yearsOld").replace("{age}", String(patient.age))}</span>
                 <a
                   href={`tel:${patient.phone}`}
                   className="flex items-center gap-1.5 hover:text-[#007AFF] transition-colors"
@@ -138,10 +141,10 @@ export default function PatientProfilePage() {
         <div>
           <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
             <Clock className="w-4 h-4 text-[#007AFF]" />
-            Visit History
+            {t("patient.visitHistory")}
             {visits !== undefined && (
               <span className="text-xs text-muted-foreground font-normal">
-                ({visits.length} {visits.length === 1 ? "visit" : "visits"})
+                ({visits.length} {visits.length === 1 ? t("patient.visitLabel") : t("patient.visitsLabel")})
               </span>
             )}
           </h3>
@@ -152,12 +155,12 @@ export default function PatientProfilePage() {
             </div>
           ) : visits.length === 0 ? (
             <div className="bg-card border border-border rounded-xl p-8 text-center">
-              <p className="text-sm text-muted-foreground mb-3">No visits recorded yet</p>
+              <p className="text-sm text-muted-foreground mb-3">{t("patient.noVisitsYet")}</p>
               <button
                 onClick={() => setVisitOpen(true)}
                 className="text-sm font-medium text-[#007AFF] hover:underline"
               >
-                Record first visit
+                {t("patient.recordFirstVisit")}
               </button>
             </div>
           ) : (
@@ -171,7 +174,7 @@ export default function PatientProfilePage() {
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-[11px] text-muted-foreground font-mono">
-                        {new Date(visit.date).toLocaleDateString("en-US", {
+                        {new Date(visit.date).toLocaleDateString(dateLocale, {
                           weekday: "short",
                           year: "numeric",
                           month: "long",
@@ -183,19 +186,19 @@ export default function PatientProfilePage() {
                       {/* Source badge */}
                       {visit.source === "appointment" ? (
                         <span className="text-[9px] font-bold uppercase tracking-wider bg-[#007AFF]/10 text-[#007AFF] border border-[#007AFF]/20 px-1.5 py-0.5 rounded-full">
-                          Online
+                          {t("dashboard.online")}
                         </span>
                       ) : visit.source === "contract" ? (
                         <span className="text-[9px] font-bold uppercase tracking-wider bg-purple-500/10 text-purple-500 border border-purple-500/20 px-1.5 py-0.5 rounded-full">
-                          Contract
+                          {t("dashboard.contract")}
                         </span>
                       ) : visit.source === "follow-up" ? (
                         <span className="text-[9px] font-bold uppercase tracking-wider bg-[#FF9500]/10 text-[#FF9500] border border-[#FF9500]/20 px-1.5 py-0.5 rounded-full">
-                          Follow-up
+                          {t("dashboard.followUp")}
                         </span>
                       ) : (
                         <span className="text-[9px] font-bold uppercase tracking-wider bg-muted/60 text-muted-foreground border border-border px-1.5 py-0.5 rounded-full">
-                          Manual
+                          {t("dashboard.manual")}
                         </span>
                       )}
                     </div>
@@ -208,7 +211,7 @@ export default function PatientProfilePage() {
                           className="flex items-center gap-1.5 text-[11px] font-semibold text-[#007AFF] border border-[#007AFF]/30 px-2.5 py-1 rounded-lg hover:bg-[#007AFF]/10 transition-colors"
                         >
                           <Download className="w-3 h-3" />
-                          Rx PDF
+                          {t("patient.rxPdf")}
                         </a>
                       )}
                       {!visit.prescriptionPdfUrl && (
@@ -223,7 +226,7 @@ export default function PatientProfilePage() {
                           className="flex items-center gap-1.5 text-[11px] text-muted-foreground border border-border px-2.5 py-1 rounded-lg hover:border-[#007AFF]/40 hover:text-[#007AFF] transition-colors"
                         >
                           <ImageIcon className="w-3 h-3" />
-                          Add Rx
+                          {t("patient.addRx")}
                         </button>
                       )}
                     </div>
@@ -237,7 +240,7 @@ export default function PatientProfilePage() {
                     <div>
                       <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
                         <Pill className="w-3 h-3" />
-                        Medications
+                        {t("patient.medications")}
                       </div>
                       <div className="flex flex-wrap gap-1.5">
                         {visit.prescribedMedications.map((m: string) => (
@@ -251,7 +254,7 @@ export default function PatientProfilePage() {
                     <div>
                       <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
                         <FlaskConical className="w-3 h-3" />
-                        Analysis
+                        {t("patient.analysis")}
                       </div>
                       <div className="flex flex-wrap gap-1.5">
                         {visit.analysisRequested.map((a: string) => (
@@ -265,7 +268,7 @@ export default function PatientProfilePage() {
                     <div>
                       <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
                         <FileText className="w-3 h-3" />
-                        Notes
+                        {t("patient.notesSection")}
                       </div>
                       <p className="text-xs text-muted-foreground leading-relaxed">{visit.notes}</p>
                     </div>
@@ -276,12 +279,12 @@ export default function PatientProfilePage() {
                     <div>
                       <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
                         <ImageIcon className="w-3 h-3" />
-                        Prescription Photo
+                        {t("patient.prescriptionPhoto")}
                       </div>
                       <a href={visit.prescriptionImageUrl} target="_blank" rel="noreferrer">
                         <img
                           src={visit.prescriptionImageUrl}
-                          alt="Prescription"
+                          alt={t("patient.prescriptionAlt")}
                           className="w-24 h-32 object-cover rounded-lg border border-border hover:opacity-80 transition-opacity"
                         />
                       </a>
@@ -293,7 +296,7 @@ export default function PatientProfilePage() {
                     <div>
                       <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
                         <FileText className="w-3 h-3" />
-                        Attached Documents
+                        {t("patient.attachedDocuments")}
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {visit.documentUrls.map((url: string | null, i: number) =>
@@ -306,7 +309,7 @@ export default function PatientProfilePage() {
                               className="flex items-center gap-1.5 text-xs text-[#007AFF] border border-[#007AFF]/30 px-2.5 py-1 rounded-lg hover:bg-[#007AFF]/10 transition-colors"
                             >
                               <Download className="w-3 h-3" />
-                              Doc {i + 1}
+                              {t("patient.docNumber").replace("{n}", String(i + 1))}
                             </a>
                           ) : null
                         )}

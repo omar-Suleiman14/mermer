@@ -31,7 +31,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
-import { useI18n } from "@/lib/i18n";
+import { useI18n, type Lang } from "@/lib/i18n";
 import {
   DndContext,
   useDraggable,
@@ -54,16 +54,20 @@ function startOfDay(ts: number) {
   return d.getTime();
 }
 
-function formatTime(ts: number) {
-  return new Date(ts).toLocaleTimeString("en-US", {
+function dateLocale(lang: Lang) {
+  return lang === "ar" ? "ar-EG" : "en-US";
+}
+
+function formatTime(ts: number, lang: Lang) {
+  return new Date(ts).toLocaleTimeString(dateLocale(lang), {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
   });
 }
 
-function formatFullDate(ts: number) {
-  return new Date(ts).toLocaleDateString("en-US", {
+function formatFullDate(ts: number, lang: Lang) {
+  return new Date(ts).toLocaleDateString(dateLocale(lang), {
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -109,7 +113,7 @@ function DraggableApptItem({
   onReminder: (e: React.MouseEvent) => void;
   onCancel: () => void;
 }) {
-  const { t, dir } = useI18n();
+  const { t, dir, lang } = useI18n();
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: appt._id,
     disabled: isSelectedDayPast || isDone,
@@ -148,7 +152,7 @@ function DraggableApptItem({
         </div>
       )}
 
-      <span className="text-xs font-bold w-14 flex-shrink-0 text-start">{formatTime(ts)}</span>
+      <span className="text-xs font-bold w-14 flex-shrink-0 text-start">{formatTime(ts, lang)}</span>
 
       <div className="w-8 h-8 rounded-full bg-[#007AFF]/10 flex items-center justify-center flex-shrink-0">
         <span className="text-xs font-bold text-[#007AFF]">{initials}</span>
@@ -172,11 +176,11 @@ function DraggableApptItem({
             </span>
           ) : appt.source === "contract" ? (
             <span className="text-[9px] font-bold uppercase tracking-wider bg-[#AF52DE]/10 text-[#AF52DE] border border-[#AF52DE]/20 px-1.5 py-0.5 rounded-full">
-              Contract
+              {t("schedule.contract")}
             </span>
           ) : appt.source === "follow-up" ? (
             <span className="text-[9px] font-bold uppercase tracking-wider bg-[#FF9500]/10 text-[#FF9500] border border-[#FF9500]/20 px-1.5 py-0.5 rounded-full">
-              Follow-up
+              {t("schedule.followUp")}
             </span>
           ) : (
             <span className="text-[9px] font-bold uppercase tracking-wider bg-muted/60 text-muted-foreground border border-border px-1.5 py-0.5 rounded-full">
@@ -207,14 +211,14 @@ function DraggableApptItem({
                 </button>
                 <button
                   onClick={onReminder}
-                  title="Send WhatsApp reminder"
+                  title={t("schedule.reminderWhatsAppTitle")}
                   className="p-1.5 rounded-lg text-[#25D366] hover:bg-[#25D366]/10 transition-colors"
                 >
                   <MessageCircle className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={onCancel}
-                  title="Cancel"
+                  title={t("schedule.cancelTitle")}
                   className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
                 >
                   <XCircle className="w-3.5 h-3.5" />
@@ -273,7 +277,7 @@ function DraggableApptItem({
 export default function SchedulePage() {
   const { user } = useUser();
   const clerkId = user?.id ?? "";
-  const { t, dir } = useI18n();
+  const { t, dir, lang } = useI18n();
 
   const currentUser = useQuery(
     api.users.getCurrentUser,
@@ -391,10 +395,10 @@ export default function SchedulePage() {
         appointmentId: completionModal.appointmentId,
         updates: { status: "completed", prescriptionImageId, notes },
       });
-      toast.success("Visit marked complete");
+      toast.success(t("toast.visitMarkedComplete"));
       setCompletionModal(null);
     } catch {
-      toast.error("Failed to complete visit");
+      toast.error(t("toast.visitCompleteFailed"));
     }
   }
 
@@ -405,9 +409,9 @@ export default function SchedulePage() {
         appointmentId,
         updates: { status: "cancelled" },
       });
-      toast.success("Appointment cancelled");
+      toast.success(t("toast.appointmentCancelled"));
     } catch {
-      toast.error("Failed to cancel");
+      toast.error(t("toast.cancelAppointmentFailed"));
     }
   }
 
@@ -428,14 +432,14 @@ export default function SchedulePage() {
       if (targetAppt) {
         if (targetAppt._id !== draggedApptId) {
           await swapAppointments({ clerkId, appointmentId1: draggedApptId, appointmentId2: targetAppt._id });
-          toast.success("Appointments swapped");
+          toast.success(t("toast.appointmentsSwapped"));
         }
       } else {
         await updateAppointment({ clerkId, appointmentId: draggedApptId, updates: { date: targetTs } });
-        toast.success("Appointment moved");
+        toast.success(t("toast.appointmentMoved"));
       }
     } catch {
-      toast.error("Failed to reorder schedule");
+      toast.error(t("toast.scheduleReorderFailed"));
     }
   };
 
@@ -450,8 +454,8 @@ export default function SchedulePage() {
     const now = new Date(appointmentDate);
     const message = templateBody
       .replace(/\{patient_name\}/g, patientName)
-      .replace(/\{date\}/g, now.toLocaleDateString("en-US", { month: "short", day: "numeric" }))
-      .replace(/\{time\}/g, formatTime(appointmentDate))
+      .replace(/\{date\}/g, now.toLocaleDateString(dateLocale(lang), { month: "short", day: "numeric" }))
+      .replace(/\{time\}/g, formatTime(appointmentDate, lang))
       .replace(/\{clinic_address\}/g, (currentUser as any)?.clinicAddressLink || "")
       .replace(/\{\{name\}\}/g, firstName);
 
@@ -462,7 +466,7 @@ export default function SchedulePage() {
 
     const url = `https://wa.me/${num}?text=${encodeURIComponent(message)}`;
     window.open(url, "_blank");
-    toast.success(`Opening WhatsApp for ${firstName}`);
+    toast.success(t("toast.openingWhatsapp").replace("{name}", firstName));
     setTemplatePicker(null);
   }
 
@@ -470,12 +474,17 @@ export default function SchedulePage() {
     if (!templatePicker) return;
     const { patientName, appointmentDate } = templatePicker;
     const firstName = patientName.split(" ")[0];
-    const defaultMsg = `Hello ${firstName}, this is a reminder that your appointment is at ${formatTime(appointmentDate)} today. See you soon! 🏥`;
+    const defaultMsg = t("schedule.quickReminderDefault")
+      .replace("{name}", firstName)
+      .replace("{time}", formatTime(appointmentDate, lang));
     sendWithTemplate(currentUser?.whatsappTemplate || defaultMsg);
   }
 
   const isSelectedDayPast = selectedDay < todayTs;
   const isSelectedDayToday = selectedDay === todayTs;
+
+  const WeekChevronPrev = dir === "rtl" ? ChevronRight : ChevronLeft;
+  const WeekChevronNext = dir === "rtl" ? ChevronLeft : ChevronRight;
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -506,7 +515,7 @@ export default function SchedulePage() {
                   }}
                   className="p-1.5 rounded-lg hover:bg-muted/60 transition-colors"
                 >
-                  <ChevronLeft className="w-4 h-4" />
+                  <WeekChevronPrev className="w-4 h-4" />
                 </button>
 
                 {/* Day buttons */}
@@ -531,7 +540,7 @@ export default function SchedulePage() {
                         }`}
                       >
                         <span className="font-medium text-[10px] uppercase">
-                          {d.toLocaleDateString("en-US", { weekday: "short" })}
+                          {d.toLocaleDateString(dateLocale(lang), { weekday: "short" })}
                         </span>
                         <span className="text-base font-bold mt-0.5">{d.getDate()}</span>
                         {isToday && !isSelected && (
@@ -551,14 +560,14 @@ export default function SchedulePage() {
                   }}
                   className="p-1.5 rounded-lg hover:bg-muted/60 transition-colors"
                 >
-                  <ChevronRight className="w-4 h-4" />
+                  <WeekChevronNext className="w-4 h-4" />
                 </button>
               </div>
 
               <div className="flex items-center justify-between mt-3">
                 <div>
                   <span className="font-bold text-sm">
-                    {isSelectedDayToday ? t("schedule.today") + " — " : ""}{formatFullDate(selectedDay)}
+                    {isSelectedDayToday ? t("schedule.today") + " — " : ""}{formatFullDate(selectedDay, lang)}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -615,7 +624,7 @@ export default function SchedulePage() {
                       return (
                         <DroppableSlot key={ts} id={ts}>
                           <div className="flex items-center gap-3 px-4 py-3 rounded-xl border border-dashed border-border/50 bg-muted/10 transition-colors">
-                            <span className="text-xs font-bold w-14 text-muted-foreground/60 text-start">{formatTime(ts)}</span>
+                            <span className="text-xs font-bold w-14 text-muted-foreground/60 text-start">{formatTime(ts, lang)}</span>
                             <span className="text-xs text-muted-foreground/40 italic flex-1 text-start">{t("schedule.available")}</span>
                             {!isSelectedDayPast && (
                               <button
@@ -680,7 +689,7 @@ export default function SchedulePage() {
                       </p>
                       {cancelledToday.map((appt) => (
                         <div key={appt._id} className="flex items-center gap-3 px-4 py-2.5 rounded-lg opacity-40">
-                          <span className="text-xs font-bold w-14 text-muted-foreground">{formatTime(appt.date)}</span>
+                          <span className="text-xs font-bold w-14 text-muted-foreground">{formatTime(appt.date, lang)}</span>
                           <span className="text-sm line-through text-muted-foreground">{appt.patientName}</span>
                         </div>
                       ))}
@@ -740,12 +749,14 @@ export default function SchedulePage() {
               <div className="sm:hidden w-10 h-1 rounded-full bg-border mx-auto mt-2.5 mb-1" />
               <div className="px-5 pt-4 pb-2">
                 <div className="flex items-center justify-between mb-1">
-                  <p className="text-sm font-semibold">Send to {templatePicker.patientName.split(" ")[0]}</p>
+                  <p className="text-sm font-semibold">
+                    {t("templates.sendTo")} {templatePicker.patientName.split(" ")[0]}
+                  </p>
                   <button onClick={() => setTemplatePicker(null)} className="p-1 rounded-lg hover:bg-muted/60 transition-colors">
                     <X className="w-3.5 h-3.5 text-muted-foreground" />
                   </button>
                 </div>
-                <p className="text-[11px] text-muted-foreground">Choose a template to send via WhatsApp</p>
+                <p className="text-[11px] text-muted-foreground">{t("templates.chooseTemplate")}</p>
               </div>
               <div className="px-3 pb-3 space-y-1 max-h-[50vh] overflow-y-auto">
                 <button
@@ -756,8 +767,8 @@ export default function SchedulePage() {
                     <MessageCircle className="w-4 h-4 text-[#25D366]" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">Quick Reminder</p>
-                    <p className="text-[11px] text-muted-foreground truncate">Default appointment reminder</p>
+                    <p className="text-sm font-medium">{t("templates.quickReminder")}</p>
+                    <p className="text-[11px] text-muted-foreground truncate">{t("templates.defaultReminder")}</p>
                   </div>
                 </button>
 
@@ -779,7 +790,7 @@ export default function SchedulePage() {
 
                 {(messageTemplates ?? []).length === 0 && (
                   <div className="px-3 py-2">
-                    <p className="text-[11px] text-muted-foreground">Create templates in Settings → Message Templates</p>
+                    <p className="text-[11px] text-muted-foreground">{t("templates.createInSettings")}</p>
                   </div>
                 )}
               </div>
@@ -790,7 +801,7 @@ export default function SchedulePage() {
                   onClick={() => setTemplatePicker(null)}
                   className="text-[11px] text-[#007AFF] font-medium hover:underline"
                 >
-                  Manage templates in Settings →
+                  {t("templates.manageInSettings")}
                 </Link>
               </div>
             </motion.div>

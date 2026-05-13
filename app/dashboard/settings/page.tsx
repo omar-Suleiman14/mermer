@@ -35,7 +35,7 @@ const SPECIALTIES = [
 export default function SettingsPage() {
   const { user } = useUser();
   const clerkId = user?.id ?? "";
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   
@@ -109,9 +109,9 @@ export default function SettingsPage() {
         bio: bio || undefined,
         publicProfile,
       });
-      toast.success("Settings saved");
-    } catch { toast.error("Failed to save"); }
-  }, [clerkId, currentUser, name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, publicProfile, updateProfile]);
+      toast.success(t("toast.settingsSaved"));
+    } catch { toast.error(t("toast.settingsSaveFailed")); }
+  }, [clerkId, currentUser, name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, publicProfile, updateProfile, t]);
 
   function triggerSave() {
     if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -136,8 +136,8 @@ export default function SettingsPage() {
       const res = await fetch(uploadUrl, { method: "POST", headers: { "Content-Type": file.type }, body: file });
       const { storageId } = await res.json();
       await saveProfilePhoto({ clerkId, storageId: storageId as Id<"_storage"> });
-      toast.success("Photo updated");
-    } catch { toast.error("Photo upload failed"); }
+      toast.success(t("toast.photoUpdated"));
+    } catch { toast.error(t("toast.photoUploadFailed")); }
     finally { setUploadingPhoto(false); }
   }
 
@@ -149,7 +149,7 @@ export default function SettingsPage() {
 
   return (
     <div className="flex flex-col h-full bg-muted/20">
-      <PageHeader title={t("settings.title")} description="Manage your preferences and clinic details." />
+      <PageHeader title={t("settings.title")} description={t("settings.pageDescription")} />
 
       <div className="flex-1 overflow-auto p-4 sm:p-6 max-w-3xl mx-auto w-full pb-20">
 
@@ -157,11 +157,11 @@ export default function SettingsPage() {
         {/* APPEARANCE & LANGUAGE                                       */}
         {/* ═══════════════════════════════════════════════════════════ */}
         <section>
-          <h3 className={sectionTitleClass}>Appearance & Language</h3>
+          <h3 className={sectionTitleClass}>{t("settings.appearanceSection")}</h3>
           <div className={blockClass}>
             <div className={rowClass}>
               <label className={labelClass}>
-                <Globe className="w-4 h-4 text-muted-foreground" /> Language
+                <Globe className="w-4 h-4 text-muted-foreground" /> {t("settings.language")}
               </label>
               <div className="flex-1 flex justify-end">
                 <LanguageToggle />
@@ -170,7 +170,7 @@ export default function SettingsPage() {
             {mounted && (
               <div className={rowClass}>
                 <label className={labelClass}>
-                  <Palette className="w-4 h-4 text-muted-foreground" /> Dark Mode
+                  <Palette className="w-4 h-4 text-muted-foreground" /> {t("settings.darkMode")}
                 </label>
                 <div className="flex-1 flex justify-end">
                   <Switch 
@@ -182,7 +182,7 @@ export default function SettingsPage() {
             )}
           </div>
           <p className="text-[12px] text-muted-foreground ms-4 mt-[-20px] mb-8">
-            Language and theme are applied globally.
+            {t("settings.appearanceHint")}
           </p>
         </section>
 
@@ -190,7 +190,7 @@ export default function SettingsPage() {
         {/* PROFILE                                                   */}
         {/* ═══════════════════════════════════════════════════════════ */}
         <section>
-          <h3 className={sectionTitleClass}>Profile</h3>
+          <h3 className={sectionTitleClass}>{t("settings.profileSection")}</h3>
           <div className={blockClass}>
             
             <div className={`${rowClass} !py-6`}>
@@ -207,47 +207,47 @@ export default function SettingsPage() {
                   </button>
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold">{name || "Your Name"}</h4>
+                  <h4 className="text-sm font-semibold">{name || t("settings.yourName")}</h4>
                   <button onClick={() => photoRef.current?.click()} disabled={uploadingPhoto}
                     className="text-[13px] text-[#007AFF] hover:underline mt-0.5">
-                    {profilePhotoUrl ? "Change Photo" : "Upload Photo"}
+                    {profilePhotoUrl ? t("settings.changePhoto") : t("settings.uploadPhoto")}
                   </button>
                   <input ref={photoRef} type="file" accept="image/*" className="hidden"
                     onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePhotoUpload(f); }} />
                 </div>
               </div>
               <div className="flex items-center gap-3 bg-muted/30 px-3 py-1.5 rounded-full border border-border">
-                 <span className="text-xs font-medium">Public Profile</span>
+                 <span className="text-xs font-medium">{t("settings.publicProfile")}</span>
                  <Switch checked={publicProfile} onCheckedChange={setPublicProfile} />
               </div>
             </div>
 
             <div className={rowClass}>
-              <label className={labelClass}>Full Name</label>
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Dr. Mohamed Ahmed" className={inputClass} />
+              <label className={labelClass}>{t("settings.fullName")}</label>
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("settings.placeholderFullName")} className={inputClass} />
             </div>
 
             <div className={rowClass}>
-              <label className={labelClass}>Specialty</label>
+              <label className={labelClass}>{t("settings.specialty")}</label>
               <select value={specialty} onChange={(e) => setSpecialty(e.target.value)} className={`${inputClass} sm:text-right appearance-none bg-transparent cursor-pointer`}>
-                <option value="">Select specialty…</option>
+                <option value="">{t("settings.selectSpecialty")}</option>
                 {SPECIALTIES.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
 
             <div className={rowClass}>
-              <label className={labelClass}>Credentials</label>
-              <input value={credentials} onChange={(e) => setCredentials(e.target.value)} placeholder="MD, MRCGP, FRCS…" className={inputClass} />
+              <label className={labelClass}>{t("settings.credentials")}</label>
+              <input value={credentials} onChange={(e) => setCredentials(e.target.value)} placeholder={t("settings.placeholderCredentials")} className={inputClass} />
             </div>
 
             <div className={`${rowClass} flex-col !items-start`}>
-              <label className={labelClass}>Short Bio</label>
-              <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={3} placeholder="Tell patients about your experience…"
+              <label className={labelClass}>{t("settings.shortBio")}</label>
+              <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={3} placeholder={t("settings.placeholderBio")}
                 className="w-full text-sm bg-transparent focus:outline-none placeholder:text-muted-foreground/60 resize-none mt-2" />
             </div>
           </div>
           <p className="text-[12px] text-muted-foreground ms-4 mt-[-20px] mb-8">
-            Turning on your Public Profile makes it visible on the booking feed.
+            {t("settings.profileHint")}
           </p>
         </section>
 
@@ -255,15 +255,15 @@ export default function SettingsPage() {
         {/* CLINIC & LOCATION                                         */}
         {/* ═══════════════════════════════════════════════════════════ */}
         <section>
-          <h3 className={sectionTitleClass}>Clinic & Location</h3>
+          <h3 className={sectionTitleClass}>{t("settings.clinicSection")}</h3>
           <div className={blockClass}>
             <div className={rowClass}>
-              <label className={labelClass}>Clinic Name</label>
-              <input value={clinicName} onChange={(e) => setClinicName(e.target.value)} placeholder="Al Nour Clinic" className={inputClass} />
+              <label className={labelClass}>{t("settings.clinicName")}</label>
+              <input value={clinicName} onChange={(e) => setClinicName(e.target.value)} placeholder={t("settings.placeholderClinic")} className={inputClass} />
             </div>
             
             <div className={rowClass}>
-              <label className={labelClass}>Phone / WhatsApp</label>
+              <label className={labelClass}>{t("settings.phoneWhatsapp")}</label>
               <div className="flex items-center gap-1 flex-1 justify-end" dir="ltr">
                 <span className="text-muted-foreground text-sm">+20</span>
                 <input type="tel" value={phone.replace(/^\+?20/, "").replace(/^0/, "")}
@@ -273,25 +273,25 @@ export default function SettingsPage() {
             </div>
 
             <div className={rowClass}>
-              <label className={labelClass}>Maps Link</label>
+              <label className={labelClass}>{t("settings.mapsLink")}</label>
               <input value={clinicAddressLink} onChange={(e) => setClinicAddressLink(e.target.value)}
                 placeholder="https://maps.google.com/..." className={inputClass} dir="ltr" />
             </div>
 
             <div className={rowClass}>
-              <label className={labelClass}>Address Text</label>
+              <label className={labelClass}>{t("settings.addressText")}</label>
               <input value={clinicAddress} onChange={(e) => setClinicAddress(e.target.value)}
-                placeholder="123 Tahrir Square, Downtown" className={inputClass} />
+                placeholder={t("settings.placeholderAddress")} className={inputClass} />
             </div>
 
             <div className={rowClass}>
-              <label className={labelClass}>Fee (EGP)</label>
+              <label className={labelClass}>{t("settings.feeEgp")}</label>
               <input type="number" value={consultationFee} onChange={(e) => setConsultationFee(e.target.value)}
                 placeholder="350" className={inputClass} />
             </div>
           </div>
           <p className="text-[12px] text-muted-foreground ms-4 mt-[-20px] mb-8">
-            The maps link will be shown to patients when they book online.
+            {t("settings.clinicHint")}
           </p>
         </section>
 
@@ -299,10 +299,10 @@ export default function SettingsPage() {
         {/* SCHEDULE                                                  */}
         {/* ═══════════════════════════════════════════════════════════ */}
         <section>
-          <h3 className={sectionTitleClass}>Schedule</h3>
+          <h3 className={sectionTitleClass}>{t("settings.availabilitySection")}</h3>
           <div className={blockClass}>
             <div className={rowClass}>
-              <label className={labelClass}>Open 24/7</label>
+              <label className={labelClass}>{t("settings.open247")}</label>
               <div className="flex-1 flex justify-end">
                 <Switch checked={isAlwaysOpen} onCheckedChange={setIsAlwaysOpen} />
               </div>
@@ -311,7 +311,7 @@ export default function SettingsPage() {
             {!isAlwaysOpen && (
               <>
                 <div className={rowClass}>
-                  <label className={labelClass}>Opens at</label>
+                  <label className={labelClass}>{t("settings.opensAt")}</label>
                   <select value={workingHoursStart} onChange={(e) => setWHS(e.target.value)} className={`${inputClass} sm:text-right appearance-none cursor-pointer`}>
                     {Array.from({ length: 24 }, (_, h) => (
                       <option key={h} value={h}>{h === 0 ? "12:00 AM" : h === 12 ? "12:00 PM" : h < 12 ? `${h}:00 AM` : `${h - 12}:00 PM`}</option>
@@ -319,7 +319,7 @@ export default function SettingsPage() {
                   </select>
                 </div>
                 <div className={rowClass}>
-                  <label className={labelClass}>Closes at</label>
+                  <label className={labelClass}>{t("settings.closesAt")}</label>
                   <select value={workingHoursEnd} onChange={(e) => setWHE(e.target.value)} className={`${inputClass} sm:text-right appearance-none cursor-pointer`}>
                     {Array.from({ length: 24 }, (_, h) => (
                       <option key={h} value={h}>{h === 0 ? "12:00 AM" : h === 12 ? "12:00 PM" : h < 12 ? `${h}:00 AM` : `${h - 12}:00 PM`}</option>
@@ -330,10 +330,10 @@ export default function SettingsPage() {
             )}
 
             <div className={rowClass}>
-              <label className={labelClass}>Slot Duration</label>
+              <label className={labelClass}>{t("settings.slotDurationLabel")}</label>
               <div className="flex items-center gap-2 flex-1 sm:justify-end">
                 <input type="number" value={slotMin} onChange={(e) => setSlotMin(e.target.value)} min={5} max={120} className={`${inputClass} !flex-none w-16 sm:text-right`} dir="ltr" />
-                <span className="text-sm text-muted-foreground">mins</span>
+                <span className="text-sm text-muted-foreground">{t("settings.mins")}</span>
               </div>
             </div>
           </div>
@@ -343,14 +343,16 @@ export default function SettingsPage() {
         {/* MESSAGE TEMPLATES                                         */}
         {/* ═══════════════════════════════════════════════════════════ */}
         <section>
-          <h3 className={sectionTitleClass}>Message Templates</h3>
+          <h3 className={sectionTitleClass}>{t("settings.msgTemplates")}</h3>
           <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden mb-2">
             <div className="p-4">
               <MessageTemplatesSection clerkId={clerkId} clinicAddressLink={clinicAddressLink} />
             </div>
           </div>
           <p className="text-[12px] text-muted-foreground ms-4 mb-8">
-            Create WhatsApp message templates. Type <span className="font-mono bg-card px-1 border border-border rounded text-[#007AFF] text-xs">@</span> to insert variables.
+            {t("settings.messageTemplatesHint")}{" "}
+            <span className="font-mono bg-card px-1 border border-border rounded text-[#007AFF] text-xs">@</span>{" "}
+            {t("settings.messageTemplatesHintAfter")}
           </p>
         </section>
 

@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -7,15 +7,19 @@ import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Check, X, MessageSquare, Copy } from "lucide-react";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { motion, AnimatePresence } from "framer-motion";
+import { useI18n } from "@/lib/i18n";
 
-const VARIABLES = [
-  { key: "{patient_name}", label: "Patient Name", preview: "Ahmed Mohamed" },
-  { key: "{date}", label: "Date", preview: "May 13" },
-  { key: "{time}", label: "Time", preview: "2:30 PM" },
-  { key: "{clinic_address}", label: "Clinic Address", preview: "123 Street, Cairo" },
-];
+function getTemplateVariables(t: (key: string) => string) {
+  return [
+    { key: "{patient_name}", label: t("msgTpl.varPatientName"), preview: "Ahmed Mohamed" },
+    { key: "{date}", label: t("msgTpl.varDate"), preview: "May 13" },
+    { key: "{time}", label: t("msgTpl.varTime"), preview: "2:30 PM" },
+    { key: "{clinic_address}", label: t("msgTpl.varClinicAddress"), preview: "123 Street, Cairo" },
+  ];
+}
 
 export function MessageTemplatesSection({ clerkId, clinicAddressLink }: { clerkId: string; clinicAddressLink: string }) {
+  const { t, lang } = useI18n();
   const templates = useQuery(api.messageTemplates.listTemplates, clerkId ? { clerkId } : "skip");
   const createTemplate = useMutation(api.messageTemplates.createTemplate);
   const updateTemplate = useMutation(api.messageTemplates.updateTemplate);
@@ -44,42 +48,43 @@ export function MessageTemplatesSection({ clerkId, clinicAddressLink }: { clerkI
       .catch(() => setSeeding(false));
   }, [clerkId, templates, createTemplate, seeding]);
 
-  function startEdit(t: { _id: Id<"messageTemplates">; name: string; body: string }) {
-    setEditId(t._id); setName(t.name); setBody(t.body); setAdding(false);
+  function startEdit(row: { _id: Id<"messageTemplates">; name: string; body: string }) {
+    setEditId(row._id); setName(row.name); setBody(row.body); setAdding(false);
   }
   function startNew() { setEditId(null); setName(""); setBody(""); setAdding(true); }
   function cancel() { setAdding(false); setEditId(null); }
 
   function preview(b: string) {
+    const loc = lang === "ar" ? "ar-EG" : "en-US";
     const now = new Date();
     return b
       .replace(/\{patient_name\}/g, "Ahmed Mohamed")
-      .replace(/\{date\}/g, now.toLocaleDateString("en-US", { month: "short", day: "numeric" }))
-      .replace(/\{time\}/g, now.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }))
-      .replace(/\{clinic_address\}/g, clinicAddressLink || "Your Clinic Address");
+      .replace(/\{date\}/g, now.toLocaleDateString(loc, { month: "short", day: "numeric" }))
+      .replace(/\{time\}/g, now.toLocaleTimeString(loc, { hour: "numeric", minute: "2-digit", hour12: true }))
+      .replace(/\{clinic_address\}/g, clinicAddressLink || t("msgTpl.previewClinicFallback"));
   }
 
   async function save() {
-    if (!name.trim()) { toast.error("Template name required"); return; }
-    if (!body.trim()) { toast.error("Template body required"); return; }
+    if (!name.trim()) { toast.error(t("msgTpl.nameRequired")); return; }
+    if (!body.trim()) { toast.error(t("msgTpl.bodyRequired")); return; }
     setSaving(true);
     try {
       if (editId) {
         await updateTemplate({ clerkId, templateId: editId, name: name.trim(), body: body.trim() });
-        toast.success("Template updated");
+        toast.success(t("msgTpl.updated"));
       } else {
         await createTemplate({ clerkId, name: name.trim(), body: body.trim() });
-        toast.success("Template created");
+        toast.success(t("msgTpl.created"));
       }
       cancel();
-    } catch { toast.error("Failed to save"); }
+    } catch { toast.error(t("msgTpl.saveFailed")); }
     finally { setSaving(false); }
   }
 
   async function del(id: Id<"messageTemplates">) {
-    if (!confirm("Delete this template?")) return;
-    try { await deleteTemplate({ clerkId, templateId: id }); toast.success("Deleted"); }
-    catch { toast.error("Failed"); }
+    if (!confirm(t("msgTpl.deleteConfirm"))) return;
+    try { await deleteTemplate({ clerkId, templateId: id }); toast.success(t("toast.deleted")); }
+    catch { toast.error(t("msgTpl.deleteFailed")); }
   }
 
   return (
@@ -90,19 +95,19 @@ export function MessageTemplatesSection({ clerkId, clinicAddressLink }: { clerkI
       ) : templates.length === 0 && !adding ? (
         <div className="text-center py-6">
           <MessageSquare className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-          <p className="text-xs text-muted-foreground mb-3">No templates yet. Create one to quickly message patients.</p>
+          <p className="text-xs text-muted-foreground mb-3">{t("msgTpl.empty")}</p>
           <button
             onClick={startNew}
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#007AFF] hover:underline"
           >
-            <Plus className="w-3.5 h-3.5" /> Create your first template
+            <Plus className="w-3.5 h-3.5" /> {t("msgTpl.createFirst")}
           </button>
         </div>
       ) : (
         <div className="space-y-2">
-          {templates.map((t) => (
-            <div key={t._id}>
-              {editId === t._id ? (
+          {templates.map((tpl) => (
+            <div key={tpl._id}>
+              {editId === tpl._id ? (
                 <EditorForm
                   name={name} setName={setName}
                   body={body} setBody={setBody}
@@ -113,20 +118,20 @@ export function MessageTemplatesSection({ clerkId, clinicAddressLink }: { clerkI
                 <div className="flex items-start gap-3 p-3 rounded-xl border border-border bg-card group hover:border-[#007AFF]/20 transition-colors">
                   <MessageSquare className="w-4 h-4 text-[#007AFF] mt-0.5 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold">{t.name}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{t.body}</p>
+                    <p className="text-sm font-semibold">{tpl.name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{tpl.body}</p>
                   </div>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onClick={() => {
-                      navigator.clipboard.writeText(preview(t.body));
-                      toast.success("Copied!");
+                      navigator.clipboard.writeText(preview(tpl.body));
+                      toast.success(t("msgTpl.copied"));
                     }} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
                       <Copy className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={() => startEdit(t)} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
+                    <button onClick={() => startEdit(tpl)} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={() => del(t._id)} className="p-1.5 rounded-lg hover:bg-red-500/10 hover:text-red-500 transition-colors text-muted-foreground">
+                    <button onClick={() => del(tpl._id)} className="p-1.5 rounded-lg hover:bg-red-500/10 hover:text-red-500 transition-colors text-muted-foreground">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -152,7 +157,7 @@ export function MessageTemplatesSection({ clerkId, clinicAddressLink }: { clerkI
           onClick={startNew}
           className="flex items-center gap-2 text-sm font-semibold text-[#007AFF] hover:underline"
         >
-          <Plus className="w-4 h-4" /> Add Template
+          <Plus className="w-4 h-4" /> {t("msgTpl.addTemplate")}
         </button>
       )}
     </div>
@@ -167,13 +172,16 @@ function EditorForm({ name, setName, body, setBody, onSave, onCancel, preview, s
   onSave: () => void; onCancel: () => void;
   preview: string; saving: boolean;
 }) {
+  const { t } = useI18n();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showMention, setShowMention] = useState(false);
   const [mentionFilter, setMentionFilter] = useState("");
   const [mentionIdx, setMentionIdx] = useState(0);
   const [mentionStart, setMentionStart] = useState(-1);
 
-  const filtered = VARIABLES.filter((v) =>
+  const variables = useMemo(() => getTemplateVariables(t), [t]);
+
+  const filtered = variables.filter((v) =>
     v.label.toLowerCase().includes(mentionFilter.toLowerCase()) ||
     v.key.toLowerCase().includes(mentionFilter.toLowerCase())
   );
@@ -202,7 +210,7 @@ function EditorForm({ name, setName, body, setBody, onSave, onCancel, preview, s
     setShowMention(false);
   }, [setBody]);
 
-  function insertVariable(variable: typeof VARIABLES[0]) {
+  function insertVariable(variable: (typeof variables)[0]) {
     if (!textareaRef.current) return;
     const ta = textareaRef.current;
     const pos = ta.selectionStart;
@@ -243,15 +251,15 @@ function EditorForm({ name, setName, body, setBody, onSave, onCancel, preview, s
       <input
         value={name}
         onChange={(e) => setName(e.target.value)}
-        placeholder="Template name (e.g. Appointment Reminder)"
+        placeholder={t("msgTpl.namePlaceholder")}
         className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007AFF]"
       />
 
       <div className="relative">
         <div className="flex items-center gap-1 mb-1.5 text-[10px] text-muted-foreground">
-          <span>Type</span>
+          <span>{t("msgTpl.typeAtPart1")}</span>
           <span className="font-mono bg-muted/60 px-1.5 py-0.5 rounded text-[#007AFF] font-bold">@</span>
-          <span>to insert variables</span>
+          <span>{t("msgTpl.typeAtPart2")}</span>
         </div>
         <textarea
           ref={textareaRef}
@@ -259,7 +267,7 @@ function EditorForm({ name, setName, body, setBody, onSave, onCancel, preview, s
           onChange={handleBodyChange}
           onKeyDown={handleKeyDown}
           rows={3}
-          placeholder="Hello @..."
+          placeholder={t("msgTpl.bodyPlaceholder")}
           className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007AFF] resize-none font-mono"
         />
 
@@ -287,7 +295,7 @@ function EditorForm({ name, setName, body, setBody, onSave, onCancel, preview, s
                   </span>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium">{v.label}</p>
-                    <p className="text-[10px] text-muted-foreground">e.g. {v.preview}</p>
+                    <p className="text-[10px] text-muted-foreground">{t("msgTpl.varEg")} {v.preview}</p>
                   </div>
                 </button>
               ))}
@@ -299,16 +307,16 @@ function EditorForm({ name, setName, body, setBody, onSave, onCancel, preview, s
       {/* Live preview */}
       {body && (
         <div className="text-xs text-muted-foreground bg-muted/40 rounded-lg p-2.5 leading-relaxed">
-          <span className="font-semibold">Preview: </span>{preview}
+          <span className="font-semibold">{t("msgTpl.preview")} </span>{preview}
         </div>
       )}
 
       <div className="flex gap-2">
         <button onClick={onCancel} className="flex items-center gap-1 text-xs border border-border px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors">
-          <X className="w-3 h-3" /> Cancel
+          <X className="w-3 h-3" /> {t("common.cancel")}
         </button>
         <button onClick={onSave} disabled={saving} className="flex items-center gap-1 text-xs bg-[#007AFF] text-white px-3 py-1.5 rounded-lg hover:bg-[#0062cc] transition-colors disabled:opacity-60">
-          {saving ? <IOSSpinner size={12} className="text-white" /> : <Check className="w-3 h-3" />} Save
+          {saving ? <IOSSpinner size={12} className="text-white" /> : <Check className="w-3 h-3" />} {t("common.save")}
         </button>
       </div>
     </div>
