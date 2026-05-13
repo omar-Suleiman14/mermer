@@ -61,13 +61,13 @@ export default defineSchema({
     contractDefaultVisitFrequency: v.optional(v.string()),
     contractDefaultDurationDays: v.optional(v.number()),
 
-    // Queue display token (for the waiting room screen)
+    // Queue display token (kept optional for existing records — feature removed)
     queueDisplayToken: v.optional(v.string()),
   })
     .index("by_clerk_id", ["clerkId"])
     .index("by_qr_slug", ["qrSlug"])
-    .index("by_queue_token", ["queueDisplayToken"])
-    .index("by_public_profile", ["publicProfile"]),
+    .index("by_public_profile", ["publicProfile"])
+    .index("by_isAdmin", ["isAdmin"]),
 
   patients: defineTable({
     doctorId: v.id("users"),
@@ -79,6 +79,7 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index("by_doctor", ["doctorId"])
+    .index("by_doctor_phone", ["doctorId", "phone"])
     .searchIndex("search_patients", {
       searchField: "name",
       filterFields: ["doctorId"],

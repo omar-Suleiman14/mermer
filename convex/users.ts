@@ -148,7 +148,7 @@ export const listAllDoctors = query({
       .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
       .unique();
     if (!admin?.isAdmin) throw new Error("Unauthorized");
-    return await ctx.db.query("users").collect();
+    return await ctx.db.query("users").take(20000);
   },
 });
 
@@ -171,22 +171,29 @@ export const setAdmin = mutation({
 });
 
 // Public: search doctors (resolves profile photo URL)
+// OPTIMIZED: Uses by_public_profile index instead of full table scan
 export const searchDoctors = query({
   args: { search: v.string() },
   handler: async (ctx, args) => {
-    const all = await ctx.db.query("users").collect();
-    const published = all.filter((u) => u.publicProfile && !(u as any).isBanned);
+    // OPTIMIZED: Use index to only read published doctors
+    const published = await ctx.db
+      .query("users")
+      .withIndex("by_public_profile", (q) => q.eq("publicProfile", true))
+      .take(500);
+
+    const visible = published.filter((u) => !(u as any).isBanned);
+
     const filtered = args.search.trim()
       ? (() => {
           const q = args.search.toLowerCase();
-          return published.filter(
+          return visible.filter(
             (u) =>
               u.name.toLowerCase().includes(q) ||
               (u.specialty ?? "").toLowerCase().includes(q) ||
               (u.clinicName ?? "").toLowerCase().includes(q)
           );
         })()
-      : published;
+      : visible;
 
     return await Promise.all(
       filtered.map(async (u) => ({
@@ -233,12 +240,15 @@ export const makeAdmin = mutation({
 });
 
 // One-time admin claim — only succeeds when no admin account exists yet
+// OPTIMIZED: Uses by_isAdmin index for O(1) lookup instead of full table scan
 export const claimAdmin = mutation({
   args: { clerkId: v.string() },
   handler: async (ctx, args) => {
-    // Check if any admin already exists
-    const allUsers = await ctx.db.query("users").collect();
-    const existingAdmin = allUsers.find((u) => u.isAdmin === true);
+    // OPTIMIZED: Use index to check if any admin exists (O(1) instead of O(N))
+    const existingAdmin = await ctx.db
+      .query("users")
+      .withIndex("by_isAdmin", (q) => q.eq("isAdmin", true))
+      .first();
     if (existingAdmin) {
       throw new Error("Admin already claimed");
     }
@@ -255,11 +265,15 @@ export const claimAdmin = mutation({
 });
 
 // Public query — does any admin exist yet?
+// OPTIMIZED: Uses by_isAdmin index for O(1) check instead of full table scan
 export const getAdminExists = query({
   args: {},
   handler: async (ctx) => {
-    const all = await ctx.db.query("users").collect();
-    return all.some((u) => u.isAdmin === true);
+    const admin = await ctx.db
+      .query("users")
+      .withIndex("by_isAdmin", (q) => q.eq("isAdmin", true))
+      .first();
+    return admin !== null;
   },
 });
 
@@ -298,4 +312,3 @@ export const saveProfilePhoto = mutation({
     await ctx.db.patch(user._id, { profilePhotoId: args.storageId });
   },
 });
-

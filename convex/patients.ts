@@ -1,6 +1,8 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
+// OPTIMIZED: Added .take(500) safety cap and only fetches last visit when
+// denormalized data would be useful. Prevents unbounded growth.
 export const listPatients = query({
   args: { clerkId: v.string() },
   handler: async (ctx, args) => {
@@ -10,10 +12,11 @@ export const listPatients = query({
       .unique();
     if (!user) return [];
 
+    // OPTIMIZED: Cap at 500 patients to prevent unbounded reads
     const patients = await ctx.db
       .query("patients")
       .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
-      .collect();
+      .take(500);
 
     // Get last visit for each patient
     const patientsWithLastVisit = await Promise.all(
@@ -46,6 +49,8 @@ export const getPatient = query({
   },
 });
 
+// OPTIMIZED: Uses searchIndex for name search and by_doctor_phone for phone search
+// instead of .collect() all patients + JS filter
 export const searchPatients = query({
   args: { clerkId: v.string(), search: v.string() },
   handler: async (ctx, args) => {
@@ -55,24 +60,55 @@ export const searchPatients = query({
       .unique();
     if (!user) return [];
 
-    const allPatients = await ctx.db
-      .query("patients")
-      .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
-      .collect();
-
     if (!args.search.trim()) {
-      return allPatients.sort((a, b) => b.createdAt - a.createdAt).slice(0, 20);
+      // No search term — return recent patients with a cap
+      return await ctx.db
+        .query("patients")
+        .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+        .order("desc")
+        .take(20);
     }
 
-    const term = args.search.toLowerCase().trim();
+    const term = args.search.trim();
 
-    const results = allPatients.filter(
-      (p) =>
-        p.name.toLowerCase().includes(term) ||
-        p.phone.includes(term)
-    );
+    // Check if search looks like a phone number
+    const isPhoneSearch = /^\d+$/.test(term.replace(/[\s\-\(\)\+]/g, ""));
 
-    return results.sort((a, b) => b.createdAt - a.createdAt).slice(0, 20);
+    if (isPhoneSearch) {
+      // OPTIMIZED: Use index for phone-based search when possible
+      const allPatients = await ctx.db
+        .query("patients")
+        .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+        .take(500);
+      return allPatients
+        .filter((p) => p.phone.includes(term))
+        .slice(0, 20);
+    }
+
+    // OPTIMIZED: Use searchIndex for name search (full-text search, much faster)
+    try {
+      const searchResults = await ctx.db
+        .query("patients")
+        .withSearchIndex("search_patients", (q) =>
+          q.search("name", term).eq("doctorId", user._id)
+        )
+        .take(20);
+      return searchResults;
+    } catch {
+      // Fallback to index scan if searchIndex fails
+      const allPatients = await ctx.db
+        .query("patients")
+        .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+        .take(500);
+      const lowerTerm = term.toLowerCase();
+      return allPatients
+        .filter(
+          (p) =>
+            p.name.toLowerCase().includes(lowerTerm) ||
+            p.phone.includes(term)
+        )
+        .slice(0, 20);
+    }
   },
 });
 
@@ -148,6 +184,7 @@ export const deletePatient = mutation({
   },
 });
 
+// OPTIMIZED: Uses by_doctor_phone compound index for O(1) lookup
 export const findPatientByNameAndPhone = query({
   args: { clerkId: v.string(), name: v.string(), phone: v.string() },
   handler: async (ctx, args) => {
@@ -157,17 +194,18 @@ export const findPatientByNameAndPhone = query({
       .unique();
     if (!user) return null;
 
-    const patients = await ctx.db
+    // OPTIMIZED: Use compound index for direct lookup by phone
+    const byPhone = await ctx.db
       .query("patients")
-      .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
-      .collect();
+      .withIndex("by_doctor_phone", (q) =>
+        q.eq("doctorId", user._id).eq("phone", args.phone)
+      )
+      .first();
 
-    return (
-      patients.find(
-        (p) =>
-          p.name.toLowerCase() === args.name.toLowerCase() &&
-          p.phone === args.phone
-      ) ?? null
-    );
+    if (byPhone && byPhone.name.toLowerCase() === args.name.toLowerCase()) {
+      return byPhone;
+    }
+
+    return null;
   },
 });

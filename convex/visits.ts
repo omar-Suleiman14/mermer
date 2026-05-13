@@ -17,7 +17,7 @@ export const getVisitsByPatient = query({
       .query("visits")
       .withIndex("by_patient", (q) => q.eq("patientId", args.patientId))
       .order("desc")
-      .collect();
+      .take(500);
 
     // Resolve storage URLs
     return await Promise.all(
@@ -54,17 +54,26 @@ export const getRecentVisits = query({
       .order("desc")
       .take(args.limit ?? 5);
 
+    // OPTIMIZED: Only fetch patient when denormalized name is missing
     return await Promise.all(
       visits.map(async (v) => {
-        const patient = await ctx.db.get(v.patientId);
+        const needsPatient = !v.patientName && v.patientId;
+        const patient = needsPatient ? await ctx.db.get(v.patientId) : null;
         return { ...v, patient };
       })
     );
   },
 });
 
+// OPTIMIZED: Uses by_doctor_date range query with client-passed timestamps
+// instead of .collect() ALL visits + Date.now() inside query (which defeats cache).
 export const getVisitStats = query({
-  args: { clerkId: v.string() },
+  args: {
+    clerkId: v.string(),
+    todayStart: v.optional(v.number()),
+    weekStart: v.optional(v.number()),
+    monthStart: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
     const user = await ctx.db
       .query("users")
@@ -72,24 +81,25 @@ export const getVisitStats = query({
       .unique();
     if (!user) return { today: 0, week: 0, month: 0 };
 
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    const startOfWeek = new Date();
-    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
-    startOfWeek.setHours(0, 0, 0, 0);
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
+    // Use client-provided timestamps (fallback for backwards compat)
+    const now = Date.now();
+    const todayMs = now - (now % 86400000);
+    const todayStart = args.todayStart ?? todayMs;
+    const monthStart = args.monthStart ?? (todayMs - 29 * 86400000);
+    const weekStart = args.weekStart ?? (todayMs - 6 * 86400000);
 
-    const allVisits = await ctx.db
+    // OPTIMIZED: Only read this month's visits using date range index
+    const monthVisits = await ctx.db
       .query("visits")
-      .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
-      .collect();
+      .withIndex("by_doctor_date", (q) =>
+        q.eq("doctorId", user._id).gte("date", monthStart)
+      )
+      .take(5000);
 
     return {
-      today: allVisits.filter((v) => v.date >= startOfDay.getTime()).length,
-      week: allVisits.filter((v) => v.date >= startOfWeek.getTime()).length,
-      month: allVisits.filter((v) => v.date >= startOfMonth.getTime()).length,
+      today: monthVisits.filter((v) => v.date >= todayStart).length,
+      week: monthVisits.filter((v) => v.date >= weekStart).length,
+      month: monthVisits.length,
     };
   },
 });

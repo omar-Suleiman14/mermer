@@ -53,7 +53,7 @@ export const getQueueByDate = query({
 // ─── Legacy alias — kept for backwards compat with existing imports ───────────
 
 export const getTodayQueue = query({
-  args: { clerkId: v.string() },
+  args: { clerkId: v.string(), todayTs: v.optional(v.number()) },
   handler: async (ctx, args) => {
     const user = await ctx.db
       .query("users")
@@ -61,7 +61,8 @@ export const getTodayQueue = query({
       .unique();
     if (!user) return [];
 
-    const queueDate = startOfDay(Date.now());
+    // OPTIMIZED: Accept date from client instead of Date.now() (preserves query cache)
+    const queueDate = startOfDay(args.todayTs ?? Date.now());
 
     const queueItems = await ctx.db
       .query("queue")

@@ -62,7 +62,7 @@ export const getFeedbackStats = query({
     const items = await ctx.db
       .query("feedback")
       .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
-      .collect();
+      .take(1000);
 
     if (items.length === 0) return { average: 0, count: 0 };
     const sum = items.reduce((a, b) => a + b.rating, 0);

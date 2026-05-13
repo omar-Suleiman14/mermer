@@ -13,18 +13,11 @@ import {
   CalendarDays,
   Clock,
   CheckCircle2,
-  Users,
-  TrendingUp,
-  Globe,
-  UserCheck,
   Activity,
   PlusCircle,
   MessageCircle,
   GripVertical,
   XCircle,
-  Monitor,
-  Copy,
-  ExternalLink,
   X,
   MoreHorizontal,
 } from "lucide-react";
@@ -65,7 +58,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { IOSSpinner } from "@/components/ui/spinner";
+
 
 
 function startOfDay(ts: number) {
@@ -272,11 +265,6 @@ export default function DashboardPage() {
     clerkId ? { clerkId, dayStart: todayTs } : "skip"
   );
 
-  const allAppointments = useQuery(
-    api.appointments.listAppointments,
-    clerkId ? { clerkId } : "skip"
-  );
-
   const messageTemplates = useQuery(
     api.messageTemplates.listTemplates,
     clerkId ? { clerkId } : "skip"
@@ -403,18 +391,13 @@ export default function DashboardPage() {
     sendWithTemplate(currentUser?.whatsappTemplate || defaultMsg);
   }
 
-  // Stats derived from all appointments
+  // Stats derived from today's appointments only (no heavy allAppointments subscription)
   const stats = useMemo(() => {
-    if (!allAppointments) return null;
-    const total = allAppointments.length;
-    const completed = allAppointments.filter(
-      (a) => a.status === "completed"
-    ).length;
-    const online = allAppointments.filter((a) => a.source === "online").length;
+    if (!todayAppointments) return null;
     const todayCount =
-      todayAppointments?.filter((a) => a.status !== "cancelled").length ?? 0;
-    return { total, completed, online, todayCount };
-  }, [allAppointments, todayAppointments]);
+      todayAppointments.filter((a) => a.status !== "cancelled").length;
+    return { todayCount };
+  }, [todayAppointments]);
 
   // Today's non-cancelled appointments sorted by time
   const todayVisits = useMemo(() => {

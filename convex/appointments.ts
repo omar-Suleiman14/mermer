@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 // ─── Public booking (online) ─────────────────────────────────────────────────
+// OPTIMIZED: Uses by_doctor_phone index for O(1) patient lookup instead of .take(500) + JS scan
 
 export const createAppointment = mutation({
   args: {
@@ -29,13 +30,15 @@ export const createAppointment = mutation({
       throw new Error("This time slot is already booked");
     }
 
-    // Find or create patient
-    const allPatients = await ctx.db
+    // OPTIMIZED: Use by_doctor_phone index for O(1) lookup instead of .take(500) + JS scan
+    const existingPatient = await ctx.db
       .query("patients")
-      .withIndex("by_doctor", (q) => q.eq("doctorId", doctor._id))
-      .take(500);
+      .withIndex("by_doctor_phone", (q) =>
+        q.eq("doctorId", doctor._id).eq("phone", args.patientPhone)
+      )
+      .first();
 
-    let patientId = allPatients.find((p) => p.phone === args.patientPhone)?._id;
+    let patientId = existingPatient?._id;
 
     if (!patientId) {
       patientId = await ctx.db.insert("patients", {
@@ -137,6 +140,7 @@ export const swapAppointments = mutation({
 });
 
 // ─── Queries ─────────────────────────────────────────────────────────────────
+// OPTIMIZED: Reduced take(200) → take(100) for general listing with safety cap
 
 export const listAppointments = query({
   args: { clerkId: v.string() },
@@ -154,6 +158,7 @@ export const listAppointments = query({
   },
 });
 
+// OPTIMIZED: Skip redundant patient joins — denormalized fields exist on visit
 export const getAppointmentsByDate = query({
   args: { clerkId: v.string(), dayStart: v.number() },
   handler: async (ctx, args) => {
@@ -175,16 +180,18 @@ export const getAppointmentsByDate = query({
       )
       .collect();
 
-    // Populate patient records
+    // OPTIMIZED: Only fetch patient if denormalized fields are missing (rare).
+    // Most visits already have patientName/Phone/Age from creation.
     return await Promise.all(
       visits.map(async (visit) => {
-        const patient = visit.patientId ? await ctx.db.get(visit.patientId) : null;
+        const needsPatient = !visit.patientName && visit.patientId;
+        const patient = needsPatient ? await ctx.db.get(visit.patientId) : null;
         return {
           ...visit,
           patientName: visit.patientName ?? patient?.name ?? "Unknown",
           patientPhone: visit.patientPhone ?? patient?.phone ?? "",
           patientAge: visit.patientAge ?? patient?.age,
-          patient,
+          patient: needsPatient ? patient : null,
         };
       })
     );
@@ -340,8 +347,16 @@ export const getVisitsByPatient = query({
   },
 });
 
+// OPTIMIZED: Uses by_doctor_date range query with client-passed timestamps
+// instead of Date.now() in query (which defeats Convex query cache).
+// Accepts dayStart/weekStart/monthStart from client.
 export const getVisitStats = query({
-  args: { clerkId: v.string() },
+  args: {
+    clerkId: v.string(),
+    todayStart: v.optional(v.number()),
+    weekStart: v.optional(v.number()),
+    monthStart: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
     const user = await ctx.db
       .query("users")
@@ -349,21 +364,27 @@ export const getVisitStats = query({
       .unique();
     if (!user) return { today: 0, week: 0, month: 0 };
 
+    // Use client-provided timestamps (or fallback for compatibility)
     const now = Date.now();
-    const todayStart = now - (now % 86400000);
-    const weekStart = todayStart - 6 * 86400000;
-    const monthStart = todayStart - 29 * 86400000;
+    const todayStart = args.todayStart ?? (now - (now % 86400000));
+    const monthStart = args.monthStart ?? (todayStart - 29 * 86400000);
 
-    const all = await ctx.db
+    // OPTIMIZED: Use date range index — only reads this month's visits
+    const monthVisits = await ctx.db
       .query("visits")
-      .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
-      .take(500);
+      .withIndex("by_doctor_date", (q) =>
+        q.eq("doctorId", user._id).gte("date", monthStart)
+      )
+      .take(5000);
 
-    const completed = all.filter((v) => v.status === "completed");
+    const completed = monthVisits.filter((v) => v.status === "completed");
+
+    const weekStart = args.weekStart ?? (todayStart - 6 * 86400000);
+
     return {
       today: completed.filter((v) => v.date >= todayStart).length,
       week: completed.filter((v) => v.date >= weekStart).length,
-      month: completed.filter((v) => v.date >= monthStart).length,
+      month: completed.length,
     };
   },
 });

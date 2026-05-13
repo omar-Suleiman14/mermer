@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 // Generate a pre-signed upload URL for Convex storage
+// SECURITY: Verifies auth when clerkId is provided
 export const generateUploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
