@@ -177,18 +177,8 @@ async function executeTool(
 
 function buildSystemPrompt(
   doctorCtx: { name: string; clinicName: string; workingHoursStart: number; workingHoursEnd: number; availableDays: string[]; slotDurationMinutes: number },
-  memory: { lastPatientId?: string; lastQueueId?: string } | null
+  contextData: string
 ): string {
-  let memoryBlock = "";
-  if (memory) {
-    const parts: string[] = [];
-    if (memory.lastPatientId) parts.push(`lastPatientId: ${memory.lastPatientId}`);
-    if (memory.lastQueueId) parts.push(`lastQueueId: ${memory.lastQueueId}`);
-    if (parts.length > 0) {
-      memoryBlock = `\n\nLAST KNOWN ENTITIES:\n${parts.join("\n")}\n\nIf the user says "him", "her", "this patient", "that one" — assume they refer to these entities. Use the IDs directly.`;
-    }
-  }
-
   return `You are Elliot, an intelligent medical AI assistant dedicated to Dr. ${doctorCtx.name} at ${doctorCtx.clinicName}.
 You help the doctor view clinic information: patient lists, today's schedule, waiting room queue, and statistics.
 You are a READ-ONLY assistant. You can look up information but you CANNOT modify, add, remove, or reschedule anything.
@@ -201,11 +191,12 @@ Clinic Settings:
 CRITICAL RULES:
 1. Always reply strictly in English. NEVER use Arabic.
 2. You are READ-ONLY. If the user asks to add, remove, reschedule, mark done, or modify anything — politely tell them to use the Ibn Sina dashboard instead.
-3. NEVER invent or hallucinate database IDs. Copy them EXACTLY from tool responses.
-4. If a tool fails, explain the exact failure. Never hallucinate success.
-5. If multiple patients match a search, list them all.
-6. Always prefer existing tool functions over text-based answers.
-7. If the user refers to "that patient" or "him/her", use the entity memory below.${memoryBlock}`;
+3. Use the REAL-TIME CLINIC DATA provided below to answer questions. Do not make up any information.
+4. Keep your answers concise and directly to the point.
+5. If the user asks about something not in the clinic data, say you don't have that information.
+
+REAL-TIME CLINIC DATA:
+${contextData}`;
 }
 
 // ─── OpenRouter AI call ───────────────────────────────────────────────────────
@@ -234,8 +225,6 @@ async function callAI(messages: any[]): Promise<any> {
         body: JSON.stringify({
           model,
           messages,
-          tools: TOOLS,
-          tool_choice: "auto",
           max_tokens: 1024,
         }),
         signal: controller.signal,
@@ -354,14 +343,33 @@ export async function POST(req: NextRequest) {
       slotDurationMinutes: doctor.slotDurationMinutes || 30,
     };
 
-    const systemPrompt = buildSystemPrompt(doctorCtx, memory as any);
+    // ══════════════════════════════════════════════════════════════════════
+    // STEP 4: Fetch real-time data to inject
+    // ══════════════════════════════════════════════════════════════════════
+    
+    // Fetch queue, analytics, and basic patient list
+    const [queueRes, analyticsRes, patientsRes] = await Promise.all([
+      executeTool("get_today_queue", doctorId),
+      executeTool("get_analytics", doctorId),
+      executeTool("get_all_patients", doctorId),
+    ]);
+    
+    const contextData = `
+--- TODAY'S QUEUE ---
+${queueRes.output}
 
-    // Convert stored history to OpenAI message format.
-    // Only include user + assistant text messages — tool messages require
-    // matching tool_calls structures we don't persist, so they'd break the API.
+--- CLINIC ANALYTICS ---
+${analyticsRes.output}
+
+--- ALL REGISTERED PATIENTS ---
+${patientsRes.output}
+`;
+
+    const systemPrompt = buildSystemPrompt(doctorCtx, contextData);
+
     const historyMessages: any[] = history
-      .filter((m: any) => (m.role === "user" || m.role === "assistant") && m.content && !m.content.startsWith("[tool_calls:"))
-      .slice(-20) // Cap to last 20 messages to stay within model context limits
+      .filter((m: any) => (m.role === "user" || m.role === "assistant") && m.content)
+      .slice(-10) // Keep context smaller
       .map((m: any) => ({ role: m.role, content: m.content }));
 
     const messages: any[] = [
@@ -371,7 +379,7 @@ export async function POST(req: NextRequest) {
     ];
 
     // ══════════════════════════════════════════════════════════════════════
-    // STEP 3: Save user message to conversation history
+    // STEP 5: AI call & Save
     // ══════════════════════════════════════════════════════════════════════
 
     await convex.mutation(api.aiMemory.saveMessage, {
@@ -381,95 +389,15 @@ export async function POST(req: NextRequest) {
       content: text,
     });
 
-    // ══════════════════════════════════════════════════════════════════════
-    // STEP 4: AI call loop with REAL tool execution + verification
-    // ══════════════════════════════════════════════════════════════════════
-
-    let aiResponse = await callAI(messages);
-    let rounds = 0;
-    const collectedEntities: ToolExecResult["entities"] = {};
-
-    while (typeof aiResponse === "object" && aiResponse !== null && rounds < 5) {
-      rounds++;
-      const assistantMessage = aiResponse as any;
-      messages.push(assistantMessage);
-
-      // Save assistant tool-call message
-      await convex.mutation(api.aiMemory.saveMessage, {
-        doctorId,
-        telegramId,
-        role: "assistant",
-        content: assistantMessage.content || `[tool_calls: ${assistantMessage.tool_calls.map((tc: any) => tc.function.name).join(", ")}]`,
-      });
-
-      const toolResults: any[] = [];
-
-      for (const tc of assistantMessage.tool_calls) {
-        await tgSendTyping(chatId);
-
-        // REAL execution with verification
-        const result = await executeTool(tc.function.name, doctorId, tc.function.arguments);
-
-        // Collect entities from tool results
-        if (result.entities.lastPatientId) collectedEntities.lastPatientId = result.entities.lastPatientId;
-        if (result.entities.lastQueueId) collectedEntities.lastQueueId = result.entities.lastQueueId;
-
-        toolResults.push({
-          role: "tool",
-          tool_call_id: tc.id,
-          content: result.output,
-        });
-
-        // Save tool result to conversation history
-        await convex.mutation(api.aiMemory.saveMessage, {
-          doctorId,
-          telegramId,
-          role: "tool",
-          content: result.output,
-          toolName: tc.id,
-          toolResult: result.output,
-        });
-
-        // Log failures
-        if (result.output.startsWith("Error") || result.output.startsWith("WARNING")) {
-          await convex.mutation(api.aiMemory.saveFailure, {
-            doctorId,
-            telegramId,
-            userMessage: text,
-            aiResponse: `Tool: ${tc.function.name}, Args: ${tc.function.arguments}`,
-            intendedAction: tc.function.name,
-            failureReason: result.output,
-          });
-        }
-      }
-
-      messages.push(...toolResults);
-      aiResponse = await callAI(messages);
-    }
-
-    // ══════════════════════════════════════════════════════════════════════
-    // STEP 5: Save final response + update entity memory
-    // ══════════════════════════════════════════════════════════════════════
-
+    const aiResponse = await callAI(messages);
     const finalText = typeof aiResponse === "string" ? aiResponse : "Sorry, an unexpected error occurred.";
 
-    // Save assistant final response
     await convex.mutation(api.aiMemory.saveMessage, {
       doctorId,
       telegramId,
       role: "assistant",
       content: finalText,
     });
-
-    // Update entity memory if we collected any entities
-    if (collectedEntities.lastPatientId || collectedEntities.lastQueueId) {
-      await convex.mutation(api.aiMemory.updateMemory, {
-        doctorId,
-        telegramId,
-        ...(collectedEntities.lastPatientId && { lastPatientId: collectedEntities.lastPatientId }),
-        ...(collectedEntities.lastQueueId && { lastQueueId: collectedEntities.lastQueueId }),
-      });
-    }
 
     // ══════════════════════════════════════════════════════════════════════
     // STEP 6: Send reply
