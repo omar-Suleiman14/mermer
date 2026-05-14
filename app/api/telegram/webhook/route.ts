@@ -15,7 +15,8 @@ const convex = new ConvexHttpClient(CONVEX_URL);
 
 // ─── Telegram helpers ─────────────────────────────────────────────────────────
 
-async function tgSend(chatId: number | string, text: string, extra: Record<string, unknown> = {}) {
+async function tgSend(chatId: number | string | undefined, text: string, extra: Record<string, unknown> = {}) {
+  if (!chatId) return;
   await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -23,7 +24,8 @@ async function tgSend(chatId: number | string, text: string, extra: Record<strin
   });
 }
 
-async function tgSendTyping(chatId: number | string) {
+async function tgSendTyping(chatId: number | string | undefined) {
+  if (!chatId) return;
   await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendChatAction`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -208,50 +210,83 @@ CRITICAL RULES:
 
 // ─── OpenRouter AI call ───────────────────────────────────────────────────────
 
+// Models to try in order — if one fails, fall back to the next
+const AI_MODELS = [
+  "meta-llama/llama-4-maverick:free",
+  "google/gemma-3-27b-it:free",
+  "nvidia/nemotron-nano-12b-v2-vl:free",
+];
+
 async function callAI(messages: any[]): Promise<any> {
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-      "Content-Type": "application/json",
-      "HTTP-Referer": "https://ibnsina-alpha.vercel.app",
-      "X-Title": "Ibn Sina – Elliot Bot",
-    },
-    body: JSON.stringify({
-      model: "nvidia/nemotron-nano-12b-v2-vl:free",
-      messages,
-      tools: TOOLS,
-      tool_choice: "auto",
-      max_tokens: 1024,
-    }),
-  });
+  let lastError: Error | null = null;
 
-  if (!response.ok) {
-    const errText = await response.text();
-    console.error("OpenRouter error:", errText);
-    throw new Error("OpenRouter request failed");
+  for (const model of AI_MODELS) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20000);
+
+    try {
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://ibnsina-alpha.vercel.app",
+          "X-Title": "Ibn Sina – Elliot Bot",
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          tools: TOOLS,
+          tool_choice: "auto",
+          max_tokens: 1024,
+        }),
+        signal: controller.signal,
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        console.error(`OpenRouter error (${model}):`, response.status, errText);
+        lastError = new Error(`OpenRouter ${model} failed (${response.status})`);
+        continue; // try next model
+      }
+
+      const data = await response.json();
+      const choice = data.choices?.[0];
+      if (!choice) {
+        lastError = new Error(`No choice from ${model}`);
+        continue;
+      }
+
+      // Check for tool calls — some models use finish_reason "tool_calls",
+      // others put tool_calls on the message regardless of finish_reason
+      if (choice.message?.tool_calls?.length) {
+        return choice.message;
+      }
+
+      return choice.message?.content ?? "Sorry, I couldn't generate an answer.";
+    } catch (err: any) {
+      console.error(`callAI error (${model}):`, err.message);
+      lastError = err;
+      continue; // try next model
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
-  const data = await response.json();
-  const choice = data.choices?.[0];
-  if (!choice) throw new Error("No choice returned from OpenRouter");
-
-  if (choice.finish_reason === "tool_calls" && choice.message?.tool_calls?.length) {
-    return choice.message; // full message object with tool_calls
-  }
-
-  return choice.message?.content ?? "Sorry, I couldn't generate an answer.";
+  throw lastError ?? new Error("All AI models failed");
 }
+
 
 // ─── Webhook handler ──────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
+  let chatId: number | string | undefined;
   try {
     const body = await req.json();
     const message = body?.message;
     if (!message?.text) return NextResponse.json({ ok: true });
 
-    const chatId = message.chat.id;
+    chatId = message.chat.id;
     const telegramId = String(message.from.id);
     const text: string = message.text.trim();
 
@@ -328,6 +363,7 @@ export async function POST(req: NextRequest) {
     // matching tool_calls structures we don't persist, so they'd break the API.
     const historyMessages: any[] = history
       .filter((m: any) => (m.role === "user" || m.role === "assistant") && m.content && !m.content.startsWith("[tool_calls:"))
+      .slice(-20) // Cap to last 20 messages to stay within model context limits
       .map((m: any) => ({ role: m.role, content: m.content }));
 
     const messages: any[] = [
@@ -444,8 +480,14 @@ export async function POST(req: NextRequest) {
     await tgSend(chatId, finalText);
 
     return NextResponse.json({ ok: true });
-  } catch (err) {
+  } catch (err: any) {
     console.error("Webhook error:", err);
+    // Always reply to the user so they know something went wrong
+    if (chatId) {
+      try {
+        await tgSend(chatId, "⚠️ Sorry, I ran into an issue processing your message. Please try again in a moment.");
+      } catch { /* best-effort fallback */ }
+    }
     return NextResponse.json({ ok: true });
   }
 }
