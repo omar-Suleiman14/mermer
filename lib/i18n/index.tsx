@@ -621,6 +621,18 @@ const translations: Record<Lang, Record<string, string>> = {
     "toast.itemAdded": "Item added",
     "toast.stockAdjusted": "Stock updated",
     "toast.reportSubmitted": "Report submitted",
+
+    // Elliot
+    "elliot.sectionTitle": "Elliot",
+    "elliot.unlinkedToast": "Elliot has been unlinked from your account",
+    "elliot.unlinkFailed": "Failed to unlink, please try again",
+    "elliot.name": "Elliot",
+    "elliot.linked": "Linked",
+    "elliot.ready": "Your smart assistant is ready on Telegram",
+    "elliot.unlink": "Unlink",
+    "elliot.linkTitle": "Link Elliot to your clinic",
+    "elliot.linkDesc": "Manage your clinic directly from Telegram",
+    "elliot.linkBtn": "Link Clinic",
   },
 
   ar: {
@@ -1177,6 +1189,18 @@ const translations: Record<Lang, Record<string, string>> = {
     "toast.itemAdded": "تمت إضافة الصنف",
     "toast.stockAdjusted": "تم تحديث المخزون",
     "toast.reportSubmitted": "تم إرسال البلاغ",
+
+    // Elliot
+    "elliot.sectionTitle": "إليوت",
+    "elliot.unlinkedToast": "تم فصل إليوت عن حسابك",
+    "elliot.unlinkFailed": "فشل الفصل، حاول مجدداً",
+    "elliot.name": "إليوت",
+    "elliot.linked": "مرتبط",
+    "elliot.ready": "مساعدك الذكي جاهز على تيليجرام",
+    "elliot.unlink": "إلغاء الربط",
+    "elliot.linkTitle": "ربط إليوت بعيادتك",
+    "elliot.linkDesc": "أدر عيادتك مباشرة من تيليجرام",
+    "elliot.linkBtn": "ربط العيادة",
   },
 };
 
@@ -1197,24 +1221,26 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   const setLang = useCallback((newLang: Lang) => {
     setLangState(newLang);
     localStorage.setItem("ibnsina_lang", newLang);
-    document.documentElement.setAttribute("lang", newLang);
-    document.documentElement.setAttribute("dir", newLang === "ar" ? "rtl" : "ltr");
   }, []);
 
   useEffect(() => {
     document.documentElement.setAttribute("lang", lang);
     document.documentElement.setAttribute("dir", lang === "ar" ? "rtl" : "ltr");
+    document.documentElement.style.fontFamily =
+      lang === "ar"
+        ? "var(--font-cairo), sans-serif"
+        : "var(--font-sans), sans-serif";
   }, [lang]);
 
   const t = useCallback(
-    (key: string) => {
-      return translations[lang][key] ?? translations["en"][key] ?? key;
-    },
+    (key: string) => translations[lang]?.[key] ?? translations["en"]?.[key] ?? key,
     [lang]
   );
 
+  const dir: "ltr" | "rtl" = lang === "ar" ? "rtl" : "ltr";
+
   return (
-    <I18nContext.Provider value={{ lang, setLang, t, dir: lang === "ar" ? "rtl" : "ltr" }}>
+    <I18nContext.Provider value={{ lang, setLang, t, dir }}>
       {children}
     </I18nContext.Provider>
   );

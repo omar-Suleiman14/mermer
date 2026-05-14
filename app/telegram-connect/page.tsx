@@ -106,19 +106,19 @@ export default function TelegramConnectPage() {
         </div>
 
         <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
-          ابن سينا × إليوت
+          Ibn Sina × Elliot
         </h1>
 
         {state === "loading" && (
           <>
-            <p style={{ color: "#9ca3af", fontSize: 14 }}>جارٍ التحقق من الهوية…</p>
+            <p style={{ color: "#9ca3af", fontSize: 14 }}>Verifying identity...</p>
             <Spinner />
           </>
         )}
 
         {state === "linking" && (
           <>
-            <p style={{ color: "#9ca3af", fontSize: 14 }}>جارٍ ربط حسابك بإليوت…</p>
+            <p style={{ color: "#9ca3af", fontSize: 14 }}>Linking your account to Elliot...</p>
             <Spinner />
           </>
         )}
@@ -141,10 +141,10 @@ export default function TelegramConnectPage() {
               ✅
             </div>
             <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
-              تم الربط بنجاح!
+              Successfully Linked!
             </h2>
             <p style={{ color: "#9ca3af", fontSize: 14, maxWidth: 280 }}>
-              أهلاً دكتور {doctorName}! حسابك مرتبط الآن بـ إليوت. جاري إعادتك لتطبيق تيليجرام...
+              Welcome Dr. {doctorName}! Your account is now linked to Elliot. Redirecting you back to Telegram...
             </p>
           </>
         )}
@@ -167,7 +167,7 @@ export default function TelegramConnectPage() {
               ❌
             </div>
             <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: "#ff3b30" }}>
-              حدث خطأ
+              An error occurred
             </h2>
             <p style={{ color: "#9ca3af", fontSize: 14, maxWidth: 280 }}>{errorMsg}</p>
             <button
@@ -184,7 +184,7 @@ export default function TelegramConnectPage() {
                 fontSize: 14,
               }}
             >
-              المحاولة مجدداً
+              Try Again
             </button>
           </>
         )}

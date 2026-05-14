@@ -212,8 +212,6 @@ CRITICAL RULES:
 
 // Models to try in order — if one fails, fall back to the next
 const AI_MODELS = [
-  "meta-llama/llama-4-maverick:free",
-  "google/gemma-3-27b-it:free",
   "nvidia/nemotron-nano-12b-v2-vl:free",
 ];
 

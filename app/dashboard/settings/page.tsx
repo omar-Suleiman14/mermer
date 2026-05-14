@@ -6,11 +6,10 @@ import { Id } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
-import { Camera, Clock, Upload, MapPin, Link as LinkIcon, MessageSquare, Globe, Moon, Sun, MonitorSmartphone, Palette, Building2, CalendarDays } from "lucide-react";
+import { Camera, Link as LinkIcon, Globe, Palette, CalendarDays, Bot, CheckCircle2, Loader2, Unlink } from "lucide-react";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { MessageTemplatesSection } from "@/components/message-templates-section";
-import { ElliotBanner } from "@/components/elliot-banner";
 import { useI18n } from "@/lib/i18n";
 import { useTheme } from "next-themes";
 import { LanguageToggle } from "@/components/language-toggle";
@@ -41,12 +40,30 @@ export default function SettingsPage() {
   const { t, lang } = useI18n();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  
+
   const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
   const profilePhotoUrl = useQuery(api.users.getProfilePhotoUrl, clerkId ? { clerkId } : "skip");
   const updateProfile = useMutation(api.users.updateProfile);
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   const saveProfilePhoto = useMutation(api.users.saveProfilePhoto);
+
+  // ── Telegram / Elliot ──
+  const telegramStatus = useQuery(api.telegram.getTelegramStatus, clerkId ? { clerkId } : "skip");
+  const unlinkTelegram = useMutation(api.telegram.unlinkTelegram);
+  const [revoking, setRevoking] = useState(false);
+
+  async function handleRevoke() {
+    if (!clerkId) return;
+    setRevoking(true);
+    try {
+      await unlinkTelegram({ clerkId });
+      toast.success(t("elliot.unlinkedToast"));
+    } catch {
+      toast.error(t("elliot.unlinkFailed"));
+    } finally {
+      setRevoking(false);
+    }
+  }
 
   // ── State ──
   const [name, setName] = useState("");
@@ -63,8 +80,8 @@ export default function SettingsPage() {
   const [slotMin, setSlotMin] = useState("30");
   const [workingDays, setWorkingDays] = useState<string[]>([]);
   const [bio, setBio] = useState("");
-  const [publicProfile, setPublicProfile] = useState(false);  
-  
+  const [publicProfile, setPublicProfile] = useState(false);
+
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const photoRef = useRef<HTMLInputElement>(null);
@@ -152,10 +169,10 @@ export default function SettingsPage() {
   const rowClass = "flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-2 sm:gap-4 transition-colors focus-within:bg-muted/10 hover:bg-muted/5";
   const labelClass = "text-sm font-medium flex items-center gap-2 flex-shrink-0 min-w-[140px]";
   const inputClass = "flex-1 w-full bg-transparent text-sm sm:text-right focus:outline-none placeholder:text-muted-foreground/60 focus:text-[#007AFF] transition-colors";
-  const sectionTitleClass = "text-[13px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 ml-4";
+  const sectionTitleClass = "text-[13px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 ms-4";
 
   return (
-    <div className="flex flex-col h-full bg-muted/20">
+    <div className="flex flex-col h-full bg-muted/20" suppressHydrationWarning>
       <PageHeader title={t("settings.title")} description={t("settings.pageDescription")} />
 
       <div className="flex-1 overflow-auto p-4 sm:p-6 max-w-3xl mx-auto w-full pb-20">
@@ -180,9 +197,9 @@ export default function SettingsPage() {
                   <Palette className="w-4 h-4 text-muted-foreground" /> {t("settings.darkMode")}
                 </label>
                 <div className="flex-1 flex justify-end">
-                  <Switch 
-                    checked={theme === "dark"} 
-                    onCheckedChange={(c) => setTheme(c ? "dark" : "light")} 
+                  <Switch
+                    checked={theme === "dark"}
+                    onCheckedChange={(c) => setTheme(c ? "dark" : "light")}
                   />
                 </div>
               </div>
@@ -194,12 +211,60 @@ export default function SettingsPage() {
         </section>
 
         {/* ═══════════════════════════════════════════════════════════ */}
-        {/* TELEGRAM INTEGRATION                                        */}
+        {/* TELEGRAM / ELLIOT                                           */}
         {/* ═══════════════════════════════════════════════════════════ */}
         <section>
-          <h3 className={sectionTitleClass}>الذكاء الاصطناعي وإليوت</h3>
-          <div className="mb-8">
-            <ElliotBanner />
+          <h3 className={sectionTitleClass}>{t("elliot.sectionTitle")}</h3>
+          <div className={blockClass}>
+            <div className={rowClass}>
+              {/* Label */}
+              <label className={labelClass}>
+                <Bot className="w-4 h-4 text-muted-foreground" />
+                {t("elliot.name")}
+              </label>
+
+              {/* Right side */}
+              <div className="flex items-center gap-3 flex-1 justify-end">
+                {telegramStatus === undefined ? (
+                  /* Loading */
+                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                ) : telegramStatus?.linked ? (
+                  /* Connected */
+                  <>
+                    <span className="flex items-center gap-1 text-[11px] font-bold text-[#34c759] bg-[#34c759]/10 border border-[#34c759]/20 px-2 py-0.5 rounded-full">
+                      <CheckCircle2 className="w-3 h-3" />
+                      {t("elliot.linked")}
+                    </span>
+                    <button
+                      onClick={handleRevoke}
+                      disabled={revoking}
+                      className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground hover:text-red-500 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-500/8 disabled:opacity-50"
+                    >
+                      {revoking
+                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        : <Unlink className="w-3.5 h-3.5" />}
+                      {t("elliot.unlink")}
+                    </button>
+                  </>
+                ) : (
+                  /* Disconnected */
+                  <a
+                    href={`https://t.me/Elliot_abot?start=connect`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-[11px] font-semibold text-white bg-[#007AFF] hover:bg-[#0062cc] transition-colors px-3 py-1.5 rounded-xl whitespace-nowrap"
+                  >
+                    <LinkIcon className="w-3.5 h-3.5" />
+                    {t("elliot.linkBtn")}
+                  </a>
+                )}
+              </div>
+            </div>
+
+            {/* Sub-description row */}
+            <div className="px-4 py-2.5 text-[11px] text-muted-foreground">
+              {telegramStatus?.linked ? t("elliot.ready") : t("elliot.linkDesc")}
+            </div>
           </div>
         </section>
 
@@ -209,7 +274,7 @@ export default function SettingsPage() {
         <section>
           <h3 className={sectionTitleClass}>{t("settings.profileSection")}</h3>
           <div className={blockClass}>
-            
+
             <div className={`${rowClass} !py-6`}>
               <div className="flex items-center gap-4">
                 <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-border bg-[#007AFF]/10 flex items-center justify-center flex-shrink-0 shadow-sm">
@@ -234,8 +299,8 @@ export default function SettingsPage() {
                 </div>
               </div>
               <div className="flex items-center gap-3 bg-muted/30 px-3 py-1.5 rounded-full border border-border">
-                 <span className="text-xs font-medium">{t("settings.publicProfile")}</span>
-                 <Switch checked={publicProfile} onCheckedChange={setPublicProfile} />
+                <span className="text-xs font-medium">{t("settings.publicProfile")}</span>
+                <Switch checked={publicProfile} onCheckedChange={setPublicProfile} />
               </div>
             </div>
 
@@ -278,7 +343,7 @@ export default function SettingsPage() {
               <label className={labelClass}>{t("settings.clinicName")}</label>
               <input value={clinicName} onChange={(e) => setClinicName(e.target.value)} placeholder={t("settings.placeholderClinic")} className={inputClass} />
             </div>
-            
+
             <div className={rowClass}>
               <label className={labelClass}>{t("settings.phoneWhatsapp")}</label>
               <div className="flex items-center gap-1 flex-1 justify-end" dir="ltr">
@@ -335,11 +400,10 @@ export default function SettingsPage() {
                         prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]
                       )
                     }
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
-                      workingDays.includes(d)
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${workingDays.includes(d)
                         ? "bg-[#007AFF] text-white border-[#007AFF]"
                         : "border-border hover:border-[#007AFF]/40 text-muted-foreground"
-                    }`}
+                      }`}
                   >
                     {d}
                   </button>
