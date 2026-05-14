@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Bot, CheckCircle2, Loader2, XCircle } from "lucide-react";
 
 /**
  * /telegram-connect?tg_id=<telegramUserId>&tg_username=<username>
@@ -74,139 +75,63 @@ export default function TelegramConnectPage() {
       {/* eslint-disable-next-line @next/next/no-sync-scripts */}
       <script src="https://telegram.org/js/telegram-web-app.js" />
 
-      <div
-        style={{
-          minHeight: "100dvh",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "2rem",
-          background: "linear-gradient(135deg, #0d0d0d 0%, #111827 100%)",
-          color: "#fff",
-          fontFamily: "system-ui, -apple-system, sans-serif",
-          textAlign: "center",
-        }}
-      >
-        {/* Logo mark */}
-        <div
-          style={{
-            width: 72,
-            height: 72,
-            borderRadius: 20,
-            background: "linear-gradient(135deg, #007AFF, #5AC8FA)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            marginBottom: 24,
-            boxShadow: "0 8px 32px rgba(0,122,255,0.4)",
-          }}
-        >
-          <span style={{ fontSize: 36 }}>⚕️</span>
+      <div className="flex flex-col min-h-[100dvh] items-center justify-center p-6 bg-muted/20">
+        <div className="w-full max-w-sm bg-card border border-border rounded-[2rem] shadow-sm p-8 flex flex-col items-center text-center">
+          
+          {/* Logo */}
+          <div className="w-16 h-16 rounded-2xl bg-[#007AFF]/10 flex items-center justify-center mb-6">
+            <Bot className="w-8 h-8 text-[#007AFF]" />
+          </div>
+
+          <h1 className="text-xl font-bold mb-2 text-foreground tracking-tight">
+            Ibn Sina × Elliot
+          </h1>
+
+          {state === "loading" && (
+            <div className="flex flex-col items-center gap-4 mt-4">
+              <p className="text-sm text-muted-foreground">Verifying identity...</p>
+              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+            </div>
+          )}
+
+          {state === "linking" && (
+            <div className="flex flex-col items-center gap-4 mt-4">
+              <p className="text-sm text-muted-foreground">Linking your account to Elliot...</p>
+              <Loader2 className="w-6 h-6 animate-spin text-[#007AFF]" />
+            </div>
+          )}
+
+          {state === "success" && (
+            <div className="flex flex-col items-center mt-4">
+              <div className="w-12 h-12 rounded-full bg-[#34c759]/10 flex items-center justify-center mb-4 text-[#34c759]">
+                <CheckCircle2 className="w-6 h-6" />
+              </div>
+              <h2 className="text-lg font-bold mb-2">Successfully Linked!</h2>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Welcome Dr. {doctorName}! Your account is now linked to Elliot. Redirecting you back to Telegram...
+              </p>
+            </div>
+          )}
+
+          {state === "error" && (
+            <div className="flex flex-col items-center mt-4 w-full">
+              <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center mb-4 text-red-500">
+                <XCircle className="w-6 h-6" />
+              </div>
+              <h2 className="text-lg font-bold mb-2 text-red-500">An error occurred</h2>
+              <p className="text-sm text-muted-foreground mb-6 leading-relaxed">
+                {errorMsg}
+              </p>
+              <button
+                onClick={() => window.location.reload()}
+                className="w-full bg-[#007AFF] hover:bg-[#0062cc] text-white font-medium py-2.5 rounded-xl transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          )}
         </div>
-
-        <h1 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
-          Ibn Sina × Elliot
-        </h1>
-
-        {state === "loading" && (
-          <>
-            <p style={{ color: "#9ca3af", fontSize: 14 }}>Verifying identity...</p>
-            <Spinner />
-          </>
-        )}
-
-        {state === "linking" && (
-          <>
-            <p style={{ color: "#9ca3af", fontSize: 14 }}>Linking your account to Elliot...</p>
-            <Spinner />
-          </>
-        )}
-
-        {state === "success" && (
-          <>
-            <div
-              style={{
-                width: 56,
-                height: 56,
-                borderRadius: "50%",
-                background: "rgba(52,199,89,0.15)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                marginBottom: 16,
-                fontSize: 28,
-              }}
-            >
-              ✅
-            </div>
-            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>
-              Successfully Linked!
-            </h2>
-            <p style={{ color: "#9ca3af", fontSize: 14, maxWidth: 280 }}>
-              Welcome Dr. {doctorName}! Your account is now linked to Elliot. Redirecting you back to Telegram...
-            </p>
-          </>
-        )}
-
-        {state === "error" && (
-          <>
-            <div
-              style={{
-                width: 56,
-                height: 56,
-                borderRadius: "50%",
-                background: "rgba(255,59,48,0.15)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                marginBottom: 16,
-                fontSize: 28,
-              }}
-            >
-              ❌
-            </div>
-            <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: "#ff3b30" }}>
-              An error occurred
-            </h2>
-            <p style={{ color: "#9ca3af", fontSize: 14, maxWidth: 280 }}>{errorMsg}</p>
-            <button
-              onClick={() => window.location.reload()}
-              style={{
-                marginTop: 20,
-                padding: "10px 24px",
-                borderRadius: 12,
-                background: "#007AFF",
-                color: "#fff",
-                border: "none",
-                cursor: "pointer",
-                fontWeight: 600,
-                fontSize: 14,
-              }}
-            >
-              Try Again
-            </button>
-          </>
-        )}
       </div>
     </>
-  );
-}
-
-function Spinner() {
-  return (
-    <div
-      style={{
-        width: 32,
-        height: 32,
-        border: "3px solid rgba(255,255,255,0.15)",
-        borderTop: "3px solid #007AFF",
-        borderRadius: "50%",
-        marginTop: 20,
-        animation: "spin 0.8s linear infinite",
-      }}
-    >
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
   );
 }
