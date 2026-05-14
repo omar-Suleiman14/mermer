@@ -494,13 +494,12 @@ export async function POST(req: NextRequest) {
 
     const systemPrompt = buildSystemPrompt(doctorCtx, memory as any);
 
-    // Convert stored history to OpenAI message format
-    const historyMessages: any[] = history.map((m: any) => {
-      if (m.role === "tool") {
-        return { role: "tool", content: m.content, tool_call_id: m.toolName || "unknown" };
-      }
-      return { role: m.role, content: m.content };
-    });
+    // Convert stored history to OpenAI message format.
+    // Only include user + assistant text messages — tool messages require
+    // matching tool_calls structures we don't persist, so they'd break the API.
+    const historyMessages: any[] = history
+      .filter((m: any) => (m.role === "user" || m.role === "assistant") && m.content && !m.content.startsWith("[tool_calls:"))
+      .map((m: any) => ({ role: m.role, content: m.content }));
 
     const messages: any[] = [
       { role: "system", content: systemPrompt },
