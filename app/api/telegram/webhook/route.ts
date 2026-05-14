@@ -69,10 +69,13 @@ const TOOLS = [
     function: {
       name: "add_patient_to_queue",
       description:
-        "Adds a patient to today's queue. Requires the exact patientId from search_patients.",
+        "Adds a patient to today's queue. Requires the exact patientId from search_patients. You can optionally specify a time.",
       parameters: {
         type: "object",
-        properties: { patientId: { type: "string" } },
+        properties: { 
+          patientId: { type: "string" },
+          time: { type: "string", description: "Optional time (e.g. '16:00' or '4:30 PM')" }
+        },
         required: ["patientId"],
       },
     },
@@ -156,9 +159,31 @@ async function executeTool(toolName: string, doctorId: string, argsStr?: string)
 
     if (toolName === "add_patient_to_queue") {
       if (!toolArgs.patientId) return "Error: patientId is required.";
+      
+      let scheduledTime: number | undefined = undefined;
+      if (toolArgs.time) {
+        // Simple attempt to parse time string into today's timestamp
+        try {
+          const now = new Date();
+          const match = toolArgs.time.match(/(\d+):(\d+)\s*(am|pm)?/i);
+          if (match) {
+            let hours = parseInt(match[1], 10);
+            const minutes = parseInt(match[2], 10);
+            const ampm = match[3]?.toLowerCase();
+            if (ampm === "pm" && hours < 12) hours += 12;
+            if (ampm === "am" && hours === 12) hours = 0;
+            const d = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0, 0);
+            scheduledTime = d.getTime();
+          }
+        } catch (e) {
+          console.error("Time parsing failed", e);
+        }
+      }
+
       const res = await convex.mutation(api.telegram.addPatientToQueueBot, {
         doctorId: doctorId as any,
         patientId: toolArgs.patientId as any,
+        scheduledTime: scheduledTime as any,
       });
       return res.message;
     }
@@ -196,7 +221,8 @@ async function callAI(
 You help manage the clinic: patient lists, today's schedule, waiting room queue, and statistics.
 Always reply strictly in English with a professional and concise tone. DO NOT use Arabic under any circumstances.
 Use the available tools when needed to fetch real data from the system.
-CRITICAL INSTRUCTION: If you need to mutate data (like adding a patient to the queue), FIRST use search_patients to find them. If multiple patients match, you MUST ask the user which one they mean before proceeding. Never guess. Always ask for confirmation before changing data if there is ambiguity.
+CRITICAL INSTRUCTION 1: If you need to mutate data (like adding a patient to the queue), FIRST use search_patients to find them. If multiple patients match, you MUST ask the user which one they mean before proceeding. Never guess. Always ask for confirmation before changing data if there is ambiguity.
+CRITICAL INSTRUCTION 2: NEVER modify, re-type, or hallucinate database IDs (like patientId or queueId). ALWAYS copy them EXACTLY character-by-character from the tool response. Even one wrong character will break the system.
 Do not invent data — if you cannot find information, use the appropriate tool.`;
 
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {

@@ -161,7 +161,11 @@ export const searchPatientsForBot = query({
 // ─── Public: add a patient to today's queue (bot tool) ────────────────────────
 
 export const addPatientToQueueBot = mutation({
-  args: { doctorId: v.id("users"), patientId: v.id("patients") },
+  args: { 
+    doctorId: v.id("users"), 
+    patientId: v.id("patients"),
+    scheduledTime: v.optional(v.number()) 
+  },
   handler: async (ctx, args) => {
     const now = Date.now();
     const d = new Date(now);
@@ -191,7 +195,7 @@ export const addPatientToQueueBot = mutation({
       queueDate,
       position: maxPos + 1,
       status: "waiting",
-      scheduledTime: now,
+      scheduledTime: args.scheduledTime ?? now,
       addedAt: now,
       reminderSent: false,
     });
