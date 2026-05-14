@@ -61,34 +61,34 @@ async function executeTool(toolName: string, doctorId: string): Promise<string> 
       const patients = await convex.query(api.telegram.getPatientsForBot, {
         doctorId: doctorId as any,
       });
-      if (!patients || patients.length === 0) return "لا يوجد مرضى مسجلون حتى الآن.";
+      if (!patients || patients.length === 0) return "No patients registered yet.";
       const lines = patients.map(
         (p: any, i: number) =>
-          `${i + 1}. *${p.name}* — ${p.age} سنة | 📞 ${p.phone}${p.chronicConditions?.length ? ` | ${p.chronicConditions.join(", ")}` : ""}`
+          `${i + 1}. *${p.name}* — ${p.age} years old | 📞 ${p.phone}${p.chronicConditions?.length ? ` | ${p.chronicConditions.join(", ")}` : ""}`
       );
-      return `إجمالي المرضى: *${patients.length}*\n\n${lines.join("\n")}`;
+      return `Total Patients: *${patients.length}*\n\n${lines.join("\n")}`;
     }
 
     if (toolName === "get_today_queue") {
       const queue = await convex.query(api.telegram.getTodayQueueForBot, {
         doctorId: doctorId as any,
       });
-      if (!queue || queue.length === 0) return "قائمة الانتظار فارغة اليوم.";
+      if (!queue || queue.length === 0) return "The queue is empty today.";
       const lines = queue.map(
         (q: any) => {
-          let statusText = "⏳ ينتظر";
-          if (q.status === "in-progress") statusText = "🟢 جارٍ الكشف";
-          if (q.status === "done") statusText = "✅ مكتمل";
-          return `${q.position}. *${q.patientName}* — ${statusText}${q.scheduledTime ? ` (${new Date(q.scheduledTime).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })})` : ""}`;
+          let statusText = "⏳ Waiting";
+          if (q.status === "in-progress") statusText = "🟢 In Progress";
+          if (q.status === "done") statusText = "✅ Completed";
+          return `${q.position}. *${q.patientName}* — ${statusText}${q.scheduledTime ? ` (${new Date(q.scheduledTime).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })})` : ""}`;
         }
       );
-      return `قائمة الانتظار اليوم (${queue.length} مريض):\n\n${lines.join("\n")}`;
+      return `Today's Queue (${queue.length} patients):\n\n${lines.join("\n")}`;
     }
 
-    return "أداة غير معروفة.";
+    return "Unknown tool.";
   } catch (err) {
     console.error("Tool execution error:", err);
-    return "حدث خطأ أثناء جلب البيانات.";
+    return "An error occurred while fetching data.";
   }
 }
 
@@ -98,10 +98,11 @@ async function callAI(
   messages: any[],
   doctorContext: { name: string; clinicName: string }
 ): Promise<string> {
-  const systemPrompt = `أنت إليوت، مساعد ذكاء اصطناعي طبي ذكي مخصص للدكتور ${doctorContext.name} في عيادة ${doctorContext.clinicName}.
-أنت تساعده في إدارة العيادة: قوائم المرضى، جدول اليوم، قائمة الانتظار، والإحصائيات.
-أجب دائماً بالعربية بأسلوب مهني ومختصر. استخدم الأدوات المتاحة عند الحاجة لجلب بيانات حقيقية من النظام.
-لا تخترع بيانات — إذا لم تجد معلومة استخدم الأداة المناسبة.`;
+  const systemPrompt = `You are Elliot, an intelligent medical AI assistant dedicated to Dr. ${doctorContext.name} at ${doctorContext.clinicName}.
+You help manage the clinic: patient lists, today's schedule, waiting room queue, and statistics.
+Always reply strictly in English with a professional and concise tone. DO NOT use Arabic under any circumstances.
+Use the available tools when needed to fetch real data from the system.
+Do not invent data — if you cannot find information, use the appropriate tool.`;
 
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
@@ -136,7 +137,7 @@ async function callAI(
     return choice.message; // return the full message object for further processing
   }
 
-  return choice.message?.content ?? "عذراً، لم أتمكن من الإجابة.";
+  return choice.message?.content ?? "Sorry, I couldn't generate an answer.";
 }
 
 // ─── Webhook handler ──────────────────────────────────────────────────────────
@@ -156,12 +157,12 @@ export async function POST(req: NextRequest) {
     // ── /start command — prompt to connect ──────────────────────────────────
     if (text === "/start") {
       const connectUrl = `https://ibnsina-alpha.vercel.app/telegram-connect?tg_id=${telegramId}`;
-      await tgSend(chatId, `👋 أهلاً بك في *إليوت* — مساعد عيادة ابن سينا الذكي!\n\nللبدء، اربط حسابك بالعيادة:`, {
+      await tgSend(chatId, `👋 Welcome to *Elliot* — Ibn Sina's smart clinic assistant!\n\nTo get started, please connect your clinic:`, {
         reply_markup: {
           inline_keyboard: [
             [
               {
-                text: "ربط عيادتك",
+                text: "🏥 Connect Clinic",
                 url: connectUrl,
               },
             ],
@@ -176,10 +177,10 @@ export async function POST(req: NextRequest) {
 
     if (!doctor) {
       const connectUrl = `https://ibnsina-alpha.vercel.app/telegram-connect?tg_id=${telegramId}`;
-      await tgSend(chatId, `⚠️ لم يتم ربط حسابك بعد. اضغط على الزر أدناه لتسجيل الدخول وربط عيادتك:`, {
+      await tgSend(chatId, `⚠️ Your account is not linked yet. Tap the button below to log in and connect your clinic:`, {
         reply_markup: {
           inline_keyboard: [
-            [{ text: "🔗 ربط حساب العيادة", url: connectUrl }],
+            [{ text: "🔗 Connect Clinic Account", url: connectUrl }],
           ],
         },
       });
@@ -204,12 +205,12 @@ export async function POST(req: NextRequest) {
     if (text === "/help" || text === "/help@" + BOT_USERNAME) {
       await tgSend(
         chatId,
-        `🤖 *إليوت — مساعدك الذكي*\n\n` +
-          `الأوامر السريعة:\n` +
-          `• /patients — قائمة جميع المرضى\n` +
-          `• /queue — قائمة الانتظار اليوم\n` +
-          `• /help — هذه الرسالة\n\n` +
-          `أو ببساطة اكتب سؤالك وسيجيبك إليوت مباشرة 💬`
+        `🤖 *Elliot — Your Smart Assistant*\n\n` +
+          `Quick Commands:\n` +
+          `• /patients — List of all patients\n` +
+          `• /queue — Today's waiting queue\n` +
+          `• /help — Show this message\n\n` +
+          `Or simply type your question and Elliot will answer you directly 💬`
       );
       return NextResponse.json({ ok: true });
     }
@@ -246,7 +247,7 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Send final text response ──────────────────────────────────────────────
-    const finalText = typeof aiResponse === "string" ? aiResponse : "عذراً، حدث خطأ غير متوقع.";
+    const finalText = typeof aiResponse === "string" ? aiResponse : "Sorry, an unexpected error occurred.";
     await tgSend(chatId, finalText);
 
     return NextResponse.json({ ok: true });
