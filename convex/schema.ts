@@ -254,4 +254,55 @@ export default defineSchema({
     name: v.string(),
   })
     .index("by_doctor", ["doctorId"]),
+
+  // ── AI Conversations ─────────────────────────────────────────────────────
+  aiConversations: defineTable({
+    doctorId: v.id("users"),
+    telegramId: v.string(),
+
+    role: v.union(
+      v.literal("system"),
+      v.literal("user"),
+      v.literal("assistant"),
+      v.literal("tool")
+    ),
+
+    content: v.string(),
+
+    toolName: v.optional(v.string()),
+    toolResult: v.optional(v.string()),
+
+    createdAt: v.number(),
+  })
+    .index("by_telegram", ["telegramId", "createdAt"])
+    .index("by_doctor", ["doctorId", "createdAt"]),
+
+  // ── AI Session Memory ────────────────────────────────────────────────────
+  aiMemory: defineTable({
+    doctorId: v.id("users"),
+    telegramId: v.string(),
+
+    lastPatientId: v.optional(v.id("patients")),
+    lastQueueId: v.optional(v.id("queue")),
+    lastVisitId: v.optional(v.id("visits")),
+    lastAppointmentId: v.optional(v.id("visits")),
+
+    updatedAt: v.number(),
+  })
+    .index("by_telegram", ["telegramId"]),
+
+  // ── AI Failures / Training Data ──────────────────────────────────────────
+  aiFailures: defineTable({
+    doctorId: v.optional(v.id("users")),
+    telegramId: v.optional(v.string()),
+
+    userMessage: v.string(),
+    aiResponse: v.string(),
+
+    intendedAction: v.optional(v.string()),
+    failureReason: v.optional(v.string()),
+
+    createdAt: v.number(),
+  })
+    .index("by_created", ["createdAt"]),
 });

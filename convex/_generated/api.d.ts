@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as aiMemory from "../aiMemory.js";
 import type * as appointments from "../appointments.js";
 import type * as chronicConditions from "../chronicConditions.js";
 import type * as contracts from "../contracts.js";
@@ -30,6 +31,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  aiMemory: typeof aiMemory;
   appointments: typeof appointments;
   chronicConditions: typeof chronicConditions;
   contracts: typeof contracts;
