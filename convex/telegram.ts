@@ -199,15 +199,16 @@ export const getAnalyticsBot = query({
 export const getTodayScheduleForBot = query({
   args: { doctorId: v.id("users") },
   handler: async (ctx, args) => {
-    const now = Date.now();
-    const d = new Date(now);
-    d.setHours(0, 0, 0, 0);
-    const date = d.getTime();
+    // Get start and end of today in local Cairo time if possible, or UTC fallback
+    const now = new Date();
+    // A simple approach for today's bounds:
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
 
     const visits = await ctx.db
       .query("visits")
       .withIndex("by_doctor_date", (q) =>
-        q.eq("doctorId", args.doctorId).eq("date", date)
+        q.eq("doctorId", args.doctorId).gte("date", startOfDay).lt("date", endOfDay)
       )
       .collect();
 

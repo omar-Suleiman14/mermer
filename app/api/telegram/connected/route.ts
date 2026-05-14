@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     }
 
     const text =
-      `✅ *Successfully Linked!*\n\n` +
+      `*Successfully Linked!*\n\n` +
       `Welcome Dr. *${doctorName}* 👋\n` +
       `Your clinic *${clinicName}* is now linked to Elliot.\n\n`;
 
