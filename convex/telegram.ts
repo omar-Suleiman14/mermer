@@ -134,3 +134,117 @@ export const getTodayQueueForBot = query({
     );
   },
 });
+
+// ─── Public: search patients by name/phone (bot tool) ─────────────────────────
+
+export const searchPatientsForBot = query({
+  args: { doctorId: v.id("users"), query: v.string() },
+  handler: async (ctx, args) => {
+    const q = args.query.toLowerCase();
+    const patients = await ctx.db
+      .query("patients")
+      .withIndex("by_doctor", (q) => q.eq("doctorId", args.doctorId))
+      .collect();
+
+    return patients
+      .filter((p) => p.name.toLowerCase().includes(q) || p.phone.includes(q))
+      .slice(0, 5)
+      .map((p) => ({
+        patientId: p._id,
+        name: p.name,
+        phone: p.phone,
+        age: p.age,
+      }));
+  },
+});
+
+// ─── Public: add a patient to today's queue (bot tool) ────────────────────────
+
+export const addPatientToQueueBot = mutation({
+  args: { doctorId: v.id("users"), patientId: v.id("patients") },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const d = new Date(now);
+    d.setHours(0, 0, 0, 0);
+    const queueDate = d.getTime();
+
+    // Verify patient belongs to doctor
+    const patient = await ctx.db.get(args.patientId);
+    if (!patient || patient.doctorId !== args.doctorId) throw new Error("Patient not found");
+
+    const existingQueue = await ctx.db
+      .query("queue")
+      .withIndex("by_doctor_date", (q) =>
+        q.eq("doctorId", args.doctorId).eq("queueDate", queueDate)
+      )
+      .collect();
+
+    // Check if already in queue
+    if (existingQueue.some((q) => q.patientId === args.patientId)) {
+      return { success: false, message: "Patient is already in today's queue." };
+    }
+
+    const maxPos = existingQueue.reduce((max, q) => Math.max(max, q.position), 0);
+    await ctx.db.insert("queue", {
+      doctorId: args.doctorId,
+      patientId: args.patientId,
+      queueDate,
+      position: maxPos + 1,
+      status: "waiting",
+      scheduledTime: now,
+      addedAt: now,
+      reminderSent: false,
+    });
+
+    return { success: true, message: `Added ${patient.name} to the queue at position ${maxPos + 1}.` };
+  },
+});
+
+// ─── Public: mark a queue item as done (bot tool) ─────────────────────────────
+
+export const markQueueDoneBot = mutation({
+  args: { doctorId: v.id("users"), queueId: v.id("queue") },
+  handler: async (ctx, args) => {
+    const qItem = await ctx.db.get(args.queueId);
+    if (!qItem || qItem.doctorId !== args.doctorId) throw new Error("Queue item not found");
+
+    await ctx.db.patch(args.queueId, { status: "done" });
+    return { success: true, message: "Patient marked as completed." };
+  },
+});
+
+// ─── Public: get basic analytics (bot tool) ───────────────────────────────────
+
+export const getAnalyticsBot = query({
+  args: { doctorId: v.id("users") },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.doctorId);
+    const patients = await ctx.db
+      .query("patients")
+      .withIndex("by_doctor", (q) => q.eq("doctorId", args.doctorId))
+      .collect();
+      
+    // Count today's patients
+    const now = Date.now();
+    const d = new Date(now);
+    d.setHours(0, 0, 0, 0);
+    const queueDate = d.getTime();
+    const queue = await ctx.db
+      .query("queue")
+      .withIndex("by_doctor_date", (q) =>
+        q.eq("doctorId", args.doctorId).eq("queueDate", queueDate)
+      )
+      .collect();
+
+    const doneCount = queue.filter(q => q.status === "done").length;
+    const fee = user?.consultationFee || 0;
+    const expectedRevenue = doneCount * fee;
+
+    return {
+      totalPatientsRegistered: patients.length,
+      patientsSeenToday: doneCount,
+      totalQueueToday: queue.length,
+      estimatedRevenueTodayEGP: expectedRevenue,
+    };
+  },
+});

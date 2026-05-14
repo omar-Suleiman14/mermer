@@ -38,7 +38,7 @@ const TOOLS = [
     function: {
       name: "get_all_patients",
       description:
-        "Returns all patients registered under this doctor. Use when the doctor asks about their patients list, patient count, or wants to find a patient.",
+        "Returns all patients registered under this doctor. Use when the doctor asks about their patients list.",
       parameters: { type: "object", properties: {}, required: [] },
     },
   },
@@ -47,7 +47,55 @@ const TOOLS = [
     function: {
       name: "get_today_queue",
       description:
-        "Returns today's waiting room queue for this doctor, including patient names, positions, and scheduled times.",
+        "Returns today's waiting room queue for this doctor, including patient names, positions, scheduled times, and their queue IDs.",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "search_patients",
+      description:
+        "Searches for a patient by name or phone number. Use this BEFORE making any changes (like adding to queue) to get the correct patientId. Ask the user to confirm if multiple patients match.",
+      parameters: {
+        type: "object",
+        properties: { query: { type: "string", description: "Name or phone number" } },
+        required: ["query"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "add_patient_to_queue",
+      description:
+        "Adds a patient to today's queue. Requires the exact patientId from search_patients.",
+      parameters: {
+        type: "object",
+        properties: { patientId: { type: "string" } },
+        required: ["patientId"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "mark_queue_done",
+      description:
+        "Marks a patient's appointment as completed. Requires the exact queueId from get_today_queue.",
+      parameters: {
+        type: "object",
+        properties: { queueId: { type: "string" } },
+        required: ["queueId"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_analytics",
+      description:
+        "Returns basic clinic analytics like total patients, patients seen today, and estimated revenue.",
       parameters: { type: "object", properties: {}, required: [] },
     },
   },
@@ -55,8 +103,17 @@ const TOOLS = [
 
 // ─── Execute a tool call ──────────────────────────────────────────────────────
 
-async function executeTool(toolName: string, doctorId: string): Promise<string> {
+async function executeTool(toolName: string, doctorId: string, argsStr?: string): Promise<string> {
   try {
+    let toolArgs: any = {};
+    if (argsStr) {
+      try {
+        toolArgs = JSON.parse(argsStr);
+      } catch (e) {
+        console.error("Failed to parse tool args", argsStr);
+      }
+    }
+
     if (toolName === "get_all_patients") {
       const patients = await convex.query(api.telegram.getPatientsForBot, {
         doctorId: doctorId as any,
@@ -79,16 +136,53 @@ async function executeTool(toolName: string, doctorId: string): Promise<string> 
           let statusText = "⏳ Waiting";
           if (q.status === "in-progress") statusText = "🟢 In Progress";
           if (q.status === "done") statusText = "✅ Completed";
-          return `${q.position}. *${q.patientName}* — ${statusText}${q.scheduledTime ? ` (${new Date(q.scheduledTime).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })})` : ""}`;
+          return `${q.position}. *${q.patientName}* (QueueID: \`${q.queueId}\`) — ${statusText}${q.scheduledTime ? ` (${new Date(q.scheduledTime).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })})` : ""}`;
         }
       );
       return `Today's Queue (${queue.length} patients):\n\n${lines.join("\n")}`;
     }
 
+    if (toolName === "search_patients") {
+      const results = await convex.query(api.telegram.searchPatientsForBot, {
+        doctorId: doctorId as any,
+        query: toolArgs.query || "",
+      });
+      if (!results || results.length === 0) return `No patients found matching "${toolArgs.query}".`;
+      const lines = results.map(
+        (p: any) => `- *${p.name}* (ID: \`${p.patientId}\`) | Phone: ${p.phone} | Age: ${p.age}`
+      );
+      return `Found ${results.length} patients:\n${lines.join("\n")}`;
+    }
+
+    if (toolName === "add_patient_to_queue") {
+      if (!toolArgs.patientId) return "Error: patientId is required.";
+      const res = await convex.mutation(api.telegram.addPatientToQueueBot, {
+        doctorId: doctorId as any,
+        patientId: toolArgs.patientId as any,
+      });
+      return res.message;
+    }
+
+    if (toolName === "mark_queue_done") {
+      if (!toolArgs.queueId) return "Error: queueId is required.";
+      const res = await convex.mutation(api.telegram.markQueueDoneBot, {
+        doctorId: doctorId as any,
+        queueId: toolArgs.queueId as any,
+      });
+      return res.message;
+    }
+
+    if (toolName === "get_analytics") {
+      const stats = await convex.query(api.telegram.getAnalyticsBot, {
+        doctorId: doctorId as any,
+      });
+      return `📊 *Clinic Analytics:*\nTotal Registered Patients: ${stats.totalPatientsRegistered}\nPatients Seen Today: ${stats.patientsSeenToday}\nTotal Queue Today: ${stats.totalQueueToday}\nEstimated Revenue Today: ${stats.estimatedRevenueTodayEGP} EGP`;
+    }
+
     return "Unknown tool.";
-  } catch (err) {
+  } catch (err: any) {
     console.error("Tool execution error:", err);
-    return "An error occurred while fetching data.";
+    return `An error occurred while executing ${toolName}: ${err.message}`;
   }
 }
 
@@ -102,6 +196,7 @@ async function callAI(
 You help manage the clinic: patient lists, today's schedule, waiting room queue, and statistics.
 Always reply strictly in English with a professional and concise tone. DO NOT use Arabic under any circumstances.
 Use the available tools when needed to fetch real data from the system.
+CRITICAL INSTRUCTION: If you need to mutate data (like adding a patient to the queue), FIRST use search_patients to find them. If multiple patients match, you MUST ask the user which one they mean before proceeding. Never guess. Always ask for confirmation before changing data if there is ambiguity.
 Do not invent data — if you cannot find information, use the appropriate tool.`;
 
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -234,7 +329,7 @@ export async function POST(req: NextRequest) {
       const toolResults: any[] = [];
       for (const tc of assistantMessage.tool_calls) {
         await tgSendTyping(chatId);
-        const result = await executeTool(tc.function.name, doctor._id.toString());
+        const result = await executeTool(tc.function.name, doctor._id.toString(), tc.function.arguments);
         toolResults.push({
           role: "tool",
           tool_call_id: tc.id,
