@@ -103,32 +103,36 @@ export const getPatientsForBot = query({
 export const getTodayQueueForBot = query({
   args: { doctorId: v.id("users") },
   handler: async (ctx, args) => {
-    const now = Date.now();
-    const d = new Date(now);
-    d.setHours(0, 0, 0, 0);
-    const queueDate = d.getTime();
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
 
-    const queueItems = await ctx.db
-      .query("queue")
+    const visits = await ctx.db
+      .query("visits")
       .withIndex("by_doctor_date", (q) =>
-        q.eq("doctorId", args.doctorId).eq("queueDate", queueDate)
+        q.eq("doctorId", args.doctorId).gte("date", startOfDay).lt("date", endOfDay)
       )
       .collect();
 
-    const sorted = [...queueItems]
-      .sort((a, b) => a.position - b.position);
+    const activeVisits = visits.filter(v => v.status !== "cancelled").sort((a, b) => a.date - b.date);
 
     return await Promise.all(
-      sorted.map(async (item) => {
-        const patient = await ctx.db.get(item.patientId);
+      activeVisits.map(async (visit, index) => {
+        const patient = await ctx.db.get(visit.patientId);
+        
+        let mappedStatus = "waiting";
+        if (visit.status === "completed") {
+          mappedStatus = "done";
+        }
+
         return {
-          queueId: item._id,
-          position: item.position,
-          status: item.status,
-          scheduledTime: item.scheduledTime ?? null,
-          patientName: patient?.name ?? "Unknown",
-          patientPhone: patient?.phone ?? null,
-          patientAge: patient?.age ?? null,
+          queueId: visit._id,
+          position: index + 1,
+          status: mappedStatus,
+          scheduledTime: visit.date,
+          patientName: patient?.name ?? visit.patientName ?? "Unknown",
+          patientPhone: patient?.phone ?? visit.patientPhone ?? null,
+          patientAge: patient?.age ?? visit.patientAge ?? null,
         };
       })
     );
@@ -169,26 +173,28 @@ export const getAnalyticsBot = query({
       .withIndex("by_doctor", (q) => q.eq("doctorId", args.doctorId))
       .collect();
       
-    // Count today's patients
-    const now = Date.now();
-    const d = new Date(now);
-    d.setHours(0, 0, 0, 0);
-    const queueDate = d.getTime();
-    const queue = await ctx.db
-      .query("queue")
+    // Count today's visits instead of queue
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
+    
+    const visits = await ctx.db
+      .query("visits")
       .withIndex("by_doctor_date", (q) =>
-        q.eq("doctorId", args.doctorId).eq("queueDate", queueDate)
+        q.eq("doctorId", args.doctorId).gte("date", startOfDay).lt("date", endOfDay)
       )
       .collect();
 
-    const doneCount = queue.filter(q => q.status === "done").length;
+    const activeVisits = visits.filter(v => v.status !== "cancelled");
+    const doneCount = activeVisits.filter(v => v.status === "completed").length;
+    
     const fee = user?.consultationFee || 0;
     const expectedRevenue = doneCount * fee;
 
     return {
       totalPatientsRegistered: patients.length,
       patientsSeenToday: doneCount,
-      totalQueueToday: queue.length,
+      totalQueueToday: activeVisits.length,
       estimatedRevenueTodayEGP: expectedRevenue,
     };
   },
