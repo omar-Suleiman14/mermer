@@ -155,7 +155,7 @@ export async function POST(req: NextRequest) {
             [
               {
                 text: "🏥 ربط عيادتك",
-                web_app: { url: connectUrl },
+                url: connectUrl,
               },
             ],
           ],
@@ -172,7 +172,7 @@ export async function POST(req: NextRequest) {
       await tgSend(chatId, `⚠️ لم يتم ربط حسابك بعد. اضغط على الزر أدناه لتسجيل الدخول وربط عيادتك:`, {
         reply_markup: {
           inline_keyboard: [
-            [{ text: "🔗 ربط حساب العيادة", web_app: { url: connectUrl } }],
+            [{ text: "🔗 ربط حساب العيادة", url: connectUrl }],
           ],
         },
       });

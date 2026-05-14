@@ -51,10 +51,13 @@ export default function TelegramConnectPage() {
           body: JSON.stringify({ telegramId: tgId, doctorName: res.doctorName, clinicName: res.clinicName }),
         }).catch(() => {});
 
-        // Auto-close Telegram Mini App after 2 s
+        // Auto-close Telegram Mini App after 2 s or redirect back to bot
         setTimeout(() => {
-          if (typeof window !== "undefined" && (window as any).Telegram?.WebApp) {
-            (window as any).Telegram.WebApp.close();
+          if (typeof window !== "undefined") {
+            if ((window as any).Telegram?.WebApp) {
+              (window as any).Telegram.WebApp.close();
+            }
+            window.location.href = "https://t.me/Elliot_abot";
           }
         }, 2000);
       })
@@ -141,7 +144,7 @@ export default function TelegramConnectPage() {
               تم الربط بنجاح!
             </h2>
             <p style={{ color: "#9ca3af", fontSize: 14, maxWidth: 280 }}>
-              أهلاً دكتور {doctorName}! حسابك مرتبط الآن بـ إليوت. يمكنك إغلاق هذه النافذة والعودة إلى البوت.
+              أهلاً دكتور {doctorName}! حسابك مرتبط الآن بـ إليوت. جاري إعادتك لتطبيق تيليجرام...
             </p>
           </>
         )}
