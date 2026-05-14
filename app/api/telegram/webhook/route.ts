@@ -88,10 +88,6 @@ const TOOLS = [
 
 interface ToolExecResult {
   output: string;
-  entities: {
-    lastPatientId?: Id<"patients">;
-    lastQueueId?: Id<"queue">;
-  };
 }
 
 async function executeTool(
@@ -99,7 +95,6 @@ async function executeTool(
   doctorId: Id<"users">,
   argsStr?: string
 ): Promise<ToolExecResult> {
-  const empty: ToolExecResult["entities"] = {};
   try {
     let toolArgs: Record<string, any> = {};
     if (argsStr) {
@@ -109,12 +104,7 @@ async function executeTool(
     // ── get_today_queue ───────────────────────────────────────────────────
     if (toolName === "get_today_queue") {
       const queue = await convex.query(api.telegram.getTodayQueueForBot, { doctorId });
-      if (!queue || queue.length === 0) return { output: "The queue is empty today.", entities: empty };
-
-      const entities: ToolExecResult["entities"] = {};
-      if (queue.length > 0) {
-        entities.lastQueueId = queue[0].queueId as Id<"queue">;
-      }
+      if (!queue || queue.length === 0) return { output: "The queue is empty today." };
 
       const lines = queue.map((q: any) => {
         let s = "⏳ Waiting";
@@ -125,7 +115,7 @@ async function executeTool(
           : "";
         return `${q.position}. *${q.patientName}* (QueueID: \`${q.queueId}\`) — ${s}${time}`;
       });
-      return { output: `Today's Queue (${queue.length} patients):\n\n${lines.join("\n")}`, entities };
+      return { output: `Today's Queue (${queue.length} patients):\n\n${lines.join("\n")}` };
     }
 
     // ── search_patients ───────────────────────────────────────────────────
@@ -135,34 +125,24 @@ async function executeTool(
         query: toolArgs.query || "",
       });
       if (!results || results.length === 0)
-        return { output: `No patients found matching "${toolArgs.query}".`, entities: empty };
-
-      const entities: ToolExecResult["entities"] = {};
-      if (results.length === 1) {
-        entities.lastPatientId = results[0].patientId as Id<"patients">;
-      }
+        return { output: `No patients found matching "${toolArgs.query}".` };
 
       const lines = results.map(
         (p: any) => `- *${p.name}* (ID: \`${p.patientId}\`) | Phone: ${p.phone} | Age: ${p.age}`
       );
-      return { output: `Found ${results.length} patients:\n${lines.join("\n")}`, entities };
+      return { output: `Found ${results.length} patients:\n${lines.join("\n")}` };
     }
 
     // ── get_all_patients ──────────────────────────────────────────────────
     if (toolName === "get_all_patients") {
       const patients = await convex.query(api.telegram.getPatientsForBot, { doctorId });
-      if (!patients || patients.length === 0) return { output: "No patients registered yet.", entities: empty };
-
-      const entities: ToolExecResult["entities"] = {};
-      if (patients.length > 0) {
-        entities.lastPatientId = patients[0].id as Id<"patients">;
-      }
+      if (!patients || patients.length === 0) return { output: "No patients registered yet." };
 
       const lines = patients.map(
         (p: any, i: number) =>
           `${i + 1}. *${p.name}* — ${p.age}y | 📞 ${p.phone}${p.chronicConditions?.length ? ` | ${p.chronicConditions.join(", ")}` : ""}`
       );
-      return { output: `Total Patients: *${patients.length}*\n\n${lines.join("\n")}`, entities };
+      return { output: `Total Patients: *${patients.length}*\n\n${lines.join("\n")}` };
     }
 
     // ── get_analytics ─────────────────────────────────────────────────────
@@ -170,14 +150,13 @@ async function executeTool(
       const stats = await convex.query(api.telegram.getAnalyticsBot, { doctorId });
       return {
         output: `📊 *Clinic Analytics:*\nTotal Registered Patients: ${stats.totalPatientsRegistered}\nPatients Seen Today: ${stats.patientsSeenToday}\nTotal Queue Today: ${stats.totalQueueToday}\nEstimated Revenue Today: ${stats.estimatedRevenueTodayEGP} EGP`,
-        entities: empty,
       };
     }
 
     // ── get_today_schedule ────────────────────────────────────────────────
     if (toolName === "get_today_schedule") {
       const schedule = await convex.query(api.telegram.getTodayScheduleForBot, { doctorId });
-      if (!schedule || schedule.length === 0) return { output: "No visits scheduled for today.", entities: empty };
+      if (!schedule || schedule.length === 0) return { output: "No visits scheduled for today." };
 
       const lines = schedule.map((v: any) => {
         let s = "📅 Scheduled";
@@ -187,13 +166,13 @@ async function executeTool(
         const time = new Date(v.date).toLocaleTimeString("en-US", { timeZone: "Africa/Cairo", hour: "2-digit", minute: "2-digit" });
         return `- *${v.patientName}* at ${time} — ${s}`;
       });
-      return { output: `Today's Schedule (${schedule.length} visits):\n\n${lines.join("\n")}`, entities: empty };
+      return { output: `Today's Schedule (${schedule.length} visits):\n\n${lines.join("\n")}` };
     }
 
-    return { output: "Unknown tool.", entities: empty };
+    return { output: "Unknown tool." };
   } catch (err: any) {
     console.error("Tool execution error:", err);
-    return { output: `Error executing ${toolName}: ${err.message}`, entities: empty };
+    return { output: `Error executing ${toolName}: ${err.message}` };
   }
 }
 
@@ -370,7 +349,7 @@ export async function POST(req: NextRequest) {
     // ══════════════════════════════════════════════════════════════════════
     // STEP 4: Fetch real-time data to inject
     // ══════════════════════════════════════════════════════════════════════
-    
+
     // Fetch queue, analytics, and basic patient list
     const [queueRes, analyticsRes, patientsRes, scheduleRes] = await Promise.all([
       executeTool("get_today_queue", doctorId),
@@ -378,7 +357,7 @@ export async function POST(req: NextRequest) {
       executeTool("get_all_patients", doctorId),
       executeTool("get_today_schedule", doctorId),
     ]);
-    
+
     const contextData = `
 --- TODAY'S QUEUE ---
 ${queueRes.output}
