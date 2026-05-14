@@ -415,6 +415,7 @@ export default function DashboardPage() {
       />
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="max-w-5xl mx-auto space-y-6">
+
       {/* Today's Schedule */}
       <div className="bg-white dark:bg-[#1c1c1a] border border-black/5 dark:border-white/5 rounded-2xl shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">

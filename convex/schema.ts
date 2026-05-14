@@ -63,11 +63,15 @@ export default defineSchema({
 
     // Queue display token (kept optional for existing records — feature removed)
     queueDisplayToken: v.optional(v.string()),
+
+    // Telegram Bot integration
+    telegramId: v.optional(v.string()),
   })
     .index("by_clerk_id", ["clerkId"])
     .index("by_qr_slug", ["qrSlug"])
     .index("by_public_profile", ["publicProfile"])
-    .index("by_isAdmin", ["isAdmin"]),
+    .index("by_isAdmin", ["isAdmin"])
+    .index("by_telegram_id", ["telegramId"]),
 
   patients: defineTable({
     doctorId: v.id("users"),

@@ -10,6 +10,7 @@ import { Camera, Clock, Upload, MapPin, Link as LinkIcon, MessageSquare, Globe, 
 import { IOSSpinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { MessageTemplatesSection } from "@/components/message-templates-section";
+import { ElliotBanner } from "@/components/elliot-banner";
 import { useI18n } from "@/lib/i18n";
 import { useTheme } from "next-themes";
 import { LanguageToggle } from "@/components/language-toggle";
@@ -190,6 +191,16 @@ export default function SettingsPage() {
           <p className="text-[12px] text-muted-foreground ms-4 mt-[-20px] mb-8">
             {t("settings.appearanceHint")}
           </p>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════════ */}
+        {/* TELEGRAM INTEGRATION                                        */}
+        {/* ═══════════════════════════════════════════════════════════ */}
+        <section>
+          <h3 className={sectionTitleClass}>الذكاء الاصطناعي وإليوت</h3>
+          <div className="mb-8">
+            <ElliotBanner />
+          </div>
         </section>
 
         {/* ═══════════════════════════════════════════════════════════ */}

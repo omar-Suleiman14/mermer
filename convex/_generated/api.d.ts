@@ -19,6 +19,7 @@ import type * as followUps from "../followUps.js";
 import type * as messageTemplates from "../messageTemplates.js";
 import type * as patients from "../patients.js";
 import type * as queue from "../queue.js";
+import type * as telegram from "../telegram.js";
 import type * as users from "../users.js";
 import type * as visits from "../visits.js";
 
@@ -40,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   messageTemplates: typeof messageTemplates;
   patients: typeof patients;
   queue: typeof queue;
+  telegram: typeof telegram;
   users: typeof users;
   visits: typeof visits;
 }>;
