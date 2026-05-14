@@ -113,7 +113,7 @@ async function executeTool(
         if (q.status === "in-progress") s = "🟢 In Progress";
         if (q.status === "done") s = "✅ Completed";
         const time = q.scheduledTime
-          ? ` (${new Date(q.scheduledTime).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })})`
+          ? ` (${new Date(q.scheduledTime).toLocaleTimeString("en-US", { timeZone: "Africa/Cairo", hour: "2-digit", minute: "2-digit" })})`
           : "";
         return `${q.position}. *${q.patientName}* (QueueID: \`${q.queueId}\`) — ${s}${time}`;
       });
