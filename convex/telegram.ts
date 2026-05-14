@@ -121,32 +121,27 @@ export const getTodayQueueForBot = query({
   handler: async (ctx, args) => {
     const { startOfDay, endOfDay } = getTodayBoundsCairo();
 
-    const visits = await ctx.db
-      .query("visits")
-      .withIndex("by_doctor_date", (q) =>
-        q.eq("doctorId", args.doctorId).gte("date", startOfDay).lt("date", endOfDay)
-      )
+    // Query the `queue` table to match the dashboard's waiting room
+    const queueItems = await ctx.db
+      .query("queue")
+      .withIndex("by_doctor", (q) => q.eq("doctorId", args.doctorId))
       .collect();
 
-    const activeVisits = visits.filter(v => v.status !== "cancelled").sort((a, b) => a.date - b.date);
+    // Filter reliably by actual timestamp regardless of what bucket it was saved in
+    const todaysQueue = queueItems.filter(q => q.addedAt >= startOfDay && q.addedAt < endOfDay);
+    const activeItems = todaysQueue.filter(q => q.status !== "done").sort((a, b) => a.position - b.position);
 
     return await Promise.all(
-      activeVisits.map(async (visit, index) => {
-        const patient = await ctx.db.get(visit.patientId);
-        
-        let mappedStatus = "waiting";
-        if (visit.status === "completed") {
-          mappedStatus = "done";
-        }
-
+      activeItems.map(async (item, index) => {
+        const patient = await ctx.db.get(item.patientId);
         return {
-          queueId: visit._id,
-          position: index + 1,
-          status: mappedStatus,
-          scheduledTime: visit.date,
-          patientName: patient?.name ?? visit.patientName ?? "Unknown",
-          patientPhone: patient?.phone ?? visit.patientPhone ?? null,
-          patientAge: patient?.age ?? visit.patientAge ?? null,
+          queueId: item._id,
+          position: item.position,
+          status: item.status,
+          scheduledTime: item.scheduledTime,
+          patientName: patient?.name ?? "Unknown",
+          patientPhone: patient?.phone ?? null,
+          patientAge: patient?.age ?? null,
         };
       })
     );
