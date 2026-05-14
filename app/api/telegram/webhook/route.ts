@@ -105,7 +105,7 @@ async function callAI(
       "X-Title": "Ibn Sina – Elliot Bot",
     },
     body: JSON.stringify({
-      model: "nvidia/llama-3.1-nemotron-nano-8b-instruct:free",
+      model: "nvidia/nemotron-nano-12b-v2-vl:free",
       messages: [{ role: "system", content: systemPrompt }, ...messages],
       tools: TOOLS,
       tool_choice: "auto",
