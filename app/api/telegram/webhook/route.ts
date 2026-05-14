@@ -96,6 +96,35 @@ const TOOLS = [
   {
     type: "function",
     function: {
+      name: "update_queue_time",
+      description:
+        "Updates the scheduled time for a patient already in today's queue. Requires the exact queueId from get_today_queue.",
+      parameters: {
+        type: "object",
+        properties: { 
+          queueId: { type: "string" },
+          time: { type: "string", description: "The new time (e.g. '16:00' or '4:30 PM')" }
+        },
+        required: ["queueId", "time"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "remove_from_queue",
+      description:
+        "Removes or deletes a patient from today's queue. Requires the exact queueId from get_today_queue.",
+      parameters: {
+        type: "object",
+        properties: { queueId: { type: "string" } },
+        required: ["queueId"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "get_analytics",
       description:
         "Returns basic clinic analytics like total patients, patients seen today, and estimated revenue.",
@@ -197,6 +226,46 @@ async function executeTool(toolName: string, doctorId: string, argsStr?: string)
       return res.message;
     }
 
+    if (toolName === "update_queue_time") {
+      if (!toolArgs.queueId) return "Error: queueId is required.";
+      if (!toolArgs.time) return "Error: time is required.";
+      
+      let scheduledTime: number | undefined = undefined;
+      try {
+        const now = new Date();
+        const match = toolArgs.time.match(/(\d+):(\d+)\s*(am|pm)?/i);
+        if (match) {
+          let hours = parseInt(match[1], 10);
+          const minutes = parseInt(match[2], 10);
+          const ampm = match[3]?.toLowerCase();
+          if (ampm === "pm" && hours < 12) hours += 12;
+          if (ampm === "am" && hours === 12) hours = 0;
+          const d = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0, 0);
+          scheduledTime = d.getTime();
+        }
+      } catch (e) {
+        console.error("Time parsing failed", e);
+      }
+      
+      if (!scheduledTime) return "Error: Could not parse time.";
+
+      const res = await convex.mutation(api.telegram.updateQueueTimeBot, {
+        doctorId: doctorId as any,
+        queueId: toolArgs.queueId as any,
+        scheduledTime: scheduledTime as any,
+      });
+      return res.message;
+    }
+
+    if (toolName === "remove_from_queue") {
+      if (!toolArgs.queueId) return "Error: queueId is required.";
+      const res = await convex.mutation(api.telegram.removeFromQueueBot, {
+        doctorId: doctorId as any,
+        queueId: toolArgs.queueId as any,
+      });
+      return res.message;
+    }
+
     if (toolName === "get_analytics") {
       const stats = await convex.query(api.telegram.getAnalyticsBot, {
         doctorId: doctorId as any,
@@ -215,14 +284,27 @@ async function executeTool(toolName: string, doctorId: string, argsStr?: string)
 
 async function callAI(
   messages: any[],
-  doctorContext: { name: string; clinicName: string }
+  doctorContext: { 
+    name: string; 
+    clinicName: string;
+    workingHoursStart: number;
+    workingHoursEnd: number;
+    availableDays: string[];
+    slotDurationMinutes: number;
+  }
 ): Promise<string> {
   const systemPrompt = `You are Elliot, an intelligent medical AI assistant dedicated to Dr. ${doctorContext.name} at ${doctorContext.clinicName}.
 You help manage the clinic: patient lists, today's schedule, waiting room queue, and statistics.
+Clinic Settings:
+- Working Days: ${doctorContext.availableDays.join(", ")}
+- Working Hours: ${doctorContext.workingHoursStart}:00 to ${doctorContext.workingHoursEnd}:00
+- Slot Duration: ${doctorContext.slotDurationMinutes} minutes.
+
 Always reply strictly in English with a professional and concise tone. DO NOT use Arabic under any circumstances.
 Use the available tools when needed to fetch real data from the system.
 CRITICAL INSTRUCTION 1: If you need to mutate data (like adding a patient to the queue), FIRST use search_patients to find them. If multiple patients match, you MUST ask the user which one they mean before proceeding. Never guess. Always ask for confirmation before changing data if there is ambiguity.
 CRITICAL INSTRUCTION 2: NEVER modify, re-type, or hallucinate database IDs (like patientId or queueId). ALWAYS copy them EXACTLY character-by-character from the tool response. Even one wrong character will break the system.
+CRITICAL INSTRUCTION 3: Before scheduling or adding someone to the queue at a specific time, you MUST ensure the time is within the clinic's working hours. If the user asks for a time outside working hours, inform them and ask for another time.
 Do not invent data — if you cannot find information, use the appropriate tool.`;
 
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -339,7 +421,14 @@ export async function POST(req: NextRequest) {
     // ── Show typing indicator ─────────────────────────────────────────────────
     await tgSendTyping(chatId);
 
-    const doctorContext = { name: doctor.name, clinicName: doctor.clinicName };
+    const doctorContext = { 
+      name: doctor.name, 
+      clinicName: doctor.clinicName,
+      workingHoursStart: doctor.workingHoursStart || 9,
+      workingHoursEnd: doctor.workingHoursEnd || 17,
+      availableDays: doctor.availableDays || ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+      slotDurationMinutes: doctor.slotDurationMinutes || 30
+    };
     const messages: any[] = [{ role: "user", content: text }];
 
     // ── First AI call ─────────────────────────────────────────────────────────

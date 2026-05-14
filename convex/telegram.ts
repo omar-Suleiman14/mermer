@@ -252,3 +252,27 @@ export const getAnalyticsBot = query({
     };
   },
 });
+
+// ─── Public: Update scheduled time in queue (bot tool) ────────────────────────
+export const updateQueueTimeBot = mutation({
+  args: { doctorId: v.id("users"), queueId: v.id("queue"), scheduledTime: v.number() },
+  handler: async (ctx, args) => {
+    const qItem = await ctx.db.get(args.queueId);
+    if (!qItem || qItem.doctorId !== args.doctorId) throw new Error("Queue item not found");
+    
+    await ctx.db.patch(args.queueId, { scheduledTime: args.scheduledTime });
+    return { success: true, message: `Successfully updated the appointment time.` };
+  },
+});
+
+// ─── Public: Remove patient from queue (bot tool) ─────────────────────────────
+export const removeFromQueueBot = mutation({
+  args: { doctorId: v.id("users"), queueId: v.id("queue") },
+  handler: async (ctx, args) => {
+    const qItem = await ctx.db.get(args.queueId);
+    if (!qItem || qItem.doctorId !== args.doctorId) throw new Error("Queue item not found");
+    
+    await ctx.db.delete(args.queueId);
+    return { success: true, message: `Successfully removed the patient from today's queue.` };
+  },
+});
