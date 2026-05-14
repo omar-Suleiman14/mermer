@@ -15,14 +15,9 @@ export async function POST(req: NextRequest) {
     }
 
     const text =
-      `✅ *تم الربط بنجاح!*\n\n` +
-      `أهلاً دكتور *${doctorName}* 👋\n` +
-      `عيادتك *${clinicName}* مرتبطة الآن بـ إليوت.\n\n` +
-      `يمكنك الآن:\n` +
-      `• 📋 عرض قائمة المرضى — _"أرني مرضاي"_\n` +
-      `• 🚪 قائمة الانتظار اليوم — _"ما هو ترتيب المرضى اليوم؟"_\n` +
-      `• ❓ أي سؤال طبي أو إداري\n\n` +
-      `جرّب الآن! 🚀`;
+      `✅ *Successfully Linked!*\n\n` +
+      `Welcome Dr. *${doctorName}* 👋\n` +
+      `Your clinic *${clinicName}* is now linked to Elliot.\n\n`;
 
     await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
       method: "POST",
