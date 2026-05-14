@@ -98,14 +98,28 @@ export const getPatientsForBot = query({
   },
 });
 
+// ─── Helper: Get Cairo "today" bounds in UTC milliseconds ─────────────────────
+function getTodayBoundsCairo() {
+  const now = new Date();
+  now.setMilliseconds(0);
+  const cairoDateStr = now.toLocaleString("en-US", { timeZone: "Africa/Cairo" });
+  const cairoDateInServerTZ = new Date(cairoDateStr);
+  const offsetMs = cairoDateInServerTZ.getTime() - now.getTime();
+  const cairoMidnightInServerTZ = new Date(
+    cairoDateInServerTZ.getFullYear(),
+    cairoDateInServerTZ.getMonth(),
+    cairoDateInServerTZ.getDate()
+  );
+  const startOfDay = cairoMidnightInServerTZ.getTime() - offsetMs;
+  return { startOfDay, endOfDay: startOfDay + 24 * 60 * 60 * 1000 };
+}
+
 // ─── Public: get today's queue for a doctor (bot tool) ──────────────────────────
 
 export const getTodayQueueForBot = query({
   args: { doctorId: v.id("users") },
   handler: async (ctx, args) => {
-    const now = new Date();
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
+    const { startOfDay, endOfDay } = getTodayBoundsCairo();
 
     const visits = await ctx.db
       .query("visits")
@@ -174,9 +188,7 @@ export const getAnalyticsBot = query({
       .collect();
       
     // Count today's visits instead of queue
-    const now = new Date();
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
+    const { startOfDay, endOfDay } = getTodayBoundsCairo();
     
     const visits = await ctx.db
       .query("visits")
@@ -205,11 +217,8 @@ export const getAnalyticsBot = query({
 export const getTodayScheduleForBot = query({
   args: { doctorId: v.id("users") },
   handler: async (ctx, args) => {
-    // Get start and end of today in local Cairo time if possible, or UTC fallback
-    const now = new Date();
-    // A simple approach for today's bounds:
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const endOfDay = startOfDay + 24 * 60 * 60 * 1000;
+    // Get start and end of today in local Cairo time
+    const { startOfDay, endOfDay } = getTodayBoundsCairo();
 
     const visits = await ctx.db
       .query("visits")
