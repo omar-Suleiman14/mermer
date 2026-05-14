@@ -194,3 +194,36 @@ export const getAnalyticsBot = query({
   },
 });
 
+// ─── Public: get today's schedule for a doctor (bot tool) ──────────────────────────
+
+export const getTodayScheduleForBot = query({
+  args: { doctorId: v.id("users") },
+  handler: async (ctx, args) => {
+    const now = Date.now();
+    const d = new Date(now);
+    d.setHours(0, 0, 0, 0);
+    const date = d.getTime();
+
+    const visits = await ctx.db
+      .query("visits")
+      .withIndex("by_doctor_date", (q) =>
+        q.eq("doctorId", args.doctorId).eq("date", date)
+      )
+      .collect();
+
+    return await Promise.all(
+      visits.map(async (visit) => {
+        const patient = await ctx.db.get(visit.patientId);
+        return {
+          visitId: visit._id,
+          status: visit.status,
+          source: visit.source,
+          date: visit.date,
+          patientName: patient?.name ?? visit.patientName ?? "Unknown",
+          patientPhone: patient?.phone ?? visit.patientPhone ?? null,
+        };
+      })
+    );
+  },
+});
+

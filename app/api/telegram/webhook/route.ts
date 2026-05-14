@@ -74,6 +74,14 @@ const TOOLS = [
       parameters: { type: "object", properties: {}, required: [] },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "get_today_schedule",
+      description: "Returns today's scheduled visits/appointments.",
+      parameters: { type: "object", properties: {}, required: [] },
+    },
+  },
 ];
 
 // ─── Execute a read-only tool and return result + extracted entity IDs ─────────
@@ -164,6 +172,22 @@ async function executeTool(
         output: `📊 *Clinic Analytics:*\nTotal Registered Patients: ${stats.totalPatientsRegistered}\nPatients Seen Today: ${stats.patientsSeenToday}\nTotal Queue Today: ${stats.totalQueueToday}\nEstimated Revenue Today: ${stats.estimatedRevenueTodayEGP} EGP`,
         entities: empty,
       };
+    }
+
+    // ── get_today_schedule ────────────────────────────────────────────────
+    if (toolName === "get_today_schedule") {
+      const schedule = await convex.query(api.telegram.getTodayScheduleForBot, { doctorId });
+      if (!schedule || schedule.length === 0) return { output: "No visits scheduled for today.", entities: empty };
+
+      const lines = schedule.map((v: any) => {
+        let s = "📅 Scheduled";
+        if (v.status === "completed") s = "✅ Completed";
+        if (v.status === "cancelled") s = "❌ Cancelled";
+        if (v.status === "confirmed") s = "🟢 Confirmed";
+        const time = new Date(v.date).toLocaleTimeString("en-US", { timeZone: "Africa/Cairo", hour: "2-digit", minute: "2-digit" });
+        return `- *${v.patientName}* at ${time} — ${s}`;
+      });
+      return { output: `Today's Schedule (${schedule.length} visits):\n\n${lines.join("\n")}`, entities: empty };
     }
 
     return { output: "Unknown tool.", entities: empty };
@@ -348,15 +372,19 @@ export async function POST(req: NextRequest) {
     // ══════════════════════════════════════════════════════════════════════
     
     // Fetch queue, analytics, and basic patient list
-    const [queueRes, analyticsRes, patientsRes] = await Promise.all([
+    const [queueRes, analyticsRes, patientsRes, scheduleRes] = await Promise.all([
       executeTool("get_today_queue", doctorId),
       executeTool("get_analytics", doctorId),
       executeTool("get_all_patients", doctorId),
+      executeTool("get_today_schedule", doctorId),
     ]);
     
     const contextData = `
 --- TODAY'S QUEUE ---
 ${queueRes.output}
+
+--- TODAY'S SCHEDULE (VISITS) ---
+${scheduleRes.output}
 
 --- CLINIC ANALYTICS ---
 ${analyticsRes.output}
