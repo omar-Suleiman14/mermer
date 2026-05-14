@@ -1,3 +1,6 @@
+export const runtime = "edge";
+export const maxDuration = 30; // Max allowed for hobby/edge
+
 import { NextRequest, NextResponse } from "next/server";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "@/convex/_generated/api";
@@ -72,8 +75,12 @@ async function executeTool(toolName: string, doctorId: string): Promise<string> 
       });
       if (!queue || queue.length === 0) return "قائمة الانتظار فارغة اليوم.";
       const lines = queue.map(
-        (q: any) =>
-          `${q.position}. *${q.patientName}* — ${q.status === "in-progress" ? "🟢 جارٍ الكشف" : "⏳ ينتظر"}${q.scheduledTime ? ` (${new Date(q.scheduledTime).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })})` : ""}`
+        (q: any) => {
+          let statusText = "⏳ ينتظر";
+          if (q.status === "in-progress") statusText = "🟢 جارٍ الكشف";
+          if (q.status === "done") statusText = "✅ مكتمل";
+          return `${q.position}. *${q.patientName}* — ${statusText}${q.scheduledTime ? ` (${new Date(q.scheduledTime).toLocaleTimeString("ar-EG", { hour: "2-digit", minute: "2-digit" })})` : ""}`;
+        }
       );
       return `قائمة الانتظار اليوم (${queue.length} مريض):\n\n${lines.join("\n")}`;
     }
@@ -154,7 +161,7 @@ export async function POST(req: NextRequest) {
           inline_keyboard: [
             [
               {
-                text: "🏥 ربط عيادتك",
+                text: "ربط عيادتك",
                 url: connectUrl,
               },
             ],

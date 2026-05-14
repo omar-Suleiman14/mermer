@@ -116,7 +116,6 @@ export const getTodayQueueForBot = query({
       .collect();
 
     const sorted = [...queueItems]
-      .filter((q) => q.status !== "done")
       .sort((a, b) => a.position - b.position);
 
     return await Promise.all(
