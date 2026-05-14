@@ -31,26 +31,9 @@ async function tgSendTyping(chatId: number | string) {
   });
 }
 
-// ─── Time parsing helper ──────────────────────────────────────────────────────
 
-function parseTimeToTimestamp(timeStr: string): number | null {
-  try {
-    const match = timeStr.match(/(\d+):(\d+)\s*(am|pm)?/i);
-    if (!match) return null;
-    let hours = parseInt(match[1], 10);
-    const minutes = parseInt(match[2], 10);
-    const ampm = match[3]?.toLowerCase();
-    if (ampm === "pm" && hours < 12) hours += 12;
-    if (ampm === "am" && hours === 12) hours = 0;
-    const now = new Date();
-    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0, 0);
-    return d.getTime();
-  } catch {
-    return null;
-  }
-}
 
-// ─── Tool definitions for OpenRouter ──────────────────────────────────────────
+// ─── Tool definitions for OpenRouter (READ-ONLY) ─────────────────────────────
 
 const TOOLS = [
   {
@@ -65,65 +48,11 @@ const TOOLS = [
     type: "function",
     function: {
       name: "search_patients",
-      description: "Searches for a patient by name or phone. Use BEFORE any mutation to get the correct patientId.",
+      description: "Searches for a patient by name or phone number.",
       parameters: {
         type: "object",
         properties: { query: { type: "string", description: "Name or phone number" } },
         required: ["query"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "add_patient_to_queue",
-      description: "Adds a patient to today's queue. Requires exact patientId from search_patients.",
-      parameters: {
-        type: "object",
-        properties: {
-          patientId: { type: "string" },
-          time: { type: "string", description: "Optional time e.g. '16:00' or '4:30 PM'" },
-        },
-        required: ["patientId"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "mark_queue_done",
-      description: "Marks a queue item as completed. Requires exact queueId from get_today_queue or memory.",
-      parameters: {
-        type: "object",
-        properties: { queueId: { type: "string" } },
-        required: ["queueId"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "update_queue_time",
-      description: "Updates the scheduled time for a patient in today's queue. Requires exact queueId.",
-      parameters: {
-        type: "object",
-        properties: {
-          queueId: { type: "string" },
-          time: { type: "string", description: "New time e.g. '16:00' or '4:30 PM'" },
-        },
-        required: ["queueId", "time"],
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: "remove_from_queue",
-      description: "Removes a patient from today's queue. Requires exact queueId.",
-      parameters: {
-        type: "object",
-        properties: { queueId: { type: "string" } },
-        required: ["queueId"],
       },
     },
   },
@@ -145,14 +74,13 @@ const TOOLS = [
   },
 ];
 
-// ─── Execute a tool and return result + extracted entity IDs ───────────────────
+// ─── Execute a read-only tool and return result + extracted entity IDs ─────────
 
 interface ToolExecResult {
   output: string;
   entities: {
     lastPatientId?: Id<"patients">;
     lastQueueId?: Id<"queue">;
-    lastVisitId?: Id<"visits">;
   };
 }
 
@@ -210,101 +138,6 @@ async function executeTool(
       return { output: `Found ${results.length} patients:\n${lines.join("\n")}`, entities };
     }
 
-    // ── add_patient_to_queue ──────────────────────────────────────────────
-    if (toolName === "add_patient_to_queue") {
-      if (!toolArgs.patientId) return { output: "Error: patientId is required.", entities: empty };
-
-      let scheduledTime: number | undefined;
-      if (toolArgs.time) {
-        scheduledTime = parseTimeToTimestamp(toolArgs.time) ?? undefined;
-      }
-
-      const res = await convex.mutation(api.telegram.addPatientToQueueBot, {
-        doctorId,
-        patientId: toolArgs.patientId as Id<"patients">,
-        scheduledTime,
-      });
-
-      // Verify by re-fetching queue
-      const queue = await convex.query(api.telegram.getTodayQueueForBot, { doctorId });
-      const added = queue.find((q: any) => q.patientName && q.queueId);
-      const entities: ToolExecResult["entities"] = {
-        lastPatientId: toolArgs.patientId as Id<"patients">,
-      };
-      if (added) entities.lastQueueId = added.queueId as Id<"queue">;
-
-      return { output: res.message, entities };
-    }
-
-    // ── mark_queue_done ───────────────────────────────────────────────────
-    if (toolName === "mark_queue_done") {
-      if (!toolArgs.queueId) return { output: "Error: queueId is required.", entities: empty };
-
-      const res = await convex.mutation(api.telegram.markQueueDoneBot, {
-        doctorId,
-        queueId: toolArgs.queueId as Id<"queue">,
-      });
-
-      // Verify
-      const queue = await convex.query(api.telegram.getTodayQueueForBot, { doctorId });
-      const item = queue.find((q: any) => q.queueId === toolArgs.queueId);
-      if (item && item.status !== "done") {
-        return { output: "WARNING: mark_queue_done was called but status did not change to 'done'.", entities: empty };
-      }
-
-      return { output: res.message, entities: { lastQueueId: toolArgs.queueId as Id<"queue"> } };
-    }
-
-    // ── update_queue_time ─────────────────────────────────────────────────
-    if (toolName === "update_queue_time") {
-      if (!toolArgs.queueId) return { output: "Error: queueId is required.", entities: empty };
-      if (!toolArgs.time) return { output: "Error: time is required.", entities: empty };
-
-      const scheduledTime = parseTimeToTimestamp(toolArgs.time);
-      if (!scheduledTime) return { output: "Error: Could not parse time.", entities: empty };
-
-      await convex.mutation(api.telegram.updateQueueTimeBot, {
-        doctorId,
-        queueId: toolArgs.queueId as Id<"queue">,
-        scheduledTime,
-      });
-
-      // Verify the update actually happened
-      const queue = await convex.query(api.telegram.getTodayQueueForBot, { doctorId });
-      const updated = queue.find((q: any) => q.queueId === toolArgs.queueId);
-      if (!updated) {
-        return { output: "Error: Queue item not found after update — it may have been removed.", entities: empty };
-      }
-      if (updated.scheduledTime !== scheduledTime) {
-        return { output: "Error: Time update was called but the scheduled time did not change. Please retry.", entities: empty };
-      }
-
-      const timeStr = new Date(scheduledTime).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
-      return {
-        output: `Successfully updated ${updated.patientName}'s time to ${timeStr}. Verified.`,
-        entities: { lastQueueId: toolArgs.queueId as Id<"queue"> },
-      };
-    }
-
-    // ── remove_from_queue ─────────────────────────────────────────────────
-    if (toolName === "remove_from_queue") {
-      if (!toolArgs.queueId) return { output: "Error: queueId is required.", entities: empty };
-
-      await convex.mutation(api.telegram.removeFromQueueBot, {
-        doctorId,
-        queueId: toolArgs.queueId as Id<"queue">,
-      });
-
-      // Verify removal
-      const queue = await convex.query(api.telegram.getTodayQueueForBot, { doctorId });
-      const stillExists = queue.find((q: any) => q.queueId === toolArgs.queueId);
-      if (stillExists) {
-        return { output: "Error: remove was called but patient is still in queue.", entities: empty };
-      }
-
-      return { output: "Successfully removed the patient from today's queue. Verified.", entities: empty };
-    }
-
     // ── get_all_patients ──────────────────────────────────────────────────
     if (toolName === "get_all_patients") {
       const patients = await convex.query(api.telegram.getPatientsForBot, { doctorId });
@@ -342,22 +175,21 @@ async function executeTool(
 
 function buildSystemPrompt(
   doctorCtx: { name: string; clinicName: string; workingHoursStart: number; workingHoursEnd: number; availableDays: string[]; slotDurationMinutes: number },
-  memory: { lastPatientId?: string; lastQueueId?: string; lastVisitId?: string; lastAppointmentId?: string } | null
+  memory: { lastPatientId?: string; lastQueueId?: string } | null
 ): string {
   let memoryBlock = "";
   if (memory) {
     const parts: string[] = [];
     if (memory.lastPatientId) parts.push(`lastPatientId: ${memory.lastPatientId}`);
     if (memory.lastQueueId) parts.push(`lastQueueId: ${memory.lastQueueId}`);
-    if (memory.lastVisitId) parts.push(`lastVisitId: ${memory.lastVisitId}`);
-    if (memory.lastAppointmentId) parts.push(`lastAppointmentId: ${memory.lastAppointmentId}`);
     if (parts.length > 0) {
-      memoryBlock = `\n\nLAST KNOWN ENTITIES:\n${parts.join("\n")}\n\nIf the user says "him", "her", "this patient", "that one", "move this", "reschedule that", "mark done", etc. — assume they refer to these entities. Use the IDs directly.`;
+      memoryBlock = `\n\nLAST KNOWN ENTITIES:\n${parts.join("\n")}\n\nIf the user says "him", "her", "this patient", "that one" — assume they refer to these entities. Use the IDs directly.`;
     }
   }
 
   return `You are Elliot, an intelligent medical AI assistant dedicated to Dr. ${doctorCtx.name} at ${doctorCtx.clinicName}.
-You help manage the clinic: patient lists, today's schedule, waiting room queue, and statistics.
+You help the doctor view clinic information: patient lists, today's schedule, waiting room queue, and statistics.
+You are a READ-ONLY assistant. You can look up information but you CANNOT modify, add, remove, or reschedule anything.
 
 Clinic Settings:
 - Working Days: ${doctorCtx.availableDays.join(", ")}
@@ -366,15 +198,12 @@ Clinic Settings:
 
 CRITICAL RULES:
 1. Always reply strictly in English. NEVER use Arabic.
-2. NEVER claim an action succeeded unless the tool returned an explicit success confirmation.
-3. NEVER invent or hallucinate database IDs (patientId, queueId, etc.). Copy them EXACTLY from tool responses.
+2. You are READ-ONLY. If the user asks to add, remove, reschedule, mark done, or modify anything — politely tell them to use the Ibn Sina dashboard instead.
+3. NEVER invent or hallucinate database IDs. Copy them EXACTLY from tool responses.
 4. If a tool fails, explain the exact failure. Never hallucinate success.
-5. Before scheduling at a specific time, ensure it's within working hours.
-6. If you need to mutate data, FIRST use search_patients or get_today_queue to get correct IDs.
-7. If multiple patients match a search, ASK the user which one before proceeding.
-8. Never simulate actions in plain text. Always use the tools.
-9. Always prefer existing tool functions over text-based answers.
-10. If the user refers to "that patient" or "him/her", use the entity memory below.${memoryBlock}`;
+5. If multiple patients match a search, list them all.
+6. Always prefer existing tool functions over text-based answers.
+7. If the user refers to "that patient" or "him/her", use the entity memory below.${memoryBlock}`;
 }
 
 // ─── OpenRouter AI call ───────────────────────────────────────────────────────
@@ -550,7 +379,6 @@ export async function POST(req: NextRequest) {
         // Collect entities from tool results
         if (result.entities.lastPatientId) collectedEntities.lastPatientId = result.entities.lastPatientId;
         if (result.entities.lastQueueId) collectedEntities.lastQueueId = result.entities.lastQueueId;
-        if (result.entities.lastVisitId) collectedEntities.lastVisitId = result.entities.lastVisitId;
 
         toolResults.push({
           role: "tool",
@@ -600,13 +428,12 @@ export async function POST(req: NextRequest) {
     });
 
     // Update entity memory if we collected any entities
-    if (collectedEntities.lastPatientId || collectedEntities.lastQueueId || collectedEntities.lastVisitId) {
+    if (collectedEntities.lastPatientId || collectedEntities.lastQueueId) {
       await convex.mutation(api.aiMemory.updateMemory, {
         doctorId,
         telegramId,
         ...(collectedEntities.lastPatientId && { lastPatientId: collectedEntities.lastPatientId }),
         ...(collectedEntities.lastQueueId && { lastQueueId: collectedEntities.lastQueueId }),
-        ...(collectedEntities.lastVisitId && { lastVisitId: collectedEntities.lastVisitId }),
       });
     }
 
