@@ -16,10 +16,12 @@ import {
   ChevronLeft,
   Link as LinkIcon,
   MapPin,
+  Bell,
 } from "lucide-react";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { Switch } from "@/components/ui/switch";
 import { useI18n } from "@/lib/i18n";
 
 function normalisePhone(raw: string): string {
@@ -101,6 +103,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
   const [profileStorageId, setProfileStorageId] = useState<Id<"_storage"> | undefined>();
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const photoRef = useRef<HTMLInputElement>(null);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
   const [saving, setSaving] = useState(false);
   const isMobile = useIsMobile();
@@ -137,9 +140,9 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
       const { storageId } = await res.json();
       setProfileStorageId(storageId as Id<"_storage">);
       setAvatarPreview(URL.createObjectURL(file));
-      toast.success("Photo uploaded");
+      toast.success(t("onboarding.photoUploaded") || "Photo uploaded");
     } catch {
-      toast.error("Failed to upload photo");
+      toast.error(t("onboarding.photoUploadFail") || "Failed to upload photo");
     } finally {
       setUploadingPhoto(false);
     }
@@ -194,34 +197,34 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
       onComplete();
     } catch (err: any) {
       console.error("Onboarding error:", err);
-      toast.error(err?.message ?? "Failed to save profile. Try again.");
+      toast.error(err?.message ?? (t("onboarding.saveFail") || "Failed to save profile. Try again."));
     } finally {
       setSaving(false);
     }
   }
 
   const canAdvanceStep0 = name.trim().length > 0 && (specialty !== "Other" ? specialty !== "" : customSpecialty.trim().length > 0);
-  const canAdvanceStep1 = clinicName.trim().length > 0 && phone.trim().length > 0;
+  const canAdvanceStep1 = clinicName.trim().length > 0 && phone.trim().length > 0 && clinicAddressLink.trim().length > 0;
+  const canAdvanceStep2 = selectedDays.length > 0 && feePerVisit.trim().length > 0 && openFrom.trim().length > 0 && openTo.trim().length > 0;
 
   const inputClass = "w-full px-4 py-2.5 text-sm bg-muted/30 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF]";
 
   const content = (
     <>
-      {/* Coloured header */}
-      <div className={isMobile ? "px-6 pt-6 pb-2 flex-shrink-0" : "bg-[#007AFF] px-6 pt-6 pb-5 flex-shrink-0"}>
-        <p className={isMobile ? "text-[#007AFF] text-xs font-semibold tracking-widest uppercase mb-1" : "text-white/70 text-xs font-semibold tracking-widest uppercase mb-1"}>
+      <div className="px-6 pt-8 pb-2 flex-shrink-0">
+        <p className="text-[#007AFF] text-xs font-semibold tracking-widest uppercase mb-1">
           {t("onboarding.welcome")}
         </p>
-        <h2 className={isMobile ? "text-foreground text-2xl font-bold tracking-tight" : "text-white text-xl font-bold tracking-tight"}>
+        <h2 className="text-foreground text-2xl font-bold tracking-tight">
           {t("onboarding.setup")}
         </h2>
-        <p className={isMobile ? "text-muted-foreground text-xs mt-1" : "text-white/60 text-xs mt-1"}>
+        <p className="text-muted-foreground text-sm mt-1">
           {t("onboarding.setupDesc")}
         </p>
       </div>
 
       {/* Scrollable step content */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-6 pt-4">
         <StepIndicator current={step} total={TOTAL_STEPS} />
 
         <AnimatePresence mode="wait">
@@ -238,39 +241,36 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
                 <div>
                   <p className="text-sm font-semibold">{t("settings.publicProfile") || "Public Profile"}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Allow patients to find and book you online
+                    {t("settings.profileHint") || "Allow patients to find and book you online"}
                   </p>
                 </div>
                 <div className="flex items-center">
-                  <div className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#007AFF] focus-visible:ring-offset-2 focus-visible:ring-offset-background ${publicProfile ? 'bg-[#007AFF]' : 'bg-muted'}`} onClick={() => setPublicProfile(!publicProfile)}>
-                    <span className="sr-only">Toggle public profile</span>
-                    <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${publicProfile ? 'translate-x-5' : 'translate-x-0'}`} />
-                  </div>
+                  <Switch checked={publicProfile} onCheckedChange={setPublicProfile} />
                 </div>
               </div>
 
               <div>
                 <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("onboarding.fullName")} *</label>
-                <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Dr. Mohamed Ahmed" className={inputClass} dir="auto" />
+                <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("settings.placeholderName") || "Dr. Mohamed Ahmed"} className={inputClass} dir="auto" />
               </div>
 
               <div>
                 <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("onboarding.specialty")} *</label>
                 <select value={specialty} onChange={(e) => setSpecialty(e.target.value)} className={inputClass}>
                   <option value="">{t("onboarding.selectSpecialty")}</option>
-                  {SPECIALTIES.map((s) => <option key={s} value={s}>{s}</option>)}
+                  {SPECIALTIES.map((s) => <option key={s} value={s}>{t("specialty." + s) || s}</option>)}
                 </select>
               </div>
 
               {specialty === "Other" && (
-                <input value={customSpecialty} onChange={(e) => setCustomSpecialty(e.target.value)} placeholder="Enter your specialty" className={inputClass} />
+                <input value={customSpecialty} onChange={(e) => setCustomSpecialty(e.target.value)} placeholder={t("settings.placeholderSpecialty") || "Enter your specialty"} className={inputClass} />
               )}
 
               <div>
                 <label className="text-xs font-medium text-muted-foreground block mb-1.5">
                   {t("onboarding.credentials")} <span className="font-normal">({t("onboarding.optional")})</span>
                 </label>
-                <input value={credentials} onChange={(e) => setCredentials(e.target.value)} placeholder="MD, MRCGP, FRCS…" className={inputClass} />
+                <input value={credentials} onChange={(e) => setCredentials(e.target.value)} placeholder={t("settings.placeholderCredentials") || "MD, MRCGP, FRCS…"} className={inputClass} />
               </div>
             </motion.div>
           )}
@@ -285,14 +285,14 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
 
               <div>
                 <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("onboarding.clinicName")} *</label>
-                <input value={clinicName} onChange={(e) => setClinicName(e.target.value)} placeholder="Al Nour Medical Clinic" className={inputClass} />
+                <input value={clinicName} onChange={(e) => setClinicName(e.target.value)} placeholder={t("settings.placeholderClinic") || "Al Nour Medical Clinic"} className={inputClass} />
               </div>
 
               <div>
                 <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("onboarding.whatsappPhone")} *</label>
                 <div className="flex gap-2">
-                  <span className="flex items-center px-3 bg-muted/60 border border-border rounded-xl text-sm text-muted-foreground font-mono flex-shrink-0">+20</span>
-                  <input value={phone.replace(/^\+?20/, "").replace(/^0/, "")} onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))} placeholder="1142529590" type="tel" className={`flex-1 ${inputClass}`} />
+                  <span className="flex items-center px-3 bg-muted/60 border border-border rounded-xl text-sm text-muted-foreground font-mono flex-shrink-0" dir="ltr">+20</span>
+                  <input value={phone.replace(/^\+?20/, "").replace(/^0/, "")} onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))} placeholder="1142529590" type="tel" className={`flex-1 ${inputClass} !text-left`} dir="ltr" />
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">{t("onboarding.phoneDesc")}</p>
               </div>
@@ -300,10 +300,10 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
               <div>
                 <label className="text-xs font-medium text-muted-foreground block mb-1.5">
                   <span className="flex items-center gap-1">
-                    <LinkIcon className="w-3 h-3" /> {t("onboarding.googleMapsLink")} <span className="font-normal text-muted-foreground/60">({t("onboarding.optional")})</span>
+                    <LinkIcon className="w-3 h-3" /> {t("onboarding.googleMapsLink")} *
                   </span>
                 </label>
-                <input value={clinicAddressLink} onChange={(e) => setClinicAddressLink(e.target.value)} placeholder="https://maps.google.com/…" className={inputClass} />
+                <input value={clinicAddressLink} onChange={(e) => setClinicAddressLink(e.target.value)} placeholder="https://maps.google.com/…" className={inputClass} dir="ltr" />
                 <p className="text-xs text-muted-foreground mt-1">{t("onboarding.mapDesc")}</p>
               </div>
 
@@ -313,7 +313,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
                     <MapPin className="w-3 h-3" /> {t("onboarding.addressText")} <span className="font-normal text-muted-foreground/60">({t("onboarding.optional")})</span>
                   </span>
                 </label>
-                <input value={clinicAddress} onChange={(e) => setClinicAddress(e.target.value)} placeholder="123 Street, Cairo, Egypt" className={inputClass} />
+                <input value={clinicAddress} onChange={(e) => setClinicAddress(e.target.value)} placeholder={t("settings.placeholderAddress") || "123 Street, Cairo, Egypt"} className={inputClass} />
               </div>
             </motion.div>
           )}
@@ -327,7 +327,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
               </div>
 
               <div>
-                <p className="text-xs font-medium text-muted-foreground mb-2">{t("onboarding.workingDays")}</p>
+                <p className="text-xs font-medium text-muted-foreground mb-2">{t("onboarding.workingDays")} *</p>
                 <div className="flex flex-wrap gap-2">
                   {DAYS.map((d) => (
                     <button key={d} onClick={() => toggleDay(d)}
@@ -336,7 +336,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
                           ? "bg-[#007AFF] text-white border-[#007AFF]"
                           : "border-border hover:border-[#007AFF]/40 text-muted-foreground"
                       }`}>
-                      {d}
+                      {t(`days.${d}`) || d}
                     </button>
                   ))}
                 </div>
@@ -344,25 +344,37 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("onboarding.opensAt")}</label>
-                  <input type="time" value={openFrom} onChange={(e) => setOpenFrom(e.target.value)} className={inputClass} />
+                  <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("onboarding.opensAt")} *</label>
+                  <select value={openFrom} onChange={(e) => setOpenFrom(e.target.value)} className={`${inputClass} appearance-none cursor-pointer`} required>
+                    {Array.from({ length: 24 }, (_, h) => {
+                      const val = `${h.toString().padStart(2, '0')}:00`;
+                      const label = h === 0 ? "12:00 AM" : h === 12 ? "12:00 PM" : h < 12 ? `${h}:00 AM` : `${h - 12}:00 PM`;
+                      return <option key={val} value={val}>{label}</option>;
+                    })}
+                  </select>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("onboarding.closesAt")}</label>
-                  <input type="time" value={openTo} onChange={(e) => setOpenTo(e.target.value)} className={inputClass} />
+                  <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("onboarding.closesAt")} *</label>
+                  <select value={openTo} onChange={(e) => setOpenTo(e.target.value)} className={`${inputClass} appearance-none cursor-pointer`} required>
+                    {Array.from({ length: 24 }, (_, h) => {
+                      const val = `${h.toString().padStart(2, '0')}:00`;
+                      const label = h === 0 ? "12:00 AM" : h === 12 ? "12:00 PM" : h < 12 ? `${h}:00 AM` : `${h - 12}:00 PM`;
+                      return <option key={val} value={val}>{label}</option>;
+                    })}
+                  </select>
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("onboarding.slotDuration")}</label>
+                <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("onboarding.slotDuration")} *</label>
                 <select value={slotDuration} onChange={(e) => setSlotDuration(e.target.value)} className={inputClass}>
-                  {[10, 15, 20, 30, 45, 60].map((m) => <option key={m} value={m}>{m} minutes</option>)}
+                  {[10, 15, 20, 30, 45, 60].map((m) => <option key={m} value={m}>{m} {t("onboarding.minutes")}</option>)}
                 </select>
               </div>
 
               <div>
                 <label className="text-xs font-medium text-muted-foreground block mb-1.5">
-                  {t("onboarding.feePerVisit")} <span className="font-normal">({t("onboarding.optional")})</span>
+                  {t("onboarding.feePerVisit")} *
                 </label>
                 <div className="relative">
                   <input
@@ -374,7 +386,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
                     className={inputClass}
                     dir="ltr"
                   />
-                  <span className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium pointer-events-none">EGP</span>
+                  <span className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium pointer-events-none">{t("common.currency")}</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">{t("onboarding.feeDesc")}</p>
               </div>
@@ -426,7 +438,36 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
                 <p className="text-xs text-muted-foreground mt-1" style={{ textAlign: dir === "rtl" ? "left" : "right" }}>{bio.length}/500</p>
               </div>
 
-
+              <div className="flex items-center justify-between p-4 bg-background border border-border rounded-xl">
+                <div className="flex gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#007AFF]/10 flex items-center justify-center flex-shrink-0">
+                    <Bell className="w-5 h-5 text-[#007AFF]" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-semibold">{t("settings.notifications") || "Online Booking Alerts"}</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {t("settings.notificationsDesc") || "Get notified immediately when a patient books online"}
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={notificationsEnabled}
+                  onCheckedChange={async (checked) => {
+                    if (checked) {
+                      const perm = await Notification.requestPermission();
+                      if (perm === "granted") {
+                        setNotificationsEnabled(true);
+                        toast.success(t("settings.notificationsEnabled") || "Notifications enabled");
+                      } else {
+                        toast.error(t("settings.notificationsDenied") || "Notification permission denied");
+                        setNotificationsEnabled(false);
+                      }
+                    } else {
+                      setNotificationsEnabled(false);
+                    }
+                  }}
+                />
+              </div>
 
               <div className="bg-[#007AFF]/5 border border-[#007AFF]/20 rounded-xl p-3 text-xs text-[#007AFF]">
                 {t("onboarding.almostDone")}
@@ -450,7 +491,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
 
         {step < TOTAL_STEPS - 1 ? (
           <button onClick={() => setStep((s) => s + 1)}
-            disabled={(step === 0 && !canAdvanceStep0) || (step === 1 && !canAdvanceStep1)}
+            disabled={(step === 0 && !canAdvanceStep0) || (step === 1 && !canAdvanceStep1) || (step === 2 && !canAdvanceStep2)}
             className="flex items-center gap-1.5 bg-[#007AFF] text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-[#0062cc] transition-colors disabled:opacity-50">
             {t("onboarding.next")} {dir === "rtl" ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
           </button>
@@ -489,7 +530,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
         initial={{ scale: 0.92, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", stiffness: 400, damping: 30 }}
-        className="relative z-10 w-full max-w-md bg-[var(--background)] rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+        className="relative z-10 w-full max-w-3xl h-[85vh] md:h-[80vh] bg-[var(--background)] rounded-2xl overflow-hidden shadow-2xl flex flex-col"
       >
         {content}
       </motion.div>

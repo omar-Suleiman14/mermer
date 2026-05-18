@@ -556,10 +556,10 @@ export default function DoctorPublicProfile() {
                           </span>
                           <input
                             value={phone}
-                            onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
+                            onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").replace(/^0/, ""))}
                             placeholder="1035555282"
                             type="tel"
-                            maxLength={10}
+                            maxLength={11}
                             className="flex-1 px-3 py-2.5 text-sm bg-transparent focus:outline-none"
                           />
                         </div>

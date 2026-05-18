@@ -8,7 +8,10 @@ import { PageHeader } from "@/components/page-header";
 import { VisitCompletionModal } from "@/components/visit-completion-modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
+import { IOSSpinner } from "@/components/ui/spinner";
 import {
   CalendarDays,
   Clock,
@@ -18,6 +21,8 @@ import {
   MessageCircle,
   GripVertical,
   XCircle,
+  CalendarIcon,
+  RefreshCw,
   X,
   MoreHorizontal,
 } from "lucide-react";
@@ -67,8 +72,8 @@ function startOfDay(ts: number) {
   return d.getTime();
 }
 
-function formatTime(ts: number) {
-  return new Date(ts).toLocaleTimeString("en-US", {
+function formatTime(ts: number, locale = "en-US") {
+  return new Date(ts).toLocaleTimeString(locale, {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
@@ -85,6 +90,7 @@ function formatFullDate(ts: number, locale = "en-US") {
 }
 
 function SortableApptItem({ appt, onComplete, onReminder, onCancel }: { appt: any, onComplete: () => void, onReminder: (e: React.MouseEvent) => void, onCancel: () => void }) {
+  const isContractVisit = appt.source === "contract";
   const isDone = appt.status === "completed";
   
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ 
@@ -134,7 +140,7 @@ function SortableApptItem({ appt, onComplete, onReminder, onCancel }: { appt: an
       <div className="flex flex-col items-center w-14 flex-shrink-0">
         <Clock className="w-3 h-3 text-muted-foreground mb-0.5" />
         <span className="text-xs font-bold text-[#1a1916] dark:text-[#f0efea]">
-          {formatTime(appt.date)}
+          {formatTime(appt.date, lang === "ar" ? "ar-EG" : "en-US")}
         </span>
       </div>
 
@@ -210,10 +216,10 @@ function SortableApptItem({ appt, onComplete, onReminder, onCancel }: { appt: an
             )}
             <button
               onClick={onCancel}
-              className="p-2 rounded-full hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-colors"
-              title="Cancel appointment"
+              className={`p-2 rounded-full transition-colors ${isContractVisit ? "hover:bg-[#AF52DE]/10 text-muted-foreground hover:text-[#AF52DE]" : "hover:bg-red-500/10 text-muted-foreground hover:text-red-500"}`}
+              title={isContractVisit ? "Reschedule" : "Cancel appointment"}
             >
-              <XCircle className="w-5 h-5" />
+              {isContractVisit ? <RefreshCw className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
             </button>
           </div>
           <div className="hidden max-[500px]:block">
@@ -235,9 +241,9 @@ function SortableApptItem({ appt, onComplete, onReminder, onCancel }: { appt: an
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onCancel} className="gap-2 cursor-pointer font-medium text-red-500 focus:text-red-500 focus:bg-red-500/10">
-                  <XCircle className="w-4 h-4" />
-                  <span>{t("common.cancel") || "Cancel"}</span>
+                <DropdownMenuItem onClick={onCancel} className={`gap-2 cursor-pointer font-medium ${isContractVisit ? "text-[#AF52DE] focus:text-[#AF52DE] focus:bg-[#AF52DE]/10" : "text-red-500 focus:text-red-500 focus:bg-red-500/10"}`}>
+                  {isContractVisit ? <RefreshCw className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                  <span>{isContractVisit ? (t("visit.reschedule") || "Reschedule") : (t("common.cancel") || "Cancel")}</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -283,6 +289,11 @@ export default function DashboardPage() {
   const cancelAppointment = useMutation(api.appointments.updateAppointment);
 
   const [cancelModal, setCancelModal] = useState<Id<"visits"> | null>(null);
+  const [rescheduleModal, setRescheduleModal] = useState<{ visitId: Id<"visits">; patientName: string } | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState<Date | undefined>(undefined);
+  const [rescheduleTime, setRescheduleTime] = useState("10:00");
+  const [rescheduleCalOpen, setRescheduleCalOpen] = useState(false);
+  const [rescheduling, setRescheduling] = useState(false);
 
   const [completionModal, setCompletionModal] = useState<{
     appointmentId: Id<"visits">;
@@ -321,6 +332,47 @@ export default function DashboardPage() {
       toast.success("Appointment cancelled");
     } catch { toast.error("Failed to cancel"); }
   }
+
+  async function handleReschedule() {
+    if (!rescheduleModal || !rescheduleDate) return;
+    setRescheduling(true);
+    try {
+      const [hh, mm] = rescheduleTime.split(":").map(Number);
+      const d = new Date(rescheduleDate);
+      d.setHours(hh, mm, 0, 0);
+      await updateAppointment({ clerkId, appointmentId: rescheduleModal.visitId, updates: { date: d.getTime() } });
+      toast.success("Visit rescheduled successfully");
+      setRescheduleModal(null);
+      setRescheduleDate(undefined);
+    } catch { toast.error("Failed to reschedule"); }
+    finally { setRescheduling(false); }
+  }
+
+  // Working days from doctor profile for reschedule calendar
+  const workingDayAbbrs: string[] = (currentUser as any)?.availableDays ?? [];
+  const DOW_ABBR: Record<number, string> = { 0: "Sun", 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat" };
+  function isNonWorkingDay(d: Date): boolean {
+    if (workingDayAbbrs.length > 0) return !workingDayAbbrs.includes(DOW_ABBR[d.getDay()]);
+    return [0, 6].includes(d.getDay());
+  }
+
+  // Time slots for reschedule
+  const rescheduleSlots = useMemo(() => {
+    const startHour = currentUser?.workingHoursStart ?? 9;
+    const endHour = currentUser?.workingHoursEnd ?? 17;
+    const slotMin = currentUser?.slotDurationMinutes ?? 30;
+    const slots: { timeStr: string; label: string }[] = [];
+    for (let h = startHour; h < endHour; h++) {
+      for (let m = 0; m < 60; m += slotMin) {
+        const hh = h.toString().padStart(2, "0");
+        const mm = m.toString().padStart(2, "0");
+        const ampm = h >= 12 ? (lang === "ar" ? "م" : "PM") : (lang === "ar" ? "ص" : "AM");
+        const dh = h % 12 || 12;
+        slots.push({ timeStr: `${hh}:${mm}`, label: `${dh}:${mm} ${ampm}` });
+      }
+    }
+    return slots;
+  }, [currentUser]);
 
   async function handleCompleteVisit(
     prescriptionImageId?: Id<"_storage">,
@@ -367,8 +419,8 @@ export default function DashboardPage() {
     const now = new Date(appointmentDate);
     const message = templateBody
       .replace(/\{patient_name\}/g, patientName)
-      .replace(/\{date\}/g, now.toLocaleDateString("en-US", { month: "short", day: "numeric" }))
-      .replace(/\{time\}/g, formatTime(appointmentDate))
+      .replace(/\{date\}/g, now.toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { month: "short", day: "numeric" }))
+      .replace(/\{time\}/g, formatTime(appointmentDate, lang === "ar" ? "ar-EG" : "en-US"))
       .replace(/\{clinic_address\}/g, (currentUser as any)?.clinicAddressLink || "")
       .replace(/\{\{name\}\}/g, firstName);
 
@@ -381,14 +433,6 @@ export default function DashboardPage() {
     window.open(url, "_blank");
     toast.success(`Opening WhatsApp for ${firstName}`);
     setTemplatePicker(null);
-  }
-
-  function sendQuickReminder() {
-    if (!templatePicker) return;
-    const { patientName, appointmentDate } = templatePicker;
-    const firstName = patientName.split(" ")[0];
-    const defaultMsg = `مرحباً ${firstName}، هذا تذكير بأن موعدك اليوم الساعة ${formatTime(appointmentDate)}. نراك قريباً.`;
-    sendWithTemplate(currentUser?.whatsappTemplate || defaultMsg);
   }
 
   // Stats derived from today's appointments only (no heavy allAppointments subscription)
@@ -478,7 +522,13 @@ export default function DashboardPage() {
                     appt={appt}
                     onComplete={() => setCompletionModal({ appointmentId: appt._id, patientId: appt.patientId ?? undefined, patientName: appt.patientName, patientAge: appt.patientAge, contractId: appt.contractId ?? undefined })}
                     onReminder={(e: React.MouseEvent) => openTemplatePicker(appt.patientName, appt.patientPhone, appt.date, e)}
-                    onCancel={() => setCancelModal(appt._id)}
+                    onCancel={() => {
+                      if (appt.source === "contract") {
+                        setRescheduleModal({ visitId: appt._id, patientName: appt.patientName });
+                      } else {
+                        setCancelModal(appt._id);
+                      }
+                    }}
                   />
                 ))}
               </SortableContext>
@@ -514,6 +564,97 @@ export default function DashboardPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Reschedule Modal for Contract Visits */}
+      <AnimatePresence>
+        {rescheduleModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => { setRescheduleModal(null); setRescheduleDate(undefined); }}
+            />
+            <motion.div
+              initial={{ y: 40, opacity: 0, scale: 0.97 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: 40, opacity: 0, scale: 0.97 }}
+              transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              className="relative z-10 w-full sm:max-w-md bg-[var(--background)] rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="sm:hidden w-12 h-1 rounded-full bg-border mx-auto mt-3 mb-1" />
+              <div className="px-6 py-4 border-b border-border">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#AF52DE]/10 flex items-center justify-center">
+                    <RefreshCw className="w-5 h-5 text-[#AF52DE]" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-semibold">Reschedule Contract Visit</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">{rescheduleModal.patientName}</p>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-3 bg-[#AF52DE]/5 border border-[#AF52DE]/20 rounded-lg px-3 py-2">
+                  Contract visits cannot be cancelled. Please pick a new date and time.
+                </p>
+              </div>
+              <div className="p-6 space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1.5">New Date <span className="text-red-500">*</span></p>
+                    <Popover open={rescheduleCalOpen} onOpenChange={setRescheduleCalOpen}>
+                      <PopoverTrigger asChild>
+                        <button className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border rounded-xl hover:border-[#AF52DE]/50 transition-colors text-left ${!rescheduleDate ? "border-red-400/60" : "border-border"}`}>
+                          <CalendarIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                          <span className={rescheduleDate ? "" : "text-muted-foreground"}>
+                            {rescheduleDate ? rescheduleDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Pick date"}
+                          </span>
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={rescheduleDate} onSelect={(d) => { if (d) { setRescheduleDate(d); setRescheduleCalOpen(false); } }} disabled={(d) => d < new Date() || isNonWorkingDay(d)} />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1.5">Time Slot</p>
+                    <div className="max-h-48 overflow-y-auto border border-border rounded-xl divide-y divide-border/50">
+                      {rescheduleSlots.map(slot => (
+                        <button key={slot.timeStr} onClick={() => setRescheduleTime(slot.timeStr)}
+                          className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${rescheduleTime === slot.timeStr ? "bg-[#AF52DE]/10 text-[#AF52DE] font-semibold" : "hover:bg-muted/30"}`}>
+                          <span>{slot.label}</span>
+                          {rescheduleTime === slot.timeStr && <CheckCircle2 className="w-3.5 h-3.5" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => { setRescheduleModal(null); setRescheduleDate(undefined); }}
+                    className="flex-1 border border-border text-sm font-medium py-2.5 rounded-xl hover:bg-muted/40 transition-colors"
+                  >
+                    {t("common.cancel")}
+                  </button>
+                  <button
+                    onClick={handleReschedule}
+                    disabled={!rescheduleDate || rescheduling}
+                    className="flex-1 bg-[#AF52DE] text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-[#9B3DC8] transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                  >
+                    {rescheduling ? <IOSSpinner size={16} className="text-white" /> : <RefreshCw className="w-4 h-4" />}
+                    Reschedule
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <VisitCompletionModal
         open={!!completionModal}
@@ -561,20 +702,6 @@ export default function DashboardPage() {
                 <p className="text-[11px] text-muted-foreground">{t("templates.chooseTemplate")}</p>
               </div>
               <div className="px-3 pb-3 space-y-1 max-h-[50vh] overflow-y-auto">
-                {/* Quick reminder (default) */}
-                <button
-                  onClick={sendQuickReminder}
-                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#25D366]/8 transition-colors text-left group"
-                >
-                  <div className="w-8 h-8 rounded-full bg-[#25D366]/10 flex items-center justify-center flex-shrink-0">
-                    <MessageCircle className="w-4 h-4 text-[#25D366]" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{t("templates.quickReminder")}</p>
-                    <p className="text-[11px] text-muted-foreground truncate">{t("templates.defaultReminder")}</p>
-                  </div>
-                </button>
-
                 {/* Saved templates */}
                 {(messageTemplates ?? []).map((tpl) => (
                   <button

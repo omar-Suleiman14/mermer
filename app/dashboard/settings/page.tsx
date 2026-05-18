@@ -6,7 +6,7 @@ import { Id } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
-import { Camera, Link as LinkIcon, Globe, Palette, CalendarDays, Bot, CheckCircle2, Loader2, Unlink, AlertTriangle, X } from "lucide-react";
+import { Camera, Link as LinkIcon, Globe, Palette, CalendarDays, Bot, CheckCircle2, Loader2, Unlink, AlertTriangle, X, Bell } from "lucide-react";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { MessageTemplatesSection } from "@/components/message-templates-section";
@@ -209,6 +209,7 @@ export default function SettingsPage() {
   const [workingDays, setWorkingDays] = useState<string[]>([]);
   const [bio, setBio] = useState("");
   const [publicProfile, setPublicProfile] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -217,6 +218,9 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setMounted(true);
+    if (typeof window !== "undefined" && "Notification" in window) {
+      setNotificationsEnabled(Notification.permission === "granted");
+    }
   }, []);
 
   // Load user data
@@ -321,10 +325,73 @@ export default function SettingsPage() {
                 </p>
               </div>
               <div className="flex-shrink-0 flex items-center">
-                <div className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#007AFF] focus-visible:ring-offset-2 focus-visible:ring-offset-background ${publicProfile ? 'bg-[#007AFF]' : 'bg-muted'}`} onClick={() => setPublicProfile(!publicProfile)}>
-                  <span className="sr-only">Toggle public profile</span>
-                  <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${publicProfile ? 'translate-x-5' : 'translate-x-0'}`} />
-                </div>
+                <Switch
+                  checked={publicProfile}
+                  onCheckedChange={(c) => setPublicProfile(c)}
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════════ */}
+        {/* NOTIFICATIONS                                               */}
+        {/* ═══════════════════════════════════════════════════════════ */}
+        <section>
+          <h3 className={sectionTitleClass}>{t("settings.notifications") || "Notifications"}</h3>
+          <div className={blockClass}>
+            <div className={`${rowClass} !py-5`}>
+              <div>
+                <label className="text-sm font-semibold flex items-center gap-2">
+                  <Bell className="w-4 h-4 text-[#007AFF]" /> {t("settings.onlineBookingAlerts") || "Online Booking Alerts"}
+                </label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t("settings.notificationsDesc") || "Get notified immediately when a patient books online"}
+                </p>
+              </div>
+              <div className="flex-shrink-0 flex items-center gap-4">
+                <button
+                  onClick={() => {
+                    if (Notification.permission === "granted") {
+                      try {
+                        const noti = new window.Notification("Test Notification", {
+                          body: "This is a test notification from IbnSina",
+                          requireInteraction: true,
+                        });
+                        navigator.serviceWorker?.getRegistration().then((reg) => {
+                          if (reg) reg.showNotification("Test Notification", { body: "This is a test from Service Worker" });
+                        });
+                      } catch (e) {
+                        toast.error("Browser error: " + (e as Error).message);
+                      }
+                    } else {
+                      toast.error("Permission not granted");
+                    }
+                  }}
+                  className="text-xs font-semibold px-3 py-1.5 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors"
+                >
+                  Test
+                </button>
+                <Switch
+                  checked={notificationsEnabled}
+                  onCheckedChange={async (checked) => {
+                    if (checked) {
+                      const perm = await Notification.requestPermission();
+                      if (perm === "granted") {
+                        setNotificationsEnabled(true);
+                        localStorage.setItem("muteOnlineBookings", "false");
+                        toast.success("Notifications enabled");
+                      } else {
+                        toast.error("Notification permission denied");
+                        setNotificationsEnabled(false);
+                      }
+                    } else {
+                      localStorage.setItem("muteOnlineBookings", "true");
+                      setNotificationsEnabled(false);
+                      toast.success("Notifications muted");
+                    }
+                  }}
+                />
               </div>
             </div>
           </div>
@@ -550,7 +617,7 @@ export default function SettingsPage() {
                         : "border-border hover:border-[#007AFF]/40 text-muted-foreground"
                       }`}
                   >
-                    {d}
+                    {t(`days.${d}`) || d}
                   </button>
                 ))}
               </div>

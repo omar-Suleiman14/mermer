@@ -86,7 +86,7 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
         const mm = m.toString().padStart(2, "0");
         const timeStr = `${hh}:${mm}`;
 
-        const ampm = h >= 12 ? "PM" : "AM";
+        const ampm = h >= 12 ? (lang === "ar" ? "م" : "PM") : (lang === "ar" ? "ص" : "AM");
         const displayH = h % 12 || 12;
         const label = `${displayH}:${mm} ${ampm}`;
 
@@ -176,7 +176,7 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
                     <button type="button" className="w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border border-border rounded-xl hover:border-[#007AFF]/50 transition-colors text-left">
                       <CalendarIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                       <span className="text-sm">
-                        {visitDate ? visitDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : t("visit.pickDate")}
+                        {visitDate ? visitDate.toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { weekday: "short", month: "short", day: "numeric" }) : t("visit.pickDate")}
                       </span>
                     </button>
                   </PopoverTrigger>

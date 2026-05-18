@@ -10,6 +10,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { DoctorOnboarding } from "@/components/doctor-onboarding";
 import { useState } from "react";
 import { useI18n } from "@/lib/i18n";
+import { OnlineBookingNotifier } from "@/components/online-booking-notifier";
 
 function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const { user, isLoaded } = useUser();
@@ -40,6 +41,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     <TooltipProvider delayDuration={0}>
       <SidebarProvider>
         <UserSync />
+        <OnlineBookingNotifier />
         <AppSidebar side={sidebarSide} />
         <SidebarInset className="bg-background">
           {children}

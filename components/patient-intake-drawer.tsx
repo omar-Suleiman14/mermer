@@ -133,7 +133,7 @@ export function PatientIntakeDrawer({
         const hh = h.toString().padStart(2, "0");
         const mm = m.toString().padStart(2, "0");
         const timeStr = `${hh}:${mm}`;
-        const ampm = h >= 12 ? "PM" : "AM";
+        const ampm = h >= 12 ? (lang === "ar" ? "م" : "PM") : (lang === "ar" ? "ص" : "AM");
         const displayH = h % 12 || 12;
         const label = `${displayH}:${mm} ${ampm}`;
         const isWorkingHour = h >= startHour && h < endHour;

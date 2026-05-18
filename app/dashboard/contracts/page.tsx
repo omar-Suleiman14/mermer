@@ -33,8 +33,9 @@ import { useI18n } from "@/lib/i18n";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function fmt(ts: number, includeTime = false) {
+function fmtDate(ts: number, locale: string, includeTime = false) {
   const opts: Intl.DateTimeFormatOptions = {
+    weekday: "short",
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -44,7 +45,7 @@ function fmt(ts: number, includeTime = false) {
     opts.minute = "2-digit";
     opts.hour12 = true;
   }
-  return new Date(ts).toLocaleString("en-US", opts);
+  return new Date(ts).toLocaleString(locale, opts);
 }
 
 
@@ -81,6 +82,7 @@ function VisitSlotPicker({
   slotMin: number;
   availableDays: string[];
 }) {
+  const { t, lang } = useI18n();
   const [calOpen, setCalOpen] = useState(false);
 
   const dayStart = date ? new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0).getTime() : 0;
@@ -109,7 +111,7 @@ function VisitSlotPicker({
         const hh = h.toString().padStart(2, "0");
         const mm = m.toString().padStart(2, "0");
         const ts = `${hh}:${mm}`;
-        const ampm = h >= 12 ? "PM" : "AM";
+        const ampm = h >= 12 ? (lang === "ar" ? "م" : "PM") : (lang === "ar" ? "ص" : "AM");
         const dh = h % 12 || 12;
         arr.push({ timeStr: ts, label: `${dh}:${mm} ${ampm}`, reserved: reservedTimes.has(ts) });
       }
@@ -118,45 +120,71 @@ function VisitSlotPicker({
   }, [startHour, endHour, slotMin, reservedTimes]);
 
   return (
-    <div className="border border-border rounded-xl p-3 space-y-2">
-      <p className="text-xs font-semibold text-muted-foreground">Visit {index + 1}</p>
-      <div className="grid grid-cols-2 gap-2">
-        <Popover open={calOpen} onOpenChange={setCalOpen}>
-          <PopoverTrigger asChild>
-            <button className="flex items-center gap-1.5 px-3 py-2 text-xs bg-background border border-border rounded-lg hover:border-[#007AFF]/50 transition-colors text-left">
-              <CalendarIcon className="w-3.5 h-3.5 text-muted-foreground" />
-              {date ? date.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Pick date"}
-            </button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar 
-              mode="single" 
-              selected={date} 
-              onSelect={(d) => { if (d) { onDateChange(d); setCalOpen(false); } }} 
-              disabled={(d) => {
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-                if (d < today) return true;
-                if (availableDays && availableDays.length > 0) {
-                  const dayName = d.toLocaleDateString("en-US", { weekday: "short" });
-                  if (!availableDays.includes(dayName)) return true;
-                }
-                return false;
-              }}
-            />
-          </PopoverContent>
-        </Popover>
-        <select
-          value={time}
-          onChange={(e) => onTimeChange(e.target.value)}
-          className="px-3 py-2 text-xs bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007AFF]"
-        >
-          {slots.map(s => (
-            <option key={s.timeStr} value={s.timeStr} disabled={s.reserved}>
-              {s.label}{s.reserved ? " (Reserved)" : ""}
-            </option>
-          ))}
-        </select>
+    <div className="border border-[#AF52DE]/30 bg-[#AF52DE]/4 rounded-xl overflow-hidden">
+      <div className="w-full flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-[#AF52DE]/10 flex items-center justify-center">
+            <Clock className="w-4 h-4 text-[#AF52DE]" />
+          </div>
+          <div className="text-left">
+            <p className="text-sm font-semibold">
+              Visit {index + 1}
+              <span className="text-red-500 ml-1">*</span>
+            </p>
+            <p className="text-xs text-muted-foreground">Select date and time</p>
+          </div>
+        </div>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-[#AF52DE] bg-[#AF52DE]/10 px-2 py-0.5 rounded-full">Required</span>
+      </div>
+
+      <div className="p-4 border-t border-[#AF52DE]/20 space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-1.5">
+              Date <span className="text-red-500">*</span>
+            </p>
+            <Popover open={calOpen} onOpenChange={setCalOpen}>
+              <PopoverTrigger asChild>
+                <button className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border rounded-xl hover:border-[#AF52DE]/50 transition-colors text-left ${!date ? "border-red-400/60" : "border-border"}`}>
+                  <CalendarIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <span className={date ? "" : "text-muted-foreground"}>
+                    {date ? date.toLocaleDateString(t("common.currency") === "ج.م" ? "ar-EG" : "en-US", { weekday: "short", month: "short", day: "numeric" }) : "Pick date"}
+                  </span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar 
+                  mode="single" 
+                  selected={date} 
+                  onSelect={(d) => { if (d) { onDateChange(d); setCalOpen(false); } }} 
+                  disabled={(d) => {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    if (d < today) return true;
+                    if (availableDays && availableDays.length > 0) {
+                      const dayName = d.toLocaleDateString("en-US", { weekday: "short" });
+                      if (!availableDays.includes(dayName)) return true;
+                    }
+                    return false;
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-1.5">Time Slot</p>
+            <div className="max-h-48 overflow-y-auto border border-border rounded-xl divide-y divide-border/50">
+              {slots.map(slot => (
+                <button key={slot.timeStr} onClick={() => !slot.reserved && onTimeChange(slot.timeStr)} disabled={slot.reserved}
+                  className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${slot.reserved ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed line-through" : time === slot.timeStr ? "bg-[#AF52DE]/10 text-[#AF52DE] font-semibold" : "hover:bg-muted/30"}`}>
+                  <span>{slot.label}</span>
+                  {slot.reserved && <span className="text-[10px] font-medium text-red-400 uppercase tracking-wider">Reserved</span>}
+                  {!slot.reserved && time === slot.timeStr && <CheckCircle2 className="w-3.5 h-3.5" />}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -410,22 +438,19 @@ function ContractForm({
             </div>
           </div>
           {/* ── First Visit Slot ──────────────────────────────── */}
-          <div className="border border-border rounded-xl p-4 space-y-3 bg-muted/20">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t("contracts.firstVisit")}</p>
-            <VisitSlotPicker
-              index={0}
-              date={firstVisitDate}
-              time={firstVisitTime}
-              onDateChange={(d) => setFirstVisitDate(d)}
-              onTimeChange={(t) => setFirstVisitTime(t)}
-              clerkId={clerkId}
-              startHour={startHour}
-              endHour={endHour}
-              slotMin={slotMin}
-              availableDays={(currentUser as any)?.availableDays || []}
-            />
-
-          </div>
+          {/* ── First Visit Slot ──────────────────────────────── */}
+          <VisitSlotPicker
+            index={0}
+            date={firstVisitDate}
+            time={firstVisitTime}
+            onDateChange={(d) => setFirstVisitDate(d)}
+            onTimeChange={(t) => setFirstVisitTime(t)}
+            clerkId={clerkId}
+            startHour={startHour}
+            endHour={endHour}
+            slotMin={slotMin}
+            availableDays={(currentUser as any)?.availableDays || []}
+          />
 
           {/* File upload */}
           <div>
@@ -500,16 +525,20 @@ function ContractViewDrawer({
   const waiveUnpaidBalance = useMutation(api.contracts.waiveUnpaidBalance);
   const { t } = useI18n();
   const [waiving, setWaiving] = useState(false);
+  const [waiveConfirm, setWaiveConfirm] = useState(false);
 
   async function handleWaive() {
-    if (!confirm(t("contracts.waiveConfirm"))) return;
+    if (!waiveConfirm) {
+      setWaiveConfirm(true);
+      return;
+    }
     setWaiving(true);
     try {
       await waiveUnpaidBalance({ clerkId, contractId: contract._id });
       toast.success(t("contracts.waiveSuccess"));
       onClose();
     } catch { toast.error(t("contracts.waiveFail")); }
-    finally { setWaiving(false); }
+    finally { setWaiving(false); setWaiveConfirm(false); }
   }
 
   const cfg = STATUS_CONFIG[contract.status as keyof typeof STATUS_CONFIG];
@@ -542,7 +571,7 @@ function ContractViewDrawer({
               <h2 className="text-base font-semibold">{contract.patientName}</h2>
               <Badge className={`text-[10px] border ${cfg?.color} font-semibold px-2`}>{cfg ? t(`contracts.${contract.status}`) : contract.status}</Badge>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">{t("contracts.contract")} · {fmt(contract.startDate)}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{t("contracts.contract")} · {fmtDate(contract.startDate, t("common.currency") === "ج.م" ? "ar-EG" : "en-US")}</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted/60 transition-colors"><X className="w-4 h-4" /></button>
         </div>
@@ -551,10 +580,10 @@ function ContractViewDrawer({
           {/* Financials */}
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: t("contracts.total"), value: contract.totalAmount ? `${contract.totalAmount.toLocaleString()} EGP` : "—" },
-              { label: t("contracts.downPayment"), value: contract.downPayment ? `${contract.downPayment.toLocaleString()} ${contract.downPaymentType === "percentage" ? "%" : "EGP"}` : "—" },
-              { label: t("contracts.costPerVisitShort"), value: contract.costPerVisit ? `${contract.costPerVisit.toLocaleString()} EGP` : "—" },
-              { label: t("contracts.remainingBalance"), value: contract.remainingBalance > 0 ? `${contract.remainingBalance.toLocaleString()} EGP` : t("contracts.settled") },
+              { label: t("contracts.total"), value: contract.totalAmount ? `${contract.totalAmount.toLocaleString()} ${t("common.currency")}` : "—" },
+              { label: t("contracts.downPayment"), value: contract.downPayment ? `${contract.downPayment.toLocaleString()} ${contract.downPaymentType === "percentage" ? "%" : t("common.currency")}` : "—" },
+              { label: t("contracts.costPerVisitShort"), value: contract.costPerVisit ? `${contract.costPerVisit.toLocaleString()} ${t("common.currency")}` : "—" },
+              { label: t("contracts.remainingBalance"), value: contract.remainingBalance > 0 ? `${contract.remainingBalance.toLocaleString()} ${t("common.currency")}` : t("contracts.settled") },
             ].map((item) => (
               <div key={item.label} className="bg-muted/40 rounded-xl p-3">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">{item.label}</p>
@@ -585,15 +614,15 @@ function ContractViewDrawer({
             <div className="flex items-center justify-between p-4 rounded-xl bg-red-500/8 border border-red-500/20">
               <div>
                 <p className="text-xs font-semibold text-red-500">{t("contracts.unpaidBalance")}</p>
-                <p className="text-lg font-bold text-red-500">{contract.unpaidBalance.toLocaleString()} EGP</p>
+                <p className="text-lg font-bold text-red-500">{contract.unpaidBalance.toLocaleString()} {t("common.currency")}</p>
               </div>
               <button
                 onClick={handleWaive}
                 disabled={waiving}
-                className="flex items-center gap-1.5 text-xs font-semibold bg-red-500 text-white px-3 py-2 rounded-lg hover:bg-red-600 transition-colors disabled:opacity-60"
+                className={`flex items-center gap-1.5 text-xs font-semibold text-white px-3 py-2 rounded-lg transition-colors disabled:opacity-60 ${waiveConfirm ? "bg-red-600 hover:bg-red-700" : "bg-red-500 hover:bg-red-600"}`}
               >
                 {waiving ? <IOSSpinner size={12} className="text-white" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                {t("contracts.waive")}
+                {waiveConfirm ? t("contracts.confirmWaive") || "Tap to Confirm" : t("contracts.waive")}
               </button>
             </div>
           )}
@@ -607,19 +636,19 @@ function ContractViewDrawer({
           )}
 
           {/* Next visit */}
-          {contract.nextVisitDate && (
+          {contract.status === "active" && contract.nextVisitDate && (
             <div className="flex items-center gap-2 p-3 rounded-xl bg-[#007AFF]/8 border border-[#007AFF]/20">
               <CalendarIcon className="w-4 h-4 text-[#007AFF] flex-shrink-0" />
               <div>
                 <p className="text-[10px] text-muted-foreground">{t("contracts.nextVisit")}</p>
-                <p className="text-sm font-semibold text-[#007AFF]">{fmt(contract.nextVisitDate, true)}</p>
+                <p className="text-sm font-semibold text-[#007AFF]">{fmtDate(contract.nextVisitDate, t("common.currency") === "ج.م" ? "ar-EG" : "en-US", true)}</p>
               </div>
             </div>
           )}
 
           {/* Contract file */}
           {contract.fileUrl && (
-            <a href={contract.fileUrl} target="_blank" rel="noreferrer"
+            <a href={contract.fileUrl} target="_blank" rel="noreferrer" download
               className="flex items-center gap-2 p-3 rounded-xl border border-border hover:border-[#007AFF]/40 hover:bg-muted/20 transition-all">
               <FileText className="w-4 h-4 text-[#007AFF] flex-shrink-0" />
               <span className="text-sm font-medium text-[#007AFF]">{t("contracts.viewDoc")}</span>
@@ -645,6 +674,8 @@ export default function ContractsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [viewContract, setViewContract] = useState<any | null>(null);
+  const [contractSearch, setContractSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "expired">("all");
 
   async function handleDelete(id: Id<"contracts">) {
     setDeleting(id);
@@ -660,6 +691,18 @@ export default function ContractsPage() {
 
   const active = (contracts ?? []).filter((c) => c.status === "active").length;
   const expired = (contracts ?? []).filter((c) => c.status === "expired").length;
+
+  const filteredContracts = useMemo(() => {
+    if (!contracts) return undefined;
+    return contracts.filter((c) => {
+      if (statusFilter !== "all" && c.status !== statusFilter) return false;
+      if (contractSearch.trim()) {
+        const q = contractSearch.toLowerCase();
+        if (!c.patientName?.toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+  }, [contracts, contractSearch, statusFilter]);
 
   return (
     <div className="flex flex-col h-full">
@@ -696,32 +739,75 @@ export default function ContractsPage() {
               <h2 className="font-bold text-base">{t("contracts.allContracts")}</h2>
               {contracts !== undefined && (
                 <span className="ml-auto text-xs text-muted-foreground">
-                  {contracts.length} {t("contracts.total")}
+                  {filteredContracts?.length ?? 0} {t("contracts.total")}
                 </span>
               )}
             </div>
 
+            {/* Search & Filter Bar */}
+            <div className="px-4 pt-4 pb-2 flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  value={contractSearch}
+                  onChange={(e) => setContractSearch(e.target.value)}
+                  placeholder={t("contracts.searchContracts") || "Search by patient name…"}
+                  className="w-full pl-10 pr-4 py-2 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] placeholder:text-muted-foreground/60"
+                />
+              </div>
+              <div className="flex gap-1.5">
+                {(["all", "active", "expired"] as const).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setStatusFilter(f)}
+                    className={`px-3 py-2 text-xs font-semibold rounded-xl border transition-colors ${
+                      statusFilter === f
+                        ? "bg-[#007AFF] text-white border-[#007AFF]"
+                        : "border-border text-muted-foreground hover:border-[#007AFF]/40"
+                    }`}
+                  >
+                    {f === "all" ? t("contracts.allContracts") : t(`contracts.${f}`)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div className="p-4 space-y-3">
-              {contracts === undefined ? (
+              {filteredContracts === undefined ? (
                 Array.from({ length: 3 }).map((_, i) => (
                   <Skeleton key={i} className="h-24 w-full rounded-xl bg-black/5 dark:bg-white/5" />
                 ))
-              ) : contracts.length === 0 ? (
+              ) : filteredContracts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <div className="w-14 h-14 rounded-2xl bg-[#007AFF]/10 flex items-center justify-center mb-4">
                     <FileText className="w-7 h-7 text-[#007AFF]" />
                   </div>
-                  <p className="text-sm font-semibold mb-1">{t("contracts.noContracts")}</p>
-                  <p className="text-xs text-muted-foreground mb-4">{t("contracts.noContractsDesc")}</p>
-                  <button
-                    onClick={() => setCreateOpen(true)}
-                    className="text-xs font-semibold text-[#007AFF] hover:underline flex items-center gap-1"
-                  >
-                    <Plus className="w-3.5 h-3.5" /> {t("contracts.newContract")}
-                  </button>
+                  {contractSearch.trim() || statusFilter !== "all" ? (
+                    <>
+                      <p className="text-sm font-semibold mb-1">{t("contracts.noResults") || "No contracts found"}</p>
+                      <p className="text-xs text-muted-foreground mb-4">{t("contracts.noResultsDesc") || "Try adjusting your search or filters."}</p>
+                      <button
+                        onClick={() => { setContractSearch(""); setStatusFilter("all"); }}
+                        className="text-xs font-semibold text-[#007AFF] hover:underline"
+                      >
+                        {t("feed.clearAll") || "Clear all"}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm font-semibold mb-1">{t("contracts.noContracts")}</p>
+                      <p className="text-xs text-muted-foreground mb-4">{t("contracts.noContractsDesc")}</p>
+                      <button
+                        onClick={() => setCreateOpen(true)}
+                        className="text-xs font-semibold text-[#007AFF] hover:underline flex items-center gap-1"
+                      >
+                        <Plus className="w-3.5 h-3.5" /> {t("contracts.newContract")}
+                      </button>
+                    </>
+                  )}
                 </div>
               ) : (
-                contracts.map((contract) => {
+                filteredContracts.map((contract) => {
                   const cfg = STATUS_CONFIG[contract.status as keyof typeof STATUS_CONFIG];
                   return (
                     <div
@@ -771,19 +857,19 @@ export default function ContractsPage() {
                           )}
                           {contract.remainingBalance > 0 && (
                             <span className="text-xs font-medium text-amber-600 flex items-center gap-1">
-                              {t("contracts.balance")}: {contract.remainingBalance.toLocaleString()} EGP
+                              {t("contracts.balance")}: {contract.remainingBalance.toLocaleString()} {t("common.currency")}
                             </span>
                           )}
                           {contract.unpaidBalance != null && contract.unpaidBalance > 0 && (
                             <span className="text-xs font-medium text-red-500 flex items-center gap-1">
                               <AlertCircle className="w-3 h-3" />
-                              {t("contracts.unpaid")}: {contract.unpaidBalance.toLocaleString()} EGP
+                              {t("contracts.unpaid")}: {contract.unpaidBalance.toLocaleString()} {t("common.currency")}
                             </span>
                           )}
-                          {contract.nextVisitDate && (
+                          {contract.status === "active" && contract.nextVisitDate && (
                             <span className="text-xs text-muted-foreground flex items-center gap-1">
                               <CalendarIcon className="w-3 h-3" />
-                              {t("contracts.next")}: {fmt(contract.nextVisitDate, true)}
+                              {t("contracts.next")}: {fmtDate(contract.nextVisitDate, t("common.currency") === "ج.م" ? "ar-EG" : "en-US", true)}
                             </span>
                           )}
                         </div>

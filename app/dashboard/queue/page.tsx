@@ -11,6 +11,9 @@ import { VisitCompletionModal } from "@/components/visit-completion-modal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { IOSSpinner } from "@/components/ui/spinner";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   PlusCircle,
   CheckCircle2,
@@ -20,6 +23,8 @@ import {
   XCircle,
   MessageCircle,
   GripVertical,
+  CalendarIcon,
+  RefreshCw,
   X,
   MoreHorizontal,
 } from "lucide-react";
@@ -129,6 +134,7 @@ function DraggableApptItem({
   onCancel: () => void;
 }) {
   const { t, dir, lang } = useI18n();
+  const isContractVisit = appt.source === "contract";
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: appt._id,
     disabled: isSelectedDayPast || isDone,
@@ -233,10 +239,10 @@ function DraggableApptItem({
                 </button>
                 <button
                   onClick={onCancel}
-                  title={t("schedule.cancelTitle")}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                  title={isContractVisit ? "Reschedule" : t("schedule.cancelTitle")}
+                  className={`p-1.5 rounded-lg transition-colors ${isContractVisit ? "text-[#AF52DE] hover:bg-[#AF52DE]/10" : "text-muted-foreground hover:text-red-500 hover:bg-red-500/10"}`}
                 >
-                  <XCircle className="w-3.5 h-3.5" />
+                  {isContractVisit ? <RefreshCw className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />}
                 </button>
               </>
             ) : (
@@ -266,9 +272,9 @@ function DraggableApptItem({
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={onCancel} className="gap-2 cursor-pointer font-medium text-red-500 focus:text-red-500 focus:bg-red-500/10">
-                      <XCircle className="w-4 h-4" />
-                      <span>{t("common.cancel") || "Cancel"}</span>
+                    <DropdownMenuItem onClick={onCancel} className={`gap-2 cursor-pointer font-medium ${isContractVisit ? "text-[#AF52DE] focus:text-[#AF52DE] focus:bg-[#AF52DE]/10" : "text-red-500 focus:text-red-500 focus:bg-red-500/10"}`}>
+                      {isContractVisit ? <RefreshCw className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+                      <span>{isContractVisit ? "Reschedule" : (t("common.cancel") || "Cancel")}</span>
                     </DropdownMenuItem>
                   </>
                 ) : (
@@ -332,6 +338,11 @@ export default function SchedulePage() {
   const [preselectedSlot, setPreselectedSlot] = useState<number | null>(null);
 
   const [cancelModal, setCancelModal] = useState<Id<"visits"> | null>(null);
+  const [rescheduleModal, setRescheduleModal] = useState<{ visitId: Id<"visits">; patientName: string } | null>(null);
+  const [rescheduleDate, setRescheduleDate] = useState<Date | undefined>(undefined);
+  const [rescheduleTime, setRescheduleTime] = useState("10:00");
+  const [rescheduleCalOpen, setRescheduleCalOpen] = useState(false);
+  const [rescheduling, setRescheduling] = useState(false);
 
   const [completionModal, setCompletionModal] = useState<{
     appointmentId: Id<"visits">;
@@ -450,6 +461,46 @@ export default function SchedulePage() {
     }
   }
 
+  async function handleReschedule() {
+    if (!rescheduleModal || !rescheduleDate) return;
+    setRescheduling(true);
+    try {
+      const [hh, mm] = rescheduleTime.split(":").map(Number);
+      const d = new Date(rescheduleDate);
+      d.setHours(hh, mm, 0, 0);
+      await updateAppointment({ clerkId, appointmentId: rescheduleModal.visitId, updates: { date: d.getTime() } });
+      toast.success(t("toast.visitRescheduled") || "Visit rescheduled successfully");
+      setRescheduleModal(null);
+      setRescheduleDate(undefined);
+    } catch { toast.error("Failed to reschedule"); }
+    finally { setRescheduling(false); }
+  }
+
+  // Working days from doctor profile for reschedule calendar
+  const rescheduleWorkingDays: string[] = (currentUser as any)?.availableDays ?? [];
+  const DOW_ABBR_MAP: Record<number, string> = { 0: "Sun", 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat" };
+  function isNonWorkingDay(d: Date): boolean {
+    if (rescheduleWorkingDays.length > 0) return !rescheduleWorkingDays.includes(DOW_ABBR_MAP[d.getDay()]);
+    return [0, 6].includes(d.getDay());
+  }
+
+  const rescheduleSlots = useMemo(() => {
+    const sh = currentUser?.workingHoursStart ?? 9;
+    const eh = currentUser?.workingHoursEnd ?? 17;
+    const sm = currentUser?.slotDurationMinutes ?? 30;
+    const slots: { timeStr: string; label: string }[] = [];
+    for (let h = sh; h < eh; h++) {
+      for (let m = 0; m < 60; m += sm) {
+        const hh = h.toString().padStart(2, "0");
+        const mm = m.toString().padStart(2, "0");
+        const ampm = h >= 12 ? (lang === "ar" ? "م" : "PM") : (lang === "ar" ? "ص" : "AM");
+        const dh = h % 12 || 12;
+        slots.push({ timeStr: `${hh}:${mm}`, label: `${dh}:${mm} ${ampm}` });
+      }
+    }
+    return slots;
+  }, [currentUser]);
+
   const handleDragStart = (event: DragStartEvent) => {
     setActiveAppt(event.active.data.current?.appt ?? null);
   };
@@ -503,16 +554,6 @@ export default function SchedulePage() {
     window.open(url, "_blank");
     toast.success(t("toast.openingWhatsapp").replace("{name}", firstName));
     setTemplatePicker(null);
-  }
-
-  function sendQuickReminder() {
-    if (!templatePicker) return;
-    const { patientName, appointmentDate } = templatePicker;
-    const firstName = patientName.split(" ")[0];
-    const defaultMsg = t("schedule.quickReminderDefault")
-      .replace("{name}", firstName)
-      .replace("{time}", formatTime(appointmentDate, lang));
-    sendWithTemplate(currentUser?.whatsappTemplate || defaultMsg);
   }
 
   const isSelectedDayPast = selectedDay < todayTs;
@@ -718,7 +759,13 @@ export default function SchedulePage() {
                           initials={initials}
                           onComplete={() => setCompletionModal({ appointmentId: appt._id, patientId: appt.patientId ?? undefined, patientName: appt.patientName, patientAge: appt.patientAge, contractId: appt.contractId ?? undefined })}
                           onReminder={(e: React.MouseEvent) => appt.patientPhone && openTemplatePicker(appt.patientName, appt.patientPhone, appt.date, e)}
-                          onCancel={() => setCancelModal(appt._id)}
+                          onCancel={() => {
+                            if (appt.source === "contract") {
+                              setRescheduleModal({ visitId: appt._id, patientName: appt.patientName });
+                            } else {
+                              setCancelModal(appt._id);
+                            }
+                          }}
                         />
                       </DroppableSlot>
                     );
@@ -796,6 +843,97 @@ export default function SchedulePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Reschedule Modal for Contract Visits */}
+      <AnimatePresence>
+        {rescheduleModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => { setRescheduleModal(null); setRescheduleDate(undefined); }}
+            />
+            <motion.div
+              initial={{ y: 40, opacity: 0, scale: 0.97 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: 40, opacity: 0, scale: 0.97 }}
+              transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              className="relative z-10 w-full sm:max-w-md bg-[var(--background)] rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="sm:hidden w-12 h-1 rounded-full bg-border mx-auto mt-3 mb-1" />
+              <div className="px-6 py-4 border-b border-border">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#AF52DE]/10 flex items-center justify-center">
+                    <RefreshCw className="w-5 h-5 text-[#AF52DE]" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-semibold">Reschedule Contract Visit</h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">{rescheduleModal.patientName}</p>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-3 bg-[#AF52DE]/5 border border-[#AF52DE]/20 rounded-lg px-3 py-2">
+                  Contract visits cannot be cancelled. Please pick a new date and time.
+                </p>
+              </div>
+              <div className="p-6 space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1.5">New Date <span className="text-red-500">*</span></p>
+                    <Popover open={rescheduleCalOpen} onOpenChange={setRescheduleCalOpen}>
+                      <PopoverTrigger asChild>
+                        <button className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border rounded-xl hover:border-[#AF52DE]/50 transition-colors text-left ${!rescheduleDate ? "border-red-400/60" : "border-border"}`}>
+                          <CalendarIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                          <span className={rescheduleDate ? "" : "text-muted-foreground"}>
+                            {rescheduleDate ? rescheduleDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Pick date"}
+                          </span>
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={rescheduleDate} onSelect={(d) => { if (d) { setRescheduleDate(d); setRescheduleCalOpen(false); } }} disabled={(d) => d < new Date() || isNonWorkingDay(d)} />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground mb-1.5">Time Slot</p>
+                    <div className="max-h-48 overflow-y-auto border border-border rounded-xl divide-y divide-border/50">
+                      {rescheduleSlots.map(slot => (
+                        <button key={slot.timeStr} onClick={() => setRescheduleTime(slot.timeStr)}
+                          className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${rescheduleTime === slot.timeStr ? "bg-[#AF52DE]/10 text-[#AF52DE] font-semibold" : "hover:bg-muted/30"}`}>
+                          <span>{slot.label}</span>
+                          {rescheduleTime === slot.timeStr && <CheckCircle2 className="w-3.5 h-3.5" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={() => { setRescheduleModal(null); setRescheduleDate(undefined); }}
+                    className="flex-1 border border-border text-sm font-medium py-2.5 rounded-xl hover:bg-muted/40 transition-colors"
+                  >
+                    {t("common.cancel")}
+                  </button>
+                  <button
+                    onClick={handleReschedule}
+                    disabled={!rescheduleDate || rescheduling}
+                    className="flex-1 bg-[#AF52DE] text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-[#9B3DC8] transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                  >
+                    {rescheduling ? <IOSSpinner size={16} className="text-white" /> : <RefreshCw className="w-4 h-4" />}
+                    Reschedule
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <VisitCompletionModal
         open={!!completionModal}

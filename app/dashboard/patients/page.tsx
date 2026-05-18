@@ -80,7 +80,7 @@ export default function PatientsPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {patients.map((patient) => {
-                const initials = patient.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+                const initials = patient.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
                 const palettes = [
                   { bg: "bg-[#007AFF]/10", text: "text-[#007AFF]" },
                   { bg: "bg-[#34c759]/10", text: "text-[#34c759]" },
@@ -96,18 +96,35 @@ export default function PatientsPage() {
                     href={`/dashboard/patients/${patient._id}`}
                     className="group bg-white dark:bg-[#1c1c1a] border border-black/5 dark:border-white/5 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-[#007AFF]/20 transition-all flex items-center gap-4"
                   >
-                    <div className={`w-12 h-12 rounded-full ${pal.bg} flex items-center justify-center flex-shrink-0`}>
+                    <div className={`relative w-12 h-12 rounded-full ${pal.bg} flex items-center justify-center flex-shrink-0`}>
                       <span className={`text-base font-bold ${pal.text}`}>{initials}</span>
+                      {(patient as any).hasActiveContract && (
+                        <div className="absolute top-0 right-0 w-3.5 h-3.5 bg-white dark:bg-[#1c1c1a] rounded-full flex items-center justify-center">
+                          <div className="w-2.5 h-2.5 rounded-full bg-[#AF52DE] animate-pulse" title="Active Contract" />
+                        </div>
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm group-hover:text-[#007AFF] transition-colors truncate">{patient.name}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-sm group-hover:text-[#007AFF] transition-colors truncate">{patient.name}</p>
+                        {(patient as any).hasActiveContract && (
+                          <span className="flex-shrink-0 text-[9px] font-bold text-[#AF52DE] bg-[#AF52DE]/10 px-1.5 py-0.5 rounded-md border border-[#AF52DE]/20 uppercase">
+                            {t("dashboard.contract") || "Contract"}
+                          </span>
+                        )}
+                        {(patient as any).hasPastDue && (
+                          <span className="flex-shrink-0 text-[9px] font-bold text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded-md border border-red-500/20 uppercase">
+                            Past Due
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{patient.age}y</span>
                         <span className="flex items-center gap-1 truncate"><Phone className="w-3 h-3" />{patient.phone}</span>
                       </div>
                       {patient.chronicConditions.length > 0 && (
                         <div className="flex gap-1 mt-1.5 flex-wrap">
-                          {patient.chronicConditions.slice(0, 2).map((c) => (
+                          {patient.chronicConditions.slice(0, 2).map((c: string) => (
                             <span key={c} className="text-[10px] bg-muted/60 px-1.5 py-0.5 rounded-full text-muted-foreground">{c}</span>
                           ))}
                           {patient.chronicConditions.length > 2 && (

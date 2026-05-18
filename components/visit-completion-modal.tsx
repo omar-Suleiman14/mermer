@@ -54,7 +54,8 @@ export function VisitCompletionModal({
   const waiveUnpaidBalance = useMutation(api.contracts.waiveUnpaidBalance);
   const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
   const isContractVisit = !!contractId;
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
+  const dateLocale = lang === "ar" ? "ar-EG" : "en-US";
 
   /** Contract data (for unpaid / past-due banner) */
   const contractData = useQuery(
@@ -118,7 +119,7 @@ export function VisitCompletionModal({
         const mm = m.toString().padStart(2, "0");
         const timeStr = `${hh}:${mm}`;
 
-        const ampm = h >= 12 ? "PM" : "AM";
+        const ampm = h >= 12 ? (lang === "ar" ? "م" : "PM") : (lang === "ar" ? "ص" : "AM");
         const displayH = h % 12 || 12;
         const label = `${displayH}:${mm} ${ampm}`;
 
@@ -136,6 +137,7 @@ export function VisitCompletionModal({
   const [rxPreviewUrl, setRxPreviewUrl] = useState<string | null>(null);
   const [extraFiles, setExtraFiles] = useState<File[]>([]);
   const [notes, setNotes] = useState("");
+  const [waiveConfirm, setWaiveConfirm] = useState(false);
 
   // Contract visit state
   const [isPaid, setIsPaid] = useState(true);
@@ -327,7 +329,10 @@ export function VisitCompletionModal({
                       onClick={async (e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        if (!confirm(t("contracts.waiveConfirm") || "Are you sure you want to waive this unpaid balance?")) return;
+                        if (!waiveConfirm) {
+                          setWaiveConfirm(true);
+                          return;
+                        }
                         setIsSaving(true);
                         try {
                           await waiveUnpaidBalance({ clerkId, contractId: contractData._id });
@@ -336,13 +341,14 @@ export function VisitCompletionModal({
                           toast.error(t("contracts.waiveFail") || "Failed to waive balance");
                         } finally {
                           setIsSaving(false);
+                          setWaiveConfirm(false);
                         }
                       }}
                       disabled={isSaving}
                       className="w-full text-sm font-semibold bg-amber-500 text-white px-3 py-2.5 rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-60 flex items-center justify-center gap-2 shadow-sm"
                     >
                       {isSaving ? <IOSSpinner size={14} className="text-white" /> : <CheckCircle2 className="w-4 h-4" />}
-                      {t("contracts.waive") || "Waive Balance"}
+                      {waiveConfirm ? "Tap to Confirm Waive" : (t("contracts.waive") || "Waive Balance")}
                     </button>
                   )}
                 </motion.div>
@@ -397,13 +403,16 @@ export function VisitCompletionModal({
                   ) : (
                     <div className="space-y-2">
                       <p className="text-sm font-medium">{t("visit.prescriptionPhoto")}</p>
-                      <div className="relative rounded-xl overflow-hidden border border-border bg-muted/30 aspect-[3/4] max-h-48">
-                        <img src={rxPreviewUrl} alt="Prescription" className="w-full h-full object-contain" />
+                      <div className="flex items-center justify-between p-3 rounded-xl border border-border bg-muted/30">
+                        <div className="flex items-center gap-3 overflow-hidden">
+                          <FileText className="w-5 h-5 text-[#007AFF] flex-shrink-0" />
+                          <span className="text-sm font-medium truncate">{rxFile?.name || "Prescription file"}</span>
+                        </div>
                         <button
                           onClick={() => { setRxFile(null); setRxPreviewUrl(null); }}
-                          className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-1 hover:bg-black/70 transition-colors"
+                          className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted/60 hover:text-red-500 transition-colors"
                         >
-                          <X className="w-3.5 h-3.5" />
+                          <X className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
@@ -505,7 +514,7 @@ export function VisitCompletionModal({
                                   <button className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border rounded-xl hover:border-[#AF52DE]/50 transition-colors text-left ${!nextContractDate ? "border-red-400/60" : "border-border"}`}>
                                     <CalendarIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                                     <span className={nextContractDate ? "" : "text-muted-foreground"}>
-                                      {nextContractDate ? nextContractDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : t("visit.pickDate")}
+                                      {nextContractDate ? nextContractDate.toLocaleDateString(dateLocale, { weekday: "short", month: "short", day: "numeric" }) : t("visit.pickDate")}
                                     </span>
                                   </button>
                                 </PopoverTrigger>
@@ -563,7 +572,7 @@ export function VisitCompletionModal({
                                   <PopoverTrigger asChild>
                                     <button className="w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border border-border rounded-xl hover:border-[#007AFF]/50 transition-colors text-left">
                                       <CalendarIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                                      <span className="text-sm">{fuDate ? fuDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : t("visit.pickDate")}</span>
+                                      <span className="text-sm">{fuDate ? fuDate.toLocaleDateString(dateLocale, { weekday: "short", month: "short", day: "numeric" }) : t("visit.pickDate")}</span>
                                     </button>
                                   </PopoverTrigger>
                                   <PopoverContent className="w-auto p-0" align="start">

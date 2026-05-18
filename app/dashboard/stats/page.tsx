@@ -51,13 +51,16 @@ function formatMedium(ts: number, locale: string) {
   return new Date(ts).toLocaleDateString(locale, { month: "short", day: "numeric" });
 }
 
-function weekdayLabels(locale: string): string[] {
-  const base = new Date(2024, 5, 23);
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(base);
-    d.setDate(base.getDate() + i);
-    return d.toLocaleDateString(locale, { weekday: "short" });
-  });
+function weekdayLabels(t: (k: string) => string): string[] {
+  return [
+    t("days.Sun"),
+    t("days.Mon"),
+    t("days.Tue"),
+    t("days.Wed"),
+    t("days.Thu"),
+    t("days.Fri"),
+    t("days.Sat"),
+  ];
 }
 
 function RevenueBarChart({
@@ -448,7 +451,7 @@ export default function StatisticsPage() {
   }, [allAppointments, revenueData]);
 
   const isLoading = allAppointments === undefined;
-  const wlabels = useMemo(() => weekdayLabels(locale), [locale]);
+  const wlabels = useMemo(() => weekdayLabels(t), [t]);
 
   const pros: string[] = [];
   const cons: string[] = [];
@@ -1056,7 +1059,7 @@ export default function StatisticsPage() {
                   </h3>
                   <div className="rounded-2xl bg-amber-500/8 border border-amber-500/15 p-4">
                     <p className="text-[11px] text-muted-foreground">{t("stats.bestPerformingDay")}</p>
-                    <p className="text-lg font-bold mt-0.5">{revenueData.bestDow?.day ?? "—"}</p>
+                    <p className="text-lg font-bold mt-0.5">{revenueData.bestDow?.day ? t(`days.${revenueData.bestDow.day.slice(0, 3)}`) : "—"}</p>
                     <p className="text-xs text-amber-700 dark:text-amber-400 font-medium mt-1">
                       {t("stats.insightAvg")}{" "}
                       {revenueData.bestDow?.avg ? fmt(Math.round(revenueData.bestDow.avg)) : "—"} {t("stats.perVisit")}

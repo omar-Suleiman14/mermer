@@ -18,19 +18,26 @@ export const listPatients = query({
       .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
       .take(500);
 
-    // Get last visit for each patient
-    const patientsWithLastVisit = await Promise.all(
+    // Get last visit and past due status for each patient
+    const enrichedPatients = await Promise.all(
       patients.map(async (p) => {
         const visits = await ctx.db
           .query("visits")
           .withIndex("by_patient", (q) => q.eq("patientId", p._id))
           .order("desc")
           .take(1);
-        return { ...p, lastVisit: visits[0] ?? null };
+          
+        const contracts = await ctx.db
+          .query("contracts")
+          .withIndex("by_patient", (q) => q.eq("patientId", p._id))
+          .collect();
+        const hasPastDue = contracts.some((c) => (c.unpaidBalance ?? 0) > 0);
+
+        return { ...p, lastVisit: visits[0] ?? null, hasPastDue };
       })
     );
 
-    return patientsWithLastVisit.sort((a, b) => b.createdAt - a.createdAt);
+    return enrichedPatients.sort((a, b) => b.createdAt - a.createdAt);
   },
 });
 
@@ -60,13 +67,27 @@ export const searchPatients = query({
       .unique();
     if (!user) return [];
 
+    // Helper to enrich patients with hasPastDue
+    const enrichPatients = async (patientsArray: any[]) => {
+      return await Promise.all(patientsArray.map(async (p) => {
+        const contracts = await ctx.db
+          .query("contracts")
+          .withIndex("by_patient", (q) => q.eq("patientId", p._id))
+          .collect();
+        const hasPastDue = contracts.some((c) => (c.unpaidBalance ?? 0) > 0);
+        const hasActiveContract = contracts.some((c) => c.status === "active");
+        return { ...p, hasPastDue, hasActiveContract };
+      }));
+    };
+
     if (!args.search.trim()) {
       // No search term — return recent patients with a cap
-      return await ctx.db
+      const recent = await ctx.db
         .query("patients")
         .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
         .order("desc")
         .take(20);
+      return await enrichPatients(recent);
     }
 
     const term = args.search.trim();
@@ -80,9 +101,10 @@ export const searchPatients = query({
         .query("patients")
         .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
         .take(500);
-      return allPatients
+      const filtered = allPatients
         .filter((p) => p.phone.includes(term))
         .slice(0, 20);
+      return await enrichPatients(filtered);
     }
 
     // OPTIMIZED: Use searchIndex for name search (full-text search, much faster)
@@ -93,7 +115,7 @@ export const searchPatients = query({
           q.search("name", term).eq("doctorId", user._id)
         )
         .take(20);
-      return searchResults;
+      return await enrichPatients(searchResults);
     } catch {
       // Fallback to index scan if searchIndex fails
       const allPatients = await ctx.db
@@ -101,13 +123,14 @@ export const searchPatients = query({
         .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
         .take(500);
       const lowerTerm = term.toLowerCase();
-      return allPatients
+      const filtered = allPatients
         .filter(
           (p) =>
             p.name.toLowerCase().includes(lowerTerm) ||
             p.phone.includes(term)
         )
         .slice(0, 20);
+      return await enrichPatients(filtered);
     }
   },
 });

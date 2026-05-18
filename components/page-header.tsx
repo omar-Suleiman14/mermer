@@ -2,6 +2,7 @@
 
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
+import { NotificationCenter } from "@/components/notification-center";
 
 interface PageHeaderProps {
   title: string;
@@ -20,7 +21,10 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
           <p className="text-xs text-muted-foreground truncate hidden sm:block">{description}</p>
         )}
       </div>
-      {children && <div className="flex items-center gap-2 ms-auto">{children}</div>}
+      <div className="flex items-center gap-2 ms-auto">
+        {children}
+        <NotificationCenter />
+      </div>
     </header>
   );
 }

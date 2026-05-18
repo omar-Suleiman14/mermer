@@ -109,11 +109,30 @@ export default function PatientProfilePage() {
         {/* Patient header card */}
         <div className="bg-card border border-border rounded-2xl p-6">
           <div className="flex items-start gap-5">
-            <div className="w-16 h-16 rounded-full bg-[#007AFF]/10 flex items-center justify-center flex-shrink-0">
-              <span className="text-xl font-bold text-[#007AFF]">{initials}</span>
+            <div className="relative">
+              <div className="w-16 h-16 rounded-full bg-[#007AFF]/10 flex items-center justify-center flex-shrink-0">
+                <span className="text-xl font-bold text-[#007AFF]">{initials}</span>
+              </div>
+              {contracts?.some(c => c.status === "active") && (
+                <div className="absolute top-0 right-0 w-4 h-4 bg-background rounded-full flex items-center justify-center">
+                  <div className="w-3 h-3 rounded-full bg-[#AF52DE] animate-pulse" title="Active Contract" />
+                </div>
+              )}
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="text-xl font-bold tracking-tight mb-1">{patient.name}</h2>
+              <div className="flex items-center gap-3 mb-1">
+                <h2 className="text-xl font-bold tracking-tight">{patient.name}</h2>
+                {contracts?.some(c => c.status === "active") && (
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#AF52DE]/10 border border-[#AF52DE]/20">
+                    <span className="text-[10px] font-bold text-[#AF52DE] uppercase tracking-wider">{t("dashboard.contract") || "Contract"}</span>
+                  </div>
+                )}
+                {contracts?.some(c => (c.unpaidBalance ?? 0) > 0) && (
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/20">
+                    <span className="text-[10px] font-bold text-red-500 uppercase tracking-wider">{t("contracts.unpaidBalance") || "Past Due"}</span>
+                  </div>
+                )}
+              </div>
               <div className="flex items-center gap-4 flex-wrap text-sm text-muted-foreground">
                 <span className="font-medium text-foreground">{t("patient.yearsOld").replace("{age}", String(patient.age))}</span>
                 <a
@@ -145,6 +164,124 @@ export default function PatientProfilePage() {
             </div>
           </div>
         </div>
+
+        {/* Contracts (Moved to top if they exist) */}
+        {(contracts === undefined || contracts.length > 0) && (
+          <div>
+            <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+              <ScrollText className="w-4 h-4 text-[#AF52DE]" />
+              {t("contracts.title") || "Contracts"}
+              {contracts !== undefined && contracts.length > 0 && (
+                <span className="text-xs text-muted-foreground font-normal">
+                  ({contracts.length})
+                </span>
+              )}
+            </h3>
+
+            {contracts === undefined ? (
+              <Skeleton className="h-20 rounded-xl" />
+            ) : (
+              <div className="space-y-3">
+                {contracts.map((contract: any) => {
+                  const isActive = contract.status === "active";
+                  const progress = contract.numVisits > 0
+                    ? Math.min(100, Math.round(((contract.completedVisits ?? 0) / contract.numVisits) * 100))
+                    : 0;
+                  const hasUnpaid = (contract.unpaidBalance ?? 0) > 0;
+                  return (
+                    <div
+                      key={contract._id}
+                      className={`bg-card border rounded-xl p-4 space-y-3 ${
+                        hasUnpaid ? "border-red-500/30" : "border-border"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                            isActive
+                              ? "bg-[#34c759]/10 text-[#34c759] border-[#34c759]/30"
+                              : "bg-red-500/10 text-red-500 border-red-500/30"
+                          }`}>
+                            {isActive ? (t("contracts.active") || "Active") : (t("contracts.expired") || "Expired")}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {t("contracts.started") || "Started"} {new Date(contract.startDate).toLocaleDateString(dateLocale, { month: "short", day: "numeric", year: "numeric" })}
+                          </span>
+                        </div>
+                        <Link
+                          href="/dashboard/contracts"
+                          className="text-xs text-[#007AFF] hover:underline"
+                        >
+                          {t("contracts.view") || "View"} →
+                        </Link>
+                      </div>
+
+                      <div className="flex flex-wrap gap-x-4 gap-y-1">
+                        {contract.totalAmount && (
+                          <span className="text-xs text-muted-foreground">
+                            {t("contracts.total") || "Total"}: <span className="font-semibold text-foreground">{contract.totalAmount.toLocaleString()} {t("common.currency")}</span>
+                          </span>
+                        )}
+                        {contract.costPerVisit && (
+                          <span className="text-xs text-muted-foreground">
+                            {t("contracts.costPerVisitShort") || "Per visit"}: <span className="font-semibold text-foreground">{contract.costPerVisit.toLocaleString()} {t("common.currency")}</span>
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Visit progress */}
+                      {contract.numVisits > 0 && (
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-muted-foreground flex items-center gap-1">
+                              <Users className="w-3 h-3" />
+                              {contract.completedVisits ?? 0} / {contract.numVisits} {t("contracts.visitsText") || "visits"}
+                            </span>
+                            <span className="text-muted-foreground">
+                              {contract.paidVisits ?? 0} {t("contracts.paid") || "paid"} · {(contract.completedVisits ?? 0) - (contract.paidVisits ?? 0)} {t("contracts.unpaid") || "unpaid"}
+                            </span>
+                          </div>
+                          <div className="h-1.5 bg-muted/40 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-[#AF52DE] rounded-full transition-all"
+                              style={{ width: `${progress}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Unpaid balance warning */}
+                      {hasUnpaid && (
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/8 border border-red-500/20">
+                          <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                          <p className="text-xs font-semibold text-red-500">
+                            {t("contracts.unpaidBalance") || "Unpaid balance"}: {contract.unpaidBalance.toLocaleString()} {t("common.currency")}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Next visit */}
+                      {isActive && contract.nextVisitDate && (
+                        <div className="flex items-center gap-2 text-xs">
+                          <CalendarIcon className="w-3 h-3 text-[#007AFF]" />
+                          <span className="text-muted-foreground">{t("contracts.nextVisit") || "Next visit"}:</span>
+                          <span className="font-semibold text-[#007AFF]">
+                            {new Date(contract.nextVisitDate).toLocaleDateString(dateLocale, { weekday: "short", month: "short", day: "numeric" })}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Notes */}
+                      {contract.notes && (
+                        <p className="text-xs text-muted-foreground leading-relaxed border-t border-border pt-2">{contract.notes}</p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Visit history */}
         <div>
@@ -217,6 +354,7 @@ export default function PatientProfilePage() {
                           href={visit.prescriptionPdfUrl}
                           target="_blank"
                           rel="noreferrer"
+                          download
                           className="flex items-center gap-1.5 text-[11px] font-semibold text-[#007AFF] border border-[#007AFF]/30 px-2.5 py-1 rounded-lg hover:bg-[#007AFF]/10 transition-colors"
                         >
                           <Download className="w-3 h-3" />
@@ -242,7 +380,9 @@ export default function PatientProfilePage() {
                   </div>
 
                   {visit.reasonForVisit && (
-                    <p className="text-sm font-medium">{visit.reasonForVisit}</p>
+                    <p className="text-sm font-medium">
+                      {visit.reasonForVisit === "Contract visit" ? (t("stats.sourceContracts") || "Contract Visit") : visit.reasonForVisit}
+                    </p>
                   )}
 
                   {visit.prescribedMedications && visit.prescribedMedications.length > 0 && (
@@ -283,19 +423,23 @@ export default function PatientProfilePage() {
                     </div>
                   )}
 
-                  {/* Prescription photo thumbnail */}
+                  {/* Prescription photo link */}
                   {visit.prescriptionImageUrl && (
                     <div>
                       <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
                         <ImageIcon className="w-3 h-3" />
                         {t("patient.prescriptionPhoto")}
                       </div>
-                      <a href={visit.prescriptionImageUrl} target="_blank" rel="noreferrer">
-                        <img
-                          src={visit.prescriptionImageUrl}
-                          alt={t("patient.prescriptionAlt")}
-                          className="w-24 h-32 object-cover rounded-lg border border-border hover:opacity-80 transition-opacity"
-                        />
+                      <a
+                        href={visit.prescriptionImageUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        download
+                        className="flex items-center gap-2 text-xs text-[#007AFF] border border-[#007AFF]/30 px-3 py-1.5 rounded-lg hover:bg-[#007AFF]/10 transition-colors w-fit"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        {t("patient.rxPdf") || "Open Prescription"}
+                        <Download className="w-3 h-3 text-muted-foreground ml-1" />
                       </a>
                     </div>
                   )}
@@ -315,6 +459,7 @@ export default function PatientProfilePage() {
                               href={url}
                               target="_blank"
                               rel="noreferrer"
+                              download
                               className="flex items-center gap-1.5 text-xs text-[#007AFF] border border-[#007AFF]/30 px-2.5 py-1 rounded-lg hover:bg-[#007AFF]/10 transition-colors"
                             >
                               <Download className="w-3 h-3" />
@@ -331,126 +476,7 @@ export default function PatientProfilePage() {
           )}
         </div>
 
-        {/* Contracts */}
-        <div>
-          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-            <ScrollText className="w-4 h-4 text-[#AF52DE]" />
-            Contracts
-            {contracts !== undefined && contracts.length > 0 && (
-              <span className="text-xs text-muted-foreground font-normal">
-                ({contracts.length})
-              </span>
-            )}
-          </h3>
-
-          {contracts === undefined ? (
-            <Skeleton className="h-20 rounded-xl" />
-          ) : contracts.length === 0 ? (
-            <div className="bg-card border border-border rounded-xl p-5 text-center">
-              <p className="text-xs text-muted-foreground">No contracts on file</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {contracts.map((contract: any) => {
-                const isActive = contract.status === "active";
-                const progress = contract.numVisits > 0
-                  ? Math.min(100, Math.round(((contract.completedVisits ?? 0) / contract.numVisits) * 100))
-                  : 0;
-                const hasUnpaid = (contract.unpaidBalance ?? 0) > 0;
-                return (
-                  <div
-                    key={contract._id}
-                    className={`bg-card border rounded-xl p-4 space-y-3 ${
-                      hasUnpaid ? "border-red-500/30" : "border-border"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
-                          isActive
-                            ? "bg-[#34c759]/10 text-[#34c759] border-[#34c759]/30"
-                            : "bg-red-500/10 text-red-500 border-red-500/30"
-                        }`}>
-                          {isActive ? "Active" : "Expired"}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          Started {new Date(contract.startDate).toLocaleDateString(dateLocale, { month: "short", day: "numeric", year: "numeric" })}
-                        </span>
-                      </div>
-                      <Link
-                        href="/dashboard/contracts"
-                        className="text-xs text-[#007AFF] hover:underline"
-                      >
-                        View →
-                      </Link>
-                    </div>
-
-                    {/* Financials row */}
-                    <div className="flex flex-wrap gap-x-4 gap-y-1">
-                      {contract.totalAmount && (
-                        <span className="text-xs text-muted-foreground">
-                          Total: <span className="font-semibold text-foreground">{contract.totalAmount.toLocaleString()} EGP</span>
-                        </span>
-                      )}
-                      {contract.costPerVisit && (
-                        <span className="text-xs text-muted-foreground">
-                          Per visit: <span className="font-semibold text-foreground">{contract.costPerVisit.toLocaleString()} EGP</span>
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Visit progress */}
-                    {contract.numVisits > 0 && (
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-muted-foreground flex items-center gap-1">
-                            <Users className="w-3 h-3" />
-                            {contract.completedVisits ?? 0} / {contract.numVisits} visits
-                          </span>
-                          <span className="text-muted-foreground">
-                            {contract.paidVisits ?? 0} paid · {(contract.completedVisits ?? 0) - (contract.paidVisits ?? 0)} unpaid
-                          </span>
-                        </div>
-                        <div className="h-1.5 bg-muted/40 rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-[#AF52DE] rounded-full transition-all"
-                            style={{ width: `${progress}%` }}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Unpaid balance warning */}
-                    {hasUnpaid && (
-                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/8 border border-red-500/20">
-                        <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
-                        <p className="text-xs font-semibold text-red-500">
-                          Unpaid balance: {contract.unpaidBalance.toLocaleString()} EGP
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Next visit */}
-                    {contract.nextVisitDate && (
-                      <div className="flex items-center gap-2 text-xs">
-                        <CalendarIcon className="w-3 h-3 text-[#007AFF]" />
-                        <span className="text-muted-foreground">Next visit:</span>
-                        <span className="font-semibold text-[#007AFF]">
-                          {new Date(contract.nextVisitDate).toLocaleDateString(dateLocale, { weekday: "short", month: "short", day: "numeric" })}
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Notes */}
-                    {contract.notes && (
-                      <p className="text-xs text-muted-foreground leading-relaxed border-t border-border pt-2">{contract.notes}</p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+        {/* Contracts section moved to top */}
       </div>
 
       {/* Drawers */}
