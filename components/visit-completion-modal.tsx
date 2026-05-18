@@ -18,6 +18,7 @@ import {
   Clock,
   StickyNote,
   ImageIcon,
+  AlertTriangle,
 } from "lucide-react";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
@@ -50,16 +51,28 @@ export function VisitCompletionModal({
   const addVisitFiles = useMutation(api.visits.addVisitFiles);
   const createFollowUp = useMutation(api.followUps.createFollowUp);
   const completeContractVisit = useMutation(api.contracts.completeContractVisit);
+  const waiveUnpaidBalance = useMutation(api.contracts.waiveUnpaidBalance);
   const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
   const isContractVisit = !!contractId;
   const { t } = useI18n();
 
-  /** Working days from doctor profile */
+  /** Contract data (for unpaid / past-due banner) */
+  const contractData = useQuery(
+    api.contracts.getContract,
+    clerkId && contractId ? { clerkId, contractId } : "skip"
+  );
+
+  /** Working days from doctor profile — falls back to blocking Sat+Sun */
   const workingDayAbbrs: string[] = (currentUser as any)?.availableDays ?? [];
   const DOW_ABBR: Record<number, string> = { 0: "Sun", 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat" };
+  const WEEKEND_DAYS = new Set([0, 6]); // Sun & Sat
   function isNonWorkingDay(d: Date): boolean {
-    if (workingDayAbbrs.length === 0) return false;
-    return !workingDayAbbrs.includes(DOW_ABBR[d.getDay()]);
+    const dow = d.getDay();
+    if (workingDayAbbrs.length > 0) {
+      return !workingDayAbbrs.includes(DOW_ABBR[dow]);
+    }
+    // Fallback: block weekends
+    return WEEKEND_DAYS.has(dow);
   }
 
   // Follow-up date for slot availability check
@@ -128,7 +141,8 @@ export function VisitCompletionModal({
   const [isPaid, setIsPaid] = useState(true);
   const [nextContractTime, setNextContractTime] = useState("10:00");
   const [nextContractCalOpen, setNextContractCalOpen] = useState(false);
-  const [scheduleNextContract, setScheduleNextContract] = useState(false);
+  // Next visit is MANDATORY for contract visits — always open, can't be skipped
+  const [scheduleNextContract, setScheduleNextContract] = useState(true);
 
   // Follow-up state (non-contract visits only)
   const [scheduleFollowUp, setScheduleFollowUp] = useState(false);
@@ -155,6 +169,11 @@ export function VisitCompletionModal({
   }, []);
 
   const handleSave = async (skip = false) => {
+    // Contract visits require a next visit date
+    if (isContractVisit && !nextContractDate) {
+      toast.error("Please pick the next visit date before completing this visit");
+      return;
+    }
     if (!isContractVisit && scheduleFollowUp && !fuDate) {
       toast.error("Please select a follow-up date");
       return;
@@ -233,7 +252,7 @@ export function VisitCompletionModal({
     setRxFile(null); setRxPreviewUrl(null); setExtraFiles([]);
     setNotes(""); setScheduleFollowUp(false); setFuDate(undefined);
     setFuTime(timeSlots.find(s => s.isWorkingHour && !s.isReserved)?.timeStr || "10:00");
-    setFuNote(""); setIsPaid(true); setScheduleNextContract(false);
+    setFuNote(""); setIsPaid(true); setScheduleNextContract(true);
     setNextContractDate(undefined); setNextContractTime("10:00"); setDone(false);
     onOpenChange(false);
   };
@@ -278,6 +297,57 @@ export function VisitCompletionModal({
             </div>
 
             <div className="overflow-y-auto flex-1 p-6 space-y-5">
+              {/* ── Unpaid / Past-Due Warning Banner ── */}
+              {isContractVisit && !done && contractData && (
+                (contractData.unpaidBalance ?? 0) > 0 || contractData.status === "expired"
+              ) && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-3 mb-4 mt-[-8px]"
+                >
+                  <div className="flex items-start gap-2.5">
+                    <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0" />
+                    <div>
+                      {(contractData?.unpaidBalance ?? 0) > 0 && (
+                        <p className="text-sm font-bold text-amber-600">
+                          Unpaid balance: {contractData!.unpaidBalance!.toLocaleString()} {t("contracts.currency") || "EGP"}
+                        </p>
+                      )}
+                      {contractData?.status === "expired" && (
+                        <p className="text-sm font-bold text-amber-600">Contract is expired</p>
+                      )}
+                      <p className="text-xs text-amber-600/80 mt-0.5">Discuss with patient before proceeding</p>
+                    </div>
+                  </div>
+                  
+                  {(contractData?.unpaidBalance ?? 0) > 0 && (
+                    <button
+                      type="button"
+                      onClick={async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (!confirm(t("contracts.waiveConfirm") || "Are you sure you want to waive this unpaid balance?")) return;
+                        setIsSaving(true);
+                        try {
+                          await waiveUnpaidBalance({ clerkId, contractId: contractData._id });
+                          toast.success(t("contracts.waiveSuccess") || "Unpaid balance waived successfully.");
+                        } catch {
+                          toast.error(t("contracts.waiveFail") || "Failed to waive balance");
+                        } finally {
+                          setIsSaving(false);
+                        }
+                      }}
+                      disabled={isSaving}
+                      className="w-full text-sm font-semibold bg-amber-500 text-white px-3 py-2.5 rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-60 flex items-center justify-center gap-2 shadow-sm"
+                    >
+                      {isSaving ? <IOSSpinner size={14} className="text-white" /> : <CheckCircle2 className="w-4 h-4" />}
+                      {t("contracts.waive") || "Waive Balance"}
+                    </button>
+                  )}
+                </motion.div>
+              )}
+
               {/* Done state */}
               {done && (
                 <motion.div
@@ -406,63 +476,59 @@ export function VisitCompletionModal({
                         />
                       </div>
 
-                      {/* Schedule next contract visit */}
-                      <div className="border border-border rounded-xl overflow-hidden">
-                        <div
-                          onClick={() => setScheduleNextContract(v => !v)}
-                          className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer"
-                        >
+                      {/* Schedule next contract visit — mandatory, always open */}
+                      <div className="border border-[#AF52DE]/30 bg-[#AF52DE]/4 rounded-xl overflow-hidden">
+                        <div className="w-full flex items-center justify-between px-4 py-3">
                           <div className="flex items-center gap-2.5">
-                            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${scheduleNextContract ? "bg-[#AF52DE]/10" : "bg-muted/60"}`}>
-                              <Clock className={`w-4 h-4 ${scheduleNextContract ? "text-[#AF52DE]" : "text-muted-foreground"}`} />
+                            <div className="w-8 h-8 rounded-lg bg-[#AF52DE]/10 flex items-center justify-center">
+                              <Clock className="w-4 h-4 text-[#AF52DE]" />
                             </div>
                             <div className="text-left">
-                              <p className="text-sm font-semibold">{t("visit.scheduleNextContract")}</p>
+                              <p className="text-sm font-semibold">
+                                {t("visit.scheduleNextContract")}
+                                <span className="text-red-500 ml-1">*</span>
+                              </p>
                               <p className="text-xs text-muted-foreground">{t("visit.bookNextContract")}</p>
                             </div>
                           </div>
-                          <div className="flex-shrink-0 pointer-events-none">
-                            <Switch checked={scheduleNextContract} />
-                          </div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-[#AF52DE] bg-[#AF52DE]/10 px-2 py-0.5 rounded-full">Required</span>
                         </div>
 
-                        <AnimatePresence>
-                          {scheduleNextContract && (
-                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} className="overflow-hidden">
-                              <div className="p-4 border-t border-border space-y-4">
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div>
-                                    <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("visit.date")} *</p>
-                                    <Popover open={nextContractCalOpen} onOpenChange={setNextContractCalOpen}>
-                                      <PopoverTrigger asChild>
-                                        <button className="w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border border-border rounded-xl hover:border-[#007AFF]/50 transition-colors text-left">
-                                          <CalendarIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                                          <span>{nextContractDate ? nextContractDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : t("visit.pickDate")}</span>
-                                        </button>
-                                      </PopoverTrigger>
-                                      <PopoverContent className="w-auto p-0" align="start">
-                                        <Calendar mode="single" selected={nextContractDate} onSelect={(d) => { if (d) { setNextContractDate(d); setNextContractCalOpen(false); } }} disabled={(d) => d < new Date() || isNonWorkingDay(d)} />
-                                      </PopoverContent>
-                                    </Popover>
-                                  </div>
-                                  <div>
-                                    <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("visit.timeSlot")}</p>
-                                    <div className="max-h-48 overflow-y-auto border border-border rounded-xl divide-y divide-border/50">
-                                      {timeSlots.filter(s => s.isWorkingHour).map(slot => (
-                                        <button key={slot.timeStr} onClick={() => !slot.isReserved && setNextContractTime(slot.timeStr)} disabled={slot.isReserved}
-                                          className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${slot.isReserved ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed line-through" : nextContractTime === slot.timeStr ? "bg-[#AF52DE]/10 text-[#AF52DE] font-semibold" : "hover:bg-muted/30"}`}>
-                                          <span>{slot.label}</span>
-                                          {slot.isReserved && <span className="text-[10px] font-medium text-red-400 uppercase tracking-wider">{t("visit.reserved")}</span>}
-                                          {!slot.isReserved && nextContractTime === slot.timeStr && <CheckCircle2 className="w-3.5 h-3.5" />}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </div>
-                                </div>
+                        <div className="p-4 border-t border-[#AF52DE]/20 space-y-4">
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <p className="text-xs font-medium text-muted-foreground mb-1.5">
+                                {t("visit.date")} <span className="text-red-500">*</span>
+                              </p>
+                              <Popover open={nextContractCalOpen} onOpenChange={setNextContractCalOpen}>
+                                <PopoverTrigger asChild>
+                                  <button className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border rounded-xl hover:border-[#AF52DE]/50 transition-colors text-left ${!nextContractDate ? "border-red-400/60" : "border-border"}`}>
+                                    <CalendarIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                                    <span className={nextContractDate ? "" : "text-muted-foreground"}>
+                                      {nextContractDate ? nextContractDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : t("visit.pickDate")}
+                                    </span>
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                  <Calendar mode="single" selected={nextContractDate} onSelect={(d) => { if (d) { setNextContractDate(d); setNextContractCalOpen(false); } }} disabled={(d) => d < new Date() || isNonWorkingDay(d)} />
+                                </PopoverContent>
+                              </Popover>
+                            </div>
+                            <div>
+                              <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("visit.timeSlot")}</p>
+                              <div className="max-h-48 overflow-y-auto border border-border rounded-xl divide-y divide-border/50">
+                                {timeSlots.filter(s => s.isWorkingHour).map(slot => (
+                                  <button key={slot.timeStr} onClick={() => !slot.isReserved && setNextContractTime(slot.timeStr)} disabled={slot.isReserved}
+                                    className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${slot.isReserved ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed line-through" : nextContractTime === slot.timeStr ? "bg-[#AF52DE]/10 text-[#AF52DE] font-semibold" : "hover:bg-muted/30"}`}>
+                                    <span>{slot.label}</span>
+                                    {slot.isReserved && <span className="text-[10px] font-medium text-red-400 uppercase tracking-wider">{t("visit.reserved")}</span>}
+                                    {!slot.isReserved && nextContractTime === slot.timeStr && <CheckCircle2 className="w-3.5 h-3.5" />}
+                                  </button>
+                                ))}
                               </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   ) : (
@@ -538,11 +604,11 @@ export function VisitCompletionModal({
                   {/* Actions */}
                   <div className="flex gap-3">
                     <button
-                      onClick={() => handleSave(true)}
+                      onClick={handleClose}
                       disabled={isSaving}
                       className="flex-1 border border-border text-sm font-medium py-2.5 rounded-xl hover:bg-muted/40 transition-colors disabled:opacity-60"
                     >
-                      {t("visit.skip")}
+                      {t("common.cancel")}
                     </button>
                     <button
                       onClick={() => handleSave(false)}

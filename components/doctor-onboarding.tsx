@@ -94,8 +94,9 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
   const [slotDuration, setSlotDuration] = useState("30");
   const [feePerVisit, setFeePerVisit] = useState("");
 
-  // Step 3 — Bio & photo (optional)
+  // Step 3 — Bio & photo & privacy
   const [bio, setBio] = useState("");
+  const [publicProfile, setPublicProfile] = useState(true);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [profileStorageId, setProfileStorageId] = useState<Id<"_storage"> | undefined>();
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -168,6 +169,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
         bio: bio || undefined,
         workingDays: selectedDays.length > 0 ? selectedDays : undefined,
         feePerVisit: feePerVisit ? Number(feePerVisit) : undefined,
+        publicProfile,
       });
 
       if (profileStorageId) {
@@ -230,6 +232,21 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
               <div className="flex items-center gap-2 mb-4">
                 <User className="w-4 h-4 text-[#007AFF]" />
                 <span className="font-semibold text-sm">{t("onboarding.yourDetails")}</span>
+              </div>
+
+              <div className="border border-border rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-muted/10">
+                <div>
+                  <p className="text-sm font-semibold">{t("settings.publicProfile") || "Public Profile"}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Allow patients to find and book you online
+                  </p>
+                </div>
+                <div className="flex items-center">
+                  <div className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#007AFF] focus-visible:ring-offset-2 focus-visible:ring-offset-background ${publicProfile ? 'bg-[#007AFF]' : 'bg-muted'}`} onClick={() => setPublicProfile(!publicProfile)}>
+                    <span className="sr-only">Toggle public profile</span>
+                    <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${publicProfile ? 'translate-x-5' : 'translate-x-0'}`} />
+                  </div>
+                </div>
               </div>
 
               <div>
@@ -364,7 +381,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
             </motion.div>
           )}
 
-          {/* ── Step 3: Photo & Bio ── */}
+          {/* ── Step 3: Photo, Bio & Privacy ── */}
           {step === 3 && (
             <motion.div key="step3" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.22 }} className="space-y-5">
               <div className="flex items-center gap-2 mb-4">
@@ -403,11 +420,13 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
                   {t("onboarding.shortBio")} <span className="font-normal">({t("onboarding.optional")})</span>
                 </label>
                 <textarea value={bio} onChange={(e) => setBio(e.target.value)}
-                  placeholder={t("onboarding.bioPlaceholder")}
+                  placeholder={t("onboarding.bioPlaceholder") || "I am a specialist in..."}
                   rows={4} maxLength={500}
                   className={`${inputClass} resize-none`} />
                 <p className="text-xs text-muted-foreground mt-1" style={{ textAlign: dir === "rtl" ? "left" : "right" }}>{bio.length}/500</p>
               </div>
+
+
 
               <div className="bg-[#007AFF]/5 border border-[#007AFF]/20 rounded-xl p-3 text-xs text-[#007AFF]">
                 {t("onboarding.almostDone")}

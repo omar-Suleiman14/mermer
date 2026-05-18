@@ -109,7 +109,14 @@ export const createVisit = mutation({
     clerkId: v.string(),
     patientId: v.id("patients"),
     date: v.optional(v.number()),
-    source: v.optional(v.union(v.literal("manual"), v.literal("appointment"))),
+    source: v.optional(
+      v.union(
+        v.literal("manual"),
+        v.literal("online"),
+        v.literal("contract"),
+        v.literal("follow-up")
+      )
+    ),
     reasonForVisit: v.optional(v.string()),
     prescribedMedications: v.optional(v.array(v.string())),
     analysisRequested: v.optional(v.array(v.string())),
@@ -122,11 +129,19 @@ export const createVisit = mutation({
       .unique();
     if (!user) throw new Error("User not found");
 
+    // Denormalize patient info for display
+    const patient = await ctx.db.get(args.patientId);
+    if (!patient || patient.doctorId !== user._id) throw new Error("Patient not found");
+
     return await ctx.db.insert("visits", {
       patientId: args.patientId,
       doctorId: user._id,
       date: args.date ?? Date.now(),
-      source: (args.source ?? "manual") as any,
+      source: args.source ?? "manual",
+      status: "confirmed",
+      patientName: patient.name,
+      patientPhone: patient.phone,
+      patientAge: patient.age,
       reasonForVisit: args.reasonForVisit,
       prescribedMedications: args.prescribedMedications,
       analysisRequested: args.analysisRequested,
@@ -190,6 +205,7 @@ export const getVisitsByDateRange = query({
       date: v.date,
       patientId: v.patientId,
       reasonForVisit: v.reasonForVisit,
+      status: v.status,
     }));
   },
 });
@@ -235,5 +251,31 @@ export const updateVisit = mutation({
     if (args.updates.date) patch.date = args.updates.date;
 
     await ctx.db.patch(args.visitId, patch);
+  },
+});
+
+export const bulkRescheduleVisits = mutation({
+  args: {
+    clerkId: v.string(),
+    updates: v.array(
+      v.object({
+        visitId: v.id("visits"),
+        newDate: v.number(),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .unique();
+    if (!user) throw new Error("User not found");
+
+    for (const update of args.updates) {
+      const visit = await ctx.db.get(update.visitId);
+      if (visit && visit.doctorId === user._id) {
+        await ctx.db.patch(update.visitId, { date: update.newDate });
+      }
+    }
   },
 });

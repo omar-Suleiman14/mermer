@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useMutation } from "convex/react";
+import { useState, useMemo, useEffect } from "react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import {
@@ -16,6 +16,9 @@ import {
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n";
+import { Clock, CalendarIcon, CheckCircle2 } from "lucide-react";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface VisitDrawerProps {
   open: boolean;
@@ -26,16 +29,81 @@ interface VisitDrawerProps {
 }
 
 export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientName }: VisitDrawerProps) {
-  const { t } = useI18n();
-  const now = new Date();
+  const { t, lang } = useI18n();
   const [form, setForm] = useState({
-    visitDate: now.toLocaleDateString("en-CA"),
-    visitTime: now.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" }),
     reasonForVisit: "",
     notes: "",
   });
+
+  const [visitDate, setVisitDate] = useState<Date | undefined>(new Date());
+  const [visitTime, setVisitTime] = useState<string>("10:00");
+  const [calOpen, setCalOpen] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const createVisit = useMutation(api.visits.createVisit);
+
+  const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
+  
+  const workingDayAbbrs: string[] = (currentUser as any)?.availableDays ?? [];
+  const DOW_ABBR: Record<number, string> = { 0: "Sun", 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat" };
+  const WEEKEND_DAYS = new Set([0, 6]); // Sun & Sat
+  function isNonWorkingDay(d: Date): boolean {
+    const dow = d.getDay();
+    if (workingDayAbbrs.length > 0) {
+      return !workingDayAbbrs.includes(DOW_ABBR[dow]);
+    }
+    // Fallback: block weekends
+    return WEEKEND_DAYS.has(dow);
+  }
+
+  const activeDateStart = visitDate ? new Date(visitDate.getFullYear(), visitDate.getMonth(), visitDate.getDate(), 0, 0, 0, 0).getTime() : 0;
+  const activeDateEnd = visitDate ? new Date(visitDate.getFullYear(), visitDate.getMonth(), visitDate.getDate(), 23, 59, 59, 999).getTime() : 0;
+
+  const existingVisitsOnDate = useQuery(
+    api.visits.getVisitsByDateRange,
+    clerkId && visitDate ? { clerkId, startDate: activeDateStart, endDate: activeDateEnd } : "skip"
+  );
+
+  const timeSlots = useMemo(() => {
+    const startHour = currentUser?.workingHoursStart ?? 9;
+    const endHour = currentUser?.workingHoursEnd ?? 17;
+    const slotMin = currentUser?.slotDurationMinutes ?? 30;
+    const slots: { timeStr: string; label: string; isWorkingHour: boolean; isReserved: boolean }[] = [];
+
+    const reservedTimes = new Set<string>();
+    if (existingVisitsOnDate) {
+      for (const v of existingVisitsOnDate) {
+        const d = new Date(v.date);
+        const hh = d.getHours().toString().padStart(2, "0");
+        const mm = d.getMinutes().toString().padStart(2, "0");
+        reservedTimes.add(`${hh}:${mm}`);
+      }
+    }
+
+    for (let h = 0; h < 24; h++) {
+      for (let m = 0; m < 60; m += slotMin) {
+        const hh = h.toString().padStart(2, "0");
+        const mm = m.toString().padStart(2, "0");
+        const timeStr = `${hh}:${mm}`;
+
+        const ampm = h >= 12 ? "PM" : "AM";
+        const displayH = h % 12 || 12;
+        const label = `${displayH}:${mm} ${ampm}`;
+
+        const isWorkingHour = h >= startHour && h < endHour;
+        const isReserved = reservedTimes.has(timeStr);
+        slots.push({ timeStr, label, isWorkingHour, isReserved });
+      }
+    }
+    return slots;
+  }, [currentUser, existingVisitsOnDate]);
+
+  useEffect(() => {
+    if (timeSlots.length > 0 && visitTime === "10:00") {
+      const firstAvailable = timeSlots.find(s => s.isWorkingHour && !s.isReserved);
+      if (firstAvailable) setVisitTime(firstAvailable.timeStr);
+    }
+  }, [timeSlots, visitTime]);
 
   function set(field: string, value: unknown) {
     setForm((f) => ({ ...f, [field]: value }));
@@ -43,25 +111,39 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
 
   function handleOpen(v: boolean) {
     if (v) {
-      const n = new Date();
       setForm({
-        visitDate: n.toLocaleDateString("en-CA"),
-        visitTime: n.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit" }),
         reasonForVisit: "",
         notes: "",
       });
+      setVisitDate(new Date());
+      setVisitTime("10:00");
     }
     onOpenChange(v);
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!visitDate) {
+      toast.error("Please pick a visit date");
+      return;
+    }
+    
+    const selectedSlot = timeSlots.find(s => s.timeStr === visitTime);
+    if (selectedSlot?.isReserved) {
+      toast.error("This time slot is already reserved.");
+      return;
+    }
+
     setLoading(true);
     try {
+      const [hh, mm] = visitTime.split(":").map(Number);
+      const exactDate = new Date(visitDate);
+      exactDate.setHours(hh ?? 10, mm ?? 0, 0, 0);
+      
       await createVisit({
         clerkId,
         patientId,
-        date: new Date(`${form.visitDate}T${form.visitTime}`).getTime(),
+        date: exactDate.getTime(),
         source: "manual",
         reasonForVisit: form.reasonForVisit || undefined,
         notes: form.notes || undefined,
@@ -85,70 +167,105 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
 
         <form onSubmit={handleSubmit} className="overflow-y-auto flex-1">
           <div className="px-4 space-y-4 pb-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label htmlFor="visit-date">{t("visit.visitDate")}</Label>
-                <input
-                  id="visit-date"
-                  type="date"
-                  value={form.visitDate}
-                  onChange={(e) => set("visitDate", e.target.value)}
-                  className="w-full px-3 py-2 text-sm bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent"
-                  required
-                />
+            
+            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border">
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("visit.date")} *</p>
+                <Popover open={calOpen} onOpenChange={setCalOpen}>
+                  <PopoverTrigger asChild>
+                    <button type="button" className="w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border border-border rounded-xl hover:border-[#007AFF]/50 transition-colors text-left">
+                      <CalendarIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      <span className="text-sm">
+                        {visitDate ? visitDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : t("visit.pickDate")}
+                      </span>
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar 
+                      mode="single" 
+                      selected={visitDate} 
+                      onSelect={(d) => { if (d) { setVisitDate(d); setCalOpen(false); } }} 
+                      disabled={(d) => {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        return d < today || isNonWorkingDay(d);
+                      }} 
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="visit-time">{t("visit.visitTime")}</Label>
-                <input
-                  id="visit-time"
-                  type="time"
-                  value={form.visitTime}
-                  onChange={(e) => set("visitTime", e.target.value)}
-                  className="w-full px-3 py-2 text-sm bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent"
-                  required
-                />
+              
+              <div>
+                <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("visit.timeSlot")}</p>
+                <div className="max-h-48 overflow-y-auto border border-border rounded-xl divide-y divide-border/50">
+                  {timeSlots.filter(s => s.isWorkingHour).map(slot => (
+                    <button 
+                      key={slot.timeStr} 
+                      type="button"
+                      onClick={() => !slot.isReserved && setVisitTime(slot.timeStr)} 
+                      disabled={slot.isReserved}
+                      className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${
+                        slot.isReserved 
+                          ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed line-through" 
+                          : visitTime === slot.timeStr 
+                            ? "bg-[#007AFF]/10 text-[#007AFF] font-semibold" 
+                            : "hover:bg-muted/30"
+                      }`}
+                    >
+                      <span>{slot.label}</span>
+                      {slot.isReserved && <span className="text-[10px] font-medium text-red-400 uppercase tracking-wider">{t("visit.reserved") || "Reserved"}</span>}
+                      {!slot.isReserved && visitTime === slot.timeStr && <CheckCircle2 className="w-3.5 h-3.5" />}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="visit-reason">{t("visit.reasonForVisit")}</Label>
+            <div className="space-y-1.5 pt-2 border-t border-border">
+              <Label htmlFor="visit-reason" className="text-xs font-medium text-muted-foreground mb-1.5 block">{t("visit.reasonForVisit")}</Label>
               <input
                 id="visit-reason"
                 type="text"
                 value={form.reasonForVisit}
                 onChange={(e) => set("reasonForVisit", e.target.value)}
                 placeholder="e.g. Follow-up, checkup, acute complaint…"
-                className="w-full px-3 py-2 text-sm bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent"
+                className="w-full px-3 py-2 text-sm bg-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent transition-shadow"
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="visit-notes">{t("visit.notes")}</Label>
+              <Label htmlFor="visit-notes" className="text-xs font-medium text-muted-foreground mb-1.5 block">{t("visit.notes")}</Label>
               <textarea
                 id="visit-notes"
                 value={form.notes}
                 onChange={(e) => set("notes", e.target.value)}
                 placeholder="Optional free-form notes..."
                 rows={3}
-                className="w-full px-3 py-2 text-sm bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent resize-none"
+                className="w-full px-3 py-2 text-sm bg-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent resize-none transition-shadow"
               />
             </div>
           </div>
         </form>
 
-        <DrawerFooter className="flex flex-row gap-2">
+        <DrawerFooter className="flex flex-row gap-2 border-t border-border px-4 py-4">
+          <DrawerClose asChild>
+            <button
+              type="button"
+              className="flex-shrink-0 text-sm text-muted-foreground border border-border rounded-xl px-4 py-2.5 hover:bg-muted/40 transition-colors"
+            >
+              {t("common.cancel")}
+            </button>
+          </DrawerClose>
           <button
             onClick={handleSubmit}
             disabled={loading}
-            className="flex-1 bg-[#007AFF] text-white text-sm font-semibold py-2.5 px-4 rounded-lg hover:bg-[#0062cc] transition-colors disabled:opacity-60"
+            className="flex-1 bg-[#007AFF] text-white text-sm font-semibold py-2.5 px-4 rounded-xl hover:bg-[#0062cc] transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
           >
             {loading ? t("onboarding.saving") : t("visit.saveVisit")}
           </button>
-          <DrawerClose className="flex-shrink-0 text-sm text-muted-foreground border border-border rounded-lg px-4 py-2.5 hover:text-foreground">
-            {t("common.cancel")}
-          </DrawerClose>
         </DrawerFooter>
       </DrawerContent>
     </Drawer>
   );
 }
+

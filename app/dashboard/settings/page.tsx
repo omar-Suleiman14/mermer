@@ -6,13 +6,14 @@ import { Id } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
-import { Camera, Link as LinkIcon, Globe, Palette, CalendarDays, Bot, CheckCircle2, Loader2, Unlink } from "lucide-react";
+import { Camera, Link as LinkIcon, Globe, Palette, CalendarDays, Bot, CheckCircle2, Loader2, Unlink, AlertTriangle, X } from "lucide-react";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { MessageTemplatesSection } from "@/components/message-templates-section";
 import { useI18n } from "@/lib/i18n";
 import { useTheme } from "next-themes";
 import { LanguageToggle } from "@/components/language-toggle";
+import { motion, AnimatePresence } from "framer-motion";
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -62,6 +63,133 @@ export default function SettingsPage() {
       toast.error(t("elliot.unlinkFailed"));
     } finally {
       setRevoking(false);
+    }
+  }
+
+  // ── Rescheduling non-working days ──
+  const [dateRange] = useState(() => {
+    const now = Date.now();
+    return { startDate: now, endDate: now + 30 * 86400000 };
+  });
+
+  const upcomingVisits = useQuery(api.visits.getVisitsByDateRange, clerkId ? {
+    clerkId,
+    startDate: dateRange.startDate,
+    endDate: dateRange.endDate,
+  } : "skip");
+  const bulkReschedule = useMutation(api.visits.bulkRescheduleVisits);
+
+  const [reschedulePromptOpen, setReschedulePromptOpen] = useState(false);
+  const [conflictingVisits, setConflictingVisits] = useState<any[]>([]);
+  const [rescheduling, setRescheduling] = useState(false);
+
+  type AvailabilityUpdates = {
+    workingDays?: string[];
+    workingHoursStart?: number;
+    workingHoursEnd?: number;
+    isAlwaysOpen?: boolean;
+    slotMin?: number;
+  };
+  const [pendingAvailability, setPendingAvailability] = useState<AvailabilityUpdates | null>(null);
+  const [conflictReason, setConflictReason] = useState<"days" | "hours">("days");
+
+  function requestAvailabilityChange(updates: AvailabilityUpdates) {
+    if (upcomingVisits === undefined) {
+      toast.info("Please wait while we check your schedule...");
+      return;
+    }
+
+    const isDaysChange = updates.workingDays !== undefined;
+    const isHoursChange = updates.workingHoursStart !== undefined || updates.workingHoursEnd !== undefined || updates.isAlwaysOpen !== undefined;
+
+    const newDays = updates.workingDays ?? workingDays;
+    const newAlwaysOpen = updates.isAlwaysOpen ?? isAlwaysOpen;
+    const newStart = newAlwaysOpen ? 0 : (updates.workingHoursStart ?? Number(workingHoursStart));
+    const newEnd = newAlwaysOpen ? 24 : (updates.workingHoursEnd ?? Number(workingHoursEnd));
+
+    const conflicts = upcomingVisits.filter(v => {
+      if (v.status !== "confirmed" || new Date(v.date).getTime() <= Date.now()) return false;
+      const vDate = new Date(v.date);
+      const dayName = vDate.toLocaleDateString("en-US", { weekday: "short" });
+      const timeInHours = vDate.getHours() + vDate.getMinutes() / 60;
+
+      // Day conflict: visit falls on a day being removed
+      if (isDaysChange && newDays.length > 0 && !newDays.includes(dayName)) return true;
+
+      // Hour conflict: visit falls outside new working hours window
+      if (isHoursChange && !newAlwaysOpen && (timeInHours < newStart || timeInHours >= newEnd)) return true;
+
+      return false;
+    });
+
+    if (conflicts.length > 0) {
+      setConflictReason(isHoursChange ? "hours" : "days");
+      setPendingAvailability(updates);
+      setConflictingVisits(conflicts);
+      setReschedulePromptOpen(true);
+    } else {
+      applyAvailabilityChange(updates);
+    }
+  }
+
+  function applyAvailabilityChange(updates: AvailabilityUpdates) {
+    if (updates.workingDays !== undefined) setWorkingDays(updates.workingDays);
+    if (updates.workingHoursStart !== undefined) setWHS(String(updates.workingHoursStart));
+    if (updates.workingHoursEnd !== undefined) setWHE(String(updates.workingHoursEnd));
+    if (updates.isAlwaysOpen !== undefined) setIsAlwaysOpen(updates.isAlwaysOpen);
+    if (updates.slotMin !== undefined) setSlotMin(String(updates.slotMin));
+  }
+
+  function handleToggleWorkingDay(d: string) {
+    if (workingDays.includes(d)) {
+      // Removing a day → check for conflicts with upcoming visits
+      requestAvailabilityChange({ workingDays: workingDays.filter(x => x !== d) });
+    } else {
+      // Adding a day → can never create conflicts, apply directly
+      setWorkingDays(prev => [...prev, d]);
+    }
+  }
+
+  async function handleReschedule(direction: "before" | "after" | "futureDate") {
+    setRescheduling(true);
+    try {
+      const updates: { visitId: any; newDate: number }[] = [];
+      const newDays = pendingAvailability?.workingDays ?? workingDays;
+      const newAlwaysOpen = pendingAvailability?.isAlwaysOpen ?? isAlwaysOpen;
+      const newStartH = newAlwaysOpen ? 0 : (pendingAvailability?.workingHoursStart ?? Number(workingHoursStart));
+
+      for (const v of conflictingVisits) {
+        const attempt = new Date(v.date);
+        let foundMs: number | null = null;
+
+        // Search up to 60 days forward or backward
+        for (let i = 0; i < 60; i++) {
+          if (direction === "before") attempt.setDate(attempt.getDate() - 1);
+          else attempt.setDate(attempt.getDate() + 1);
+
+          const dayName = attempt.toLocaleDateString("en-US", { weekday: "short" });
+          if (newDays.length === 0 || newDays.includes(dayName)) {
+            attempt.setHours(newStartH || 9, 0, 0, 0);
+            foundMs = attempt.getTime();
+            break;
+          }
+        }
+
+        if (foundMs !== null) {
+          updates.push({ visitId: v._id, newDate: foundMs });
+        }
+      }
+
+      await bulkReschedule({ clerkId, updates });
+      toast.success(t("toast.rescheduledSuccessfully") || "Visits rescheduled automatically");
+
+      if (pendingAvailability) applyAvailabilityChange(pendingAvailability);
+      setPendingAvailability(null);
+      setReschedulePromptOpen(false);
+    } catch {
+      toast.error(t("toast.rescheduleFailed") || "Failed to reschedule visits");
+    } finally {
+      setRescheduling(false);
     }
   }
 
@@ -176,6 +304,31 @@ export default function SettingsPage() {
       <PageHeader title={t("settings.title")} description={t("settings.pageDescription")} />
 
       <div className="flex-1 overflow-auto p-4 sm:p-6 max-w-3xl mx-auto w-full pb-20">
+
+        {/* ═══════════════════════════════════════════════════════════ */}
+        {/* VISIBILITY                                                  */}
+        {/* ═══════════════════════════════════════════════════════════ */}
+        <section>
+          <h3 className={sectionTitleClass}>{t("settings.visibilitySection") || "Visibility"}</h3>
+          <div className={blockClass}>
+            <div className={`${rowClass} !py-5`}>
+              <div>
+                <label className="text-sm font-semibold flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-[#007AFF]" /> {t("settings.publicProfile") || "Public Profile"}
+                </label>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {t("settings.publicProfileDesc") || "Allow patients to find and book you online."}
+                </p>
+              </div>
+              <div className="flex-shrink-0 flex items-center">
+                <div className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#007AFF] focus-visible:ring-offset-2 focus-visible:ring-offset-background ${publicProfile ? 'bg-[#007AFF]' : 'bg-muted'}`} onClick={() => setPublicProfile(!publicProfile)}>
+                  <span className="sr-only">Toggle public profile</span>
+                  <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${publicProfile ? 'translate-x-5' : 'translate-x-0'}`} />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* ═══════════════════════════════════════════════════════════ */}
         {/* APPEARANCE & LANGUAGE                                       */}
@@ -298,10 +451,6 @@ export default function SettingsPage() {
                     onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePhotoUpload(f); }} />
                 </div>
               </div>
-              <div className="flex items-center gap-3 bg-muted/30 px-3 py-1.5 rounded-full border border-border">
-                <span className="text-xs font-medium">{t("settings.publicProfile")}</span>
-                <Switch checked={publicProfile} onCheckedChange={setPublicProfile} />
-              </div>
             </div>
 
             <div className={rowClass}>
@@ -395,11 +544,7 @@ export default function SettingsPage() {
                   <button
                     key={d}
                     type="button"
-                    onClick={() =>
-                      setWorkingDays((prev) =>
-                        prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]
-                      )
-                    }
+                    onClick={() => handleToggleWorkingDay(d)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${workingDays.includes(d)
                         ? "bg-[#007AFF] text-white border-[#007AFF]"
                         : "border-border hover:border-[#007AFF]/40 text-muted-foreground"
@@ -414,7 +559,7 @@ export default function SettingsPage() {
             <div className={rowClass}>
               <label className={labelClass}>{t("settings.open247")}</label>
               <div className="flex-1 flex justify-end">
-                <Switch checked={isAlwaysOpen} onCheckedChange={setIsAlwaysOpen} />
+                <Switch checked={isAlwaysOpen} onCheckedChange={(c) => requestAvailabilityChange({ isAlwaysOpen: c })} />
               </div>
             </div>
 
@@ -422,7 +567,7 @@ export default function SettingsPage() {
               <>
                 <div className={rowClass}>
                   <label className={labelClass}>{t("settings.opensAt")}</label>
-                  <select value={workingHoursStart} onChange={(e) => setWHS(e.target.value)} className={`${inputClass} sm:text-right appearance-none cursor-pointer`}>
+                  <select value={workingHoursStart} onChange={(e) => requestAvailabilityChange({ workingHoursStart: Number(e.target.value) })} className={`${inputClass} sm:text-right appearance-none cursor-pointer`}>
                     {Array.from({ length: 24 }, (_, h) => (
                       <option key={h} value={h}>{h === 0 ? "12:00 AM" : h === 12 ? "12:00 PM" : h < 12 ? `${h}:00 AM` : `${h - 12}:00 PM`}</option>
                     ))}
@@ -430,7 +575,7 @@ export default function SettingsPage() {
                 </div>
                 <div className={rowClass}>
                   <label className={labelClass}>{t("settings.closesAt")}</label>
-                  <select value={workingHoursEnd} onChange={(e) => setWHE(e.target.value)} className={`${inputClass} sm:text-right appearance-none cursor-pointer`}>
+                  <select value={workingHoursEnd} onChange={(e) => requestAvailabilityChange({ workingHoursEnd: Number(e.target.value) })} className={`${inputClass} sm:text-right appearance-none cursor-pointer`}>
                     {Array.from({ length: 24 }, (_, h) => (
                       <option key={h} value={h}>{h === 0 ? "12:00 AM" : h === 12 ? "12:00 PM" : h < 12 ? `${h}:00 AM` : `${h - 12}:00 PM`}</option>
                     ))}
@@ -467,6 +612,79 @@ export default function SettingsPage() {
         </section>
 
       </div>
+
+      {/* Reschedule Prompt */}
+      <AnimatePresence>
+        {reschedulePromptOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-md bg-card rounded-2xl shadow-xl overflow-hidden"
+            >
+              <div className="p-5 flex items-start gap-4">
+                <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+                  <AlertTriangle className="w-5 h-5 text-amber-500" />
+                </div>
+                <div className="w-full">
+                  <h3 className="text-base font-semibold">Reschedule Required</h3>
+                  <p className="text-sm text-muted-foreground mt-1 leading-relaxed mb-3">
+                    You have <strong className="text-foreground">{new Set(conflictingVisits.map(v => v.date)).size} upcoming appointment(s)</strong> scheduled outside your newly requested {conflictReason === "hours" ? "working hours" : "working days"}:
+                  </p>
+                  
+                  <div className="max-h-32 overflow-y-auto bg-background/50 border border-border rounded-lg p-2 space-y-1 w-full text-left">
+                    {Array.from(new Map(conflictingVisits.map(v => [v.date, v])).values()).map((v: any) => (
+                      <div key={v._id} className="text-xs text-muted-foreground flex items-center justify-between p-1.5 hover:bg-muted/30 rounded">
+                        <span className="font-medium text-foreground">
+                          {new Date(v.date).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                        </span>
+                        <span className="truncate ml-2 max-w-[120px]">{v.reasonForVisit || "Visit"}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="bg-muted/30 p-5 border-t border-border space-y-2">
+                <button
+                  onClick={() => handleReschedule("before")}
+                  disabled={rescheduling}
+                  className="w-full text-left px-4 py-3 bg-background border border-border rounded-xl hover:border-[#007AFF]/50 hover:bg-[#007AFF]/5 transition-colors disabled:opacity-60"
+                >
+                  <p className="text-sm font-semibold text-foreground">Back Date</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Automatically moves visits to the closest previous available day.</p>
+                </button>
+                <button
+                  onClick={() => handleReschedule("after")}
+                  disabled={rescheduling}
+                  className="w-full text-left px-4 py-3 bg-background border border-border rounded-xl hover:border-[#007AFF]/50 hover:bg-[#007AFF]/5 transition-colors disabled:opacity-60"
+                >
+                  <p className="text-sm font-semibold text-foreground">Future Date</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Automatically moves visits to the closest next available day.</p>
+                </button>
+
+              </div>
+              <div className="p-4 border-t border-border flex justify-end">
+                <button
+                  onClick={() => {
+                    setReschedulePromptOpen(false);
+                    setPendingAvailability(null);
+                  }}
+                  disabled={rescheduling}
+                  className="px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted/40 rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

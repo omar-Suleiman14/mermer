@@ -5,7 +5,7 @@ import { useMutation, useConvex, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { toast } from "sonner";
-import { Clock, X, Search, Plus, Check } from "lucide-react";
+import { Clock, X, Search, Plus, Check, CalendarIcon, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { IOSSpinner } from "@/components/ui/spinner";
 import {
@@ -17,6 +17,9 @@ import {
   DrawerFooter,
   DrawerClose,
 } from "@/components/ui/drawer";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
 import { useI18n } from "@/lib/i18n";
 
 interface PatientIntakeDrawerProps {
@@ -30,33 +33,6 @@ interface PatientIntakeDrawerProps {
     phone: string;
     chronicConditions: string[];
   } | null;
-}
-
-function formatTime(ts: number) {
-  return new Date(ts).toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
-
-function startOfDay(ts: number) {
-  const d = new Date(ts);
-  d.setHours(0, 0, 0, 0);
-  return d.getTime();
-}
-
-function buildDaySlots(dayTs: number, startHour: number, endHour: number, slotMin: number): number[] {
-  const slots: number[] = [];
-  const cursor = new Date(dayTs);
-  cursor.setHours(startHour, 0, 0, 0);
-  const end = new Date(dayTs);
-  end.setHours(endHour, 0, 0, 0);
-  while (cursor < end) {
-    slots.push(cursor.getTime());
-    cursor.setMinutes(cursor.getMinutes() + slotMin);
-  }
-  return slots;
 }
 
 /** Normalise phone: strips +20/0 prefix for display, stores with 20 prefix */
@@ -81,6 +57,7 @@ const defaultForm = {
   phone: "",
   chronicConditions: [] as string[],
   notes: "",
+  reasonForVisit: "",
 };
 
 const inputClass = "w-full px-3 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] transition-shadow";
@@ -101,25 +78,84 @@ export function PatientIntakeDrawer({
   );
   const [loading, setLoading] = useState(false);
 
-  // Visit date & slot
-  const [visitDate, setVisitDate] = useState(() => startOfDay(Date.now()));
-  const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
+  // Optional visit toggle
+  const [addVisit, setAddVisit] = useState(true);
+
+  // Visit date & time (new style matching visit-drawer)
+  const [visitDate, setVisitDate] = useState<Date | undefined>(new Date());
+  const [visitTime, setVisitTime] = useState<string>("10:00");
+  const [calOpen, setCalOpen] = useState(false);
 
   // Doctor profile for slot generation
   const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
 
-  /** Working days from doctor profile (e.g. ["Mon","Tue","Wed"]) */
-  const workingDays: string[] = (currentUser as any)?.availableDays ?? [];
-  const hasWorkingDays = workingDays.length > 0;
-
-  /** JS getDay() → abbreviation map */
+  const workingDayAbbrs: string[] = (currentUser as any)?.availableDays ?? [];
   const DOW_ABBR: Record<number, string> = { 0: "Sun", 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat" };
+  const WEEKEND_DAYS = new Set([0, 6]);
+
+  function isNonWorkingDay(d: Date): boolean {
+    const dow = d.getDay();
+    if (workingDayAbbrs.length > 0) return !workingDayAbbrs.includes(DOW_ABBR[dow]);
+    return WEEKEND_DAYS.has(dow);
+  }
+
+  // Query booked slots for selected date
+  const activeDateStart = visitDate
+    ? new Date(visitDate.getFullYear(), visitDate.getMonth(), visitDate.getDate(), 0, 0, 0, 0).getTime()
+    : 0;
+  const activeDateEnd = visitDate
+    ? new Date(visitDate.getFullYear(), visitDate.getMonth(), visitDate.getDate(), 23, 59, 59, 999).getTime()
+    : 0;
+
+  const existingVisitsOnDate = useQuery(
+    api.visits.getVisitsByDateRange,
+    clerkId && visitDate ? { clerkId, startDate: activeDateStart, endDate: activeDateEnd } : "skip"
+  );
+
+  const timeSlots = useMemo(() => {
+    const startHour = currentUser?.workingHoursStart ?? 9;
+    const endHour = currentUser?.workingHoursEnd ?? 17;
+    const slotMin = currentUser?.slotDurationMinutes ?? 30;
+
+    const reservedTimes = new Set<string>();
+    if (existingVisitsOnDate) {
+      for (const v of existingVisitsOnDate) {
+        const d = new Date(v.date);
+        const hh = d.getHours().toString().padStart(2, "0");
+        const mm = d.getMinutes().toString().padStart(2, "0");
+        reservedTimes.add(`${hh}:${mm}`);
+      }
+    }
+
+    const slots: { timeStr: string; label: string; isWorkingHour: boolean; isReserved: boolean }[] = [];
+    for (let h = 0; h < 24; h++) {
+      for (let m = 0; m < 60; m += slotMin) {
+        const hh = h.toString().padStart(2, "0");
+        const mm = m.toString().padStart(2, "0");
+        const timeStr = `${hh}:${mm}`;
+        const ampm = h >= 12 ? "PM" : "AM";
+        const displayH = h % 12 || 12;
+        const label = `${displayH}:${mm} ${ampm}`;
+        const isWorkingHour = h >= startHour && h < endHour;
+        const isReserved = reservedTimes.has(timeStr);
+        slots.push({ timeStr, label, isWorkingHour, isReserved });
+      }
+    }
+    return slots;
+  }, [currentUser, existingVisitsOnDate]);
+
+  // Auto-select first available working slot
+  useEffect(() => {
+    if (timeSlots.length > 0 && visitTime === "10:00") {
+      const firstAvailable = timeSlots.find(s => s.isWorkingHour && !s.isReserved);
+      if (firstAvailable) setVisitTime(firstAvailable.timeStr);
+    }
+  }, [timeSlots]);
 
   // Chronic conditions options
   const conditionOptions = useQuery(api.chronicConditions.listOptions, clerkId ? { clerkId } : "skip");
   const addConditionOption = useMutation(api.chronicConditions.addOption);
 
-  // Chronic conditions dropdown state
   const [conditionSearch, setConditionSearch] = useState("");
   const [conditionDropdownOpen, setConditionDropdownOpen] = useState(false);
   const conditionRef = useRef<HTMLDivElement>(null);
@@ -135,7 +171,6 @@ export function PatientIntakeDrawer({
     !filteredConditions.some((c) => c.toLowerCase() === conditionSearch.trim().toLowerCase()) &&
     !form.chronicConditions.some((c) => c.toLowerCase() === conditionSearch.trim().toLowerCase());
 
-  // Close dropdown on outside click
   useEffect(() => {
     if (!conditionDropdownOpen) return;
     function handle(e: MouseEvent) {
@@ -146,28 +181,6 @@ export function PatientIntakeDrawer({
     document.addEventListener("mousedown", handle);
     return () => document.removeEventListener("mousedown", handle);
   }, [conditionDropdownOpen]);
-
-  // Get booked slots for selected day
-  const bookedAppointments = useQuery(
-    api.appointments.getAppointmentsByDate,
-    clerkId ? { clerkId, dayStart: visitDate } : "skip"
-  );
-
-  const takenTimestamps = useMemo(() => {
-    if (!bookedAppointments) return new Set<number>();
-    return new Set(
-      bookedAppointments
-        .filter((a) => a.status !== "cancelled")
-        .map((a) => a.date)
-    );
-  }, [bookedAppointments]);
-
-  const daySlots = useMemo(() => {
-    const startHour = (currentUser as any)?.workingHoursStart ?? 9;
-    const endHour = (currentUser as any)?.workingHoursEnd ?? 17;
-    const slotMin = currentUser?.slotDurationMinutes ?? 30;
-    return buildDaySlots(visitDate, startHour, endHour, slotMin);
-  }, [currentUser, visitDate]);
 
   const createPatient = useMutation(api.patients.createPatient);
   const updatePatient = useMutation(api.patients.updatePatient);
@@ -184,11 +197,13 @@ export function PatientIntakeDrawer({
         phone: stripPrefix(editPatient.phone),
         chronicConditions: editPatient.chronicConditions,
         notes: "",
+        reasonForVisit: "",
       });
     } else if (open && !isEdit) {
       setForm(defaultForm);
-      setVisitDate(startOfDay(Date.now()));
-      setSelectedSlot(null);
+      setAddVisit(true);
+      setVisitDate(new Date());
+      setVisitTime("10:00");
     }
   }, [open, isEdit, editPatient]);
 
@@ -207,9 +222,7 @@ export function PatientIntakeDrawer({
   async function addCustomCondition() {
     const trimmed = conditionSearch.trim();
     if (!trimmed) return;
-    // Add to the doctor's custom list
     await addConditionOption({ clerkId, name: trimmed });
-    // Also select it
     if (!form.chronicConditions.includes(trimmed)) {
       set("chronicConditions", [...form.chronicConditions, trimmed]);
     }
@@ -222,6 +235,13 @@ export function PatientIntakeDrawer({
       toast.error("Name, age, and phone are required");
       return;
     }
+
+    // If adding a visit, validate date
+    if (!isEdit && addVisit && !visitDate) {
+      toast.error("Please pick a visit date");
+      return;
+    }
+
     const fullPhone = normaliseForStorage(form.phone);
     setLoading(true);
     try {
@@ -245,7 +265,7 @@ export function PatientIntakeDrawer({
         let patientId: Id<"patients">;
         if (existing) {
           patientId = existing._id;
-          toast.success("Returning patient — visit added to history");
+          toast.success(addVisit ? "Returning patient — visit added to history" : "Returning patient found");
         } else {
           patientId = await createPatient({
             clerkId,
@@ -254,17 +274,27 @@ export function PatientIntakeDrawer({
             phone: fullPhone,
             chronicConditions: form.chronicConditions,
           });
-          toast.success("New patient created");
+          toast.success(addVisit ? "New patient created & visit scheduled" : "New patient created");
         }
 
-        const visitTs = selectedSlot ?? (visitDate + 12 * 60 * 60 * 1000);
+        if (addVisit && visitDate) {
+          const selectedSlot = timeSlots.find(s => s.timeStr === visitTime);
+          if (selectedSlot?.isReserved) {
+            toast.error("This time slot is already reserved — pick another");
+            setLoading(false);
+            return;
+          }
+          const [hh, mm] = visitTime.split(":").map(Number);
+          const exactDate = new Date(visitDate);
+          exactDate.setHours(hh ?? 9, mm ?? 0, 0, 0);
 
-        await addManualAppointment({
-          clerkId,
-          patientId,
-          date: visitTs,
-          notes: form.notes || undefined,
-        });
+          await addManualAppointment({
+            clerkId,
+            patientId,
+            date: exactDate.getTime(),
+            notes: form.notes || undefined,
+          });
+        }
       }
       onOpenChange(false);
     } catch (err: any) {
@@ -279,14 +309,6 @@ export function PatientIntakeDrawer({
       setLoading(false);
     }
   }
-
-  // Build 7-day strip for date selection
-  const todayTs = startOfDay(Date.now());
-  const dayStrip = useMemo(() => {
-    const days: number[] = [];
-    for (let i = -1; i <= 5; i++) days.push(todayTs + i * 86400000);
-    return days;
-  }, [todayTs]);
 
   if (!open) return null;
 
@@ -344,11 +366,9 @@ export function PatientIntakeDrawer({
             </div>
           </div>
 
-          {/* Chronic Conditions — Searchable Dropdown */}
+          {/* Chronic Conditions */}
           <div ref={conditionRef}>
             <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("drawer.chronicConditions")}</label>
-
-            {/* Selected tags */}
             {form.chronicConditions.length > 0 && (
               <div className="flex flex-wrap gap-1.5 mb-2">
                 {form.chronicConditions.map((c) => (
@@ -361,8 +381,6 @@ export function PatientIntakeDrawer({
                 ))}
               </div>
             )}
-
-            {/* Search input */}
             <div className="relative">
               <div className="flex items-center border border-border rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-[#007AFF] bg-background">
                 <Search className="w-3.5 h-3.5 text-muted-foreground ml-3 flex-shrink-0" />
@@ -374,8 +392,6 @@ export function PatientIntakeDrawer({
                   className="flex-1 px-2 py-2.5 text-sm bg-transparent outline-none"
                 />
               </div>
-
-              {/* Dropdown */}
               <AnimatePresence>
                 {conditionDropdownOpen && (
                   <motion.div
@@ -419,109 +435,122 @@ export function PatientIntakeDrawer({
             <p className="text-[11px] text-muted-foreground mt-1">{t("drawer.searchOrAdd")}</p>
           </div>
 
-          {/* Visit fields — hidden in edit mode */}
+          {/* Visit section — hidden in edit mode */}
           {!isEdit && (
             <>
+              {/* Toggle */}
               <div className="pt-2 border-t border-border">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                  {t("drawer.visitDateTime")}
-                </p>
-              </div>
-
-              {/* Day strip — working days only */}
-              <div className="flex gap-1.5 overflow-x-auto pb-1">
-                {dayStrip.map((ts) => {
-                  const isSelected = visitDate === ts;
-                  const isToday = ts === todayTs;
-                  const isPast = ts < todayTs;
-                  const dow = DOW_ABBR[new Date(ts).getDay()];
-                  const isWorking = !hasWorkingDays || workingDays.includes(dow);
-                  const isDisabled = isPast || !isWorking;
-                  return (
-                    <button
-                      key={ts}
-                      type="button"
-                      onClick={() => { if (!isDisabled) { setVisitDate(ts); setSelectedSlot(null); } }}
-                      disabled={isDisabled}
-                      className={`flex-shrink-0 flex flex-col items-center py-2 px-3 rounded-xl text-xs transition-all min-w-[52px] ${
-                        isDisabled
-                          ? "text-muted-foreground/30 cursor-not-allowed"
-                          : isSelected
-                          ? "bg-[#007AFF] text-white"
-                          : isToday
-                          ? "bg-[#007AFF]/10 text-[#007AFF] font-semibold"
-                          : "text-muted-foreground hover:bg-muted/60"
-                      }`}
-                    >
-                      <span className="font-medium">
-                        {new Date(ts).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { weekday: "short" })}
-                      </span>
-                      <span className="text-base font-bold mt-0.5">
-                        {new Date(ts).getDate()}
-                      </span>
-                      {!isWorking && !isPast && (
-                        <span className="text-[8px] font-medium text-muted-foreground/40 mt-0.5">
-                          {lang === "ar" ? "مغلق" : "Off"}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Slot picker */}
-              <div>
-                <label className="text-xs font-medium text-muted-foreground block mb-2 flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> {t("visit.timeSlot")}
-                </label>
-                <div className="grid grid-cols-4 gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedSlot(null)}
-                    className={`py-2 px-1 rounded-xl text-xs font-semibold transition-all border ${
-                      selectedSlot === null
-                        ? "bg-[#007AFF] text-white border-[#007AFF]"
-                        : "border-border text-muted-foreground hover:border-[#007AFF]/40"
-                    }`}
-                  >
-                    {t("drawer.noTime")}
-                  </button>
-                  {daySlots.map((ts) => {
-                    const isTaken = takenTimestamps.has(ts);
-                    const isSelected = selectedSlot === ts;
-                    return (
-                      <button
-                        key={ts}
-                        type="button"
-                        onClick={() => { if (!isTaken) setSelectedSlot(ts); }}
-                        disabled={isTaken}
-                        className={`py-2 px-1 rounded-xl text-xs font-semibold transition-all border flex flex-col items-center gap-0.5 ${
-                          isTaken
-                            ? "border-border/40 bg-muted/40 text-muted-foreground/40 cursor-not-allowed line-through"
-                            : isSelected
-                            ? "bg-[#007AFF] text-white border-[#007AFF]"
-                            : "border-border hover:border-[#007AFF]/40 hover:text-[#007AFF]"
-                        }`}
-                      >
-                        {formatTime(ts)}
-                        {isTaken && <span className="text-[9px]" style={{ textDecoration: "none" }}>{t("drawer.taken")}</span>}
-                      </button>
-                    );
-                  })}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold">{t("drawer.visitDateTime") || "Schedule a Visit"}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Optional — you can add a visit later</p>
+                  </div>
+                  <Switch checked={addVisit} onCheckedChange={setAddVisit} />
                 </div>
               </div>
 
-              {/* Notes */}
-              <div>
-                <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("visit.notes")}</label>
-                <textarea
-                  value={form.notes}
-                  onChange={(e) => set("notes", e.target.value)}
-                  placeholder="Optional notes..."
-                  rows={2}
-                  className={`${inputClass} resize-none`}
-                />
-              </div>
+              <AnimatePresence>
+                {addVisit && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="space-y-4">
+                      {/* Date + Time grid — same layout as visit-drawer */}
+                      <div className="grid grid-cols-2 gap-3">
+                        {/* Calendar */}
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
+                            <CalendarIcon className="w-3 h-3" /> Date *
+                          </p>
+                          <Popover open={calOpen} onOpenChange={setCalOpen}>
+                            <PopoverTrigger asChild>
+                              <button type="button" className="w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border border-border rounded-xl hover:border-[#007AFF]/50 transition-colors text-left">
+                                <CalendarIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                                <span>
+                                  {visitDate
+                                    ? visitDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                                    : "Pick a date"}
+                                </span>
+                              </button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={visitDate}
+                                onSelect={(d) => { if (d) { setVisitDate(d); setCalOpen(false); setVisitTime("10:00"); } }}
+                                disabled={(d) => {
+                                  const today = new Date();
+                                  today.setHours(0, 0, 0, 0);
+                                  return d < today || isNonWorkingDay(d);
+                                }}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+
+                        {/* Time slots */}
+                        <div>
+                          <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
+                            <Clock className="w-3 h-3" /> {t("visit.timeSlot")}
+                          </p>
+                          <div className="max-h-48 overflow-y-auto border border-border rounded-xl divide-y divide-border/50">
+                            {timeSlots.filter(s => s.isWorkingHour).map(slot => (
+                              <button
+                                key={slot.timeStr}
+                                type="button"
+                                onClick={() => !slot.isReserved && setVisitTime(slot.timeStr)}
+                                disabled={slot.isReserved}
+                                className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${
+                                  slot.isReserved
+                                    ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed line-through"
+                                    : visitTime === slot.timeStr
+                                      ? "bg-[#007AFF]/10 text-[#007AFF] font-semibold"
+                                      : "hover:bg-muted/30"
+                                }`}
+                              >
+                                <span>{slot.label}</span>
+                                {slot.isReserved && <span className="text-[10px] font-medium text-red-400 uppercase tracking-wider">{t("visit.reserved") || "Reserved"}</span>}
+                                {!slot.isReserved && visitTime === slot.timeStr && <CheckCircle2 className="w-3.5 h-3.5" />}
+                              </button>
+                            ))}
+                            {timeSlots.filter(s => s.isWorkingHour).length === 0 && (
+                              <p className="px-3 py-4 text-xs text-muted-foreground text-center">No working hours configured</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Reason for visit */}
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("visit.reasonForVisit")}</label>
+                        <input
+                          type="text"
+                          value={form.reasonForVisit}
+                          onChange={(e) => set("reasonForVisit", e.target.value)}
+                          placeholder="e.g. Follow-up, checkup, acute complaint…"
+                          className={inputClass}
+                        />
+                      </div>
+
+                      {/* Notes */}
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("visit.notes")}</label>
+                        <textarea
+                          value={form.notes}
+                          onChange={(e) => set("notes", e.target.value)}
+                          placeholder="Optional notes..."
+                          rows={2}
+                          className={`${inputClass} resize-none`}
+                        />
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </>
           )}
         </form>
@@ -540,7 +569,13 @@ export function PatientIntakeDrawer({
             disabled={loading}
             className="flex-1 bg-[#007AFF] text-white text-sm font-semibold py-2.5 px-4 rounded-xl hover:bg-[#0062cc] transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
           >
-            {loading ? <><IOSSpinner size={16} className="text-white" /> {t("onboarding.saving")}</> : isEdit ? t("drawer.saveChanges") : t("drawer.submit")}
+            {loading
+              ? <><IOSSpinner size={16} className="text-white" /> {t("onboarding.saving")}</>
+              : isEdit
+                ? t("drawer.saveChanges")
+                : addVisit
+                  ? t("drawer.submit")
+                  : "Save Patient Only"}
           </button>
         </DrawerFooter>
       </DrawerContent>

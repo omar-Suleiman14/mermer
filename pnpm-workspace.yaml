@@ -1,0 +1,14 @@
+allowBuilds:
+  '@clerk/shared': true
+  core-js: true
+  esbuild: true
+  msw: true
+  sharp: true
+  unrs-resolver: true
+onlyBuiltDependencies:
+  - '@clerk/shared'
+  - core-js
+  - esbuild
+  - msw
+  - sharp
+  - unrs-resolver

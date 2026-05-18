@@ -33,12 +33,18 @@ import { useI18n } from "@/lib/i18n";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function fmt(ts: number) {
-  return new Date(ts).toLocaleDateString("en-US", {
+function fmt(ts: number, includeTime = false) {
+  const opts: Intl.DateTimeFormatOptions = {
     month: "short",
     day: "numeric",
     year: "numeric",
-  });
+  };
+  if (includeTime) {
+    opts.hour = "numeric";
+    opts.minute = "2-digit";
+    opts.hour12 = true;
+  }
+  return new Date(ts).toLocaleString("en-US", opts);
 }
 
 
@@ -62,6 +68,7 @@ function VisitSlotPicker({
   startHour,
   endHour,
   slotMin,
+  availableDays,
 }: {
   index: number;
   date: Date | undefined;
@@ -72,6 +79,7 @@ function VisitSlotPicker({
   startHour: number;
   endHour: number;
   slotMin: number;
+  availableDays: string[];
 }) {
   const [calOpen, setCalOpen] = useState(false);
 
@@ -121,7 +129,21 @@ function VisitSlotPicker({
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
-            <Calendar mode="single" selected={date} onSelect={(d) => { if (d) { onDateChange(d); setCalOpen(false); } }} />
+            <Calendar 
+              mode="single" 
+              selected={date} 
+              onSelect={(d) => { if (d) { onDateChange(d); setCalOpen(false); } }} 
+              disabled={(d) => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                if (d < today) return true;
+                if (availableDays && availableDays.length > 0) {
+                  const dayName = d.toLocaleDateString("en-US", { weekday: "short" });
+                  if (!availableDays.includes(dayName)) return true;
+                }
+                return false;
+              }}
+            />
           </PopoverContent>
         </Popover>
         <select
@@ -400,6 +422,7 @@ function ContractForm({
               startHour={startHour}
               endHour={endHour}
               slotMin={slotMin}
+              availableDays={(currentUser as any)?.availableDays || []}
             />
 
           </div>
@@ -589,7 +612,7 @@ function ContractViewDrawer({
               <CalendarIcon className="w-4 h-4 text-[#007AFF] flex-shrink-0" />
               <div>
                 <p className="text-[10px] text-muted-foreground">{t("contracts.nextVisit")}</p>
-                <p className="text-sm font-semibold text-[#007AFF]">{fmt(contract.nextVisitDate)}</p>
+                <p className="text-sm font-semibold text-[#007AFF]">{fmt(contract.nextVisitDate, true)}</p>
               </div>
             </div>
           )}
@@ -760,7 +783,7 @@ export default function ContractsPage() {
                           {contract.nextVisitDate && (
                             <span className="text-xs text-muted-foreground flex items-center gap-1">
                               <CalendarIcon className="w-3 h-3" />
-                              {t("contracts.next")}: {fmt(contract.nextVisitDate)}
+                              {t("contracts.next")}: {fmt(contract.nextVisitDate, true)}
                             </span>
                           )}
                         </div>

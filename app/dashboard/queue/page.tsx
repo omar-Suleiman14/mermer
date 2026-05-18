@@ -845,19 +845,6 @@ export default function SchedulePage() {
                 <p className="text-[11px] text-muted-foreground">{t("templates.chooseTemplate")}</p>
               </div>
               <div className="px-3 pb-3 space-y-1 max-h-[50vh] overflow-y-auto">
-                <button
-                  onClick={sendQuickReminder}
-                  className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#25D366]/8 transition-colors text-left group"
-                >
-                  <div className="w-8 h-8 rounded-full bg-[#25D366]/10 flex items-center justify-center flex-shrink-0">
-                    <MessageCircle className="w-4 h-4 text-[#25D366]" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{t("templates.quickReminder")}</p>
-                    <p className="text-[11px] text-muted-foreground truncate">{t("templates.defaultReminder")}</p>
-                  </div>
-                </button>
-
                 {(messageTemplates ?? []).map((tpl) => (
                   <button
                     key={tpl._id}
@@ -875,8 +862,10 @@ export default function SchedulePage() {
                 ))}
 
                 {(messageTemplates ?? []).length === 0 && (
-                  <div className="px-3 py-2">
-                    <p className="text-[11px] text-muted-foreground">{t("templates.createInSettings")}</p>
+                  <div className="flex flex-col items-center gap-2 px-3 py-6 text-center">
+                    <MessageCircle className="w-7 h-7 text-muted-foreground/30" />
+                    <p className="text-xs font-medium text-muted-foreground">No message templates yet</p>
+                    <p className="text-[11px] text-muted-foreground/70">{t("templates.createInSettings")}</p>
                   </div>
                 )}
               </div>

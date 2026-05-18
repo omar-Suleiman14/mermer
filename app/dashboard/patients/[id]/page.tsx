@@ -23,8 +23,13 @@ import {
   Download,
   ImageIcon,
   StickyNote,
+  ScrollText,
+  AlertCircle,
+  CalendarIcon,
+  Users,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import Link from "next/link";
 
 export default function PatientProfilePage() {
   const params = useParams();
@@ -44,6 +49,10 @@ export default function PatientProfilePage() {
 
   const patient = useQuery(api.patients.getPatient, clerkId ? { patientId, clerkId } : "skip");
   const visits = useQuery(api.visits.getVisitsByPatient, clerkId ? { patientId, clerkId } : "skip");
+  const contracts = useQuery(
+    api.contracts.listContractsByPatient,
+    clerkId ? { patientId, clerkId } : "skip"
+  );
 
   if (patient === undefined) {
     return (
@@ -184,7 +193,7 @@ export default function PatientProfilePage() {
                         })}
                       </span>
                       {/* Source badge */}
-                      {visit.source === "appointment" ? (
+                      {visit.source === "online" ? (
                         <span className="text-[9px] font-bold uppercase tracking-wider bg-[#007AFF]/10 text-[#007AFF] border border-[#007AFF]/20 px-1.5 py-0.5 rounded-full">
                           {t("dashboard.online")}
                         </span>
@@ -318,6 +327,127 @@ export default function PatientProfilePage() {
                   )}
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+
+        {/* Contracts */}
+        <div>
+          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+            <ScrollText className="w-4 h-4 text-[#AF52DE]" />
+            Contracts
+            {contracts !== undefined && contracts.length > 0 && (
+              <span className="text-xs text-muted-foreground font-normal">
+                ({contracts.length})
+              </span>
+            )}
+          </h3>
+
+          {contracts === undefined ? (
+            <Skeleton className="h-20 rounded-xl" />
+          ) : contracts.length === 0 ? (
+            <div className="bg-card border border-border rounded-xl p-5 text-center">
+              <p className="text-xs text-muted-foreground">No contracts on file</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {contracts.map((contract: any) => {
+                const isActive = contract.status === "active";
+                const progress = contract.numVisits > 0
+                  ? Math.min(100, Math.round(((contract.completedVisits ?? 0) / contract.numVisits) * 100))
+                  : 0;
+                const hasUnpaid = (contract.unpaidBalance ?? 0) > 0;
+                return (
+                  <div
+                    key={contract._id}
+                    className={`bg-card border rounded-xl p-4 space-y-3 ${
+                      hasUnpaid ? "border-red-500/30" : "border-border"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                          isActive
+                            ? "bg-[#34c759]/10 text-[#34c759] border-[#34c759]/30"
+                            : "bg-red-500/10 text-red-500 border-red-500/30"
+                        }`}>
+                          {isActive ? "Active" : "Expired"}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          Started {new Date(contract.startDate).toLocaleDateString(dateLocale, { month: "short", day: "numeric", year: "numeric" })}
+                        </span>
+                      </div>
+                      <Link
+                        href="/dashboard/contracts"
+                        className="text-xs text-[#007AFF] hover:underline"
+                      >
+                        View →
+                      </Link>
+                    </div>
+
+                    {/* Financials row */}
+                    <div className="flex flex-wrap gap-x-4 gap-y-1">
+                      {contract.totalAmount && (
+                        <span className="text-xs text-muted-foreground">
+                          Total: <span className="font-semibold text-foreground">{contract.totalAmount.toLocaleString()} EGP</span>
+                        </span>
+                      )}
+                      {contract.costPerVisit && (
+                        <span className="text-xs text-muted-foreground">
+                          Per visit: <span className="font-semibold text-foreground">{contract.costPerVisit.toLocaleString()} EGP</span>
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Visit progress */}
+                    {contract.numVisits > 0 && (
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground flex items-center gap-1">
+                            <Users className="w-3 h-3" />
+                            {contract.completedVisits ?? 0} / {contract.numVisits} visits
+                          </span>
+                          <span className="text-muted-foreground">
+                            {contract.paidVisits ?? 0} paid · {(contract.completedVisits ?? 0) - (contract.paidVisits ?? 0)} unpaid
+                          </span>
+                        </div>
+                        <div className="h-1.5 bg-muted/40 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-[#AF52DE] rounded-full transition-all"
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Unpaid balance warning */}
+                    {hasUnpaid && (
+                      <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/8 border border-red-500/20">
+                        <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                        <p className="text-xs font-semibold text-red-500">
+                          Unpaid balance: {contract.unpaidBalance.toLocaleString()} EGP
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Next visit */}
+                    {contract.nextVisitDate && (
+                      <div className="flex items-center gap-2 text-xs">
+                        <CalendarIcon className="w-3 h-3 text-[#007AFF]" />
+                        <span className="text-muted-foreground">Next visit:</span>
+                        <span className="font-semibold text-[#007AFF]">
+                          {new Date(contract.nextVisitDate).toLocaleDateString(dateLocale, { weekday: "short", month: "short", day: "numeric" })}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Notes */}
+                    {contract.notes && (
+                      <p className="text-xs text-muted-foreground leading-relaxed border-t border-border pt-2">{contract.notes}</p>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
