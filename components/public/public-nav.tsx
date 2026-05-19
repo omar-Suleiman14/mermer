@@ -74,7 +74,7 @@ export function PublicNav({ className, backHref, backLabel }: PublicNavProps) {
                   href="/sign-in"
                   className="text-sm font-medium text-muted-foreground hover:text-foreground px-3 py-2 hidden sm:inline-flex"
                 >
-                  {dir === "rtl" ? "تسجيل الدخول" : "Log in"}
+                  {dir === "rtl" ? "للأطباء" : "For doctors"}
                 </Link>
               </SignedOut>
               <SignedIn>
