@@ -865,7 +865,7 @@ export default function SchedulePage() {
               animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={{ y: 40, opacity: 0, scale: 0.97 }}
               transition={{ type: "spring", stiffness: 380, damping: 30 }}
-              className="relative z-10 w-full sm:max-w-md bg-[var(--background)] rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden"
+              className="relative z-10 w-full sm:max-w-md bg-[var(--background)] rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
             >
               <div className="sm:hidden w-12 h-1 rounded-full bg-border mx-auto mt-3 mb-1" />
               <div className="px-6 py-4 border-b border-border">

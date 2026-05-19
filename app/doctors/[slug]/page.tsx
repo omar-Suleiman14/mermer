@@ -241,7 +241,7 @@ export default function DoctorPublicProfile() {
           <div className="max-w-6xl xl:max-w-7xl mx-auto px-4 sm:px-6 py-12 flex flex-col md:flex-row gap-8 items-start">
             <div className="flex-1 w-full space-y-8">
               {/* Doctor Hero Card */}
-              <div className="bg-card border border-border rounded-3xl p-8 sm:p-10 shadow-sm">
+              <div className="bg-card border border-border rounded-2xl p-8 sm:p-10 shadow-sm">
                 <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-start gap-8">
                   {/* Avatar */}
                   <div className="flex-shrink-0">
@@ -343,7 +343,7 @@ export default function DoctorPublicProfile() {
               </div>
 
               {/* Leave a Review Banner */}
-              <div className="bg-card border border-border rounded-3xl p-8 flex flex-col sm:flex-row items-center gap-6 shadow-sm">
+              <div className="bg-card border border-border rounded-2xl p-8 flex flex-col sm:flex-row items-center gap-6 shadow-sm">
                 <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center flex-shrink-0">
                   <Star className="w-8 h-8 text-primary" fill="currentColor" />
                 </div>
@@ -362,7 +362,7 @@ export default function DoctorPublicProfile() {
 
             {/* Right Column: Booking Widget */}
             <div className="w-full md:w-80 lg:w-96 flex-shrink-0">
-              <div className="bg-card p-6 sm:p-8 border border-border rounded-3xl sticky top-24 shadow-lg shadow-black/[0.03]">
+              <div className="bg-card p-6 sm:p-8 border border-border rounded-2xl sticky top-24 shadow-lg shadow-black/[0.03]">
                 <h2 className="font-serif text-2xl font-bold flex items-center gap-3 mb-8">
                   <CalendarDays className="w-6 h-6 text-[#0055FF]" />
                   {t("profile.bookAppointment")}
@@ -485,7 +485,7 @@ export default function DoctorPublicProfile() {
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: 40, opacity: 0 }}
                   transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                  className="relative z-10 w-full sm:max-w-md bg-background border border-border rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden"
+                  className="relative z-10 w-full sm:max-w-md bg-background border border-border rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
                 >
                   <div className="sm:hidden w-12 h-1 rounded-full bg-border mx-auto mt-3 mb-1" />
                   <div className="px-6 py-5">

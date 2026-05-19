@@ -46,7 +46,7 @@ export default function LandingPage() {
             </p>
 
             <div className="mt-12 max-w-3xl">
-              <div className="flex flex-col sm:flex-row gap-2 p-2 rounded-3xl bg-card border border-border shadow-2xl shadow-primary/[0.04]">
+              <div className="flex flex-col sm:flex-row gap-2 p-2 rounded-2xl bg-card border border-border shadow-2xl shadow-primary/[0.04]">
                 <div className="flex-1 flex items-center gap-4 px-5 py-4">
                   <Search className="w-6 h-6 text-primary shrink-0" />
                   <input
@@ -117,7 +117,7 @@ export default function LandingPage() {
                     : "Your data handled with care",
               },
             ].map(({ icon: Icon, title, desc }) => (
-              <div key={title} className="flex gap-5 bg-background p-8 rounded-3xl border border-border shadow-sm hover:shadow-md transition-shadow">
+              <div key={title} className="flex gap-5 bg-background p-8 rounded-2xl border border-border shadow-sm hover:shadow-md transition-shadow">
                 <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center shrink-0">
                   <Icon className="w-5 h-5 text-primary" />
                 </div>

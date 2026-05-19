@@ -75,14 +75,14 @@ export default function FeedbackPage() {
   }
 
   return (
-    <div className="h-[100dvh] flex flex-col bg-background overflow-hidden" dir={dir}>
+    <div className="min-h-screen flex flex-col bg-background pb-8" dir={dir}>
       <PublicNav
         backHref={`/doctors/${slug}`}
         backLabel={lang === "ar" ? "الملف الشخصي" : "Doctor profile"}
       />
 
-      <main className="flex-1 max-w-3xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-6 flex flex-col">
-        <div className="rounded-3xl border border-border bg-card p-4 sm:p-6 mb-4 sm:mb-6 flex items-center gap-5 shadow-sm shrink-0">
+      <main className="max-w-3xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-6 flex flex-col">
+        <div className="rounded-2xl border border-border bg-card p-4 sm:p-6 mb-4 sm:mb-6 flex items-center gap-5 shadow-sm shrink-0">
           <div className="w-20 h-20 rounded-2xl overflow-hidden bg-muted ring-1 ring-border shrink-0 relative shadow-sm">
             {doctor.profilePhotoUrl ? (
               <Image src={doctor.profilePhotoUrl} alt={doctor.name} fill className="object-cover" sizes="64px" />
@@ -113,9 +113,9 @@ export default function FeedbackPage() {
           </div>
         </div>
 
-        <div className="rounded-3xl border border-border bg-card overflow-hidden shadow-lg shadow-black/[0.03] flex-1 flex flex-col">
+        <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-lg shadow-black/[0.03] flex flex-col">
           <div className="h-1 bg-primary shrink-0" />
-          <div className="p-4 sm:p-6 md:p-8 flex-1 flex flex-col justify-center relative overflow-y-auto">
+          <div className="p-4 sm:p-6 md:p-8 flex flex-col justify-center relative">
             <AnimatePresence mode="wait">
               {submitted ? (
                 <motion.div

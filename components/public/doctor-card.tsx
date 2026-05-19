@@ -24,7 +24,7 @@ export function DoctorCard({ doctor, className }: DoctorCardProps) {
     <Link
       href={`/doctors/${slug}`}
       className={cn(
-        "group block rounded-3xl border border-border bg-card p-5 sm:p-6 shadow-sm",
+        "group block rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm",
         "hover:border-primary/40 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300",
         className
       )}

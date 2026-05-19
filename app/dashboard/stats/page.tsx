@@ -202,7 +202,7 @@ function DowRow({
 }
 
 function cardClass() {
-  return "rounded-3xl border border-border/70 bg-card/90 shadow-sm backdrop-blur-sm";
+  return "rounded-2xl border border-border/70 bg-card/90 shadow-sm backdrop-blur-sm";
 }
 
 function RevenueSourcesChart({
@@ -1102,8 +1102,8 @@ export default function StatisticsPage() {
 
           {isLoading && (
             <div className="space-y-3">
-              <Skeleton className="h-24 rounded-3xl" />
-              <Skeleton className="h-40 rounded-3xl" />
+              <Skeleton className="h-24 rounded-2xl" />
+              <Skeleton className="h-40 rounded-2xl" />
             </div>
           )}
         </div>

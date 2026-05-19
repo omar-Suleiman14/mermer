@@ -344,7 +344,7 @@ function ContractForm({
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 60, opacity: 0 }}
         transition={{ type: "spring", stiffness: 350, damping: 28 }}
-        className="relative z-10 w-full sm:max-w-2xl bg-[var(--background)] rounded-t-3xl sm:rounded-2xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
+        className="relative z-10 w-full sm:max-w-2xl bg-[var(--background)] rounded-t-2xl sm:rounded-2xl overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
       >
         <div className="sm:hidden w-12 h-1 rounded-full bg-border mx-auto mt-3 mb-1" />
 
@@ -569,7 +569,7 @@ function ContractViewDrawer({
       <motion.div
         initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }}
         transition={{ type: "spring", stiffness: 350, damping: 28 }}
-        className="relative z-10 w-full sm:max-w-lg bg-[var(--background)] rounded-t-3xl sm:rounded-2xl overflow-hidden shadow-2xl max-h-[85vh] flex flex-col"
+        className="relative z-10 w-full sm:max-w-lg bg-[var(--background)] rounded-t-2xl sm:rounded-2xl overflow-hidden shadow-2xl max-h-[85vh] flex flex-col"
       >
         <div className="sm:hidden w-12 h-1 rounded-full bg-border mx-auto mt-3 mb-1" />
         {/* Header */}

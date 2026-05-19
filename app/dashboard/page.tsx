@@ -461,7 +461,7 @@ export default function DashboardPage() {
         <div className="max-w-5xl mx-auto space-y-6">
 
       {/* Today's Schedule */}
-      <div className="bg-white dark:bg-[#1c1c1a] border border-black/5 dark:border-white/5 rounded-3xl shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-[#1c1c1a] border border-black/5 dark:border-white/5 rounded-2xl shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
           <div className="flex items-center gap-2">
             <Activity className="w-5 h-5 text-[#007AFF]" />
@@ -492,7 +492,7 @@ export default function DashboardPage() {
             ))
           ) : todayVisits.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-14 text-center">
-              <div className="w-14 h-14 rounded-3xl bg-[#007AFF]/10 flex items-center justify-center mb-4">
+              <div className="w-14 h-14 rounded-2xl bg-[#007AFF]/10 flex items-center justify-center mb-4">
                 <CalendarDays className="w-7 h-7 text-[#007AFF]" />
               </div>
               <p className="text-sm font-semibold mb-1">{t("dashboard.noVisitsToday")}</p>
@@ -586,7 +586,7 @@ export default function DashboardPage() {
               animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={{ y: 40, opacity: 0, scale: 0.97 }}
               transition={{ type: "spring", stiffness: 380, damping: 30 }}
-              className="relative z-10 w-full sm:max-w-md bg-[var(--background)] rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden"
+              className="relative z-10 w-full sm:max-w-md bg-[var(--background)] rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
             >
               <div className="sm:hidden w-12 h-1 rounded-full bg-border mx-auto mt-3 mb-1" />
               <div className="px-6 py-4 border-b border-border">
@@ -689,7 +689,7 @@ export default function DashboardPage() {
               animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={{ y: 40, opacity: 0, scale: 0.95 }}
               transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              className="relative z-10 w-full sm:max-w-sm bg-[var(--background)] rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden"
+              className="relative z-10 w-full sm:max-w-sm bg-[var(--background)] rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
             >
               <div className="sm:hidden w-10 h-1 rounded-full bg-border mx-auto mt-2.5 mb-1" />
               <div className="px-5 pt-4 pb-2">
