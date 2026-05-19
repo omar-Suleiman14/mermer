@@ -499,6 +499,8 @@ const translations: Record<Lang, Record<string, string>> = {
     "settings.notifications": "Notifications",
     "settings.onlineBookingAlerts": "Online Booking Alerts",
     "settings.notificationsDesc": "Get notified immediately when a patient books online",
+    "settings.notificationsEnabled": "Notifications enabled",
+    "settings.notificationsDenied": "Notification permission denied",
 
     "notifications.title": "Notifications",
     "notifications.clearAll": "Clear all",
@@ -1104,6 +1106,8 @@ const translations: Record<Lang, Record<string, string>> = {
     "settings.notifications": "الإشعارات",
     "settings.onlineBookingAlerts": "تنبيهات الحجز الإلكتروني",
     "settings.notificationsDesc": "احصل على إشعار فوري عند حجز مريض عبر الإنترنت",
+    "settings.notificationsEnabled": "تم تفعيل الإشعارات",
+    "settings.notificationsDenied": "تم رفض إذن الإشعارات",
 
     "notifications.title": "الإشعارات",
     "notifications.clearAll": "مسح الكل",
