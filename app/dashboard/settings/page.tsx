@@ -299,7 +299,7 @@ export default function SettingsPage() {
           <div className={blockClass}>
             <div className={`${rowClass} !py-5`}>
               <div>
-                <label className="text-sm font-semibold flex items-center gap-2">
+                <label htmlFor="settings-public-profile" className="text-sm font-semibold flex items-center gap-2">
                   <Globe className="w-4 h-4 text-[#007AFF]" /> {t("settings.publicProfile") || "Public Profile"}
                 </label>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -308,6 +308,8 @@ export default function SettingsPage() {
               </div>
               <div className="flex-shrink-0 flex items-center">
                 <Switch
+                  id="settings-public-profile"
+                  name="publicProfile"
                   checked={publicProfile}
                   onCheckedChange={(c) => setPublicProfile(c)}
                 />
@@ -324,7 +326,7 @@ export default function SettingsPage() {
           <div className={blockClass}>
             <div className={`${rowClass} !py-5`}>
               <div>
-                <label className="text-sm font-semibold flex items-center gap-2">
+                <label htmlFor="settings-notifications" className="text-sm font-semibold flex items-center gap-2">
                   <Bell className="w-4 h-4 text-[#007AFF]" /> {t("settings.onlineBookingAlerts") || "Online Booking Alerts"}
                 </label>
                 <p className="text-xs text-muted-foreground mt-1">
@@ -355,6 +357,8 @@ export default function SettingsPage() {
                   Test
                 </button>
                 <Switch
+                  id="settings-notifications"
+                  name="notifications"
                   checked={notificationsEnabled}
                   onCheckedChange={async (checked) => {
                     if (checked) {
@@ -395,11 +399,13 @@ export default function SettingsPage() {
             </div>
             {mounted && (
               <div className={rowClass}>
-                <label className={labelClass}>
+                <label htmlFor="settings-dark-mode" className={labelClass}>
                   <Palette className="w-4 h-4 text-muted-foreground" /> {t("settings.darkMode")}
                 </label>
                 <div className="flex-1 flex justify-end">
                   <Switch
+                    id="settings-dark-mode"
+                    name="darkMode"
                     checked={theme === "dark"}
                     onCheckedChange={(c) => setTheme(c ? "dark" : "light")}
                   />
@@ -445,26 +451,26 @@ export default function SettingsPage() {
             </div>
 
             <div className={rowClass}>
-              <label className={labelClass}>{t("settings.fullName")}</label>
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("settings.placeholderFullName")} className={inputClass} />
+              <label htmlFor="settings-full-name" className={labelClass}>{t("settings.fullName")}</label>
+              <input id="settings-full-name" name="fullName" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("settings.placeholderFullName")} className={inputClass} />
             </div>
 
             <div className={rowClass}>
-              <label className={labelClass}>{t("settings.specialty")}</label>
-              <select value={specialty} onChange={(e) => setSpecialty(e.target.value)} className={`${inputClass} sm:text-right appearance-none bg-transparent cursor-pointer`}>
+              <label htmlFor="settings-specialty" className={labelClass}>{t("settings.specialty")}</label>
+              <select id="settings-specialty" name="specialty" value={specialty} onChange={(e) => setSpecialty(e.target.value)} className={`${inputClass} sm:text-right appearance-none bg-transparent cursor-pointer`}>
                 <option value="">{t("settings.selectSpecialty")}</option>
                 {SPECIALTIES.map((s) => <option key={s} value={s}>{s}</option>)}
               </select>
             </div>
 
             <div className={rowClass}>
-              <label className={labelClass}>{t("settings.credentials")}</label>
-              <input value={credentials} onChange={(e) => setCredentials(e.target.value)} placeholder={t("settings.placeholderCredentials")} className={inputClass} />
+              <label htmlFor="settings-credentials" className={labelClass}>{t("settings.credentials")}</label>
+              <input id="settings-credentials" name="credentials" value={credentials} onChange={(e) => setCredentials(e.target.value)} placeholder={t("settings.placeholderCredentials")} className={inputClass} />
             </div>
 
             <div className={`${rowClass} flex-col !items-start`}>
-              <label className={labelClass}>{t("settings.shortBio")}</label>
-              <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={3} placeholder={t("settings.placeholderBio")}
+              <label htmlFor="settings-bio" className={labelClass}>{t("settings.shortBio")}</label>
+              <textarea id="settings-bio" name="bio" value={bio} onChange={(e) => setBio(e.target.value)} rows={3} placeholder={t("settings.placeholderBio")}
                 className="w-full text-sm bg-transparent focus:outline-none placeholder:text-muted-foreground/60 resize-none mt-2" />
             </div>
           </div>
@@ -480,35 +486,35 @@ export default function SettingsPage() {
           <h3 className={sectionTitleClass}>{t("settings.clinicSection")}</h3>
           <div className={blockClass}>
             <div className={rowClass}>
-              <label className={labelClass}>{t("settings.clinicName")}</label>
-              <input value={clinicName} onChange={(e) => setClinicName(e.target.value)} placeholder={t("settings.placeholderClinic")} className={inputClass} />
+              <label htmlFor="settings-clinic-name" className={labelClass}>{t("settings.clinicName")}</label>
+              <input id="settings-clinic-name" name="clinicName" value={clinicName} onChange={(e) => setClinicName(e.target.value)} placeholder={t("settings.placeholderClinic")} className={inputClass} />
             </div>
 
             <div className={rowClass}>
-              <label className={labelClass}>{t("settings.phoneWhatsapp")}</label>
+              <label htmlFor="settings-phone" className={labelClass}>{t("settings.phoneWhatsapp")}</label>
               <div className="flex items-center gap-1 flex-1 justify-end" dir="ltr">
                 <span className="text-muted-foreground text-sm">+20</span>
-                <input type="tel" value={phone.replace(/^\+?20/, "").replace(/^0/, "")}
+                <input id="settings-phone" name="phone" type="tel" value={phone.replace(/^\+?20/, "").replace(/^0/, "")}
                   onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))} placeholder="1142529590"
                   className={`${inputClass} !flex-none w-[120px] sm:w-[150px] !text-left`} />
               </div>
             </div>
 
             <div className={rowClass}>
-              <label className={labelClass}>{t("settings.mapsLink")}</label>
-              <input value={clinicAddressLink} onChange={(e) => setClinicAddressLink(e.target.value)}
+              <label htmlFor="settings-maps-link" className={labelClass}>{t("settings.mapsLink")}</label>
+              <input id="settings-maps-link" name="mapsLink" value={clinicAddressLink} onChange={(e) => setClinicAddressLink(e.target.value)}
                 placeholder="https://maps.google.com/..." className={inputClass} dir="ltr" />
             </div>
 
             <div className={rowClass}>
-              <label className={labelClass}>{t("settings.addressText")}</label>
-              <input value={clinicAddress} onChange={(e) => setClinicAddress(e.target.value)}
+              <label htmlFor="settings-address" className={labelClass}>{t("settings.addressText")}</label>
+              <input id="settings-address" name="address" value={clinicAddress} onChange={(e) => setClinicAddress(e.target.value)}
                 placeholder={t("settings.placeholderAddress")} className={inputClass} />
             </div>
 
             <div className={rowClass}>
-              <label className={labelClass}>{t("settings.feeEgp")}</label>
-              <input type="number" value={consultationFee} onChange={(e) => setConsultationFee(e.target.value)}
+              <label htmlFor="settings-fee" className={labelClass}>{t("settings.feeEgp")}</label>
+              <input id="settings-fee" name="fee" type="number" value={consultationFee} onChange={(e) => setConsultationFee(e.target.value)}
                 placeholder="350" className={inputClass} />
             </div>
           </div>
@@ -548,25 +554,25 @@ export default function SettingsPage() {
             </div>
 
             <div className={rowClass}>
-              <label className={labelClass}>{t("settings.open247")}</label>
+              <label htmlFor="settings-open-247" className={labelClass}>{t("settings.open247")}</label>
               <div className="flex-1 flex justify-end">
-                <Switch checked={isAlwaysOpen} onCheckedChange={(c) => requestAvailabilityChange({ isAlwaysOpen: c })} />
+                <Switch id="settings-open-247" name="open247" checked={isAlwaysOpen} onCheckedChange={(c) => requestAvailabilityChange({ isAlwaysOpen: c })} />
               </div>
             </div>
 
             {!isAlwaysOpen && (
               <>
                 <div className={rowClass}>
-                  <label className={labelClass}>{t("settings.opensAt")}</label>
-                  <select value={workingHoursStart} onChange={(e) => requestAvailabilityChange({ workingHoursStart: Number(e.target.value) })} className={`${inputClass} sm:text-right appearance-none cursor-pointer`}>
+                  <label htmlFor="settings-opens-at" className={labelClass}>{t("settings.opensAt")}</label>
+                  <select id="settings-opens-at" name="opensAt" value={workingHoursStart} onChange={(e) => requestAvailabilityChange({ workingHoursStart: Number(e.target.value) })} className={`${inputClass} sm:text-right appearance-none cursor-pointer`}>
                     {Array.from({ length: 24 }, (_, h) => (
                       <option key={h} value={h}>{h === 0 ? "12:00 AM" : h === 12 ? "12:00 PM" : h < 12 ? `${h}:00 AM` : `${h - 12}:00 PM`}</option>
                     ))}
                   </select>
                 </div>
                 <div className={rowClass}>
-                  <label className={labelClass}>{t("settings.closesAt")}</label>
-                  <select value={workingHoursEnd} onChange={(e) => requestAvailabilityChange({ workingHoursEnd: Number(e.target.value) })} className={`${inputClass} sm:text-right appearance-none cursor-pointer`}>
+                  <label htmlFor="settings-closes-at" className={labelClass}>{t("settings.closesAt")}</label>
+                  <select id="settings-closes-at" name="closesAt" value={workingHoursEnd} onChange={(e) => requestAvailabilityChange({ workingHoursEnd: Number(e.target.value) })} className={`${inputClass} sm:text-right appearance-none cursor-pointer`}>
                     {Array.from({ length: 24 }, (_, h) => (
                       <option key={h} value={h}>{h === 0 ? "12:00 AM" : h === 12 ? "12:00 PM" : h < 12 ? `${h}:00 AM` : `${h - 12}:00 PM`}</option>
                     ))}
@@ -576,9 +582,9 @@ export default function SettingsPage() {
             )}
 
             <div className={rowClass}>
-              <label className={labelClass}>{t("settings.slotDurationLabel")}</label>
+              <label htmlFor="settings-slot-duration" className={labelClass}>{t("settings.slotDurationLabel")}</label>
               <div className="flex items-center gap-2 flex-1 sm:justify-end">
-                <input type="number" value={slotMin} onChange={(e) => setSlotMin(e.target.value)} min={5} max={120} className={`${inputClass} !flex-none w-16 sm:text-right`} dir="ltr" />
+                <input id="settings-slot-duration" name="slotDuration" type="number" value={slotMin} onChange={(e) => setSlotMin(e.target.value)} min={5} max={120} className={`${inputClass} !flex-none w-16 sm:text-right`} dir="ltr" />
                 <span className="text-sm text-muted-foreground">{t("settings.mins")}</span>
               </div>
             </div>
