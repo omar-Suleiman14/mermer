@@ -207,7 +207,8 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
   const canAdvanceStep1 = clinicName.trim().length > 0 && phone.trim().length > 0 && clinicAddressLink.trim().length > 0;
   const canAdvanceStep2 = selectedDays.length > 0 && feePerVisit.trim().length > 0 && openFrom.trim().length > 0 && openTo.trim().length > 0;
 
-  const inputClass = "w-full px-4 py-2.5 text-sm bg-muted/30 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF]";
+  const inputClass =
+    "w-full px-4 py-3 text-sm bg-muted/30 border border-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary";
 
   const content = (
     <>
@@ -237,7 +238,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
                 <span className="font-semibold text-sm">{t("onboarding.yourDetails")}</span>
               </div>
 
-              <div className="border border-border rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-muted/10">
+              <div className="border border-border rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-muted/10">
                 <div>
                   <p className="text-sm font-semibold">{t("settings.publicProfile") || "Public Profile"}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
@@ -291,7 +292,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
               <div>
                 <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("onboarding.whatsappPhone")} *</label>
                 <div className="flex gap-2">
-                  <span className="flex items-center px-3 bg-muted/60 border border-border rounded-xl text-sm text-muted-foreground font-mono flex-shrink-0" dir="ltr">+20</span>
+                  <span className="flex items-center px-3 bg-muted/60 border border-border rounded-2xl text-sm text-muted-foreground font-mono flex-shrink-0" dir="ltr">+20</span>
                   <input value={phone.replace(/^\+?20/, "").replace(/^0/, "")} onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))} placeholder="1142529590" type="tel" className={`flex-1 ${inputClass} !text-left`} dir="ltr" />
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">{t("onboarding.phoneDesc")}</p>
@@ -437,9 +438,9 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
                 <p className="text-xs text-muted-foreground mt-1" style={{ textAlign: dir === "rtl" ? "left" : "right" }}>{bio.length}/500</p>
               </div>
 
-              <div className="flex items-center justify-between p-4 bg-background border border-border rounded-xl">
+              <div className="flex items-center justify-between p-4 bg-background border border-border rounded-2xl">
                 <div className="flex gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#007AFF]/10 flex items-center justify-center flex-shrink-0">
+                  <div className="w-10 h-10 rounded-2xl bg-[#007AFF]/10 flex items-center justify-center flex-shrink-0">
                     <Bell className="w-5 h-5 text-[#007AFF]" />
                   </div>
                   <div>
@@ -468,7 +469,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
                 />
               </div>
 
-              <div className="bg-[#007AFF]/5 border border-[#007AFF]/20 rounded-xl p-3 text-xs text-[#007AFF]">
+              <div className="bg-[#007AFF]/5 border border-[#007AFF]/20 rounded-2xl p-3 text-xs text-[#007AFF]">
                 {t("onboarding.almostDone")}
               </div>
             </motion.div>
@@ -481,7 +482,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
       <div className="flex-shrink-0 border-t border-border bg-background px-6 py-4 flex items-center gap-3">
         {step > 0 && (
           <button onClick={() => setStep((s) => s - 1)}
-            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2.5 rounded-xl hover:bg-muted/40">
+            className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2.5 rounded-2xl hover:bg-muted/40">
             {dir === "rtl" ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />} {t("onboarding.back")}
           </button>
         )}
@@ -491,12 +492,12 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
         {step < TOTAL_STEPS - 1 ? (
           <button onClick={() => setStep((s) => s + 1)}
             disabled={(step === 0 && !canAdvanceStep0) || (step === 1 && !canAdvanceStep1) || (step === 2 && !canAdvanceStep2)}
-            className="flex items-center gap-1.5 bg-[#007AFF] text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-[#0062cc] transition-colors disabled:opacity-50">
+            className="flex items-center gap-1.5 bg-primary text-primary-foreground text-sm font-semibold px-5 py-3 rounded-2xl hover:bg-primary/90 transition-colors disabled:opacity-50 shadow-sm">
             {t("onboarding.next")} {dir === "rtl" ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
           </button>
         ) : (
           <button onClick={handleFinish} disabled={saving}
-            className="flex items-center gap-2 bg-[#007AFF] text-white text-sm font-semibold px-5 py-2.5 rounded-xl hover:bg-[#0062cc] transition-colors disabled:opacity-60">
+            className="flex items-center gap-2 bg-primary text-primary-foreground text-sm font-semibold px-5 py-3 rounded-2xl hover:bg-primary/90 transition-colors disabled:opacity-60 shadow-sm">
             {saving ? (
               <><IOSSpinner size={16} className="text-white" /> {t("onboarding.saving")}</>
             ) : (
@@ -511,7 +512,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
   if (isMobile) {
     return (
       <Drawer open={true}>
-        <DrawerContent className="p-0 overflow-hidden bg-[var(--background)] border-t-0 flex flex-col max-h-[95vh]">
+        <DrawerContent className="p-0 overflow-hidden bg-[var(--background)] border-t-0 rounded-t-3xl flex flex-col max-h-[95vh]">
           <DrawerTitle className="sr-only">{t("onboarding.setup")}</DrawerTitle>
           {content}
         </DrawerContent>
@@ -529,7 +530,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
         initial={{ scale: 0.92, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", stiffness: 400, damping: 30 }}
-        className="relative z-10 w-full max-w-3xl h-[85vh] md:h-[80vh] bg-[var(--background)] rounded-2xl overflow-hidden shadow-2xl flex flex-col"
+        className="relative z-10 w-full max-w-3xl h-[85vh] md:h-[80vh] bg-[var(--background)] rounded-3xl overflow-hidden shadow-2xl flex flex-col"
       >
         {content}
       </motion.div>
