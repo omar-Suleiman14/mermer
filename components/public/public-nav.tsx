@@ -40,10 +40,7 @@ export function PublicNav({ className, backHref, backLabel }: PublicNavProps) {
             </Link>
           ) : (
             <Link href="/" className="flex items-center gap-2.5 shrink-0">
-              <div className="w-9 h-9 rounded-lg bg-primary flex items-center justify-center shadow-sm">
-                <span className="font-serif italic font-bold text-sm text-primary-foreground">is</span>
-              </div>
-              <span className="font-semibold text-[15px] tracking-tight hidden sm:block">
+              <span className="font-semibold text-[17px] tracking-tight">
                 {dir === "rtl" ? "ابن سينا" : "Ibn Sina"}
               </span>
             </Link>

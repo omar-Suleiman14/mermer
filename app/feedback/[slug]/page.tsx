@@ -15,9 +15,6 @@ import { PublicNav } from "@/components/public/public-nav";
 import { formatDoctorTitle, translateSpecialty } from "@/lib/doctor-display";
 import { cn } from "@/lib/utils";
 
-const LABELS_AR = ["", "ضعيف", "مقبول", "جيد", "جيد جداً", "ممتاز"];
-const LABELS_EN = ["", "Poor", "Fair", "Good", "Very Good", "Excellent"];
-
 export default function FeedbackPage() {
   const params = useParams();
   const slug = params.slug as string;
@@ -34,7 +31,6 @@ export default function FeedbackPage() {
   const [submitted, setSubmitted] = useState(false);
 
   const activeRating = hovered || rating;
-  const labels = lang === "ar" ? LABELS_AR : LABELS_EN;
 
   async function handleSubmit() {
     if (rating === 0) {
@@ -79,14 +75,14 @@ export default function FeedbackPage() {
   }
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-background" dir={dir}>
+    <div className="h-[100dvh] flex flex-col bg-background overflow-hidden" dir={dir}>
       <PublicNav
         backHref={`/doctors/${slug}`}
         backLabel={lang === "ar" ? "الملف الشخصي" : "Doctor profile"}
       />
 
-      <main className="flex-1 max-w-xl mx-auto w-full px-4 sm:px-6 py-12 sm:py-16">
-        <div className="rounded-3xl border border-border bg-card p-6 mb-8 flex items-center gap-5 shadow-sm">
+      <main className="flex-1 max-w-3xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-6 flex flex-col">
+        <div className="rounded-3xl border border-border bg-card p-4 sm:p-6 mb-4 sm:mb-6 flex items-center gap-5 shadow-sm shrink-0">
           <div className="w-20 h-20 rounded-2xl overflow-hidden bg-muted ring-1 ring-border shrink-0 relative shadow-sm">
             {doctor.profilePhotoUrl ? (
               <Image src={doctor.profilePhotoUrl} alt={doctor.name} fill className="object-cover" sizes="64px" />
@@ -117,9 +113,9 @@ export default function FeedbackPage() {
           </div>
         </div>
 
-        <div className="rounded-3xl border border-border bg-card overflow-hidden shadow-lg shadow-black/[0.03]">
-          <div className="h-1 bg-primary" />
-          <div className="p-6 sm:p-8">
+        <div className="rounded-3xl border border-border bg-card overflow-hidden shadow-lg shadow-black/[0.03] flex-1 flex flex-col">
+          <div className="h-1 bg-primary shrink-0" />
+          <div className="p-4 sm:p-6 md:p-8 flex-1 flex flex-col justify-center relative overflow-y-auto">
             <AnimatePresence mode="wait">
               {submitted ? (
                 <motion.div
@@ -147,12 +143,12 @@ export default function FeedbackPage() {
                   </Link>
                 </motion.div>
               ) : (
-                <motion.div
-                  key="form"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="space-y-6"
-                >
+                  <motion.div
+                    key="form"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="space-y-4 sm:space-y-6 w-full max-w-lg mx-auto"
+                  >
                   <div className="text-center">
                     <h2 className="text-2xl font-bold tracking-tight">
                       {lang === "ar" ? "قيّم زيارتك" : "Rate your visit"}
@@ -184,9 +180,6 @@ export default function FeedbackPage() {
                         </button>
                       ))}
                     </div>
-                    {activeRating > 0 && (
-                      <span className="text-sm font-semibold text-primary">{labels[activeRating]}</span>
-                    )}
                   </div>
 
                   <div>
@@ -196,11 +189,11 @@ export default function FeedbackPage() {
                     <textarea
                       value={comment}
                       onChange={(e) => setComment(e.target.value)}
-                      rows={4}
+                      rows={3}
                       maxLength={1000}
                       dir={dir}
                       placeholder={lang === "ar" ? "شارك تجربتك..." : "Share your experience..."}
-                      className="w-full rounded-2xl border border-border bg-background px-4 py-4 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
+                      className="w-full rounded-2xl border border-border bg-background px-4 py-3 sm:py-4 text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary resize-none"
                     />
                   </div>
 
@@ -240,7 +233,7 @@ export default function FeedbackPage() {
           </div>
         </div>
 
-        <p className="text-center text-xs text-muted-foreground mt-6">
+        <p className="text-center text-xs text-muted-foreground mt-4 sm:mt-6 shrink-0">
           {lang === "ar" ? "مدعوم بواسطة " : "Powered by "}
           <span className="font-semibold text-primary">{lang === "ar" ? "ابن سينا" : "Ibn Sina"}</span>
         </p>

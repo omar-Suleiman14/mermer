@@ -231,9 +231,6 @@ export default function DoctorPublicProfile() {
                 {dir === "rtl" ? "البحث عن طبيب" : "Find a Doctor"}
               </Link>
               <Link href="/" className="flex items-center gap-3 group cursor-pointer">
-                <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center shadow-sm">
-                  <span className="font-serif italic font-extrabold text-sm text-primary-foreground">ibn sina</span>
-                </div>
                 <span className="font-serif font-bold text-lg tracking-tight text-foreground">
                   {dir === "rtl" ? "ابن سينا" : "ibn sina"}
                 </span>
