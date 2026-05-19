@@ -19,6 +19,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import Image from "next/image";
 import { IOSSpinner } from "@/components/ui/spinner";
+import { useI18n } from "@/lib/i18n";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -28,16 +29,16 @@ function startOfDay(ts: number) {
   return d.getTime();
 }
 
-function formatTime(ts: number) {
-  return new Date(ts).toLocaleTimeString("ar-EG", {
+function formatTime(ts: number, lang: "en" | "ar") {
+  return new Date(ts).toLocaleTimeString(lang === "ar" ? "ar-EG" : "en-US", {
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
   });
 }
 
-function formatDate(ts: number) {
-  return new Date(ts).toLocaleDateString("ar-EG", {
+function formatDate(ts: number, lang: "en" | "ar") {
+  return new Date(ts).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", {
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -74,6 +75,7 @@ function normalisePhone(raw: string) {
 export default function DoctorPublicProfile() {
   const params = useParams();
   const slug = params.slug as string;
+  const { t, dir, lang } = useI18n();
 
   const doctor = useQuery(api.users.getDoctorBySlug, { slug });
   const feedbackStats = useQuery(
@@ -148,7 +150,7 @@ export default function DoctorPublicProfile() {
           patientName: name.trim(),
           doctorName: doctor.name,
           clinicName: (doctor as any).clinicName,
-          dateStr: `${formatDate(selectedSlot)} الساعة ${formatTime(selectedSlot)}`,
+          dateStr: `${formatDate(selectedSlot, lang)} ${lang === "ar" ? "الساعة" : "at"} ${formatTime(selectedSlot, lang)}`,
         }),
       });
     } catch {
@@ -172,11 +174,11 @@ export default function DoctorPublicProfile() {
     } catch (e: any) {
       const msg = e?.message ?? "";
       if (msg.includes("already booked")) {
-        toast.error("هذا الموعد محجوز — يرجى اختيار وقت آخر.");
+        toast.error(t("profile.slotAlreadyBooked"));
         setSelectedSlot(null);
         setBookingOpen(false);
       } else {
-        toast.error("فشل الحجز. يرجى المحاولة مرة أخرى.");
+        toast.error(t("profile.bookingFailed"));
       }
     } finally {
       setIsBooking(false);
@@ -195,14 +197,14 @@ export default function DoctorPublicProfile() {
 
   if (!doctor) {
     return (
-      <div className="min-h-screen bg-[#f0efea] dark:bg-[#111110] flex items-center justify-center text-center px-6" dir="rtl">
+      <div className="min-h-screen bg-[#f0efea] dark:bg-[#111110] flex items-center justify-center text-center px-6" dir={dir}>
         <div>
-          <p className="text-lg font-semibold mb-2">الطبيب غير موجود</p>
+          <p className="text-lg font-semibold mb-2">{t("profile.notFound")}</p>
           <p className="text-sm text-muted-foreground mb-6">
-            هذا الملف الشخصي غير موجود أو غير متاح للعموم.
+            {t("profile.notFoundDesc")}
           </p>
           <Link href="/" className="text-sm text-[#007AFF] hover:underline">
-            → العودة
+            {dir === "rtl" ? "→" : "←"} {t("profile.back")}
           </Link>
         </div>
       </div>
@@ -213,7 +215,7 @@ export default function DoctorPublicProfile() {
   const profilePhotoUrl = (doctor as any).profilePhotoUrl as string | null;
 
   return (
-    <div className="min-h-screen bg-[#f0efea] dark:bg-[#111110] text-[#1a1916] dark:text-[#f0efea]" dir="rtl">
+    <div className="min-h-screen bg-[#f0efea] dark:bg-[#111110] text-[#1a1916] dark:text-[#f0efea]" dir={dir}>
       {/* Nav */}
       <nav className="sticky top-0 z-40 bg-[#f0efea]/80 dark:bg-[#111110]/80 backdrop-blur-md border-b border-black/5 dark:border-white/5">
         <div className="max-w-3xl mx-auto px-6 h-14 flex items-center gap-4">
@@ -221,10 +223,10 @@ export default function DoctorPublicProfile() {
             href="/"
             className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            <ChevronRight className="w-4 h-4" />
-            رجوع
+            {dir === "rtl" ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+            {t("profile.back")}
           </Link>
-          <span className="font-bold text-[#007AFF] me-auto">ابن سينا</span>
+          <span className={`font-bold text-[#007AFF] ${dir === "rtl" ? "mr-auto" : "ml-auto"}`}>{t("profile.brandName")}</span>
         </div>
       </nav>
 
@@ -257,7 +259,7 @@ export default function DoctorPublicProfile() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap mb-1">
                 <h1 className="text-2xl font-bold tracking-tight">
-                  د. {doctor.name}
+                  {lang === "ar" ? `د. ${doctor.name}` : `Dr. ${doctor.name}`}
                 </h1>
               </div>
               {doctor.specialty && (
@@ -281,8 +283,8 @@ export default function DoctorPublicProfile() {
                       stroke={s <= Math.round(feedbackStats.average) ? "#f5a623" : "#d1d5db"}
                     />
                   ))}
-                  <span className="text-sm text-muted-foreground me-1">
-                    {feedbackStats.average.toFixed(1)} ({feedbackStats.count} تقييم)
+                  <span className={`text-sm text-muted-foreground ${dir === "rtl" ? "mr-1" : "ml-1"}`}>
+                    {feedbackStats.average.toFixed(1)} ({t("profile.reviewsCount").replace("{count}", feedbackStats.count.toString())})
                   </span>
                 </div>
               )}
@@ -298,10 +300,10 @@ export default function DoctorPublicProfile() {
                       target="_blank"
                       rel="noreferrer"
                       className="flex items-center gap-1.5 hover:text-[#FF3B30] transition-colors cursor-pointer"
-                      title="فتح في خرائط جوجل"
+                      title={t("profile.openInMaps")}
                     >
                       <MapPin className="w-3.5 h-3.5 text-[#FF3B30]" />
-                      {doctor.clinicAddress || "عرض الموقع"}
+                      {doctor.clinicAddress || t("profile.viewLocation")}
                     </a>
                   ) : (
                     <span className="flex items-center gap-1.5">
@@ -329,7 +331,7 @@ export default function DoctorPublicProfile() {
 
               {(doctor as any).consultationFee && (
                 <div className="mt-3 inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 px-3 py-1.5 rounded-full text-sm font-medium">
-                  رسم الكشف: {(doctor as any).consultationFee} ج.م
+                  {t("profile.consultationFeeLabel").replace("{fee}", (doctor as any).consultationFee.toString())}
                 </div>
               )}
 
@@ -353,14 +355,14 @@ export default function DoctorPublicProfile() {
             <Star className="w-5 h-5 text-[#FF9500]" fill="currentColor" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-sm">زرت هذه العيادة من قبل؟</p>
-            <p className="text-xs text-muted-foreground mt-0.5">ساعد الآخرين بمشاركة تجربتك.</p>
+            <p className="font-semibold text-sm">{t("profile.visitedBefore")}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{t("profile.shareExperience")}</p>
           </div>
           <Link
             href={`/feedback/${params.slug}`}
             className="flex-shrink-0 text-xs font-semibold text-[#FF9500] border border-[#FF9500]/30 px-3 py-1.5 rounded-lg hover:bg-[#FF9500]/10 transition-colors"
           >
-            اترك تقييماً ←
+            {t("profile.leaveReview")}
           </Link>
         </motion.div>
 
@@ -373,7 +375,7 @@ export default function DoctorPublicProfile() {
         >
           <h2 className="font-semibold text-base flex items-center gap-2 mb-5">
             <CalendarDays className="w-4 h-4 text-[#007AFF]" />
-            احجز موعداً
+            {t("profile.bookAppointment")}
           </h2>
 
           {/* Week navigation */}
@@ -407,10 +409,10 @@ export default function DoctorPublicProfile() {
                         : "hover:bg-muted/60 text-muted-foreground"
                     }`}
                   >
-                    <span className="font-medium">{d.toLocaleDateString("ar-EG", { weekday: "short" })}</span>
+                    <span className="font-medium">{d.toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { weekday: "short" })}</span>
                     <span className="text-base font-bold mt-0.5">{d.getDate()}</span>
                     {!isWorkingDayBtn && !isPast && (
-                      <span className="text-[8px] font-medium text-muted-foreground/40 mt-0.5">مغلق</span>
+                      <span className="text-[8px] font-medium text-muted-foreground/40 mt-0.5">{t("profile.closed")}</span>
                     )}
                   </button>
                 );
@@ -427,7 +429,7 @@ export default function DoctorPublicProfile() {
             </button>
           </div>
 
-          <p className="text-xs text-muted-foreground mb-4 font-medium">{formatDate(activeDayTs)}</p>
+          <p className="text-xs text-muted-foreground mb-4 font-medium">{formatDate(activeDayTs, lang)}</p>
 
           {/* Slots */}
           {!isWorkingDay ? (
@@ -435,15 +437,15 @@ export default function DoctorPublicProfile() {
               <div className="w-12 h-12 rounded-2xl bg-muted/40 flex items-center justify-center mx-auto mb-3">
                 <Clock className="w-6 h-6 text-muted-foreground/40" />
               </div>
-              <p className="text-sm font-semibold text-muted-foreground">العيادة مغلقة هذا اليوم</p>
-              <p className="text-xs text-muted-foreground/60 mt-1">هذا اليوم ليس ضمن أيام العمل.</p>
+              <p className="text-sm font-semibold text-muted-foreground">{t("profile.clinicClosedToday")}</p>
+              <p className="text-xs text-muted-foreground/60 mt-1">{t("profile.notWorkingDay")}</p>
             </div>
           ) : bookedSlots === undefined ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <IOSSpinner size={16} /> جارٍ تحميل المواعيد…
+              <IOSSpinner size={16} /> {t("profile.loadingAppointments")}
             </div>
           ) : daySlots.length === 0 ? (
-            <p className="text-sm text-muted-foreground">لا توجد مواعيد متاحة لهذا اليوم.</p>
+            <p className="text-sm text-muted-foreground">{t("profile.noAppointmentsToday")}</p>
           ) : (
             <>
               <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
@@ -455,7 +457,7 @@ export default function DoctorPublicProfile() {
                       key={ts}
                       onClick={() => { if (!isTaken) { setSelectedSlot(ts); setBookingOpen(true); } }}
                       disabled={isTaken}
-                      title={isTaken ? "محجوز" : undefined}
+                      title={isTaken ? t("profile.booked") : undefined}
                       className={`py-2.5 px-1 rounded-xl text-xs font-semibold transition-all border flex flex-col items-center gap-0.5 ${
                         isTaken
                           ? "border-border/40 bg-muted/40 text-muted-foreground/40 cursor-not-allowed"
@@ -464,15 +466,15 @@ export default function DoctorPublicProfile() {
                           : "border-border hover:border-[#007AFF]/60 hover:text-[#007AFF] hover:bg-[#007AFF]/5 cursor-pointer"
                       }`}
                     >
-                      {formatTime(ts)}
-                      {isTaken && <span className="text-[9px]">محجوز</span>}
+                      {formatTime(ts, lang)}
+                      {isTaken && <span className="text-[9px]">{t("profile.booked")}</span>}
                     </button>
                   );
                 })}
               </div>
-              <p className="text-[11px] text-muted-foreground mt-3">
-                <span className="inline-block w-3 h-3 rounded bg-muted/40 border border-border/40 ms-1 align-middle" />
-                المواعيد الرمادية محجوزة. اضغط على موعد متاح للحجز.
+              <p className={`text-[11px] text-muted-foreground mt-3 flex items-center ${dir === "rtl" ? "gap-1.5" : "gap-1.5"}`}>
+                <span className="inline-block w-3 h-3 rounded bg-muted/40 border border-border/40 shrink-0" />
+                {t("profile.graySlotsBooked")}
               </p>
             </>
           )}
@@ -503,17 +505,17 @@ export default function DoctorPublicProfile() {
                     <div className="w-16 h-16 rounded-full bg-[#34c759]/10 flex items-center justify-center mb-4">
                       <CheckCircle2 className="w-8 h-8 text-[#34c759]" />
                     </div>
-                    <h3 className="font-bold text-lg mb-2">تم تأكيد الحجز!</h3>
+                    <h3 className="font-bold text-lg mb-2">{t("profile.bookingConfirmed")}</h3>
                     <p className="text-sm text-muted-foreground mb-1">
-                      د. {doctor.name} · {formatTime(selectedSlot)}
+                      {lang === "ar" ? `د. ${doctor.name}` : `Dr. ${doctor.name}`} · {formatTime(selectedSlot, lang)}
                     </p>
-                    <p className="text-sm text-muted-foreground">{formatDate(selectedSlot)}</p>
+                    <p className="text-sm text-muted-foreground">{formatDate(selectedSlot, lang)}</p>
 
                     <button
                       onClick={() => { setBookingOpen(false); setBooked(false); setSelectedSlot(null); setName(""); setPhone(""); }}
                       className="mt-6 text-sm text-[#007AFF] hover:underline font-medium"
                     >
-                      تم
+                      {t("profile.done")}
                     </button>
                   </div>
                 ) : (
@@ -522,7 +524,7 @@ export default function DoctorPublicProfile() {
                     <div className="flex items-center gap-3 mb-5 p-3 bg-muted/30 rounded-xl">
                       {profilePhotoUrl ? (
                         <div className="w-10 h-10 rounded-xl overflow-hidden flex-shrink-0">
-                          <Image src={profilePhotoUrl} alt={`د. ${doctor.name}`} width={40} height={40} className="w-full h-full object-cover" />
+                          <Image src={profilePhotoUrl} alt={doctor.name} width={40} height={40} className="w-full h-full object-cover" />
                         </div>
                       ) : (
                         <div className="w-10 h-10 rounded-xl bg-[#007AFF]/10 flex items-center justify-center flex-shrink-0">
@@ -530,26 +532,26 @@ export default function DoctorPublicProfile() {
                         </div>
                       )}
                       <div>
-                        <p className="font-semibold text-sm">د. {doctor.name}</p>
-                        <p className="text-xs text-muted-foreground">{formatTime(selectedSlot)} · {formatDate(selectedSlot)}</p>
+                        <p className="font-semibold text-sm">{lang === "ar" ? `د. ${doctor.name}` : `Dr. ${doctor.name}`}</p>
+                        <p className="text-xs text-muted-foreground">{formatTime(selectedSlot, lang)} · {formatDate(selectedSlot, lang)}</p>
                       </div>
                     </div>
 
-                    <h3 className="font-bold text-base mb-4">أكمل بيانات الحجز</h3>
+                    <h3 className="font-bold text-base mb-4">{t("profile.completeBooking")}</h3>
 
                     <div className="space-y-3">
                       <div>
-                        <label className="text-xs font-medium text-muted-foreground block mb-1">الاسم الكامل *</label>
+                        <label className="text-xs font-medium text-muted-foreground block mb-1">{t("profile.fullName")}</label>
                         <input
                           value={name}
                           onChange={(e) => setName(e.target.value)}
-                          placeholder="اسمك الكامل"
-                          dir="rtl"
+                          placeholder=""
+                          dir={dir}
                           className="w-full px-4 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent"
                         />
                       </div>
                       <div>
-                        <label className="text-xs font-medium text-muted-foreground block mb-1">رقم الواتساب *</label>
+                        <label className="text-xs font-medium text-muted-foreground block mb-1">{t("profile.whatsappNumber")}</label>
                         <div className="flex items-center border border-border rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-[#007AFF] bg-background" dir="ltr">
                           <span className="px-3 py-2.5 text-sm font-semibold text-muted-foreground bg-muted/30 border-r border-border select-none">
                             +20
@@ -563,7 +565,7 @@ export default function DoctorPublicProfile() {
                             className="flex-1 px-3 py-2.5 text-sm bg-transparent focus:outline-none"
                           />
                         </div>
-                        <p className="text-[11px] text-muted-foreground mt-1">سنرسل تأكيداً على هذا الرقم عبر الواتساب.</p>
+                        <p className="text-[11px] text-muted-foreground mt-1">{t("profile.whatsappNotice")}</p>
                       </div>
                     </div>
 
@@ -572,14 +574,14 @@ export default function DoctorPublicProfile() {
                         onClick={() => setBookingOpen(false)}
                         className="flex-1 border border-border text-sm font-medium py-2.5 rounded-xl hover:bg-muted/40 transition-colors"
                       >
-                        إلغاء
+                        {t("common.cancel") || "Cancel"}
                       </button>
                       <button
                         onClick={handleBook}
                         disabled={isBooking || !name.trim() || phone.trim().length < 8}
                         className="flex-1 bg-[#007AFF] text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-[#0062cc] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                       >
-                        {isBooking ? <IOSSpinner size={16} className="text-white" /> : "تأكيد الحجز"}
+                        {isBooking ? <IOSSpinner size={16} className="text-white" /> : t("profile.confirmBooking")}
                       </button>
                     </div>
                   </>
