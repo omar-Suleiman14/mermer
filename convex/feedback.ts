@@ -45,13 +45,31 @@ export const submitFeedback = mutation({
       throw new Error("Too many reviews submitted recently. Please try again later.");
     }
 
-    return await ctx.db.insert("feedback", {
+    const feedbackId = await ctx.db.insert("feedback", {
       doctorId: doctor._id,
       rating: args.rating,
       comment: args.comment?.trim(),
       patientName: args.patientName?.trim(),
       createdAt: Date.now(),
     });
+
+    // Update denormalized stats
+    const allFeedback = await ctx.db
+      .query("feedback")
+      .withIndex("by_doctor", (q) => q.eq("doctorId", doctor._id))
+      .take(1000); // hard limit to prevent function timeout, 1000 is plenty
+
+    const reviewCount = allFeedback.length;
+    const avgRating = reviewCount > 0 
+      ? allFeedback.reduce((a, b) => a + b.rating, 0) / reviewCount 
+      : null;
+
+    await ctx.db.patch(doctor._id, {
+      avgRating,
+      reviewCount,
+    });
+
+    return feedbackId;
   },
 });
 

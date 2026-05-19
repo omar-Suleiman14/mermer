@@ -6,12 +6,14 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense, useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Search, Star, MapPin, DollarSign,
   Stethoscope, CalendarDays, ChevronRight, ChevronLeft, ShieldCheck, Activity, CheckCircle2
 } from "lucide-react";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { useI18n } from "@/lib/i18n";
+import { useDebounce } from "@/hooks/use-debounce";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -72,7 +74,7 @@ function DoctorListCard({ doctor }: { doctor: Doctor }) {
           <div className="flex gap-5 md:w-[65%]">
              <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-border flex items-center justify-center flex-shrink-0 overflow-hidden relative shadow-sm">
                 {doctor.profilePhotoUrl ? (
-                  <img src={doctor.profilePhotoUrl} alt={doctor.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <Image src={doctor.profilePhotoUrl} alt={doctor.name} fill sizes="112px" className="object-cover group-hover:scale-105 transition-transform duration-500" />
                 ) : (
                   <span className="text-4xl font-bold text-[#007AFF]">{doctor.name.charAt(0)}</span>
                 )}
@@ -167,7 +169,26 @@ function FeedInner() {
   const [visibleCount, setVisibleCount] = useState(10);
   const loaderRef = useRef<HTMLDivElement>(null);
 
-  const allDoctors = useQuery(api.doctors.listPublishedDoctors);
+  const debouncedQuery = useDebounce(query, 400);
+  const debouncedCity = useDebounce(city, 400);
+  const feeMaxNum = feeMax ? Number(feeMax) : undefined;
+  
+  const todayName = DAYS_OF_WEEK[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1];
+
+  const searchResults = useQuery(api.doctors.searchDoctors, {
+    searchQuery: debouncedQuery || undefined,
+    specialty: specialty || undefined,
+    city: debouncedCity || undefined,
+    language: language || undefined,
+    feeMax: feeMaxNum,
+    availTodayName: availToday ? todayName : undefined,
+    sortBy: sort,
+    limit: visibleCount,
+  });
+
+  const allDoctors = searchResults; // For loading states
+  const visible = searchResults ?? [];
+  const filteredCount = searchResults?.length ?? 0;
 
   // Infinite scroll observer
   useEffect(() => {
@@ -180,40 +201,8 @@ function FeedInner() {
   }, [allDoctors]);
 
   // Reset visible count on filter change
-  useEffect(() => { setVisibleCount(10); }, [query, specialty, city, language, feeMax, availToday, sort]);
+  useEffect(() => { setVisibleCount(10); }, [debouncedQuery, specialty, debouncedCity, language, feeMax, availToday, sort]);
 
-  const todayName = DAYS_OF_WEEK[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1];
-
-  const filtered = useMemo(() => {
-    if (!allDoctors) return [];
-    let list = [...allDoctors] as Doctor[];
-
-    const q = query.toLowerCase().trim();
-    if (q) {
-      list = list.filter(
-        (d) =>
-          d.name.toLowerCase().includes(q) ||
-          (d.specialty ?? "").toLowerCase().includes(q) ||
-          (d.city ?? "").toLowerCase().includes(q) ||
-          (d.clinicName ?? "").toLowerCase().includes(q) ||
-          (d.clinicAddress ?? "").toLowerCase().includes(q)
-      );
-    }
-    if (specialty) list = list.filter((d) => d.specialty === specialty);
-    if (city) list = list.filter((d) => (d.city ?? "").toLowerCase().includes(city.toLowerCase()));
-    if (language) list = list.filter((d) => d.languages.includes(language));
-    if (feeMax) list = list.filter((d) => d.consultationFee !== null && d.consultationFee <= Number(feeMax));
-    if (availToday) list = list.filter((d) => d.availableDays.includes(todayName));
-
-    // Sort
-    if (sort === "fee_asc") list.sort((a, b) => (a.consultationFee ?? 999999) - (b.consultationFee ?? 999999));
-    else if (sort === "fee_desc") list.sort((a, b) => (b.consultationFee ?? 0) - (a.consultationFee ?? 0));
-    else if (sort === "rating") list.sort((a, b) => (b.avgRating ?? 0) - (a.avgRating ?? 0));
-
-    return list;
-  }, [allDoctors, query, specialty, city, language, feeMax, availToday, sort, todayName]);
-
-  const visible = filtered.slice(0, visibleCount);
 
   return (
     <div className="min-h-[100dvh] flex flex-col relative bg-[#FAFAFA] dark:bg-[#050505] text-foreground overflow-x-hidden" dir={dir}>
@@ -347,7 +336,7 @@ function FeedInner() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 px-1">
             <p className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
               {allDoctors !== undefined && (
-                <span className="font-bold text-foreground bg-white dark:bg-[#1a1a1a] px-2.5 py-1 rounded-lg border border-border shadow-sm">{filtered.length}</span>
+                <span className="font-bold text-foreground bg-white dark:bg-[#1a1a1a] px-2.5 py-1 rounded-lg border border-border shadow-sm">{filteredCount}</span>
               )}
               {t("feed.matches")}
             </p>
@@ -371,7 +360,7 @@ function FeedInner() {
             <div className="flex items-center justify-center py-32 text-[#007AFF]">
               <IOSSpinner size={44} />
             </div>
-          ) : filtered.length === 0 ? (
+          ) : filteredCount === 0 ? (
             <div className="text-center py-32 bg-white/60 dark:bg-[#1a1a1a]/60 backdrop-blur-xl border border-white/60 dark:border-white/10 rounded-3xl shadow-sm">
               <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 flex items-center justify-center mx-auto mb-6 shadow-inner">
                 <Stethoscope className="w-10 h-10 text-[#007AFF]/60" />
@@ -397,7 +386,7 @@ function FeedInner() {
 
               {/* Infinite scroll sentinel */}
               <div ref={loaderRef} className="h-24 flex items-center justify-center mt-6">
-                {visibleCount < filtered.length && (
+                {visibleCount <= filteredCount && filteredCount > 0 && (
                   <div className="text-[#007AFF]"><IOSSpinner size={28} /></div>
                 )}
               </div>

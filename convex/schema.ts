@@ -41,6 +41,10 @@ export default defineSchema({
     // Doctor profile photo
     profilePhotoId: v.optional(v.id("_storage")),
 
+    // Denormalized stats for performance (prevents N+1 in feed)
+    avgRating: v.optional(v.number()),
+    reviewCount: v.optional(v.number()),
+
     // Stored feedback QR code
     feedbackQrStorageId: v.optional(v.id("_storage")),
 

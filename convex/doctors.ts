@@ -52,32 +52,8 @@ export const listPublishedDoctors = query({
     // Filter banned in JS (small fraction of published)
     const visible = published.filter((u) => !(u as any).isBanned);
 
-    // BATCH: Fetch feedback for ALL visible doctors in one pass
-    // Use a Map to accumulate ratings per doctor
-    const ratingMap = new Map<string, { sum: number; count: number }>();
-
-    // Fetch feedback for each doctor — but use take(50) per doctor instead of 200
-    // This is still N queries but each reads fewer rows
-    const feedbackBatches = await Promise.all(
-      visible.map(async (u) => {
-        const items = await ctx.db
-          .query("feedback")
-          .withIndex("by_doctor", (q) => q.eq("doctorId", u._id))
-          .take(50);
-        return { doctorId: u._id.toString(), items };
-      })
-    );
-
-    for (const batch of feedbackBatches) {
-      const sum = batch.items.reduce((a, b) => a + b.rating, 0);
-      ratingMap.set(batch.doctorId, { sum, count: batch.items.length });
-    }
-
     return await Promise.all(
       visible.map(async (u) => {
-        const stats = ratingMap.get(u._id.toString());
-        const avgRating = stats && stats.count > 0 ? stats.sum / stats.count : null;
-
         const profilePhotoUrl = u.profilePhotoId
           ? await ctx.storage.getUrl(u.profilePhotoId)
           : null;
@@ -97,8 +73,103 @@ export const listPublishedDoctors = query({
           bio: u.bio ?? null,
           qrSlug: u.qrSlug ?? null,
           profilePhotoUrl,
-          avgRating,
-          reviewCount: stats?.count ?? 0,
+          avgRating: (u as any).avgRating ?? null,
+          reviewCount: (u as any).reviewCount ?? 0,
+          workingHoursStart: u.workingHoursStart ?? null,
+          workingHoursEnd: u.workingHoursEnd ?? null,
+        };
+      })
+    );
+  },
+});
+
+// ─── Feed: Search & Filter Doctors (Optimized Backend Filtering) ────────────
+
+export const searchDoctors = query({
+  args: {
+    searchQuery: v.optional(v.string()),
+    specialty: v.optional(v.string()),
+    city: v.optional(v.string()),
+    language: v.optional(v.string()),
+    feeMax: v.optional(v.number()),
+    availTodayName: v.optional(v.string()),
+    sortBy: v.optional(v.string()),
+    limit: v.number(),
+  },
+  handler: async (ctx, args) => {
+    // Start with all published doctors (using index)
+    const published = await ctx.db
+      .query("users")
+      .withIndex("by_public_profile", (q) => q.eq("publicProfile", true))
+      .take(1000);
+
+    let list = published.filter((u) => !(u as any).isBanned);
+
+    const q = args.searchQuery?.toLowerCase().trim();
+    if (q) {
+      list = list.filter(
+        (d) =>
+          d.name.toLowerCase().includes(q) ||
+          (d.specialty ?? "").toLowerCase().includes(q) ||
+          ((d as any).city ?? "").toLowerCase().includes(q) ||
+          (d.clinicName ?? "").toLowerCase().includes(q) ||
+          (d.clinicAddress ?? "").toLowerCase().includes(q)
+      );
+    }
+
+    if (args.specialty) {
+      list = list.filter((d) => d.specialty === args.specialty);
+    }
+    if (args.city) {
+      list = list.filter((d) => ((d as any).city ?? "").toLowerCase().includes(args.city!.toLowerCase()));
+    }
+    if (args.language) {
+      list = list.filter((d) => ((d as any).languages ?? []).includes(args.language));
+    }
+    if (args.feeMax !== undefined) {
+      list = list.filter((d) => (d as any).consultationFee !== null && (d as any).consultationFee <= args.feeMax!);
+    }
+    if (args.availTodayName) {
+      list = list.filter((d) => ((d as any).availableDays ?? []).includes(args.availTodayName));
+    }
+
+    // Sort
+    const sort = args.sortBy ?? "relevance";
+    if (sort === "fee_asc") {
+      list.sort((a, b) => ((a as any).consultationFee ?? 999999) - ((b as any).consultationFee ?? 999999));
+    } else if (sort === "fee_desc") {
+      list.sort((a, b) => ((b as any).consultationFee ?? 0) - ((a as any).consultationFee ?? 0));
+    } else if (sort === "rating") {
+      list.sort((a, b) => ((b as any).avgRating ?? 0) - ((a as any).avgRating ?? 0));
+    }
+
+    // Apply limit for pagination
+    const paginated = list.slice(0, args.limit);
+
+    // Resolve URLs only for paginated results (huge optimization)
+    return await Promise.all(
+      paginated.map(async (u) => {
+        const profilePhotoUrl = u.profilePhotoId
+          ? await ctx.storage.getUrl(u.profilePhotoId)
+          : null;
+
+        return {
+          _id: u._id,
+          name: u.name,
+          specialty: u.specialty ?? null,
+          clinicName: u.clinicName,
+          clinicAddress: u.clinicAddress ?? null,
+          city: (u as any).city ?? null,
+          consultationFee: (u as any).consultationFee ?? null,
+          languages: (u as any).languages ?? [],
+          availableDays: (u as any).availableDays ?? [],
+          availableFrom: (u as any).availableFrom ?? null,
+          availableTo: (u as any).availableTo ?? null,
+          bio: u.bio ?? null,
+          qrSlug: u.qrSlug ?? null,
+          profilePhotoUrl,
+          avgRating: (u as any).avgRating ?? null,
+          reviewCount: (u as any).reviewCount ?? 0,
           workingHoursStart: u.workingHoursStart ?? null,
           workingHoursEnd: u.workingHoursEnd ?? null,
         };
@@ -123,12 +194,7 @@ export const getPublicDoctorProfile = query({
       .query("feedback")
       .withIndex("by_doctor", (q) => q.eq("doctorId", doctor._id))
       .order("desc")
-      .take(50);
-
-    const avgRating =
-      feedbackItems.length > 0
-        ? feedbackItems.reduce((a, b) => a + b.rating, 0) / feedbackItems.length
-        : null;
+      .take(10); // Only need 10 for the UI now
 
     const profilePhotoUrl = doctor.profilePhotoId
       ? await ctx.storage.getUrl(doctor.profilePhotoId)
@@ -150,8 +216,8 @@ export const getPublicDoctorProfile = query({
       qrSlug: doctor.qrSlug ?? null,
       credentials: doctor.credentials ?? null,
       profilePhotoUrl,
-      avgRating,
-      reviewCount: feedbackItems.length,
+      avgRating: (doctor as any).avgRating ?? null,
+      reviewCount: (doctor as any).reviewCount ?? 0,
       reviews: feedbackItems.slice(0, 10).map((f) => ({
         _id: f._id,
         rating: f.rating,
