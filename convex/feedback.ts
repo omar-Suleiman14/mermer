@@ -62,7 +62,7 @@ export const submitFeedback = mutation({
     const reviewCount = allFeedback.length;
     const avgRating = reviewCount > 0 
       ? allFeedback.reduce((a, b) => a + b.rating, 0) / reviewCount 
-      : null;
+      : undefined;
 
     await ctx.db.patch(doctor._id, {
       avgRating,
