@@ -34,6 +34,9 @@ export default defineSchema({
 
     // Admin controls
     isBanned: v.optional(v.boolean()),
+    
+    // Legacy fields (kept only to prevent schema validation crashes on old records)
+    telegramId: v.optional(v.string()),
 
     // Doctor profile photo
     profilePhotoId: v.optional(v.id("_storage")),
