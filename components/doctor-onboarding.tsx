@@ -376,17 +376,16 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
                 <label className="text-xs font-medium text-muted-foreground block mb-1.5">
                   {t("onboarding.feePerVisit")} *
                 </label>
-                <div className="relative">
+                <div className="relative flex items-center">
                   <input
                     type="number"
                     min="0"
                     value={feePerVisit}
                     onChange={(e) => setFeePerVisit(e.target.value)}
                     placeholder="350"
-                    className={inputClass}
-                    dir="ltr"
+                    className={`${inputClass} pe-12`}
                   />
-                  <span className="absolute end-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-medium pointer-events-none">{t("common.currency")}</span>
+                  <span className="absolute end-4 text-xs text-muted-foreground font-medium pointer-events-none">{t("common.currency")}</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">{t("onboarding.feeDesc")}</p>
               </div>
