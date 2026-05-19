@@ -290,7 +290,7 @@ const translations: Record<Lang, Record<string, string>> = {
     "onboarding.finishSetup": "Finish Setup",
     "onboarding.saving": "Saving…",
     "onboarding.welcomeSuccess": "Welcome to Ibn Sina! Your profile is ready.",
-    "onboarding.feePerVisit": "Fee Per Visit (EGP)",
+    "onboarding.feePerVisit": "Fee Per Visit",
     "onboarding.feeDesc": "Used in analytics and shown on your public profile.",
 
     // Visit Drawer / Completion Modal
@@ -928,7 +928,7 @@ const translations: Record<Lang, Record<string, string>> = {
     "onboarding.finishSetup": "إنهاء الإعداد",
     "onboarding.saving": "جارٍ الحفظ…",
     "onboarding.welcomeSuccess": "مرحباً في ابن سينا! ملفك جاهز.",
-    "onboarding.feePerVisit": "رسم الكشف (ج.م)",
+    "onboarding.feePerVisit": "سعر الكشف",
     "onboarding.feeDesc": "يُستخدم في التحليلات ويظهر في ملفك العام.",
 
     // Visit Drawer / Completion Modal
