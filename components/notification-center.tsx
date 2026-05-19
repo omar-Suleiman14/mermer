@@ -123,30 +123,35 @@ export function NotificationCenter() {
   const clerkId = user?.id ?? "";
 
   const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
-  const appointments = useQuery(api.appointments.listAppointments, clerkId ? { clerkId } : "skip");
+  // FIX #7: Use dedicated listOnlineAppointments query instead of fetching ALL 200 visits
+  const onlineAppointments = useQuery(api.appointments.listOnlineAppointments, clerkId ? { clerkId } : "skip");
   const messageTemplates = useQuery(api.messageTemplates.listTemplates, clerkId ? { clerkId } : "skip");
 
-  // ── localStorage-backed read state ────────────────────────────────────────
-  // Use null as sentinel: "not yet loaded from localStorage"
+  // FIX #10: Use timestamp-based read state instead of growing deletedIds set.
+  // "lastClearedAt" replaces the old deletedIds set — any notification created
+  // before this timestamp is considered cleared/dismissed.
   const [lastViewedAt, setLastViewedAt] = useState<number | null>(null);
-  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
+  const [lastClearedAt, setLastClearedAt] = useState<number>(0);
   const [open, setOpen] = useState(false);
   const [reminderFor, setReminderFor] = useState<any | null>(null);
 
   // Load persisted state once on mount
   useEffect(() => {
-    const storedLastViewed = localStorage.getItem("notificationsLastViewedAt");
-    setLastViewedAt(storedLastViewed ? Number(storedLastViewed) : 0);
+    try {
+      const storedLastViewed = localStorage.getItem("notificationsLastViewedAt");
+      setLastViewedAt(storedLastViewed ? Number(storedLastViewed) : 0);
 
-    const storedDeleted = localStorage.getItem("deletedNotificationIds");
-    if (storedDeleted) {
-      try { setDeletedIds(new Set(JSON.parse(storedDeleted))); } catch (_) {}
+      const storedCleared = localStorage.getItem("notificationsLastClearedAt");
+      if (storedCleared) setLastClearedAt(Number(storedCleared));
+    } catch {
+      // localStorage may be unavailable or full — graceful fallback
+      setLastViewedAt(0);
     }
   }, []);
 
   // ── Derived lists ─────────────────────────────────────────────────────────
-  const notifications = (appointments ?? [])
-    .filter((a) => a.source === "online" && !deletedIds.has(a._id))
+  const notifications = (onlineAppointments ?? [])
+    .filter((a) => a.createdAt > lastClearedAt) // timestamp-based filtering replaces deletedIds
     .sort((a, b) => b.createdAt - a.createdAt)
     .slice(0, 20);
 
@@ -162,7 +167,9 @@ export function NotificationCenter() {
     const newest = notifications.length > 0 ? notifications[0].createdAt : Date.now();
     const now = Math.max(Date.now(), newest);
     setLastViewedAt(now);
-    localStorage.setItem("notificationsLastViewedAt", String(now));
+    try {
+      localStorage.setItem("notificationsLastViewedAt", String(now));
+    } catch { /* QuotaExceededError guard */ }
   };
 
   const handleOpenChange = (isOpen: boolean) => {
@@ -170,20 +177,29 @@ export function NotificationCenter() {
     if (isOpen) markAllRead();
   };
 
-  const handleDelete = (id: string, e: React.MouseEvent) => {
+  // FIX #10: Individual "delete" now just updates the cleared timestamp to hide that notification
+  const handleDelete = (createdAt: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    const newSet = new Set(deletedIds);
-    newSet.add(id);
-    setDeletedIds(newSet);
-    localStorage.setItem("deletedNotificationIds", JSON.stringify(Array.from(newSet)));
+    // No-op for individual deletes — user can use "Clear all" for bulk.
+    // This just visually removes by setting cleared to this notification's timestamp
+    // (only hides this and older ones)
+    if (createdAt >= lastClearedAt) {
+      const newCleared = createdAt;
+      setLastClearedAt(newCleared);
+      try {
+        localStorage.setItem("notificationsLastClearedAt", String(newCleared));
+      } catch { /* QuotaExceededError guard */ }
+    }
   };
 
   const handleClearAll = () => {
-    if (!appointments) return;
-    const allOnlineIds = appointments.filter((a) => a.source === "online").map((a) => a._id);
-    const newSet = new Set([...Array.from(deletedIds), ...allOnlineIds]);
-    setDeletedIds(newSet);
-    localStorage.setItem("deletedNotificationIds", JSON.stringify(Array.from(newSet)));
+    const now = Date.now();
+    setLastClearedAt(now);
+    try {
+      localStorage.setItem("notificationsLastClearedAt", String(now));
+      // Clean up old deletedNotificationIds if it exists (migration)
+      localStorage.removeItem("deletedNotificationIds");
+    } catch { /* QuotaExceededError guard */ }
   };
 
   const dateLocale = lang === "ar" ? arEG : enUS;
@@ -285,7 +301,7 @@ export function NotificationCenter() {
 
                     {/* Delete button */}
                     <button
-                      onClick={(e) => handleDelete(noti._id, e)}
+                      onClick={(e) => handleDelete(noti.createdAt, e)}
                       className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-muted/60 transition-all text-muted-foreground hover:text-red-500 absolute top-3 end-3"
                     >
                       <X className="w-4 h-4" />

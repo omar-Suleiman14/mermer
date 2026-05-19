@@ -51,6 +51,20 @@ const nextConfig: NextConfig = {
             key: "Strict-Transport-Security",
             value: "max-age=63072000; includeSubDomains; preload",
           },
+          // FIX #11: Content Security Policy for healthcare data protection
+          {
+            key: "Content-Security-Policy",
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.ibnsina.com https://*.clerk.accounts.dev",
+              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+              "font-src 'self' https://fonts.gstatic.com",
+              "img-src 'self' data: blob: https://*.convex.cloud https://img.clerk.com",
+              "connect-src 'self' https://*.convex.cloud wss://*.convex.cloud https://clerk.ibnsina.com https://*.clerk.accounts.dev",
+              "frame-src 'self' https://clerk.ibnsina.com https://*.clerk.accounts.dev",
+              "worker-src 'self' blob:",
+            ].join("; "),
+          },
         ],
       },
       {

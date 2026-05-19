@@ -1,15 +1,13 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { getAuthUser, requireAuthUser } from "./authHelper";
 
 // ─── Queries ─────────────────────────────────────────────────────────────────
 
 export const listFollowUps = query({
   args: { clerkId: v.string() },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
+    const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return [];
 
     return await ctx.db
@@ -23,10 +21,7 @@ export const listFollowUps = query({
 export const listFollowUpsByPatient = query({
   args: { clerkId: v.string(), patientId: v.id("patients") },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
+    const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return [];
 
     return await ctx.db
@@ -53,11 +48,7 @@ export const createFollowUp = mutation({
     note: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("User not found");
+    const user = await requireAuthUser(ctx, args.clerkId);
 
     const patient = await ctx.db.get(args.patientId);
     if (!patient || patient.doctorId !== user._id)
@@ -122,11 +113,7 @@ export const updateFollowUp = mutation({
     }),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("User not found");
+    const user = await requireAuthUser(ctx, args.clerkId);
 
     const fu = await ctx.db.get(args.followUpId);
     if (!fu || fu.doctorId !== user._id) throw new Error("Not authorized");
@@ -138,11 +125,7 @@ export const updateFollowUp = mutation({
 export const deleteFollowUp = mutation({
   args: { clerkId: v.string(), followUpId: v.id("followUps") },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("User not found");
+    const user = await requireAuthUser(ctx, args.clerkId);
 
     const fu = await ctx.db.get(args.followUpId);
     if (!fu || fu.doctorId !== user._id) throw new Error("Not authorized");

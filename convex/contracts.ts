@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { getAuthUser, requireAuthUser } from "./authHelper";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -43,10 +44,7 @@ function nextVisitDate(
 export const listContracts = query({
   args: { clerkId: v.string() },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
+    const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return [];
 
     const contracts = await ctx.db
@@ -74,10 +72,7 @@ export const listContracts = query({
 export const getContract = query({
   args: { clerkId: v.string(), contractId: v.id("contracts") },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
+    const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return null;
 
     const contract = await ctx.db.get(args.contractId);
@@ -94,10 +89,7 @@ export const getContract = query({
 export const listContractsByPatient = query({
   args: { clerkId: v.string(), patientId: v.id("patients") },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
+    const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return [];
 
     const contracts = await ctx.db
@@ -130,11 +122,7 @@ export const createContract = mutation({
     visitSchedules: v.optional(v.array(v.number())),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("User not found");
+    const user = await requireAuthUser(ctx, args.clerkId);
 
     const patient = await ctx.db.get(args.patientId);
     if (!patient || patient.doctorId !== user._id)
@@ -196,22 +184,24 @@ export const createContract = mutation({
     const label = `Contract visit`;
 
     if (schedules.length > 0) {
-      // Use explicit schedule — each entry is a full timestamp
-      for (const visitDate of schedules) {
-        await ctx.db.insert("visits", {
-          patientId: args.patientId,
-          doctorId: user._id,
-          patientName: patient.name,
-          patientPhone: patient.phone,
-          patientAge: patient.age,
-          date: visitDate,
-          source: "contract",
-          status: "confirmed",
-          contractId: id,
-          reasonForVisit: label,
-          createdAt,
-        });
-      }
+      // FIX: Use Promise.all instead of sequential loop for visit creation
+      await Promise.all(
+        schedules.map((visitDate) =>
+          ctx.db.insert("visits", {
+            patientId: args.patientId,
+            doctorId: user._id,
+            patientName: patient.name,
+            patientPhone: patient.phone,
+            patientAge: patient.age,
+            date: visitDate,
+            source: "contract",
+            status: "confirmed",
+            contractId: id,
+            reasonForVisit: label,
+            createdAt,
+          })
+        )
+      );
     }
 
     return id;
@@ -241,11 +231,7 @@ export const updateContract = mutation({
     }),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("User not found");
+    const user = await requireAuthUser(ctx, args.clerkId);
 
     const contract = await ctx.db.get(args.contractId);
     if (!contract || contract.doctorId !== user._id)
@@ -255,27 +241,23 @@ export const updateContract = mutation({
   },
 });
 
+// FIX #4: Use Promise.all() instead of sequential loop for visit deletion
 export const deleteContract = mutation({
   args: { clerkId: v.string(), contractId: v.id("contracts") },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("User not found");
+    const user = await requireAuthUser(ctx, args.clerkId);
 
     const contract = await ctx.db.get(args.contractId);
     if (!contract || contract.doctorId !== user._id)
       throw new Error("Not authorized");
 
-    // Also remove all auto-generated visits for this contract (sequential)
+    // Parallel deletion of all auto-generated visits for this contract
     const contractVisits = await ctx.db
       .query("visits")
       .withIndex("by_contract", (q) => q.eq("contractId", args.contractId))
       .collect();
-    for (const v of contractVisits) {
-      await ctx.db.delete(v._id);
-    }
+
+    await Promise.all(contractVisits.map((v) => ctx.db.delete(v._id)));
 
     await ctx.db.delete(args.contractId);
   },
@@ -291,12 +273,7 @@ export const updateContractDefaults = mutation({
     contractDefaultCostPerVisit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("User not found");
-
+    const user = await requireAuthUser(ctx, args.clerkId);
     const { clerkId, ...fields } = args;
     await ctx.db.patch(user._id, fields);
   },
@@ -308,11 +285,7 @@ export const waiveUnpaidBalance = mutation({
     contractId: v.id("contracts"),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("User not found");
+    const user = await requireAuthUser(ctx, args.clerkId);
 
     const contract = await ctx.db.get(args.contractId);
     if (!contract || contract.doctorId !== user._id) throw new Error("Contract not found");
@@ -343,11 +316,7 @@ export const completeContractVisit = mutation({
     nextVisitDate: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("User not found");
+    const user = await requireAuthUser(ctx, args.clerkId);
 
     const visit = await ctx.db.get(args.visitId);
     if (!visit || visit.doctorId !== user._id) throw new Error("Visit not found");
@@ -411,10 +380,7 @@ export const completeContractVisit = mutation({
 export const getContractStats = query({
   args: { clerkId: v.string(), contractId: v.id("contracts") },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
+    const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return null;
 
     const contract = await ctx.db.get(args.contractId);
@@ -444,4 +410,3 @@ export const getContractStats = query({
     };
   },
 });
-

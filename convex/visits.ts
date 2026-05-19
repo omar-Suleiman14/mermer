@@ -1,13 +1,11 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { getAuthUser, requireAuthUser } from "./authHelper";
 
 export const getVisitsByPatient = query({
   args: { patientId: v.id("patients"), clerkId: v.string() },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
+    const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return [];
 
     const patient = await ctx.db.get(args.patientId);
@@ -42,10 +40,7 @@ export const getVisitsByPatient = query({
 export const getRecentVisits = query({
   args: { clerkId: v.string(), limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
+    const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return [];
 
     const visits = await ctx.db
@@ -75,10 +70,7 @@ export const getVisitStats = query({
     monthStart: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
+    const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return { today: 0, week: 0, month: 0 };
 
     // Use client-provided timestamps (fallback for backwards compat)
@@ -123,11 +115,7 @@ export const createVisit = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("User not found");
+    const user = await requireAuthUser(ctx, args.clerkId);
 
     // Denormalize patient info for display
     const patient = await ctx.db.get(args.patientId);
@@ -160,11 +148,7 @@ export const addVisitFiles = mutation({
     documentIds: v.optional(v.array(v.id("_storage"))),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("User not found");
+    const user = await requireAuthUser(ctx, args.clerkId);
 
     const visit = await ctx.db.get(args.visitId);
     if (!visit || visit.doctorId !== user._id) throw new Error("Not found");
@@ -180,6 +164,7 @@ export const addVisitFiles = mutation({
   },
 });
 
+// FIX #25: Add .take(200) safety cap + server-side date range clamp (max 1 day)
 export const getVisitsByDateRange = query({
   args: {
     clerkId: v.string(),
@@ -187,18 +172,18 @@ export const getVisitsByDateRange = query({
     endDate: v.number(),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
+    const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return [];
+
+    // Server-side clamp: max 1 day range to prevent unbounded reads
+    const clampedEnd = Math.min(args.endDate, args.startDate + 86400000);
 
     const visits = await ctx.db
       .query("visits")
       .withIndex("by_doctor_date", (q) =>
-        q.eq("doctorId", user._id).gte("date", args.startDate).lte("date", args.endDate)
+        q.eq("doctorId", user._id).gte("date", args.startDate).lte("date", clampedEnd)
       )
-      .collect();
+      .take(200);
 
     return visits.map((v) => ({
       _id: v._id,
@@ -213,11 +198,7 @@ export const getVisitsByDateRange = query({
 export const deleteVisit = mutation({
   args: { clerkId: v.string(), visitId: v.id("visits") },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("User not found");
+    const user = await requireAuthUser(ctx, args.clerkId);
     const visit = await ctx.db.get(args.visitId);
     if (!visit || visit.doctorId !== user._id) throw new Error("Not found");
     await ctx.db.delete(args.visitId);
@@ -236,11 +217,7 @@ export const updateVisit = mutation({
     }),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("User not found");
+    const user = await requireAuthUser(ctx, args.clerkId);
     const visit = await ctx.db.get(args.visitId);
     if (!visit || visit.doctorId !== user._id) throw new Error("Not authorized");
 
@@ -254,6 +231,7 @@ export const updateVisit = mutation({
   },
 });
 
+// FIX #20: bulkRescheduleVisits — add conflict detection + use Promise.all
 export const bulkRescheduleVisits = mutation({
   args: {
     clerkId: v.string(),
@@ -265,17 +243,28 @@ export const bulkRescheduleVisits = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("User not found");
+    const user = await requireAuthUser(ctx, args.clerkId);
 
-    for (const update of args.updates) {
-      const visit = await ctx.db.get(update.visitId);
-      if (visit && visit.doctorId === user._id) {
+    // Parallel reschedule with conflict checks
+    await Promise.all(
+      args.updates.map(async (update) => {
+        const visit = await ctx.db.get(update.visitId);
+        if (!visit || visit.doctorId !== user._id) return;
+
+        // Conflict check — same pattern as updateAppointment
+        const conflict = await ctx.db
+          .query("visits")
+          .withIndex("by_doctor_date", (q) =>
+            q.eq("doctorId", user._id).eq("date", update.newDate)
+          )
+          .first();
+
+        if (conflict && conflict._id !== visit._id && conflict.status !== "cancelled") {
+          throw new Error(`Slot conflict at ${new Date(update.newDate).toISOString()}`);
+        }
+
         await ctx.db.patch(update.visitId, { date: update.newDate });
-      }
-    }
+      })
+    );
   },
 });

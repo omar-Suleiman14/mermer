@@ -12,7 +12,7 @@ export function OnlineBookingNotifier() {
   const { t } = useI18n();
 
   const appointments = useQuery(
-    api.appointments.listAppointments,
+    api.appointments.listOnlineAppointments,
     clerkId ? { clerkId } : "skip"
   );
 

@@ -6,7 +6,7 @@ import { Id } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
-import { Camera, Link as LinkIcon, Globe, Palette, CalendarDays, Bot, CheckCircle2, Loader2, Unlink, AlertTriangle, X, Bell } from "lucide-react";
+import { Camera, Link as LinkIcon, Globe, Palette, CalendarDays, AlertTriangle, X, Bell } from "lucide-react";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { MessageTemplatesSection } from "@/components/message-templates-section";
@@ -47,24 +47,6 @@ export default function SettingsPage() {
   const updateProfile = useMutation(api.users.updateProfile);
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   const saveProfilePhoto = useMutation(api.users.saveProfilePhoto);
-
-  // ── Telegram / Elliot ──
-  const telegramStatus = useQuery(api.telegram.getTelegramStatus, clerkId ? { clerkId } : "skip");
-  const unlinkTelegram = useMutation(api.telegram.unlinkTelegram);
-  const [revoking, setRevoking] = useState(false);
-
-  async function handleRevoke() {
-    if (!clerkId) return;
-    setRevoking(true);
-    try {
-      await unlinkTelegram({ clerkId });
-      toast.success(t("elliot.unlinkedToast"));
-    } catch {
-      toast.error(t("elliot.unlinkFailed"));
-    } finally {
-      setRevoking(false);
-    }
-  }
 
   // ── Rescheduling non-working days ──
   const [dateRange] = useState(() => {
@@ -428,64 +410,6 @@ export default function SettingsPage() {
           <p className="text-[12px] text-muted-foreground ms-4 mt-[-20px] mb-8">
             {t("settings.appearanceHint")}
           </p>
-        </section>
-
-        {/* ═══════════════════════════════════════════════════════════ */}
-        {/* TELEGRAM / ELLIOT                                           */}
-        {/* ═══════════════════════════════════════════════════════════ */}
-        <section>
-          <h3 className={sectionTitleClass}>{t("elliot.sectionTitle")}</h3>
-          <div className={blockClass}>
-            <div className={rowClass}>
-              {/* Label */}
-              <label className={labelClass}>
-                <Bot className="w-4 h-4 text-muted-foreground" />
-                {t("elliot.name")}
-              </label>
-
-              {/* Right side */}
-              <div className="flex items-center gap-3 flex-1 justify-end">
-                {telegramStatus === undefined ? (
-                  /* Loading */
-                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                ) : telegramStatus?.linked ? (
-                  /* Connected */
-                  <>
-                    <span className="flex items-center gap-1 text-[11px] font-bold text-[#34c759] bg-[#34c759]/10 border border-[#34c759]/20 px-2 py-0.5 rounded-full">
-                      <CheckCircle2 className="w-3 h-3" />
-                      {t("elliot.linked")}
-                    </span>
-                    <button
-                      onClick={handleRevoke}
-                      disabled={revoking}
-                      className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground hover:text-red-500 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-500/8 disabled:opacity-50"
-                    >
-                      {revoking
-                        ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        : <Unlink className="w-3.5 h-3.5" />}
-                      {t("elliot.unlink")}
-                    </button>
-                  </>
-                ) : (
-                  /* Disconnected */
-                  <a
-                    href={`https://t.me/Elliot_abot?start=connect`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 text-[11px] font-semibold text-white bg-[#007AFF] hover:bg-[#0062cc] transition-colors px-3 py-1.5 rounded-xl whitespace-nowrap"
-                  >
-                    <LinkIcon className="w-3.5 h-3.5" />
-                    {t("elliot.linkBtn")}
-                  </a>
-                )}
-              </div>
-            </div>
-
-            {/* Sub-description row */}
-            <div className="px-4 py-2.5 text-[11px] text-muted-foreground">
-              {telegramStatus?.linked ? t("elliot.ready") : t("elliot.linkDesc")}
-            </div>
-          </div>
         </section>
 
         {/* ═══════════════════════════════════════════════════════════ */}

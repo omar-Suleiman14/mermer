@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { getAuthUser, requireAuthUser } from "./authHelper";
 
 // Default conditions that are always available
 const DEFAULTS = [
@@ -17,10 +18,7 @@ const DEFAULTS = [
 export const listOptions = query({
   args: { clerkId: v.string() },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
+    const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return DEFAULTS;
 
     const custom = await ctx.db
@@ -38,11 +36,7 @@ export const listOptions = query({
 export const addOption = mutation({
   args: { clerkId: v.string(), name: v.string() },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("User not found");
+    const user = await requireAuthUser(ctx, args.clerkId);
 
     const trimmed = args.name.trim();
     if (!trimmed) return;

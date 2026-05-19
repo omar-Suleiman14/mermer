@@ -1,8 +1,8 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { getAuthUser, requireAuthUser } from "./authHelper";
 
 // ─── Public booking (online) ─────────────────────────────────────────────────
-// OPTIMIZED: Uses by_doctor_phone index for O(1) patient lookup instead of .take(500) + JS scan
 
 export const createAppointment = mutation({
   args: {
@@ -30,7 +30,7 @@ export const createAppointment = mutation({
       throw new Error("This time slot is already booked");
     }
 
-    // OPTIMIZED: Use by_doctor_phone index for O(1) lookup instead of .take(500) + JS scan
+    // OPTIMIZED: Use by_doctor_phone index for O(1) lookup
     const existingPatient = await ctx.db
       .query("patients")
       .withIndex("by_doctor_phone", (q) =>
@@ -78,11 +78,7 @@ export const addManualAppointment = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const doctor = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!doctor) throw new Error("Doctor not found");
+    const doctor = await requireAuthUser(ctx, args.clerkId);
 
     const patient = await ctx.db.get(args.patientId);
     if (!patient) throw new Error("Patient not found");
@@ -122,11 +118,7 @@ export const swapAppointments = mutation({
     appointmentId2: v.id("visits"),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("Unauthorized");
+    const user = await requireAuthUser(ctx, args.clerkId);
 
     const v1 = await ctx.db.get(args.appointmentId1);
     const v2 = await ctx.db.get(args.appointmentId2);
@@ -140,15 +132,11 @@ export const swapAppointments = mutation({
 });
 
 // ─── Queries ─────────────────────────────────────────────────────────────────
-// OPTIMIZED: Reduced take(200) → take(100) for general listing with safety cap
 
 export const listAppointments = query({
   args: { clerkId: v.string() },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
+    const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return [];
     return await ctx.db
       .query("visits")
@@ -158,14 +146,31 @@ export const listAppointments = query({
   },
 });
 
+// FIX #7: Dedicated query for online appointments — replaces filtering 200 visits client-side
+export const listOnlineAppointments = query({
+  args: { clerkId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx, args.clerkId);
+    if (!user) return [];
+
+    // Fetch recent visits and filter by source === "online" server-side
+    const visits = await ctx.db
+      .query("visits")
+      .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+      .order("desc")
+      .take(200);
+
+    return visits
+      .filter((v) => v.source === "online")
+      .slice(0, 50);
+  },
+});
+
 // OPTIMIZED: Skip redundant patient joins — denormalized fields exist on visit
 export const getAppointmentsByDate = query({
   args: { clerkId: v.string(), dayStart: v.number() },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
+    const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return [];
 
     const dayEnd = args.dayStart + 86400000 - 1;
@@ -181,7 +186,6 @@ export const getAppointmentsByDate = query({
       .collect();
 
     // OPTIMIZED: Only fetch patient if denormalized fields are missing (rare).
-    // Most visits already have patientName/Phone/Age from creation.
     return await Promise.all(
       visits.map(async (visit) => {
         const needsPatient = !visit.patientName && visit.patientId;
@@ -245,11 +249,7 @@ export const updateAppointment = mutation({
     }),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("User not found");
+    const user = await requireAuthUser(ctx, args.clerkId);
 
     const visit = await ctx.db.get(args.appointmentId);
     if (!visit || visit.doctorId !== user._id) throw new Error("Not authorized");
@@ -273,17 +273,16 @@ export const updateAppointment = mutation({
 export const deleteAppointment = mutation({
   args: { clerkId: v.string(), appointmentId: v.id("visits") },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("User not found");
+    const user = await requireAuthUser(ctx, args.clerkId);
     const visit = await ctx.db.get(args.appointmentId);
     if (!visit || visit.doctorId !== user._id) throw new Error("Not authorized");
     await ctx.db.delete(args.appointmentId);
   },
 });
 
+// FIX #17: cancelAppointmentByPhone now requires both phone + a time-window check.
+// Only visits created in the last 7 days can be cancelled, and only from the
+// matching phone number. This limits the blast radius for guessed IDs.
 export const cancelAppointmentByPhone = mutation({
   args: {
     appointmentId: v.id("visits"),
@@ -293,98 +292,24 @@ export const cancelAppointmentByPhone = mutation({
     const visit = await ctx.db.get(args.appointmentId);
     if (!visit || visit.patientPhone !== args.patientPhone)
       throw new Error("Not found");
+
+    // Safety: only allow cancellation of visits created within the last 7 days
+    const sevenDaysAgo = Date.now() - 7 * 86400000;
+    if (visit.createdAt < sevenDaysAgo) {
+      throw new Error("This appointment can no longer be cancelled online");
+    }
+
+    // Don't allow cancelling already-completed visits
+    if (visit.status === "completed") {
+      throw new Error("Completed visits cannot be cancelled");
+    }
+
     await ctx.db.patch(args.appointmentId, { status: "cancelled" });
   },
 });
 
 // ─── Visit history (per patient) ─────────────────────────────────────────────
+// FIX #19: REMOVED duplicate getVisitsByPatient — canonical version is in visits.ts
 
-export const getVisitsByPatient = query({
-  args: { patientId: v.id("patients"), clerkId: v.string() },
-  handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) return [];
-
-    const patient = await ctx.db.get(args.patientId);
-    if (!patient || patient.doctorId !== user._id) return [];
-
-    const visits = await ctx.db
-      .query("visits")
-      .withIndex("by_patient", (q) => q.eq("patientId", args.patientId))
-      .order("desc")
-      .take(500);
-
-    return await Promise.all(
-      visits.map(async (v) => {
-        const prescriptionImageUrl = v.prescriptionImageId
-          ? await ctx.storage.getUrl(v.prescriptionImageId)
-          : null;
-        const prescriptionPdfUrl = v.prescriptionPdfId
-          ? await ctx.storage.getUrl(v.prescriptionPdfId)
-          : null;
-        const documentUrls = v.documentIds
-          ? await Promise.all(v.documentIds.map((id) => ctx.storage.getUrl(id)))
-          : [];
-        return {
-          _id: v._id as string,
-          date: v.date,
-          source: v.source ?? "manual",
-          status: v.status ?? "confirmed",
-          reasonForVisit: v.reasonForVisit,
-          prescribedMedications: v.prescribedMedications,
-          analysisRequested: v.analysisRequested,
-          notes: v.notes,
-          prescriptionImageUrl,
-          prescriptionPdfUrl,
-          documentUrls,
-          contractId: v.contractId as string | undefined,
-        };
-      })
-    );
-  },
-});
-
-// OPTIMIZED: Uses by_doctor_date range query with client-passed timestamps
-// instead of Date.now() in query (which defeats Convex query cache).
-// Accepts dayStart/weekStart/monthStart from client.
-export const getVisitStats = query({
-  args: {
-    clerkId: v.string(),
-    todayStart: v.optional(v.number()),
-    weekStart: v.optional(v.number()),
-    monthStart: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) return { today: 0, week: 0, month: 0 };
-
-    // Use client-provided timestamps (or fallback for compatibility)
-    const now = Date.now();
-    const todayStart = args.todayStart ?? (now - (now % 86400000));
-    const monthStart = args.monthStart ?? (todayStart - 29 * 86400000);
-
-    // OPTIMIZED: Use date range index — only reads this month's visits
-    const monthVisits = await ctx.db
-      .query("visits")
-      .withIndex("by_doctor_date", (q) =>
-        q.eq("doctorId", user._id).gte("date", monthStart)
-      )
-      .take(5000);
-
-    const completed = monthVisits.filter((v) => v.status === "completed");
-
-    const weekStart = args.weekStart ?? (todayStart - 6 * 86400000);
-
-    return {
-      today: completed.filter((v) => v.date >= todayStart).length,
-      week: completed.filter((v) => v.date >= weekStart).length,
-      month: completed.length,
-    };
-  },
-});
+// ─── Visit stats ─────────────────────────────────────────────────────────────
+// FIX #19: REMOVED duplicate getVisitStats — canonical version is in visits.ts

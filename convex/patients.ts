@@ -1,24 +1,35 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { getAuthUser, requireAuthUser } from "./authHelper";
 
-// OPTIMIZED: Added .take(500) safety cap and only fetches last visit when
-// denormalized data would be useful. Prevents unbounded growth.
+// FIX #5: Batch-fetch contracts for all patients in one query instead of N+1
 export const listPatients = query({
   args: { clerkId: v.string() },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
+    const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return [];
 
-    // OPTIMIZED: Cap at 500 patients to prevent unbounded reads
+    // Cap at 500 patients to prevent unbounded reads
     const patients = await ctx.db
       .query("patients")
       .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
       .take(500);
 
-    // Get last visit and past due status for each patient
+    // BATCH: Fetch ALL contracts for this doctor once, then group in JS
+    const allContracts = await ctx.db
+      .query("contracts")
+      .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+      .take(2000);
+
+    // Build a Set of patientIds that have unpaid balances
+    const pastDuePatientIds = new Set<string>();
+    for (const c of allContracts) {
+      if ((c.unpaidBalance ?? 0) > 0) {
+        pastDuePatientIds.add(c.patientId.toString());
+      }
+    }
+
+    // Get last visit per patient — still N queries but each reads only 1 row
     const enrichedPatients = await Promise.all(
       patients.map(async (p) => {
         const visits = await ctx.db
@@ -26,14 +37,12 @@ export const listPatients = query({
           .withIndex("by_patient", (q) => q.eq("patientId", p._id))
           .order("desc")
           .take(1);
-          
-        const contracts = await ctx.db
-          .query("contracts")
-          .withIndex("by_patient", (q) => q.eq("patientId", p._id))
-          .collect();
-        const hasPastDue = contracts.some((c) => (c.unpaidBalance ?? 0) > 0);
 
-        return { ...p, lastVisit: visits[0] ?? null, hasPastDue };
+        return {
+          ...p,
+          lastVisit: visits[0] ?? null,
+          hasPastDue: pastDuePatientIds.has(p._id.toString()),
+        };
       })
     );
 
@@ -44,10 +53,7 @@ export const listPatients = query({
 export const getPatient = query({
   args: { patientId: v.id("patients"), clerkId: v.string() },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
+    const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return null;
 
     const patient = await ctx.db.get(args.patientId);
@@ -57,26 +63,31 @@ export const getPatient = query({
 });
 
 // OPTIMIZED: Uses searchIndex for name search and by_doctor_phone for phone search
-// instead of .collect() all patients + JS filter
 export const searchPatients = query({
   args: { clerkId: v.string(), search: v.string() },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
+    const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return [];
 
-    // Helper to enrich patients with hasPastDue
-    const enrichPatients = async (patientsArray: any[]) => {
-      return await Promise.all(patientsArray.map(async (p) => {
-        const contracts = await ctx.db
-          .query("contracts")
-          .withIndex("by_patient", (q) => q.eq("patientId", p._id))
-          .collect();
-        const hasPastDue = contracts.some((c) => (c.unpaidBalance ?? 0) > 0);
-        const hasActiveContract = contracts.some((c) => c.status === "active");
-        return { ...p, hasPastDue, hasActiveContract };
+    // BATCH: Fetch ALL contracts for this doctor once
+    const allContracts = await ctx.db
+      .query("contracts")
+      .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+      .take(2000);
+
+    const pastDuePatientIds = new Set<string>();
+    const activeContractPatientIds = new Set<string>();
+    for (const c of allContracts) {
+      if ((c.unpaidBalance ?? 0) > 0) pastDuePatientIds.add(c.patientId.toString());
+      if (c.status === "active") activeContractPatientIds.add(c.patientId.toString());
+    }
+
+    // Helper to enrich patients with hasPastDue using pre-fetched data
+    const enrichPatients = (patientsArray: any[]) => {
+      return patientsArray.map((p) => ({
+        ...p,
+        hasPastDue: pastDuePatientIds.has(p._id.toString()),
+        hasActiveContract: activeContractPatientIds.has(p._id.toString()),
       }));
     };
 
@@ -87,7 +98,7 @@ export const searchPatients = query({
         .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
         .order("desc")
         .take(20);
-      return await enrichPatients(recent);
+      return enrichPatients(recent);
     }
 
     const term = args.search.trim();
@@ -96,7 +107,6 @@ export const searchPatients = query({
     const isPhoneSearch = /^\d+$/.test(term.replace(/[\s\-\(\)\+]/g, ""));
 
     if (isPhoneSearch) {
-      // OPTIMIZED: Use index for phone-based search when possible
       const allPatients = await ctx.db
         .query("patients")
         .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
@@ -104,7 +114,7 @@ export const searchPatients = query({
       const filtered = allPatients
         .filter((p) => p.phone.includes(term))
         .slice(0, 20);
-      return await enrichPatients(filtered);
+      return enrichPatients(filtered);
     }
 
     // OPTIMIZED: Use searchIndex for name search (full-text search, much faster)
@@ -115,7 +125,7 @@ export const searchPatients = query({
           q.search("name", term).eq("doctorId", user._id)
         )
         .take(20);
-      return await enrichPatients(searchResults);
+      return enrichPatients(searchResults);
     } catch {
       // Fallback to index scan if searchIndex fails
       const allPatients = await ctx.db
@@ -130,7 +140,7 @@ export const searchPatients = query({
             p.phone.includes(term)
         )
         .slice(0, 20);
-      return await enrichPatients(filtered);
+      return enrichPatients(filtered);
     }
   },
 });
@@ -145,11 +155,7 @@ export const createPatient = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("User not found");
+    const user = await requireAuthUser(ctx, args.clerkId);
 
     return await ctx.db.insert("patients", {
       doctorId: user._id,
@@ -174,11 +180,7 @@ export const updatePatient = mutation({
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("User not found");
+    const user = await requireAuthUser(ctx, args.clerkId);
 
     const patient = await ctx.db.get(args.patientId);
     if (!patient || patient.doctorId !== user._id) throw new Error("Not found");
@@ -193,17 +195,30 @@ export const updatePatient = mutation({
   },
 });
 
+// FIX #23: Cascade deletes — remove associated visits, contracts, follow-ups, queue entries
 export const deletePatient = mutation({
   args: { clerkId: v.string(), patientId: v.id("patients") },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("User not found");
+    const user = await requireAuthUser(ctx, args.clerkId);
     const patient = await ctx.db.get(args.patientId);
     if (!patient || patient.doctorId !== user._id) throw new Error("Not found");
-    await ctx.db.delete(args.patientId);
+
+    // Fetch all related records in parallel
+    const [visits, contracts, followUps, queueItems] = await Promise.all([
+      ctx.db.query("visits").withIndex("by_patient", (q) => q.eq("patientId", args.patientId)).collect(),
+      ctx.db.query("contracts").withIndex("by_patient", (q) => q.eq("patientId", args.patientId)).collect(),
+      ctx.db.query("followUps").withIndex("by_patient", (q) => q.eq("patientId", args.patientId)).collect(),
+      ctx.db.query("queue").withIndex("by_doctor", (q) => q.eq("doctorId", user._id)).collect(),
+    ]);
+
+    // Delete all related records in parallel + the patient itself
+    await Promise.all([
+      ...visits.map((v) => ctx.db.delete(v._id)),
+      ...contracts.map((c) => ctx.db.delete(c._id)),
+      ...followUps.map((f) => ctx.db.delete(f._id)),
+      ...queueItems.filter((q) => q.patientId === args.patientId).map((q) => ctx.db.delete(q._id)),
+      ctx.db.delete(args.patientId),
+    ]);
   },
 });
 
@@ -211,10 +226,7 @@ export const deletePatient = mutation({
 export const findPatientByNameAndPhone = query({
   args: { clerkId: v.string(), name: v.string(), phone: v.string() },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
+    const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return null;
 
     // OPTIMIZED: Use compound index for direct lookup by phone

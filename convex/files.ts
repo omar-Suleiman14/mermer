@@ -2,10 +2,12 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
 // Generate a pre-signed upload URL for Convex storage
-// SECURITY: Verifies auth when clerkId is provided
+// SECURITY: Require authentication — only logged-in users can upload files
 export const generateUploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthenticated: must be logged in to upload files");
     return await ctx.storage.generateUploadUrl();
   },
 });
@@ -18,10 +20,12 @@ export const getFileUrl = query({
   },
 });
 
-// Delete a stored file
+// Delete a stored file — requires authentication
 export const deleteFile = mutation({
   args: { storageId: v.id("_storage") },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthenticated");
     await ctx.storage.delete(args.storageId);
   },
 });

@@ -669,18 +669,6 @@ const translations: Record<Lang, Record<string, string>> = {
     "toast.itemAdded": "Item added",
     "toast.stockAdjusted": "Stock updated",
     "toast.reportSubmitted": "Report submitted",
-
-    // Elliot
-    "elliot.sectionTitle": "Elliot",
-    "elliot.unlinkedToast": "Elliot has been unlinked from your account",
-    "elliot.unlinkFailed": "Failed to unlink, please try again",
-    "elliot.name": "Elliot",
-    "elliot.linked": "Linked",
-    "elliot.ready": "Your smart assistant is ready on Telegram",
-    "elliot.unlink": "Unlink",
-    "elliot.linkTitle": "Link Elliot to your clinic",
-    "elliot.linkDesc": "Manage your clinic directly from Telegram",
-    "elliot.linkBtn": "Link Clinic",
   },
 
   ar: {
@@ -1286,18 +1274,6 @@ const translations: Record<Lang, Record<string, string>> = {
     "toast.itemAdded": "تمت إضافة الصنف",
     "toast.stockAdjusted": "تم تحديث المخزون",
     "toast.reportSubmitted": "تم إرسال البلاغ",
-
-    // Elliot
-    "elliot.sectionTitle": "إليوت",
-    "elliot.unlinkedToast": "تم فصل إليوت عن حسابك",
-    "elliot.unlinkFailed": "فشل الفصل، حاول مجدداً",
-    "elliot.name": "إليوت",
-    "elliot.linked": "مرتبط",
-    "elliot.ready": "مساعدك الذكي جاهز على تيليجرام",
-    "elliot.unlink": "إلغاء الربط",
-    "elliot.linkTitle": "ربط إليوت بعيادتك",
-    "elliot.linkDesc": "أدر عيادتك مباشرة من تيليجرام",
-    "elliot.linkBtn": "ربط العيادة",
   },
 };
 

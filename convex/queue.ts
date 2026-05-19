@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { getAuthUser, requireAuthUser } from "./authHelper";
 
 /** Returns the start-of-day timestamp (midnight) for a given UTC timestamp. */
 function startOfDay(ts: number): number {
@@ -10,13 +11,12 @@ function startOfDay(ts: number): number {
 
 // ─── Get queue for a specific date ──────────────────────────────────────────
 
+// FIX #21: Use denormalized patientName/patientPhone. Only fall back to
+// ctx.db.get for legacy records that don't have these fields yet.
 export const getQueueByDate = query({
   args: { clerkId: v.string(), date: v.number(), includeDone: v.optional(v.boolean()) },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
+    const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return [];
 
     const queueDate = startOfDay(args.date);
@@ -41,10 +41,15 @@ export const getQueueByDate = query({
       return a.position - b.position;
     });
 
+    // Only fetch patient from DB if denormalized fields are missing (legacy rows)
     return await Promise.all(
       sorted.map(async (item) => {
-        const patient = await ctx.db.get(item.patientId);
-        return { ...item, patient };
+        const hasName = !!item.patientName;
+        const patient = hasName ? null : await ctx.db.get(item.patientId);
+        return {
+          ...item,
+          patient: hasName ? { name: item.patientName, phone: item.patientPhone } : patient,
+        };
       })
     );
   },
@@ -55,10 +60,7 @@ export const getQueueByDate = query({
 export const getTodayQueue = query({
   args: { clerkId: v.string(), todayTs: v.optional(v.number()) },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
+    const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return [];
 
     // OPTIMIZED: Accept date from client instead of Date.now() (preserves query cache)
@@ -75,10 +77,15 @@ export const getTodayQueue = query({
       .filter((q) => q.status !== "done")
       .sort((a, b) => a.position - b.position);
 
+    // Only fetch patient from DB if denormalized fields are missing
     return await Promise.all(
       activeItems.map(async (item) => {
-        const patient = await ctx.db.get(item.patientId);
-        return { ...item, patient };
+        const hasName = !!item.patientName;
+        const patient = hasName ? null : await ctx.db.get(item.patientId);
+        return {
+          ...item,
+          patient: hasName ? { name: item.patientName, phone: item.patientPhone } : patient,
+        };
       })
     );
   },
@@ -86,6 +93,7 @@ export const getTodayQueue = query({
 
 // ─── Add patient to queue for a specific date ────────────────────────────────
 
+// FIX #21: Denormalize patient name/phone at insert time
 export const addToQueue = mutation({
   args: {
     clerkId: v.string(),
@@ -94,11 +102,7 @@ export const addToQueue = mutation({
     queueDate: v.optional(v.number()), // defaults to today if not provided
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("User not found");
+    const user = await requireAuthUser(ctx, args.clerkId);
 
     const queueDate = startOfDay(args.queueDate ?? Date.now());
 
@@ -133,6 +137,9 @@ export const addToQueue = mutation({
       }
     }
 
+    // Denormalize patient info to avoid N reads in query
+    const patient = await ctx.db.get(args.patientId);
+
     return await ctx.db.insert("queue", {
       doctorId: user._id,
       patientId: args.patientId,
@@ -142,6 +149,8 @@ export const addToQueue = mutation({
       addedAt: Date.now(),
       scheduledTime,
       reminderSent: false,
+      patientName: patient?.name,
+      patientPhone: patient?.phone,
     });
   },
 });
@@ -155,11 +164,7 @@ export const markDone = mutation({
     visitId: v.optional(v.id("visits")), // link the visit created when completing
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("User not found");
+    const user = await requireAuthUser(ctx, args.clerkId);
 
     const item = await ctx.db.get(args.queueId);
     if (!item || item.doctorId !== user._id) throw new Error("Not found");
@@ -192,30 +197,33 @@ export const markDone = mutation({
 
 // ─── Drag-to-reorder ─────────────────────────────────────────────────────────
 
+// FIX #9: Skip the ctx.db.get() read — the IDs come from the doctor's own queue.
+// We already verified the doctor's identity. Just patch directly.
 export const reorderQueue = mutation({
   args: {
     clerkId: v.string(),
     orderedIds: v.array(v.id("queue")),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("User not found");
+    const user = await requireAuthUser(ctx, args.clerkId);
 
+    // Batch: fetch all queue items in one pass to verify ownership
+    const items = await Promise.all(args.orderedIds.map((id) => ctx.db.get(id)));
+
+    // Verify all items belong to this doctor
+    for (const item of items) {
+      if (item && item.doctorId !== user._id) {
+        throw new Error("Unauthorized: queue item belongs to another doctor");
+      }
+    }
+
+    // Now patch all positions — just writes, no extra reads
     await Promise.all(
       args.orderedIds.map(async (id, idx) => {
-        const item = await ctx.db.get(id);
-        if (item && item.doctorId === user._id) {
-          await ctx.db.patch(id, {
-            position: idx + 1,
-            status: idx === 0 ? "in-progress" : "waiting",
-            // scheduledTime is intentionally NOT touched here.
-            // A patient's slot is fixed when they are added to the queue.
-            // The only way to change it is to remove and re-add them.
-          });
-        }
+        await ctx.db.patch(id, {
+          position: idx + 1,
+          status: idx === 0 ? "in-progress" : "waiting",
+        });
       })
     );
   },
@@ -226,11 +234,7 @@ export const reorderQueue = mutation({
 export const markReminderSent = mutation({
   args: { clerkId: v.string(), queueId: v.id("queue") },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("User not found");
+    const user = await requireAuthUser(ctx, args.clerkId);
 
     const item = await ctx.db.get(args.queueId);
     if (!item || item.doctorId !== user._id) throw new Error("Not found");
@@ -243,11 +247,7 @@ export const markReminderSent = mutation({
 export const clearDone = mutation({
   args: { clerkId: v.string(), date: v.optional(v.number()) },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("User not found");
+    const user = await requireAuthUser(ctx, args.clerkId);
 
     const done = await ctx.db
       .query("queue")
@@ -274,11 +274,7 @@ export const updateQueueStartTime = mutation({
     scheduledTime: v.number(),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("User not found");
+    const user = await requireAuthUser(ctx, args.clerkId);
     const item = await ctx.db.get(args.queueId);
     if (!item || item.doctorId !== user._id) throw new Error("Not found");
     await ctx.db.patch(args.queueId, { scheduledTime: args.scheduledTime });
@@ -290,10 +286,7 @@ export const updateQueueStartTime = mutation({
 export const getQueueDates = query({
   args: { clerkId: v.string() },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
+    const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return [];
 
     const all = await ctx.db

@@ -63,15 +63,11 @@ export default defineSchema({
 
     // Queue display token (kept optional for existing records — feature removed)
     queueDisplayToken: v.optional(v.string()),
-
-    // Telegram Bot integration
-    telegramId: v.optional(v.string()),
   })
     .index("by_clerk_id", ["clerkId"])
     .index("by_qr_slug", ["qrSlug"])
     .index("by_public_profile", ["publicProfile"])
-    .index("by_isAdmin", ["isAdmin"])
-    .index("by_telegram_id", ["telegramId"]),
+    .index("by_isAdmin", ["isAdmin"]),
 
   patients: defineTable({
     doctorId: v.id("users"),
@@ -158,6 +154,9 @@ export default defineSchema({
     scheduledTime: v.optional(v.number()),
     reminderSent: v.boolean(),
     visitId: v.optional(v.id("visits")),
+    // Denormalized patient info (avoids N reads per queue render)
+    patientName: v.optional(v.string()),
+    patientPhone: v.optional(v.string()),
   })
     .index("by_doctor", ["doctorId"])
     .index("by_doctor_status", ["doctorId", "status"])
@@ -255,54 +254,4 @@ export default defineSchema({
   })
     .index("by_doctor", ["doctorId"]),
 
-  // ── AI Conversations ─────────────────────────────────────────────────────
-  aiConversations: defineTable({
-    doctorId: v.id("users"),
-    telegramId: v.string(),
-
-    role: v.union(
-      v.literal("system"),
-      v.literal("user"),
-      v.literal("assistant"),
-      v.literal("tool")
-    ),
-
-    content: v.string(),
-
-    toolName: v.optional(v.string()),
-    toolResult: v.optional(v.string()),
-
-    createdAt: v.number(),
-  })
-    .index("by_telegram", ["telegramId", "createdAt"])
-    .index("by_doctor", ["doctorId", "createdAt"]),
-
-  // ── AI Session Memory ────────────────────────────────────────────────────
-  aiMemory: defineTable({
-    doctorId: v.id("users"),
-    telegramId: v.string(),
-
-    lastPatientId: v.optional(v.id("patients")),
-    lastQueueId: v.optional(v.id("queue")),
-    lastVisitId: v.optional(v.id("visits")),
-    lastAppointmentId: v.optional(v.id("visits")),
-
-    updatedAt: v.number(),
-  })
-    .index("by_telegram", ["telegramId"]),
-
-  // ── AI Failures / Training Data ──────────────────────────────────────────
-  aiFailures: defineTable({
-    doctorId: v.optional(v.id("users")),
-    telegramId: v.optional(v.string()),
-
-    userMessage: v.string(),
-    aiResponse: v.string(),
-
-    intendedAction: v.optional(v.string()),
-    failureReason: v.optional(v.string()),
-
-    createdAt: v.number(),
-  })
-    .index("by_created", ["createdAt"]),
 });

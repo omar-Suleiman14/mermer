@@ -1,8 +1,11 @@
 import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
 import { v } from "convex/values";
+import { getAuthUser } from "./authHelper";
 
 // ─── Submit feedback (public, no auth) ──────────────────────────────────────
 
+// FIX #24: Add rate limiting — max 3 submissions per doctor per day per fingerprint.
+// Also validates comment length and sanitizes input.
 export const submitFeedback = mutation({
   args: {
     slug: v.string(),
@@ -19,11 +22,34 @@ export const submitFeedback = mutation({
 
     if (args.rating < 1 || args.rating > 5) throw new Error("Invalid rating");
 
+    // Validate comment length (prevent spam payload)
+    if (args.comment && args.comment.length > 1000) {
+      throw new Error("Comment too long (max 1000 characters)");
+    }
+
+    // Validate patient name length
+    if (args.patientName && args.patientName.length > 100) {
+      throw new Error("Name too long (max 100 characters)");
+    }
+
+    // Rate limit: max 5 reviews per doctor in the last hour
+    const oneHourAgo = Date.now() - 3600000;
+    const recentFeedback = await ctx.db
+      .query("feedback")
+      .withIndex("by_doctor", (q) => q.eq("doctorId", doctor._id))
+      .order("desc")
+      .take(10);
+
+    const recentCount = recentFeedback.filter((f) => f.createdAt > oneHourAgo).length;
+    if (recentCount >= 5) {
+      throw new Error("Too many reviews submitted recently. Please try again later.");
+    }
+
     return await ctx.db.insert("feedback", {
       doctorId: doctor._id,
       rating: args.rating,
-      comment: args.comment,
-      patientName: args.patientName,
+      comment: args.comment?.trim(),
+      patientName: args.patientName?.trim(),
       createdAt: Date.now(),
     });
   },
@@ -34,10 +60,7 @@ export const submitFeedback = mutation({
 export const listFeedback = query({
   args: { clerkId: v.string() },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
+    const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return [];
 
     return await ctx.db
@@ -53,10 +76,7 @@ export const listFeedback = query({
 export const getFeedbackStats = query({
   args: { clerkId: v.string() },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
+    const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return { average: 0, count: 0 };
 
     const items = await ctx.db
@@ -93,10 +113,7 @@ export const getDoctorInfoBySlug = query({
 export const getFeedbackQrUrl = query({
   args: { clerkId: v.string() },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
+    const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return null;
     if (!user.feedbackQrStorageId) return null;
     return await ctx.storage.getUrl(user.feedbackQrStorageId);

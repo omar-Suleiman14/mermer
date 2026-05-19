@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { getAuthUser, requireAuthUser, requireAdmin } from "./authHelper";
 
 function generateSlug(name: string): string {
   return (
@@ -48,10 +49,7 @@ export const getOrCreateUser = mutation({
 export const getCurrentUser = query({
   args: { clerkId: v.string() },
   handler: async (ctx, args) => {
-    return await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
+    return await getAuthUser(ctx, args.clerkId);
   },
 });
 
@@ -76,11 +74,7 @@ export const updateProfile = mutation({
     feePerVisit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("User not found");
+    const user = await requireAuthUser(ctx, args.clerkId);
     await ctx.db.patch(user._id, {
       name: args.name,
       phone: args.phone,
@@ -107,11 +101,7 @@ export const updateWhatsappTemplate = mutation({
     template: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("User not found");
+    const user = await requireAuthUser(ctx, args.clerkId);
     await ctx.db.patch(user._id, { whatsappTemplate: args.template });
   },
 });
@@ -129,26 +119,39 @@ export const updatePrescriptionTemplate = mutation({
     prescriptionWorkingHours: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("User not found");
+    const user = await requireAuthUser(ctx, args.clerkId);
     const { clerkId, ...fields } = args;
     await ctx.db.patch(user._id, fields);
   },
 });
 
 // Admin: list all doctors
+// FIX #3: Paginate, project only needed fields, never expose sensitive data
 export const listAllDoctors = query({
   args: { clerkId: v.string() },
   handler: async (ctx, args) => {
-    const admin = await ctx.db
+    await requireAdmin(ctx, args.clerkId);
+
+    const users = await ctx.db
       .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!admin?.isAdmin) throw new Error("Unauthorized");
-    return await ctx.db.query("users").take(20000);
+      .order("desc")
+      .take(500);
+
+    // Project only fields the admin panel needs — never expose
+    // whatsappTemplate, profilePhotoId, or internal IDs
+    return users.map((u) => ({
+      _id: u._id,
+      name: u.name,
+      email: u.email,
+      phone: u.phone,
+      clinicName: u.clinicName,
+      specialty: u.specialty,
+      isAdmin: u.isAdmin,
+      publicProfile: u.publicProfile,
+      isBanned: (u as any).isBanned,
+      createdAt: u.createdAt,
+      qrSlug: u.qrSlug,
+    }));
   },
 });
 
@@ -161,11 +164,7 @@ export const setAdmin = mutation({
     isAdmin: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const admin = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!admin?.isAdmin) throw new Error("Unauthorized");
+    await requireAdmin(ctx, args.clerkId);
     await ctx.db.patch(args.targetUserId, { isAdmin: args.isAdmin });
   },
 });
@@ -226,18 +225,8 @@ export const getDoctorBySlug = query({
   },
 });
 
-// Make a user admin by clerkId (utility mutation — call once from admin panel or seed)
-export const makeAdmin = mutation({
-  args: { clerkId: v.string() },
-  handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("User not found");
-    await ctx.db.patch(user._id, { isAdmin: true });
-  },
-});
+// FIX #12: DELETED makeAdmin mutation — it was a security footgun.
+// setAdmin (requires existing admin) and claimAdmin (one-time) are sufficient.
 
 // One-time admin claim — only succeeds when no admin account exists yet
 // OPTIMIZED: Uses by_isAdmin index for O(1) lookup instead of full table scan
@@ -280,10 +269,7 @@ export const getAdminExists = query({
 export const getLogoUrl = query({
   args: { clerkId: v.string() },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
+    const user = await getAuthUser(ctx, args.clerkId);
     if (!user?.logoStorageId) return null;
     return await ctx.storage.getUrl(user.logoStorageId);
   },
@@ -292,10 +278,7 @@ export const getLogoUrl = query({
 export const getProfilePhotoUrl = query({
   args: { clerkId: v.string() },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
+    const user = await getAuthUser(ctx, args.clerkId);
     if (!user?.profilePhotoId) return null;
     return await ctx.storage.getUrl(user.profilePhotoId);
   },
@@ -304,11 +287,7 @@ export const getProfilePhotoUrl = query({
 export const saveProfilePhoto = mutation({
   args: { clerkId: v.string(), storageId: v.id("_storage") },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
-    if (!user) throw new Error("User not found");
+    const user = await requireAuthUser(ctx, args.clerkId);
     await ctx.db.patch(user._id, { profilePhotoId: args.storageId });
   },
 });
