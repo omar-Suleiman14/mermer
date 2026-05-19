@@ -139,6 +139,8 @@ const translations: Record<Lang, Record<string, string>> = {
     "contracts.started": "Started",
     "contracts.view": "View",
     "contracts.visitsText": "visits",
+    "contracts.deleteConfirmTitle": "Delete Contract",
+    "contracts.deleteConfirmDesc": "Are you sure you want to delete this contract? This action cannot be undone.",
 
     // Stats
     "stats.title": "Analytics",
@@ -787,6 +789,8 @@ const translations: Record<Lang, Record<string, string>> = {
     "contracts.started": "بدأ",
     "contracts.view": "عرض",
     "contracts.visitsText": "زيارات",
+    "contracts.deleteConfirmTitle": "حذف العقد",
+    "contracts.deleteConfirmDesc": "هل أنت متأكد من رغبتك في حذف هذا العقد؟ لا يمكن التراجع عن هذا الإجراء.",
 
     // Stats
     "stats.title": "التحليلات",

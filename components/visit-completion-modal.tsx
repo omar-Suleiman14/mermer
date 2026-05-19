@@ -23,6 +23,16 @@ import {
 import { IOSSpinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { useI18n } from "@/lib/i18n";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface VisitCompletionModalProps {
   open: boolean;
@@ -54,7 +64,7 @@ export function VisitCompletionModal({
   const waiveUnpaidBalance = useMutation(api.contracts.waiveUnpaidBalance);
   const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
   const isContractVisit = !!contractId;
-  const { t, lang } = useI18n();
+  const { t, lang, dir } = useI18n();
   const dateLocale = lang === "ar" ? "ar-EG" : "en-US";
 
   /** Contract data (for unpaid / past-due banner) */
@@ -260,6 +270,7 @@ export function VisitCompletionModal({
   };
 
   return (
+    <>
     <AnimatePresence>
       {open && (
         <motion.div
@@ -326,29 +337,12 @@ export function VisitCompletionModal({
                   {(contractData?.unpaidBalance ?? 0) > 0 && (
                     <button
                       type="button"
-                      onClick={async (e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        if (!waiveConfirm) {
-                          setWaiveConfirm(true);
-                          return;
-                        }
-                        setIsSaving(true);
-                        try {
-                          await waiveUnpaidBalance({ clerkId, contractId: contractData._id });
-                          toast.success(t("contracts.waiveSuccess") || "Unpaid balance waived successfully.");
-                        } catch {
-                          toast.error(t("contracts.waiveFail") || "Failed to waive balance");
-                        } finally {
-                          setIsSaving(false);
-                          setWaiveConfirm(false);
-                        }
-                      }}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setWaiveConfirm(true); }}
                       disabled={isSaving}
                       className="w-full text-sm font-semibold bg-amber-500 text-white px-3 py-2.5 rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-60 flex items-center justify-center gap-2 shadow-sm"
                     >
                       {isSaving ? <IOSSpinner size={14} className="text-white" /> : <CheckCircle2 className="w-4 h-4" />}
-                      {waiveConfirm ? "Tap to Confirm Waive" : (t("contracts.waive") || "Waive Balance")}
+                      {t("contracts.waive") || "Waive Balance"}
                     </button>
                   )}
                 </motion.div>
@@ -638,5 +632,39 @@ export function VisitCompletionModal({
         </motion.div>
       )}
     </AnimatePresence>
+
+    {/* Waive Balance Confirmation */}
+    <AlertDialog open={waiveConfirm} onOpenChange={setWaiveConfirm}>
+      <AlertDialogContent dir={dir}>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="text-amber-500">{t("contracts.waive") || "Waive Balance"}</AlertDialogTitle>
+          <AlertDialogDescription>
+            {t("contracts.waiveConfirm") || "Waive the full unpaid balance? This cannot be undone."}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+          <AlertDialogAction
+            className="bg-amber-500 hover:bg-amber-600 text-white"
+            onClick={async (e) => {
+              e.preventDefault();
+              setIsSaving(true);
+              try {
+                await waiveUnpaidBalance({ clerkId, contractId: contractData!._id });
+                toast.success(t("contracts.waiveSuccess") || "Unpaid balance waived.");
+              } catch {
+                toast.error(t("contracts.waiveFail") || "Failed to waive balance");
+              } finally {
+                setIsSaving(false);
+                setWaiveConfirm(false);
+              }
+            }}
+          >
+            {isSaving ? <IOSSpinner size={14} className="text-white" /> : t("contracts.waive") || "Waive"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

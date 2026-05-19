@@ -30,6 +30,16 @@ import {
 import { IOSSpinner } from "@/components/ui/spinner";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -528,10 +538,6 @@ function ContractViewDrawer({
   const [waiveConfirm, setWaiveConfirm] = useState(false);
 
   async function handleWaive() {
-    if (!waiveConfirm) {
-      setWaiveConfirm(true);
-      return;
-    }
     setWaiving(true);
     try {
       await waiveUnpaidBalance({ clerkId, contractId: contract._id });
@@ -540,6 +546,8 @@ function ContractViewDrawer({
     } catch { toast.error(t("contracts.waiveFail")); }
     finally { setWaiving(false); setWaiveConfirm(false); }
   }
+
+  const { dir } = useI18n();
 
   const cfg = STATUS_CONFIG[contract.status as keyof typeof STATUS_CONFIG];
   const progress = contract.numVisits > 0
@@ -617,15 +625,39 @@ function ContractViewDrawer({
                 <p className="text-lg font-bold text-red-500">{contract.unpaidBalance.toLocaleString()} {t("common.currency")}</p>
               </div>
               <button
-                onClick={handleWaive}
+                onClick={() => setWaiveConfirm(true)}
                 disabled={waiving}
-                className={`flex items-center gap-1.5 text-xs font-semibold text-white px-3 py-2 rounded-lg transition-colors disabled:opacity-60 ${waiveConfirm ? "bg-red-600 hover:bg-red-700" : "bg-red-500 hover:bg-red-600"}`}
+                className="flex items-center gap-1.5 text-xs font-semibold text-white px-3 py-2 rounded-lg transition-colors bg-red-500 hover:bg-red-600 disabled:opacity-60"
               >
                 {waiving ? <IOSSpinner size={12} className="text-white" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                {waiveConfirm ? t("contracts.confirmWaive") || "Tap to Confirm" : t("contracts.waive")}
+                {t("contracts.waive")}
               </button>
             </div>
           )}
+
+          {/* Waive Confirmation Dialog */}
+          <AlertDialog open={waiveConfirm} onOpenChange={setWaiveConfirm}>
+            <AlertDialogContent dir={dir}>
+              <AlertDialogHeader>
+                <AlertDialogTitle className="text-red-500">{t("contracts.waive")}</AlertDialogTitle>
+                <AlertDialogDescription>
+                  {t("contracts.waiveConfirm")}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-red-500 hover:bg-red-600 text-white"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleWaive();
+                  }}
+                >
+                  {t("contracts.waive")}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
 
           {/* Notes */}
           {contract.notes && (
@@ -666,12 +698,12 @@ function ContractViewDrawer({
 export default function ContractsPage() {
   const { user } = useUser();
   const clerkId = user?.id ?? "";
-  const { t } = useI18n();
-
+  const { t, dir } = useI18n();
   const contracts = useQuery(api.contracts.listContracts, clerkId ? { clerkId } : "skip");
   const deleteContract = useMutation(api.contracts.deleteContract);
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<Id<"contracts"> | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [viewContract, setViewContract] = useState<any | null>(null);
   const [contractSearch, setContractSearch] = useState("");
@@ -837,7 +869,7 @@ export default function ContractsPage() {
                         <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5">
                           {contract.totalAmount && (
                             <span className="text-xs text-muted-foreground flex items-center gap-1">
-                              Total: {contract.totalAmount.toLocaleString()} EGP
+                              {t("contracts.total") || "Total"}: {contract.totalAmount.toLocaleString()} {t("common.currency")}
                             </span>
                           )}
                           {contract.numVisits && (
@@ -894,7 +926,7 @@ export default function ContractsPage() {
                       {/* Actions */}
                       <div className="flex items-center gap-1.5 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
-                          onClick={(e) => { e.stopPropagation(); handleDelete(contract._id); }}
+                          onClick={(e) => { e.stopPropagation(); setDeleteConfirm(contract._id); }}
                           disabled={deleting === contract._id}
                           className="p-2 rounded-lg hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-colors"
                           title={t("contracts.delete")}
@@ -929,6 +961,32 @@ export default function ContractsPage() {
           />
         )}
       </AnimatePresence>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteConfirm} onOpenChange={(v) => !v && setDeleteConfirm(null)}>
+        <AlertDialogContent dir={dir}>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-500">{t("contracts.deleteConfirmTitle") || "Delete Contract"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("contracts.deleteConfirmDesc") || "Are you sure you want to delete this contract? This action cannot be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-500 hover:bg-red-600 text-white"
+              onClick={() => {
+                if (deleteConfirm) {
+                  handleDelete(deleteConfirm);
+                  setDeleteConfirm(null);
+                }
+              }}
+            >
+              {t("common.delete")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
