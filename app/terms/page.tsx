@@ -21,7 +21,7 @@ export default function TermsPage() {
             {dir === "rtl" ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
             {lang === "ar" ? "العودة للرئيسية" : "Back to home"}
           </Link>
-          <span className="font-bold text-lg tracking-tight text-[#007AFF]">Ibn Sina</span>
+          <span className="font-bold text-lg tracking-tight text-[#007AFF]">Marmar</span>
         </div>
       </nav>
 
@@ -39,10 +39,10 @@ export default function TermsPage() {
           <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none text-[#6b6a63] dark:text-[#8e8d86]">
             {lang === "ar" ? (
               <>
-                <p>مرحباً بك في ابن سينا كير. من خلال الوصول إلى أو استخدام خدماتنا، فإنك توافق على الالتزام بهذه الشروط والأحكام.</p>
+                <p>مرحباً بك في مرمر كير. من خلال الوصول إلى أو استخدام خدماتنا، فإنك توافق على الالتزام بهذه الشروط والأحكام.</p>
 
                 <h2 className="text-[#1a1916] dark:text-[#f0efea] font-semibold mt-8 mb-2">1. الخدمات المقدمة</h2>
-                <p>يوفر ابن سينا كير منصة لإدارة العيادات ونظام حجز عبر الإنترنت للأطباء والمرضى. نحن نسهل جدولة وإدارة المواعيد الطبية ولكن لا نقدم مشورة أو خدمات طبية بشكل مباشر.</p>
+                <p>يوفر مرمر كير منصة لإدارة العيادات ونظام حجز عبر الإنترنت للأطباء والمرضى. نحن نسهل جدولة وإدارة المواعيد الطبية ولكن لا نقدم مشورة أو خدمات طبية بشكل مباشر.</p>
 
                 <h2 className="text-[#1a1916] dark:text-[#f0efea] font-semibold mt-8 mb-2">2. حسابات المستخدمين</h2>
                 <p>لاستخدام بعض الميزات، يجب عليك التسجيل للحصول على حساب. أنت مسؤول عن الحفاظ على سرية معلومات حسابك وعن جميع الأنشطة التي تحدث تحت حسابك.</p>
@@ -54,20 +54,20 @@ export default function TermsPage() {
                 <p>يجوز للمرضى إلغاء أو إعادة جدولة المواعيد وفقاً لسياسات العيادة الفردية. الأطباء مسؤولون عن وضع هذه السياسات وإبلاغها.</p>
 
                 <h2 className="text-[#1a1916] dark:text-[#f0efea] font-semibold mt-8 mb-2">5. حدود المسؤولية</h2>
-                <p>ابن سينا كير غير مسؤول عن أي أضرار مباشرة، غير مباشرة، عرضية، أو تبعية ناتجة عن استخدام أو عدم القدرة على استخدام خدماتنا، أو عن أي قرارات طبية تتخذ بناءً على المنصة.</p>
+                <p>مرمر كير غير مسؤول عن أي أضرار مباشرة، غير مباشرة، عرضية، أو تبعية ناتجة عن استخدام أو عدم القدرة على استخدام خدماتنا، أو عن أي قرارات طبية تتخذ بناءً على المنصة.</p>
 
                 <h2 className="text-[#1a1916] dark:text-[#f0efea] font-semibold mt-8 mb-2">6. التغييرات على الشروط</h2>
                 <p>يجوز لنا تعديل هذه الشروط في أي وقت. استمرار استخدام المنصة بعد التغييرات يعتبر قبولاً للشروط الجديدة.</p>
 
                 <h2 className="text-[#1a1916] dark:text-[#f0efea] font-semibold mt-8 mb-2">7. اتصل بنا</h2>
-                <p>إذا كان لديك أي أسئلة حول هذه الشروط، يرجى الاتصال بنا على support@ibnsinacare.com.</p>
+                <p>إذا كان لديك أي أسئلة حول هذه الشروط، يرجى الاتصال بنا على support@marmarcare.com.</p>
               </>
             ) : (
               <>
-                <p>Welcome to Ibn Sina Care. By accessing or using our services, you agree to be bound by these Terms and Conditions.</p>
+                <p>Welcome to Marmar Care. By accessing or using our services, you agree to be bound by these Terms and Conditions.</p>
 
                 <h2 className="text-[#1a1916] dark:text-[#f0efea] font-semibold mt-8 mb-2">1. Services Provided</h2>
-                <p>Ibn Sina Care provides a clinic management platform and online booking system for doctors and patients. We facilitate the scheduling and management of medical appointments but do not provide medical advice or services directly.</p>
+                <p>Marmar Care provides a clinic management platform and online booking system for doctors and patients. We facilitate the scheduling and management of medical appointments but do not provide medical advice or services directly.</p>
 
                 <h2 className="text-[#1a1916] dark:text-[#f0efea] font-semibold mt-8 mb-2">2. User Accounts</h2>
                 <p>To use certain features, you must register for an account. You are responsible for maintaining the confidentiality of your account information and for all activities that occur under your account.</p>
@@ -79,13 +79,13 @@ export default function TermsPage() {
                 <p>Patients may cancel or reschedule appointments subject to the individual clinic&apos;s policies. Doctors are responsible for setting and communicating these policies.</p>
 
                 <h2 className="text-[#1a1916] dark:text-[#f0efea] font-semibold mt-8 mb-2">5. Limitation of Liability</h2>
-                <p>Ibn Sina Care is not liable for any direct, indirect, incidental, or consequential damages resulting from the use or inability to use our services, or for any medical decisions made based on the platform.</p>
+                <p>Marmar Care is not liable for any direct, indirect, incidental, or consequential damages resulting from the use or inability to use our services, or for any medical decisions made based on the platform.</p>
 
                 <h2 className="text-[#1a1916] dark:text-[#f0efea] font-semibold mt-8 mb-2">6. Changes to Terms</h2>
                 <p>We may modify these Terms at any time. Continued use of the platform after changes constitutes acceptance of the new Terms.</p>
 
                 <h2 className="text-[#1a1916] dark:text-[#f0efea] font-semibold mt-8 mb-2">7. Contact Us</h2>
-                <p>If you have any questions about these Terms, please contact us at support@ibnsinacare.com.</p>
+                <p>If you have any questions about these Terms, please contact us at support@marmarcare.com.</p>
               </>
             )}
           </div>
@@ -94,7 +94,7 @@ export default function TermsPage() {
 
       <footer className="border-t border-black/6 dark:border-white/6 py-6 px-6">
         <div className="max-w-3xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-[#6b6a63] dark:text-[#8e8d86]">
-          <p>© 2026 Ibn Sina. {lang === "ar" ? "جميع الحقوق محفوظة." : "All rights reserved."}</p>
+          <p>© 2026 Marmar. {lang === "ar" ? "جميع الحقوق محفوظة." : "All rights reserved."}</p>
           <div className="flex gap-5">
             <Link href="/privacy" className="hover:text-[#007AFF] transition-colors">
               {lang === "ar" ? "سياسة الخصوصية" : "Privacy Policy"}

@@ -339,7 +339,7 @@ export default function SettingsPage() {
                     if (Notification.permission === "granted") {
                       try {
                         const noti = new window.Notification("Test Notification", {
-                          body: "This is a test notification from IbnSina",
+                          body: "This is a test notification from Marmar",
                           requireInteraction: true,
                         });
                         navigator.serviceWorker?.getRegistration().then((reg) => {

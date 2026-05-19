@@ -87,7 +87,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </div>
           <div className="overflow-hidden transition-all group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0">
             <p className="text-sm font-bold tracking-tight text-[#007AFF] leading-tight truncate">
-              {currentUser?.name ?? user?.fullName ?? "Ibn Sina"}
+              {currentUser?.name ?? user?.fullName ?? "Marmar"}
             </p>
             <p className="text-[11px] text-muted-foreground truncate">
               {currentUser?.clinicName ?? "Your Clinic"}

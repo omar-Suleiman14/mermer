@@ -235,7 +235,7 @@ export default function FeedbackPage() {
 
         <p className="text-center text-xs text-muted-foreground mt-4 sm:mt-6 shrink-0">
           {lang === "ar" ? "مدعوم بواسطة " : "Powered by "}
-          <span className="font-semibold text-primary">{lang === "ar" ? "ابن سينا" : "Ibn Sina"}</span>
+          <span className="font-semibold text-primary">{lang === "ar" ? "مرمر" : "Marmar"}</span>
         </p>
       </main>
     </div>

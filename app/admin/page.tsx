@@ -193,7 +193,7 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
             </div>
             <div>
               <h1 className="text-sm font-bold">Admin Panel</h1>
-              <p className="text-xs text-muted-foreground">Ibn Sina platform control</p>
+              <p className="text-xs text-muted-foreground">Marmar platform control</p>
             </div>
           </div>
           <span className="text-xs font-semibold text-[#34c759] bg-[#34c759]/10 border border-[#34c759]/20 px-2.5 py-1 rounded-full flex items-center gap-1.5">

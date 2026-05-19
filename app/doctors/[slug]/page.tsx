@@ -232,7 +232,7 @@ export default function DoctorPublicProfile() {
               </Link>
               <Link href="/" className="flex items-center gap-3 group cursor-pointer">
                 <span className="font-serif font-bold text-lg tracking-tight text-foreground">
-                  {dir === "rtl" ? "ابن سينا" : "ibn sina"}
+                  {dir === "rtl" ? "مرمر" : "marmar"}
                 </span>
               </Link>
             </div>

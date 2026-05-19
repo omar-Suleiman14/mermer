@@ -134,7 +134,7 @@ export default function LandingPage() {
       <footer className="border-t border-border py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
           <span>
-            © {new Date().getFullYear()} {dir === "rtl" ? "ابن سينا" : "Ibn Sina"}
+            © {new Date().getFullYear()} {dir === "rtl" ? "مرمر" : "Marmar"}
           </span>
           <div className="flex items-center gap-6">
             <Link href="/privacy" className="hover:text-foreground transition-colors">

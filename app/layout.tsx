@@ -28,9 +28,9 @@ const cairo = Cairo({
 });
 
 export const metadata: Metadata = {
-  title: "Ibn Sina — Clinic Management for Solo Doctors",
+  title: "Marmar — Clinic Management for Solo Doctors",
   description:
-    "Ibn Sina handles your paperwork, patient history, and reminders — so you can focus on what matters.",
+    "Marmar handles your paperwork, patient history, and reminders — so you can focus on what matters.",
   icons: {
     icon: "/favicon.ico",
   },

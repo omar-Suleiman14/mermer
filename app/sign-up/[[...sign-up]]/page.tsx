@@ -12,7 +12,7 @@ export default function SignUpPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold tracking-tight text-[#007AFF]">
-            Ibn Sina
+            Marmar
           </h1>
           <p className="text-sm text-[#6b6a63] mt-2">
             Start your free trial today.

@@ -255,7 +255,7 @@ const translations: Record<Lang, Record<string, string>> = {
     "stats.overview": "Overview",
 
     // Onboarding
-    "onboarding.welcome": "Welcome to Ibn Sina",
+    "onboarding.welcome": "Welcome to Marmar",
     "onboarding.setup": "Set up your practice",
     "onboarding.setupDesc": "Takes 2 minutes. You can update everything later in Settings.",
     "onboarding.yourDetails": "Your Details",
@@ -289,7 +289,7 @@ const translations: Record<Lang, Record<string, string>> = {
     "onboarding.next": "Next",
     "onboarding.finishSetup": "Finish Setup",
     "onboarding.saving": "Saving…",
-    "onboarding.welcomeSuccess": "Welcome to Ibn Sina! Your profile is ready.",
+    "onboarding.welcomeSuccess": "Welcome to Marmar! Your profile is ready.",
     "onboarding.feePerVisit": "Fee Per Visit",
     "onboarding.feeDesc": "Used in analytics and shown on your public profile.",
 
@@ -596,7 +596,7 @@ const translations: Record<Lang, Record<string, string>> = {
     "profile.notFound": "Doctor Not Found",
     "profile.notFoundDesc": "This profile does not exist or is not public.",
     "profile.back": "Back",
-    "profile.brandName": "Ibn Sina",
+    "profile.brandName": "Marmar",
     "profile.reviewsCount": "{count} reviews",
     "profile.openInMaps": "Open in Google Maps",
     "profile.viewLocation": "View Location",
@@ -930,7 +930,7 @@ const translations: Record<Lang, Record<string, string>> = {
     "stats.overview": "نظرة عامة",
 
     // Onboarding
-    "onboarding.welcome": "مرحباً في ابن سينا",
+    "onboarding.welcome": "مرحباً في مرمر",
     "onboarding.setup": "إعداد عيادتك",
     "onboarding.setupDesc": "يستغرق دقيقتين. يمكنك تحديث كل شيء لاحقاً في الإعدادات.",
     "onboarding.yourDetails": "بياناتك",
@@ -964,7 +964,7 @@ const translations: Record<Lang, Record<string, string>> = {
     "onboarding.next": "التالي",
     "onboarding.finishSetup": "إنهاء الإعداد",
     "onboarding.saving": "جارٍ الحفظ…",
-    "onboarding.welcomeSuccess": "مرحباً في ابن سينا! ملفك جاهز.",
+    "onboarding.welcomeSuccess": "مرحباً في مرمر! ملفك جاهز.",
     "onboarding.feePerVisit": "سعر الكشف",
     "onboarding.feeDesc": "يُستخدم في التحليلات ويظهر في ملفك العام.",
 
@@ -1236,7 +1236,7 @@ const translations: Record<Lang, Record<string, string>> = {
     "profile.notFound": "الطبيب غير موجود",
     "profile.notFoundDesc": "هذا الملف الشخصي غير موجود أو غير متاح للعموم.",
     "profile.back": "رجوع",
-    "profile.brandName": "ابن سينا",
+    "profile.brandName": "مرمر",
     "profile.reviewsCount": "{count} تقييم",
     "profile.openInMaps": "فتح في خرائط جوجل",
     "profile.viewLocation": "عرض الموقع",
@@ -1358,7 +1358,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Lang>("ar");
 
   useEffect(() => {
-    const stored = localStorage.getItem("ibnsina_lang") as Lang | null;
+    const stored = localStorage.getItem("marmar_lang") as Lang | null;
     if (stored === "ar" || stored === "en") {
       setLangState(stored);
     }
@@ -1366,7 +1366,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 
   const setLang = useCallback((newLang: Lang) => {
     setLangState(newLang);
-    localStorage.setItem("ibnsina_lang", newLang);
+    localStorage.setItem("marmar_lang", newLang);
   }, []);
 
   useEffect(() => {
