@@ -33,7 +33,7 @@ export function DoctorSearchFiltersToggle({
       type="button"
       onClick={onToggle}
       className={cn(
-        "relative flex items-center gap-2 h-10 px-3 rounded-lg border text-sm font-medium transition-colors shrink-0",
+        "relative flex items-center gap-2 h-10 px-3 rounded-xl border text-sm font-medium transition-colors shrink-0",
         open || hasActiveFilters
           ? "border-primary bg-primary/5 text-primary"
           : "border-border bg-card text-foreground hover:bg-muted/50"
@@ -140,7 +140,7 @@ export function DoctorSearchFiltersPanel({
                   value={filters.feeMin}
                   onChange={(e) => onChange({ feeMin: e.target.value })}
                   placeholder="0"
-                  className="w-full h-10 px-3 rounded-lg border border-border bg-card text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  className="w-full h-10 px-3 rounded-xl border border-border bg-card text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 />
               </div>
 
@@ -154,7 +154,7 @@ export function DoctorSearchFiltersPanel({
                   value={filters.feeMax}
                   onChange={(e) => onChange({ feeMax: e.target.value })}
                   placeholder="—"
-                  className="w-full h-10 px-3 rounded-lg border border-border bg-card text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  className="w-full h-10 px-3 rounded-xl border border-border bg-card text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 />
               </div>
 
@@ -163,7 +163,7 @@ export function DoctorSearchFiltersPanel({
                   type="button"
                   onClick={() => onChange({ availToday: !filters.availToday })}
                   className={cn(
-                    "h-10 px-4 rounded-lg border text-sm font-medium transition-colors",
+                    "h-10 px-4 rounded-xl border text-sm font-medium transition-colors",
                     filters.availToday
                       ? "border-primary bg-primary text-primary-foreground"
                       : "border-border bg-card hover:bg-muted/50"
@@ -210,7 +210,7 @@ function FilterSelect({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         dir={dir}
-        className="w-full h-10 px-3 rounded-lg border border-border bg-card text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary cursor-pointer"
+        className="w-full h-10 px-3 rounded-xl border border-border bg-card text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary cursor-pointer"
       >
         {children}
       </select>

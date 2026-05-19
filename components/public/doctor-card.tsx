@@ -65,7 +65,7 @@ export function DoctorCard({ doctor, className }: DoctorCardProps) {
               )}
             </div>
             {availableToday && (
-              <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-1 rounded-md bg-primary/10 text-primary shrink-0">
+              <span className="text-[10px] font-semibold uppercase tracking-wide px-2 py-1 rounded-full bg-primary/10 text-primary shrink-0">
                 {t("feed.availToday")}
               </span>
             )}

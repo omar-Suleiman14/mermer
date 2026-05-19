@@ -51,7 +51,7 @@ export function PublicNav({ className, backHref, backLabel }: PublicNavProps) {
           {!backHref && (
             <Link
               href="/find-a-doctor"
-              className="hidden sm:inline-flex text-sm font-medium text-muted-foreground hover:text-primary px-3 py-2 rounded-lg hover:bg-muted/60 transition-colors"
+              className="hidden sm:inline-flex text-sm font-medium text-muted-foreground hover:text-primary px-3 py-2 rounded-xl hover:bg-muted/60 transition-colors"
             >
               {dir === "rtl" ? "ابحث عن طبيب" : "Find a Doctor"}
             </Link>
@@ -62,7 +62,7 @@ export function PublicNav({ className, backHref, backLabel }: PublicNavProps) {
               type="button"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               aria-label="Toggle theme"
-              className="w-9 h-9 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+              className="w-9 h-9 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
             >
               {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
@@ -80,7 +80,7 @@ export function PublicNav({ className, backHref, backLabel }: PublicNavProps) {
               <SignedIn>
                 <Link
                   href="/dashboard"
-                  className="text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-lg transition-colors"
+                  className="text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-xl transition-colors"
                 >
                   {t("nav.dashboard")}
                 </Link>

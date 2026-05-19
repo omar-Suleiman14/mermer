@@ -18,7 +18,7 @@ export function LanguageToggle({ className, compact = false }: LanguageTogglePro
       onClick={() => setLang(lang === "en" ? "ar" : "en")}
       aria-label={`Switch to ${lang === "en" ? "Arabic" : "English"}`}
       className={cn(
-        "flex items-center gap-2 px-3 py-2 rounded-lg",
+        "flex items-center gap-2 px-3 py-2 rounded-xl",
         "text-sm font-medium transition-all duration-200",
         "text-muted-foreground hover:text-foreground",
         "hover:bg-accent/60",
