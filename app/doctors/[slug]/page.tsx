@@ -221,8 +221,8 @@ export default function DoctorPublicProfile() {
       {doctor && (
         <div className="min-h-screen bg-background text-foreground" dir={dir}>
           {/* Nav */}
-          <nav className="sticky top-0 z-40 bg-background border-b-2 border-foreground">
-            <div className="max-w-5xl mx-auto px-5 h-16 flex items-center justify-between gap-4">
+          <nav className="sticky top-0 z-40 bg-background/95 backdrop-blur-md border-b border-border shadow-sm">
+            <div className="max-w-7xl mx-auto px-5 h-16 flex items-center justify-between gap-4">
               <Link
                 href="/find-a-doctor"
                 className="flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
@@ -231,8 +231,8 @@ export default function DoctorPublicProfile() {
                 {dir === "rtl" ? "البحث عن طبيب" : "Find a Doctor"}
               </Link>
               <Link href="/" className="flex items-center gap-3 group cursor-pointer">
-                <div className="w-8 h-8 bg-[#0055FF] flex items-center justify-center">
-                  <span className="font-serif italic font-extrabold text-sm text-white">ibn sina</span>
+                <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center shadow-sm">
+                  <span className="font-serif italic font-extrabold text-sm text-primary-foreground">ibn sina</span>
                 </div>
                 <span className="font-serif font-bold text-lg tracking-tight text-foreground">
                   {dir === "rtl" ? "ابن سينا" : "ibn sina"}
@@ -241,20 +241,20 @@ export default function DoctorPublicProfile() {
             </div>
           </nav>
 
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 py-12 flex flex-col md:flex-row gap-8 items-start">
+          <div className="max-w-6xl xl:max-w-7xl mx-auto px-4 sm:px-6 py-12 flex flex-col md:flex-row gap-8 items-start">
             <div className="flex-1 w-full space-y-8">
               {/* Doctor Hero Card */}
-              <div className="bg-card border-2 border-foreground p-8 sm:p-10">
+              <div className="bg-card border border-border rounded-3xl p-8 sm:p-10 shadow-sm">
                 <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-start gap-8">
                   {/* Avatar */}
                   <div className="flex-shrink-0">
                     {profilePhotoUrl ? (
-                      <div className="w-32 h-32 overflow-hidden border-2 border-foreground">
+                      <div className="w-32 h-32 overflow-hidden rounded-2xl ring-1 ring-border shadow-sm">
                         <Image src={profilePhotoUrl} alt={doctor.name} width={128} height={128} className="w-full h-full object-cover" />
                       </div>
                     ) : (
-                      <div className="w-32 h-32 bg-muted flex items-center justify-center border-2 border-foreground">
-                        <span className="font-serif text-5xl font-extrabold text-[#0055FF]">{initials}</span>
+                      <div className="w-32 h-32 bg-primary/5 flex items-center justify-center rounded-2xl ring-1 ring-border shadow-sm">
+                        <span className="font-serif text-5xl font-extrabold text-primary">{initials}</span>
                       </div>
                     )}
                   </div>
@@ -265,13 +265,13 @@ export default function DoctorPublicProfile() {
                       <h1 className="text-3xl sm:text-4xl font-serif font-extrabold tracking-tight text-foreground">
                         {lang === "ar" ? `د. ${doctor.name}` : `Dr. ${doctor.name}`}
                       </h1>
-                      <span className="inline-flex items-center gap-1 px-3 py-1 bg-foreground text-background text-[10px] uppercase tracking-widest font-bold">
+                      <span className="inline-flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary text-xs font-semibold rounded-full">
                         <ShieldCheck className="w-3 h-3" />
                       </span>
                     </div>
 
                     {doctor.specialty && (
-                      <p className="text-sm font-bold uppercase tracking-widest text-[#0055FF] mb-2">{doctor.specialty}</p>
+                      <p className="text-sm font-semibold text-primary mb-2">{doctor.specialty}</p>
                     )}
                     {doctor.credentials && (
                       <p className="text-base font-serif text-muted-foreground mb-4">{doctor.credentials}</p>
@@ -327,16 +327,16 @@ export default function DoctorPublicProfile() {
                 </div>
 
                 {/* Fee + Bio */}
-                <div className="mt-8 pt-6 border-t-2 border-border flex flex-wrap items-start gap-4">
+                <div className="mt-8 pt-6 border-t border-border flex flex-wrap items-start gap-4">
                   {(doctor as any).consultationFee && (
-                    <div className="inline-flex items-center gap-2 bg-foreground text-background px-6 py-2 text-xs font-bold uppercase tracking-widest">
+                    <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-6 py-2.5 text-sm font-semibold rounded-2xl">
                       {t("profile.consultationFeeLabel").replace("{fee}", (doctor as any).consultationFee.toLocaleString())}
                     </div>
                   )}
                 </div>
 
                 {(doctor as any).bio && (
-                  <div className="mt-8 pt-8 border-t-2 border-border">
+                  <div className="mt-8 pt-8 border-t border-border">
                     <h3 className="font-serif text-2xl font-bold mb-4">About</h3>
                     <p className="text-base font-serif text-muted-foreground leading-relaxed">
                       {(doctor as any).bio}
@@ -346,9 +346,9 @@ export default function DoctorPublicProfile() {
               </div>
 
               {/* Leave a Review Banner */}
-              <div className="bg-card border-2 border-foreground p-8 flex flex-col sm:flex-row items-center gap-6">
-                <div className="w-16 h-16 bg-background border-2 border-foreground flex items-center justify-center flex-shrink-0">
-                  <Star className="w-8 h-8 text-foreground" fill="currentColor" />
+              <div className="bg-card border border-border rounded-3xl p-8 flex flex-col sm:flex-row items-center gap-6 shadow-sm">
+                <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center flex-shrink-0">
+                  <Star className="w-8 h-8 text-primary" fill="currentColor" />
                 </div>
                 <div className="flex-1 min-w-0 text-center sm:text-start">
                   <p className="font-serif font-bold text-2xl text-foreground mb-2">{t("profile.visitedBefore")}</p>
@@ -356,7 +356,7 @@ export default function DoctorPublicProfile() {
                 </div>
                 <Link
                   href={`/feedback/${params.slug}`}
-                  className="flex-shrink-0 font-bold uppercase tracking-widest text-xs text-background bg-foreground hover:bg-[#0055FF] px-8 py-4 transition-colors cursor-pointer"
+                  className="flex-shrink-0 font-semibold text-sm text-primary-foreground bg-primary hover:bg-primary/90 px-8 py-3.5 rounded-xl transition-colors shadow-sm"
                 >
                   {lang === "ar" ? "اترك تقييماً" : "Rate Visit"}
                 </Link>
@@ -365,7 +365,7 @@ export default function DoctorPublicProfile() {
 
             {/* Right Column: Booking Widget */}
             <div className="w-full md:w-80 lg:w-96 flex-shrink-0">
-              <div className="bg-card p-6 border-2 border-foreground sticky top-24">
+              <div className="bg-card p-6 sm:p-8 border border-border rounded-3xl sticky top-24 shadow-lg shadow-black/[0.03]">
                 <h2 className="font-serif text-2xl font-bold flex items-center gap-3 mb-8">
                   <CalendarDays className="w-6 h-6 text-[#0055FF]" />
                   {t("profile.bookAppointment")}
@@ -394,8 +394,8 @@ export default function DoctorPublicProfile() {
                           key={dayTs}
                           onClick={() => { if (!isDisabled) { setSelectedDay(dayTs); setSelectedSlot(null); } }}
                           disabled={isDisabled}
-                          className={`flex-shrink-0 flex flex-col items-center py-3 px-4 border transition-all ${isSelected && isWorkingDayBtn
-                            ? "bg-[#0055FF] border-[#0055FF] text-white"
+                          className={`flex-shrink-0 flex flex-col items-center py-3 px-4 rounded-2xl border transition-all ${isSelected && isWorkingDayBtn
+                            ? "bg-primary border-primary text-primary-foreground shadow-sm"
                             : isDisabled
                               ? "border-transparent text-muted-foreground/30 cursor-not-allowed"
                               : "border-transparent hover:border-foreground text-foreground"
@@ -450,11 +450,11 @@ export default function DoctorPublicProfile() {
                             onClick={() => { if (!isTaken) { setSelectedSlot(ts); setBookingOpen(true); } }}
                             disabled={isTaken}
                             title={isTaken ? t("profile.booked") : undefined}
-                            className={`py-3 px-1 text-xs font-bold transition-all border-2 flex flex-col items-center gap-1 ${isTaken
+                            className={`py-3 px-1 text-xs font-bold transition-all border rounded-xl flex flex-col items-center gap-1 ${isTaken
                               ? "border-border bg-muted/20 text-muted-foreground/30 cursor-not-allowed"
                               : isSelected
-                                ? "bg-[#0055FF] text-white border-[#0055FF]"
-                                : "border-border hover:border-[#0055FF] hover:text-[#0055FF] cursor-pointer"
+                                ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                                : "border-border hover:border-primary hover:text-primary cursor-pointer"
                               }`}
                           >
                             {formatTime(ts, lang)}
@@ -488,7 +488,7 @@ export default function DoctorPublicProfile() {
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: 40, opacity: 0 }}
                   transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                  className="relative z-10 w-full sm:max-w-md bg-background border-2 border-foreground"
+                  className="relative z-10 w-full sm:max-w-md bg-background border border-border rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden"
                 >
                   <div className="sm:hidden w-12 h-1 rounded-full bg-border mx-auto mt-3 mb-1" />
                   <div className="px-6 py-5">
@@ -505,7 +505,7 @@ export default function DoctorPublicProfile() {
 
                         <button
                           onClick={() => { setBookingOpen(false); setBooked(false); setSelectedSlot(null); setName(""); setPhone(""); }}
-                          className="mt-8 text-xs font-bold tracking-widest uppercase bg-foreground text-background px-8 py-3 hover:bg-[#0055FF] transition-colors"
+                          className="mt-8 text-sm font-semibold text-primary-foreground bg-primary px-8 py-3.5 rounded-xl hover:bg-primary/90 transition-colors shadow-sm"
                         >
                           {t("profile.done")}
                         </button>
@@ -513,14 +513,14 @@ export default function DoctorPublicProfile() {
                     ) : (
                       <>
                         {/* Mini doctor card */}
-                        <div className="flex items-center gap-4 mb-8 p-4 bg-muted/30 border border-border">
+                        <div className="flex items-center gap-4 mb-8 p-4 bg-muted/30 border border-border rounded-2xl">
                           {profilePhotoUrl ? (
-                            <div className="w-12 h-12 border border-border overflow-hidden flex-shrink-0">
+                            <div className="w-12 h-12 rounded-xl border border-border overflow-hidden flex-shrink-0 shadow-sm">
                               <Image src={profilePhotoUrl} alt={doctor.name} width={48} height={48} className="w-full h-full object-cover" />
                             </div>
                           ) : (
-                            <div className="w-12 h-12 bg-muted border border-border flex items-center justify-center flex-shrink-0">
-                              <span className="text-lg font-serif font-bold text-[#0055FF]">{initials}</span>
+                            <div className="w-12 h-12 bg-muted rounded-xl border border-border flex items-center justify-center flex-shrink-0 shadow-sm">
+                              <span className="text-lg font-serif font-bold text-primary">{initials}</span>
                             </div>
                           )}
                           <div>
@@ -539,13 +539,13 @@ export default function DoctorPublicProfile() {
                               onChange={(e) => setName(e.target.value)}
                               placeholder=""
                               dir={dir}
-                              className="w-full px-4 py-3 text-base font-medium bg-background border-2 border-foreground focus:outline-none focus:ring-4 focus:ring-[#0055FF]/20 focus:border-[#0055FF] transition-colors"
+                              className="w-full px-4 py-3 text-base font-medium bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
                             />
                           </div>
                           <div>
                             <label className="text-xs font-bold text-muted-foreground block mb-2">{t("profile.whatsappNumber")}</label>
-                            <div className="flex items-center border-2 border-foreground focus-within:ring-4 focus-within:ring-[#0055FF]/20 focus-within:border-[#0055FF] bg-background transition-colors" dir="ltr">
-                              <span className="px-4 py-3 text-base font-semibold text-foreground bg-muted/30 border-r-2 border-foreground select-none">
+                            <div className="flex items-center border border-border rounded-xl focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary bg-background transition-colors" dir="ltr">
+                              <span className="px-4 py-3 text-base font-semibold text-foreground bg-muted/30 border-r border-border rounded-l-xl select-none">
                                 +20
                               </span>
                               <input
@@ -564,14 +564,14 @@ export default function DoctorPublicProfile() {
                         <div className="flex gap-4 mt-8">
                           <button
                             onClick={() => setBookingOpen(false)}
-                            className="flex-1 border-2 border-foreground text-sm font-bold py-3 hover:bg-muted/40 transition-colors"
+                            className="flex-1 border border-border rounded-xl text-sm font-semibold py-3.5 hover:bg-muted/40 transition-colors"
                           >
                             {t("common.cancel") || "Cancel"}
                           </button>
                           <button
                             onClick={handleBook}
                             disabled={isBooking || !name.trim() || phone.trim().length < 8}
-                            className="flex-1 bg-[#0055FF] text-white text-sm font-bold py-3 hover:bg-foreground transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                            className="flex-1 bg-primary text-primary-foreground rounded-xl text-sm font-semibold py-3.5 hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm"
                           >
                             {isBooking ? <IOSSpinner size={16} className="text-white" /> : t("profile.confirmBooking")}
                           </button>

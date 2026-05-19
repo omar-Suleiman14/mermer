@@ -2,8 +2,6 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:wght@200..800&display=swap');
-
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -51,9 +49,9 @@
 }
 
 :root {
-  /* Bold Editorial Minimal System */
-  --font-serif: 'Playfair Display', ui-serif, Georgia, serif;
-  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  /* Fonts loaded via next/font in layout.tsx */
+  --font-serif: var(--font-playfair), ui-serif, Georgia, serif;
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
   
   --background: #ffffff;
   --foreground: #000000;

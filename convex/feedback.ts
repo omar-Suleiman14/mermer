@@ -118,10 +118,16 @@ export const getDoctorInfoBySlug = query({
       .withIndex("by_qr_slug", (q) => q.eq("qrSlug", args.slug))
       .unique();
     if (!doctor) return null;
+
+    const profilePhotoUrl = doctor.profilePhotoId
+      ? await ctx.storage.getUrl(doctor.profilePhotoId)
+      : null;
+
     return {
       name: doctor.name,
       clinicName: doctor.clinicName,
-      specialty: doctor.specialty,
+      specialty: doctor.specialty ?? null,
+      profilePhotoUrl,
     };
   },
 });

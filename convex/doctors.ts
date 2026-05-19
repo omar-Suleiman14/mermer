@@ -85,19 +85,64 @@ export const listPublishedDoctors = query({
 
 // ─── Feed: Search & Filter Doctors (Optimized Backend Filtering) ────────────
 
+const DAY_ABBREVS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const DAY_FULL = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
+
+function matchesAvailableToday(availableDays: string[]): boolean {
+  if (!availableDays.length) return false;
+  const dow = new Date().getDay();
+  const abbrev = DAY_ABBREVS[dow];
+  const full = DAY_FULL[dow];
+  return availableDays.includes(abbrev) || availableDays.includes(full);
+}
+
+function doctorSearchBlob(d: {
+  name: string;
+  specialty?: string | null;
+  clinicName?: string | null;
+  clinicAddress?: string | null;
+  city?: string | null;
+  bio?: string | null;
+  credentials?: string | null;
+  languages?: string[];
+}): string {
+  const langs = ((d as any).languages ?? []).join(" ");
+  return [
+    d.name,
+    d.specialty ?? "",
+    d.clinicName ?? "",
+    d.clinicAddress ?? "",
+    (d as any).city ?? "",
+    d.bio ?? "",
+    d.credentials ?? "",
+    langs,
+  ]
+    .join(" ")
+    .toLowerCase();
+}
+
 export const searchDoctors = query({
   args: {
     searchQuery: v.optional(v.string()),
     specialty: v.optional(v.string()),
-
+    city: v.optional(v.string()),
     language: v.optional(v.string()),
+    feeMin: v.optional(v.number()),
     feeMax: v.optional(v.number()),
-    availTodayName: v.optional(v.string()),
+    minRating: v.optional(v.number()),
+    availToday: v.optional(v.boolean()),
     sortBy: v.optional(v.string()),
     limit: v.number(),
   },
   handler: async (ctx, args) => {
-    // Start with all published doctors (using index)
     const published = await ctx.db
       .query("users")
       .withIndex("by_public_profile", (q) => q.eq("publicProfile", true))
@@ -107,27 +152,52 @@ export const searchDoctors = query({
 
     const q = args.searchQuery?.toLowerCase().trim();
     if (q) {
-      list = list.filter(
-        (d) =>
-          d.name.toLowerCase().includes(q) ||
-          (d.specialty ?? "").toLowerCase().includes(q) ||
-          (d.clinicName ?? "").toLowerCase().includes(q) ||
-          (d.clinicAddress ?? "").toLowerCase().includes(q)
-      );
+      list = list.filter((d) => doctorSearchBlob(d as any).includes(q));
     }
 
     if (args.specialty) {
       list = list.filter((d) => d.specialty === args.specialty);
     }
 
+    if (args.city) {
+      const city = args.city.toLowerCase();
+      list = list.filter(
+        (d) => ((d as any).city ?? "").toLowerCase() === city
+      );
+    }
+
     if (args.language) {
-      list = list.filter((d) => ((d as any).languages ?? []).includes(args.language));
+      list = list.filter((d) => ((d as any).languages ?? []).includes(args.language!));
     }
+
+    if (args.feeMin !== undefined) {
+      list = list.filter(
+        (d) =>
+          (d as any).consultationFee !== null &&
+          (d as any).consultationFee !== undefined &&
+          (d as any).consultationFee >= args.feeMin!
+      );
+    }
+
     if (args.feeMax !== undefined) {
-      list = list.filter((d) => (d as any).consultationFee !== null && (d as any).consultationFee <= args.feeMax!);
+      list = list.filter(
+        (d) =>
+          (d as any).consultationFee !== null &&
+          (d as any).consultationFee !== undefined &&
+          (d as any).consultationFee <= args.feeMax!
+      );
     }
-    if (args.availTodayName) {
-      list = list.filter((d) => ((d as any).availableDays ?? []).includes(args.availTodayName));
+
+    if (args.minRating !== undefined && args.minRating > 0) {
+      list = list.filter(
+        (d) => ((d as any).avgRating ?? 0) >= args.minRating!
+      );
+    }
+
+    if (args.availToday) {
+      list = list.filter((d) =>
+        matchesAvailableToday(((d as any).availableDays ?? []) as string[])
+      );
     }
 
     // Sort
@@ -163,6 +233,7 @@ export const searchDoctors = query({
           availableFrom: (u as any).availableFrom ?? null,
           availableTo: (u as any).availableTo ?? null,
           bio: u.bio ?? null,
+          credentials: u.credentials ?? null,
           qrSlug: u.qrSlug ?? null,
           profilePhotoUrl,
           avgRating: (u as any).avgRating ?? null,

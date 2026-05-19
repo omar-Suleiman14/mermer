@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Cairo } from "next/font/google";
+import { Cairo, Playfair_Display, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import ConvexClientProvider from "@/components/ConvexClientProvider";
 import { ClerkProvider } from "@clerk/nextjs";
@@ -9,9 +9,16 @@ import { cn } from "@/lib/utils";
 import { I18nProvider } from "@/lib/i18n";
 import { HtmlDirSync } from "@/components/html-dir-sync";
 
-const inter = Inter({
-  variable: "--font-sans",
+const plusJakarta = Plus_Jakarta_Sans({
+  variable: "--font-jakarta",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const playfair = Playfair_Display({
+  variable: "--font-playfair",
+  subsets: ["latin"],
+  style: ["normal", "italic"],
 });
 
 const cairo = Cairo({
@@ -38,9 +45,10 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning style={{ fontSize: "106%" }}>
       <body
         className={cn(
-          inter.variable,
+          plusJakarta.variable,
+          playfair.variable,
           cairo.variable,
-          "font-[--font-sans] antialiased"
+          "antialiased"
         )}
         suppressHydrationWarning
       >
