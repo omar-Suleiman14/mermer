@@ -73,7 +73,7 @@
   --input: rgba(0, 0, 0, 0.08);
   --ring: #0055FF;
   
-  --radius: 1rem; /* 16px base — Apple-like corners (scales to ~28px on 2xl) */
+  --radius: 1.25rem; /* 20px base — Apple-like corners (scales to ~36px on 2xl) */
   
   --sidebar: #f9f9f9;
   --sidebar-foreground: #000000;

@@ -292,7 +292,7 @@ export function VisitCompletionModal({
             animate={{ y: 0, opacity: 1, scale: 1 }}
             exit={{ y: 40, opacity: 0, scale: 0.97 }}
             transition={{ type: "spring", stiffness: 380, damping: 30 }}
-            className="relative z-10 w-full sm:max-w-lg bg-[var(--background)] rounded-t-3xl sm:rounded-2xl shadow-2xl max-h-[92vh] flex flex-col overflow-hidden"
+            className="relative z-10 w-full sm:max-w-lg bg-[var(--background)] rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[92vh] flex flex-col overflow-hidden"
           >
             <div className="sm:hidden w-12 h-1 rounded-full bg-border mx-auto mt-3 mb-1 flex-shrink-0" />
 
@@ -317,7 +317,7 @@ export function VisitCompletionModal({
                 <motion.div
                   initial={{ opacity: 0, y: -6 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 space-y-3 mb-4 mt-[-8px]"
+                  className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-3 mb-4 mt-[-8px]"
                 >
                   <div className="flex items-start gap-2.5">
                     <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0" />
@@ -339,7 +339,7 @@ export function VisitCompletionModal({
                       type="button"
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); setWaiveConfirm(true); }}
                       disabled={isSaving}
-                      className="w-full text-sm font-semibold bg-amber-500 text-white px-3 py-2.5 rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-60 flex items-center justify-center gap-2 shadow-sm"
+                      className="w-full text-sm font-semibold bg-amber-500 text-white px-3 py-2.5 rounded-xl hover:bg-amber-600 transition-colors disabled:opacity-60 flex items-center justify-center gap-2 shadow-sm"
                     >
                       {isSaving ? <IOSSpinner size={14} className="text-white" /> : <CheckCircle2 className="w-4 h-4" />}
                       {t("contracts.waive") || "Waive Balance"}
@@ -375,9 +375,9 @@ export function VisitCompletionModal({
                       </p>
                       <button
                         onClick={() => rxInputRef.current?.click()}
-                        className="w-full border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center gap-2.5 hover:border-[#007AFF]/40 hover:bg-[#007AFF]/4 transition-all group"
+                        className="w-full border-2 border-dashed border-border rounded-2xl p-6 flex flex-col items-center gap-2.5 hover:border-[#007AFF]/40 hover:bg-[#007AFF]/4 transition-all group"
                       >
-                        <div className="w-11 h-11 rounded-xl bg-muted/60 flex items-center justify-center group-hover:bg-[#007AFF]/10 transition-colors">
+                        <div className="w-11 h-11 rounded-2xl bg-muted/60 flex items-center justify-center group-hover:bg-[#007AFF]/10 transition-colors">
                           <Camera className="w-5 h-5 text-muted-foreground group-hover:text-[#007AFF]" />
                         </div>
                         <div className="text-center">
@@ -397,7 +397,7 @@ export function VisitCompletionModal({
                   ) : (
                     <div className="space-y-2">
                       <p className="text-sm font-medium">{t("visit.prescriptionPhoto")}</p>
-                      <div className="flex items-center justify-between p-3 rounded-xl border border-border bg-muted/30">
+                      <div className="flex items-center justify-between p-3 rounded-2xl border border-border bg-muted/30">
                         <div className="flex items-center gap-3 overflow-hidden">
                           <FileText className="w-5 h-5 text-[#007AFF] flex-shrink-0" />
                           <span className="text-sm font-medium truncate">{rxFile?.name || "Prescription file"}</span>
@@ -420,7 +420,7 @@ export function VisitCompletionModal({
                       onChange={(e) => setNotes(e.target.value)}
                       rows={2}
                       placeholder="Diagnosis, treatment plan, observations…"
-                      className="w-full px-4 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] resize-none"
+                      className="w-full px-4 py-2.5 text-sm bg-background border border-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] resize-none"
                     />
                   </div>
 
@@ -466,7 +466,7 @@ export function VisitCompletionModal({
                   {isContractVisit ? (
                     <div className="space-y-3">
                       {/* Paid / Unpaid toggle */}
-                      <div className="border border-border rounded-xl p-4 flex items-center justify-between">
+                      <div className="border border-border rounded-2xl p-4 flex items-center justify-between">
                         <div>
                           <p className="text-sm font-semibold">{t("visit.payment")}</p>
                           <p className="text-xs text-muted-foreground mt-0.5">
@@ -480,10 +480,10 @@ export function VisitCompletionModal({
                       </div>
 
                       {/* Schedule next contract visit — mandatory, always open */}
-                      <div className="border border-[#AF52DE]/30 bg-[#AF52DE]/4 rounded-xl overflow-hidden">
+                      <div className="border border-[#AF52DE]/30 bg-[#AF52DE]/4 rounded-2xl overflow-hidden">
                         <div className="w-full flex items-center justify-between px-4 py-3">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-lg bg-[#AF52DE]/10 flex items-center justify-center">
+                            <div className="w-8 h-8 rounded-xl bg-[#AF52DE]/10 flex items-center justify-center">
                               <Clock className="w-4 h-4 text-[#AF52DE]" />
                             </div>
                             <div className="text-left">
@@ -505,7 +505,7 @@ export function VisitCompletionModal({
                               </p>
                               <Popover open={nextContractCalOpen} onOpenChange={setNextContractCalOpen}>
                                 <PopoverTrigger asChild>
-                                  <button className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border rounded-xl hover:border-[#AF52DE]/50 transition-colors text-left ${!nextContractDate ? "border-red-400/60" : "border-border"}`}>
+                                  <button className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border rounded-2xl hover:border-[#AF52DE]/50 transition-colors text-left ${!nextContractDate ? "border-red-400/60" : "border-border"}`}>
                                     <CalendarIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                                     <span className={nextContractDate ? "" : "text-muted-foreground"}>
                                       {nextContractDate ? nextContractDate.toLocaleDateString(dateLocale, { weekday: "short", month: "short", day: "numeric" }) : t("visit.pickDate")}
@@ -519,7 +519,7 @@ export function VisitCompletionModal({
                             </div>
                             <div>
                               <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("visit.timeSlot")}</p>
-                              <div className="max-h-48 overflow-y-auto border border-border rounded-xl divide-y divide-border/50">
+                              <div className="max-h-48 overflow-y-auto border border-border rounded-2xl divide-y divide-border/50">
                                 {timeSlots.filter(s => s.isWorkingHour).map(slot => (
                                   <button key={slot.timeStr} onClick={() => !slot.isReserved && setNextContractTime(slot.timeStr)} disabled={slot.isReserved}
                                     className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${slot.isReserved ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed line-through" : nextContractTime === slot.timeStr ? "bg-[#AF52DE]/10 text-[#AF52DE] font-semibold" : "hover:bg-muted/30"}`}>
@@ -536,13 +536,13 @@ export function VisitCompletionModal({
                     </div>
                   ) : (
                   /* ─── Regular visit: Follow-Up section ────────────── */
-                  <div className="border border-border rounded-xl overflow-hidden">
+                  <div className="border border-border rounded-2xl overflow-hidden">
                     <div
                       onClick={() => setScheduleFollowUp((v) => !v)}
                       className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors cursor-pointer"
                     >
                       <div className="flex items-center gap-2.5">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${scheduleFollowUp ? "bg-[#007AFF]/10" : "bg-muted/60"}`}>
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${scheduleFollowUp ? "bg-[#007AFF]/10" : "bg-muted/60"}`}>
                           <Clock className={`w-4 h-4 ${scheduleFollowUp ? "text-[#007AFF]" : "text-muted-foreground"}`} />
                         </div>
                         <div className="text-left">
@@ -564,7 +564,7 @@ export function VisitCompletionModal({
                                 <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("visit.date")} *</p>
                                 <Popover open={fuCalOpen} onOpenChange={setFuCalOpen}>
                                   <PopoverTrigger asChild>
-                                    <button className="w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border border-border rounded-xl hover:border-[#007AFF]/50 transition-colors text-left">
+                                    <button className="w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border border-border rounded-2xl hover:border-[#007AFF]/50 transition-colors text-left">
                                       <CalendarIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                                       <span className="text-sm">{fuDate ? fuDate.toLocaleDateString(dateLocale, { weekday: "short", month: "short", day: "numeric" }) : t("visit.pickDate")}</span>
                                     </button>
@@ -576,7 +576,7 @@ export function VisitCompletionModal({
                               </div>
                               <div>
                                 <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("visit.timeSlot")}</p>
-                                <div className="max-h-48 overflow-y-auto border border-border rounded-xl divide-y divide-border/50">
+                                <div className="max-h-48 overflow-y-auto border border-border rounded-2xl divide-y divide-border/50">
                                   {timeSlots.filter(s => s.isWorkingHour).map(slot => (
                                     <button key={slot.timeStr} onClick={() => !slot.isReserved && setFuTime(slot.timeStr)} disabled={slot.isReserved}
                                       className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${slot.isReserved ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed line-through" : fuTime === slot.timeStr ? "bg-[#007AFF]/10 text-[#007AFF] font-semibold" : "hover:bg-muted/30"}`}>
@@ -593,7 +593,7 @@ export function VisitCompletionModal({
                               <div className="relative">
                                 <StickyNote className="absolute left-3 top-2.5 w-3.5 h-3.5 text-muted-foreground" />
                                 <input value={fuNote} onChange={(e) => setFuNote(e.target.value)} placeholder="e.g. Check blood pressure, review labs…"
-                                  className="w-full pl-9 pr-4 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF]" />
+                                  className="w-full pl-9 pr-4 py-2.5 text-sm bg-background border border-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#007AFF]" />
                               </div>
                             </div>
                           </div>
@@ -609,14 +609,14 @@ export function VisitCompletionModal({
                     <button
                       onClick={handleClose}
                       disabled={isSaving}
-                      className="flex-1 border border-border text-sm font-medium py-2.5 rounded-xl hover:bg-muted/40 transition-colors disabled:opacity-60"
+                      className="flex-1 border border-border text-sm font-medium py-2.5 rounded-2xl hover:bg-muted/40 transition-colors disabled:opacity-60"
                     >
                       {t("common.cancel")}
                     </button>
                     <button
                       onClick={() => handleSave(false)}
                       disabled={isSaving}
-                      className="flex-1 bg-[#007AFF] text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-[#0062cc] transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                      className="flex-1 bg-[#007AFF] text-white text-sm font-semibold py-2.5 rounded-2xl hover:bg-[#0062cc] transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
                     >
                       {isSaving ? (
                         <><IOSSpinner size={16} className="text-white" /> {t("onboarding.saving")}</>

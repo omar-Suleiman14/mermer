@@ -118,7 +118,7 @@ function SortableApptItem({ appt, onComplete, onReminder, onCancel }: { appt: an
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-4 p-4 rounded-xl border transition-all ${
+      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${
         !isDone ? "hover:shadow-md" : ""
       } ${
         isDragging ? "opacity-90 shadow-2xl scale-[1.02] bg-[var(--background)] border-[#007AFF]/40" : 
@@ -461,7 +461,7 @@ export default function DashboardPage() {
         <div className="max-w-5xl mx-auto space-y-6">
 
       {/* Today's Schedule */}
-      <div className="bg-white dark:bg-[#1c1c1a] border border-black/5 dark:border-white/5 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-white dark:bg-[#1c1c1a] border border-black/5 dark:border-white/5 rounded-3xl shadow-sm overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
           <div className="flex items-center gap-2">
             <Activity className="w-5 h-5 text-[#007AFF]" />
@@ -474,7 +474,7 @@ export default function DashboardPage() {
 
             <Link
               href="/dashboard/queue"
-              className="flex items-center gap-1.5 text-xs font-semibold bg-[#007AFF] text-white px-3 py-1.5 rounded-lg hover:bg-[#0062cc] transition-colors"
+              className="flex items-center gap-1.5 text-xs font-semibold bg-[#007AFF] text-white px-3 py-1.5 rounded-xl hover:bg-[#0062cc] transition-colors"
             >
               <PlusCircle className="w-3.5 h-3.5" />
               {t("dashboard.addVisit")}
@@ -487,12 +487,12 @@ export default function DashboardPage() {
             Array.from({ length: 4 }).map((_, i) => (
               <Skeleton
                 key={i}
-                className="h-16 w-full rounded-xl bg-black/5 dark:bg-white/5"
+                className="h-16 w-full rounded-2xl bg-black/5 dark:bg-white/5"
               />
             ))
           ) : todayVisits.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-14 text-center">
-              <div className="w-14 h-14 rounded-2xl bg-[#007AFF]/10 flex items-center justify-center mb-4">
+              <div className="w-14 h-14 rounded-3xl bg-[#007AFF]/10 flex items-center justify-center mb-4">
                 <CalendarDays className="w-7 h-7 text-[#007AFF]" />
               </div>
               <p className="text-sm font-semibold mb-1">{t("dashboard.noVisitsToday")}</p>
@@ -586,12 +586,12 @@ export default function DashboardPage() {
               animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={{ y: 40, opacity: 0, scale: 0.97 }}
               transition={{ type: "spring", stiffness: 380, damping: 30 }}
-              className="relative z-10 w-full sm:max-w-md bg-[var(--background)] rounded-t-3xl sm:rounded-2xl shadow-2xl overflow-hidden"
+              className="relative z-10 w-full sm:max-w-md bg-[var(--background)] rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden"
             >
               <div className="sm:hidden w-12 h-1 rounded-full bg-border mx-auto mt-3 mb-1" />
               <div className="px-6 py-4 border-b border-border">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#AF52DE]/10 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-2xl bg-[#AF52DE]/10 flex items-center justify-center">
                     <RefreshCw className="w-5 h-5 text-[#AF52DE]" />
                   </div>
                   <div>
@@ -599,7 +599,7 @@ export default function DashboardPage() {
                     <p className="text-xs text-muted-foreground mt-0.5">{rescheduleModal.patientName}</p>
                   </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-3 bg-[#AF52DE]/5 border border-[#AF52DE]/20 rounded-lg px-3 py-2">
+                <p className="text-xs text-muted-foreground mt-3 bg-[#AF52DE]/5 border border-[#AF52DE]/20 rounded-xl px-3 py-2">
                   Contract visits cannot be cancelled. Please pick a new date and time.
                 </p>
               </div>
@@ -609,7 +609,7 @@ export default function DashboardPage() {
                     <p className="text-xs font-medium text-muted-foreground mb-1.5">New Date <span className="text-red-500">*</span></p>
                     <Popover open={rescheduleCalOpen} onOpenChange={setRescheduleCalOpen}>
                       <PopoverTrigger asChild>
-                        <button className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border rounded-xl hover:border-[#AF52DE]/50 transition-colors text-left ${!rescheduleDate ? "border-red-400/60" : "border-border"}`}>
+                        <button className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border rounded-2xl hover:border-[#AF52DE]/50 transition-colors text-left ${!rescheduleDate ? "border-red-400/60" : "border-border"}`}>
                           <CalendarIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
                           <span className={rescheduleDate ? "" : "text-muted-foreground"}>
                             {rescheduleDate ? rescheduleDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Pick date"}
@@ -623,7 +623,7 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <p className="text-xs font-medium text-muted-foreground mb-1.5">Time Slot</p>
-                    <div className="max-h-48 overflow-y-auto border border-border rounded-xl divide-y divide-border/50">
+                    <div className="max-h-48 overflow-y-auto border border-border rounded-2xl divide-y divide-border/50">
                       {rescheduleSlots.map(slot => (
                         <button key={slot.timeStr} onClick={() => setRescheduleTime(slot.timeStr)}
                           className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${rescheduleTime === slot.timeStr ? "bg-[#AF52DE]/10 text-[#AF52DE] font-semibold" : "hover:bg-muted/30"}`}>
@@ -637,14 +637,14 @@ export default function DashboardPage() {
                 <div className="flex gap-3 pt-2">
                   <button
                     onClick={() => { setRescheduleModal(null); setRescheduleDate(undefined); }}
-                    className="flex-1 border border-border text-sm font-medium py-2.5 rounded-xl hover:bg-muted/40 transition-colors"
+                    className="flex-1 border border-border text-sm font-medium py-2.5 rounded-2xl hover:bg-muted/40 transition-colors"
                   >
                     {t("common.cancel")}
                   </button>
                   <button
                     onClick={handleReschedule}
                     disabled={!rescheduleDate || rescheduling}
-                    className="flex-1 bg-[#AF52DE] text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-[#9B3DC8] transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                    className="flex-1 bg-[#AF52DE] text-white text-sm font-semibold py-2.5 rounded-2xl hover:bg-[#9B3DC8] transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
                   >
                     {rescheduling ? <IOSSpinner size={16} className="text-white" /> : <RefreshCw className="w-4 h-4" />}
                     Reschedule
@@ -689,7 +689,7 @@ export default function DashboardPage() {
               animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={{ y: 40, opacity: 0, scale: 0.95 }}
               transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              className="relative z-10 w-full sm:max-w-sm bg-[var(--background)] rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
+              className="relative z-10 w-full sm:max-w-sm bg-[var(--background)] rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden"
             >
               <div className="sm:hidden w-10 h-1 rounded-full bg-border mx-auto mt-2.5 mb-1" />
               <div className="px-5 pt-4 pb-2">
@@ -707,7 +707,7 @@ export default function DashboardPage() {
                   <button
                     key={tpl._id}
                     onClick={() => sendWithTemplate(tpl.body)}
-                    className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#007AFF]/8 transition-colors text-left group"
+                    className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl hover:bg-[#007AFF]/8 transition-colors text-left group"
                   >
                     <div className="w-8 h-8 rounded-full bg-[#007AFF]/10 flex items-center justify-center flex-shrink-0">
                       <MessageCircle className="w-4 h-4 text-[#007AFF]" />
