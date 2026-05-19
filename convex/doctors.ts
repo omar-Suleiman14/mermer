@@ -89,7 +89,7 @@ export const searchDoctors = query({
   args: {
     searchQuery: v.optional(v.string()),
     specialty: v.optional(v.string()),
-    city: v.optional(v.string()),
+
     language: v.optional(v.string()),
     feeMax: v.optional(v.number()),
     availTodayName: v.optional(v.string()),
@@ -111,7 +111,6 @@ export const searchDoctors = query({
         (d) =>
           d.name.toLowerCase().includes(q) ||
           (d.specialty ?? "").toLowerCase().includes(q) ||
-          ((d as any).city ?? "").toLowerCase().includes(q) ||
           (d.clinicName ?? "").toLowerCase().includes(q) ||
           (d.clinicAddress ?? "").toLowerCase().includes(q)
       );
@@ -120,9 +119,7 @@ export const searchDoctors = query({
     if (args.specialty) {
       list = list.filter((d) => d.specialty === args.specialty);
     }
-    if (args.city) {
-      list = list.filter((d) => ((d as any).city ?? "").toLowerCase().includes(args.city!.toLowerCase()));
-    }
+
     if (args.language) {
       list = list.filter((d) => ((d as any).languages ?? []).includes(args.language));
     }

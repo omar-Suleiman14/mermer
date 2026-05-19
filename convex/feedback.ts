@@ -64,10 +64,10 @@ export const submitFeedback = mutation({
       ? allFeedback.reduce((a, b) => a + b.rating, 0) / reviewCount 
       : undefined;
 
-    await ctx.db.patch(doctor._id, {
-      avgRating,
-      reviewCount,
-    });
+    const patchData: any = { reviewCount };
+    if (avgRating !== undefined) patchData.avgRating = avgRating;
+
+    await ctx.db.patch(doctor._id, patchData);
 
     return feedbackId;
   },

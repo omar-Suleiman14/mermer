@@ -653,14 +653,12 @@ const translations: Record<Lang, Record<string, string>> = {
     "feed.checkAvailability": "Check Availability",
     "feed.matches": "matches found",
     "feed.sort": "Sort by:",
-    "feed.sortRelevance": "Relevance",
     "feed.sortFeeAsc": "Fee ↑",
     "feed.sortFeeDesc": "Fee ↓",
     "feed.sortRating": "Rating",
     "feed.clearAll": "Clear all",
     "feed.noDoctors": "No doctors found",
     "feed.noDoctorsDesc": "Try adjusting your filters or search term.",
-    "feed.today": "Today",
     "feed.book": "Book",
 
     // Common
@@ -1295,14 +1293,12 @@ const translations: Record<Lang, Record<string, string>> = {
     "feed.checkAvailability": "المواعيد المتاحة",
     "feed.matches": "طبيب مطابق",
     "feed.sort": "ترتيب:",
-    "feed.sortRelevance": "الأقرب",
     "feed.sortFeeAsc": "السعر ↑",
     "feed.sortFeeDesc": "السعر ↓",
     "feed.sortRating": "التقييم",
     "feed.clearAll": "مسح الكل",
     "feed.noDoctors": "لم يتم العثور على أطباء",
     "feed.noDoctorsDesc": "جرب تغيير خيارات التصفية أو كلمة البحث.",
-    "feed.today": "اليوم",
     "feed.book": "احجز",
 
     // Common

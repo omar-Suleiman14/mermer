@@ -2,6 +2,8 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Plus+Jakarta+Sans:wght@200..800&display=swap');
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -49,73 +51,71 @@
 }
 
 :root {
-  /* Ibn Sina warm parchment design system */
-  --background: #f0efea;
-  --foreground: #1a1916;
-  --card: #f0efea;
-  --card-foreground: #1a1916;
-  --popover: #f0efea;
-  --popover-foreground: #1a1916;
-  --primary: #007AFF;
+  /* Bold Editorial Minimal System */
+  --font-serif: 'Playfair Display', ui-serif, Georgia, serif;
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  
+  --background: #ffffff;
+  --foreground: #000000;
+  --card: #f9f9f9;
+  --card-foreground: #000000;
+  --popover: #ffffff;
+  --popover-foreground: #000000;
+  
+  --primary: #0055FF;
   --primary-foreground: #ffffff;
-  --secondary: #e8e7e0;
-  --secondary-foreground: #1a1916;
-  --muted: #e8e7e0;
-  --muted-foreground: #6b6a63;
-  --accent: #007AFF;
+  --secondary: #f0f0f0;
+  --secondary-foreground: #000000;
+  --muted: #f0f0f0;
+  --muted-foreground: #737373;
+  --accent: #0055FF;
   --accent-foreground: #ffffff;
-  --destructive: oklch(0.577 0.245 27.325);
+  
   --border: rgba(0, 0, 0, 0.08);
   --input: rgba(0, 0, 0, 0.08);
-  --ring: #007AFF;
-  --chart-1: #007AFF;
-  --chart-2: #34c759;
-  --chart-3: #f5a623;
-  --chart-4: #ff6b6b;
-  --chart-5: #8e8e93;
-  --radius: 0.625rem;
-  --sidebar: #e8e7e0;
-  --sidebar-foreground: #1a1916;
-  --sidebar-primary: #007AFF;
+  --ring: #0055FF;
+  
+  --radius: 0; /* Sharp, brutalist edges */
+  
+  --sidebar: #f9f9f9;
+  --sidebar-foreground: #000000;
+  --sidebar-primary: #0055FF;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #dddcd5;
-  --sidebar-accent-foreground: #1a1916;
-  --sidebar-border: rgba(0, 0, 0, 0.06);
-  --sidebar-ring: #007AFF;
+  --sidebar-accent: #f0f0f0;
+  --sidebar-accent-foreground: #000000;
+  --sidebar-border: rgba(0, 0, 0, 0.08);
+  --sidebar-ring: #0055FF;
 }
 
 .dark {
-  --background: #111110;
-  --foreground: #f0efea;
-  --card: #1c1c1a;
-  --card-foreground: #f0efea;
-  --popover: #1c1c1a;
-  --popover-foreground: #f0efea;
-  --primary: #007AFF;
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #0a0a0a;
+  --card-foreground: #ffffff;
+  --popover: #0a0a0a;
+  --popover-foreground: #ffffff;
+  
+  --primary: #0055FF;
   --primary-foreground: #ffffff;
-  --secondary: #2a2a28;
-  --secondary-foreground: #f0efea;
-  --muted: #2a2a28;
-  --muted-foreground: #8e8d86;
-  --accent: #007AFF;
+  --secondary: #1a1a1a;
+  --secondary-foreground: #ffffff;
+  --muted: #1a1a1a;
+  --muted-foreground: #a3a3a3;
+  --accent: #0055FF;
   --accent-foreground: #ffffff;
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: rgba(255, 255, 255, 0.08);
-  --input: rgba(255, 255, 255, 0.08);
-  --ring: #007AFF;
-  --chart-1: #007AFF;
-  --chart-2: #34c759;
-  --chart-3: #f5a623;
-  --chart-4: #ff6b6b;
-  --chart-5: #8e8e93;
-  --sidebar: #1a1a18;
-  --sidebar-foreground: #f0efea;
-  --sidebar-primary: #007AFF;
+  
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.1);
+  --ring: #0055FF;
+  
+  --sidebar: #0a0a0a;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #0055FF;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #252523;
-  --sidebar-accent-foreground: #f0efea;
-  --sidebar-border: rgba(255, 255, 255, 0.06);
-  --sidebar-ring: #007AFF;
+  --sidebar-accent: #1a1a1a;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-ring: #0055FF;
 }
 
 @layer base {
@@ -123,11 +123,14 @@
     @apply border-border outline-ring/50;
   }
   html {
-    @apply font-sans;
+    font-family: var(--font-sans);
     background-color: var(--background);
   }
   body {
     @apply bg-background text-foreground;
+  }
+  h1, h2, h3, h4, h5, h6, .font-serif {
+    font-family: var(--font-serif);
   }
 }
 
@@ -166,6 +169,14 @@ html[dir="rtl"] body {
   font-family: var(--font-cairo), var(--font-sans), sans-serif;
   direction: rtl;
   text-align: right;
+}
+html[dir="rtl"] h1, 
+html[dir="rtl"] h2, 
+html[dir="rtl"] h3, 
+html[dir="rtl"] h4, 
+html[dir="rtl"] .font-serif {
+  /* Arabic doesn't use serifs the same way, we can use a bolder weight of Cairo or system font */
+  font-family: var(--font-cairo), sans-serif;
 }
 
 html[dir="ltr"],
