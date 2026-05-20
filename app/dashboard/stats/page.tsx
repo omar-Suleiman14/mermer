@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { useMemo, type ComponentType } from "react";
-import { useI18n, type Lang } from "@/lib/i18n";
+import { useI18n, type Lang } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/components/providers/user-provider";
 

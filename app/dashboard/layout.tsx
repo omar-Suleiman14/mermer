@@ -9,7 +9,7 @@ import { UserSync } from "../../components/user-sync";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { DoctorOnboarding } from "@/components/doctor-onboarding";
 import { useState, useEffect } from "react";
-import { useI18n } from "@/lib/i18n";
+import { useI18n } from "@/lib/i18n/client";
 import { OnlineBookingNotifier } from "@/components/online-booking-notifier";
 import { AlertTriangle, X } from "lucide-react";
 import { UserProvider, useCurrentUser } from "@/components/providers/user-provider";

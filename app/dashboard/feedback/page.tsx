@@ -9,7 +9,7 @@ import { Star, QrCode, Link2, MessageSquare } from "lucide-react";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { useI18n } from "@/lib/i18n";
+import { useI18n } from "@/lib/i18n/client";
 
 function StarRow({ rating }: { rating: number }) {
   return (

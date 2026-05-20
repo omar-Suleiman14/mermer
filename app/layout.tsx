@@ -6,31 +6,36 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
-import { I18nProvider } from "@/lib/i18n";
+import { I18nProvider } from "@/lib/i18n/client";
+import { getServerI18n } from "@/lib/i18n/server";
 import { HtmlDirSync } from "@/components/html-dir-sync";
 
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
 const outfit = Outfit({
   variable: "--font-outfit",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
 const playfair = Playfair_Display({
   variable: "--font-playfair",
   subsets: ["latin"],
   style: ["normal", "italic"],
+  display: "swap",
 });
 
 const cairo = Cairo({
   variable: "--font-cairo",
   subsets: ["arabic", "latin"],
   weight: ["400", "500", "600", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -42,19 +47,18 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const { lang, dir } = await getServerI18n();
+
   return (
-    <html lang="en" suppressHydrationWarning style={{ fontSize: "106%" }}>
+    <html lang={lang} dir={dir} suppressHydrationWarning style={{ fontSize: "106%" }}>
       <body
         className={cn(
-          inter.variable,
-          playfair.variable,
-          cairo.variable,
-          outfit.variable,
+          lang === "ar" ? cairo.variable : cn(inter.variable, playfair.variable, outfit.variable),
           "antialiased"
         )}
         suppressHydrationWarning
@@ -67,7 +71,7 @@ export default function RootLayout({
         >
           <ClerkProvider dynamic>
             <ConvexClientProvider>
-              <I18nProvider>
+              <I18nProvider initialLang={lang}>
                 <HtmlDirSync />
                 {children}
                 <Toaster richColors />

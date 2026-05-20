@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { SlidersHorizontal, X } from "lucide-react";
-import { useI18n } from "@/lib/i18n";
+import { useI18n } from "@/lib/i18n/client";
 import {
   DOCTOR_SPECIALTIES,
   DOCTOR_LANGUAGES,

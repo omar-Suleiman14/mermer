@@ -7,7 +7,7 @@
 // import QRCode from "qrcode";
 // import { IOSSpinner } from "@/components/ui/spinner";
 // import { motion } from "framer-motion";
-// import { useI18n } from "@/lib/i18n";
+// import { useI18n } from "@/lib/i18n/client";
 
 // export default function ClinicScreen() {
 //   const { user, isLoaded } = useUser();
@@ -187,7 +187,7 @@ import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { motion } from "framer-motion";
-import { useI18n } from "@/lib/i18n";
+import { useI18n } from "@/lib/i18n/client";
 
 export default function ClinicScreen() {
   const { user, isLoaded } = useUser();
@@ -262,7 +262,7 @@ export default function ClinicScreen() {
   const locale = lang === "ar" ? "ar-EG" : "en-US";
 
   const timeString = time.toLocaleTimeString(locale, {
-    hour: "numeric",
+    hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
     hour12: true,

@@ -22,7 +22,7 @@ import { IOSSpinner } from "@/components/ui/spinner";
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Switch } from "@/components/ui/switch";
-import { useI18n } from "@/lib/i18n";
+import { useI18n } from "@/lib/i18n/client";
 
 function normalisePhone(raw: string): string {
   const digits = raw.replace(/\D/g, "");
@@ -280,7 +280,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
                 <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("onboarding.whatsappPhone")} *</label>
                 <div className="flex gap-2">
                   <span className="flex items-center px-3 bg-muted/60 border border-border rounded-2xl text-sm text-muted-foreground font-mono shrink-0" dir="ltr">+20</span>
-                  <input value={phone.replace(/^\+?20/, "").replace(/^0/, "")} onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))} placeholder="1142529590" type="tel" className={`flex-1 ${inputClass} !text-left`} dir="ltr" />
+                  <input value={phone.replace(/^\+?20/, "").replace(/^0/, "")} onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))} placeholder="1142529590" type="tel" className={`flex-1 ${inputClass} text-left!`} dir="ltr" />
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">{t("onboarding.phoneDesc")}</p>
               </div>
@@ -358,7 +358,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
                     placeholder="350"
                     className={`${inputClass} pe-12`}
                   />
-                  <span className="absolute end-4 text-xs text-muted-foreground font-medium pointer-events-none">{t("common.currency")}</span>
+                  <span className="absolute inset-e-4 text-xs text-muted-foreground font-medium pointer-events-none">{t("common.currency")}</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">{t("onboarding.feeDesc")}</p>
               </div>
@@ -413,7 +413,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
       {/* Overlay */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
 

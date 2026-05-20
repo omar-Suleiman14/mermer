@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 
 import { useTheme } from "next-themes";
-import { useI18n } from "@/lib/i18n";
+import { useI18n } from "@/lib/i18n/client";
 import {
   Sidebar,
   SidebarContent,

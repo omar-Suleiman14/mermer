@@ -1,17 +1,9 @@
-"use client";
-
 import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { useI18n } from "@/lib/i18n";
-import { useEffect, useState } from "react";
+import { getServerI18n } from "@/lib/i18n/server";
 
-export default function PrivacyPage() {
-  const { lang, dir } = useI18n();
-  const [mounted, setMounted] = useState(false);
-  
-  useEffect(() => setMounted(true), []);
-  
-  if (!mounted) return null;
+export default async function PrivacyPage() {
+  const { lang, dir } = await getServerI18n();
 
   return (
     <div className="min-h-screen bg-[#f0efea] dark:bg-[#111110] text-[#1a1916] dark:text-[#f0efea] flex flex-col" dir={dir}>

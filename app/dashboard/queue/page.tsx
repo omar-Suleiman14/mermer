@@ -46,7 +46,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import Link from "next/link";
-import { useI18n, type Lang } from "@/lib/i18n";
+import { useI18n, type Lang } from "@/lib/i18n/client";
 import {
   DndContext,
   useDraggable,

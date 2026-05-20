@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Search, UserPlus, Phone, Clock, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { PatientIntakeDrawer } from "@/components/patient-intake-drawer";
-import { useI18n } from "@/lib/i18n";
+import { useI18n } from "@/lib/i18n/client";
 
 export default function PatientsPage() {
   const { user } = useUser();

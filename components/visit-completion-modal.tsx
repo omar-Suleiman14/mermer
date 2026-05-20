@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
-import { useI18n } from "@/lib/i18n";
+import { useI18n } from "@/lib/i18n/client";
 import {
   AlertDialog,
   AlertDialogAction,

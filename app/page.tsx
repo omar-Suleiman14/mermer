@@ -1,4 +1,4 @@
-"use client";
+
 
 import Link from "next/link";
 import { 
@@ -22,11 +22,11 @@ import {
   GripVertical,
   MessageSquare
 } from "lucide-react";
-import { useI18n } from "@/lib/i18n";
+import { getServerI18n } from "@/lib/i18n/server";
 import { PublicNav } from "@/components/public/public-nav";
 
-export default function LandingPage() {
-  const { t, dir, lang } = useI18n();
+export default async function LandingPage() {
+  const { t, dir, lang } = await getServerI18n();
 
   return (
     <div className="min-h-dvh flex flex-col bg-slate-50 dark:bg-zinc-950 text-foreground" dir={dir}>

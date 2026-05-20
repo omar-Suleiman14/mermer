@@ -20,7 +20,7 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
-import { useI18n } from "@/lib/i18n";
+import { useI18n } from "@/lib/i18n/client";
 
 interface PatientIntakeDrawerProps {
   open: boolean;

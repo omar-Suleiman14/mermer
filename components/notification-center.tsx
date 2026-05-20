@@ -7,7 +7,7 @@ import { useUser } from "@clerk/nextjs";
 import { Bell, Calendar, Clock, X, Trash2, MessageCircle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AnimatePresence, motion } from "framer-motion";
-import { useI18n } from "@/lib/i18n";
+import { useI18n } from "@/lib/i18n/client";
 import { formatDistanceToNow } from "date-fns";
 import { arEG, enUS } from "date-fns/locale";
 import { toast } from "sonner";
@@ -63,7 +63,7 @@ function TemplatePicker({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4"
+      className="fixed inset-0 z-200 flex items-end sm:items-center justify-center p-0 sm:p-4"
     >
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <motion.div
@@ -211,7 +211,7 @@ export function NotificationCenter() {
           <button className="relative p-2 rounded-full hover:bg-muted/60 transition-colors">
             <Bell className="w-5 h-5 text-muted-foreground" />
             {unreadCount > 0 && (
-              <span className="absolute top-1 end-1.5 w-2 h-2 rounded-full bg-red-500 ring-2 ring-background animate-pulse" />
+              <span className="absolute top-1 inset-e-1.5 w-2 h-2 rounded-full bg-red-500 ring-2 ring-background animate-pulse" />
             )}
           </button>
         </PopoverTrigger>
@@ -261,7 +261,7 @@ export function NotificationCenter() {
                           <Calendar className="w-4 h-4 text-[#007AFF]" />
                         </div>
                         {isUnread && (
-                          <span className="absolute -top-0.5 -end-0.5 w-2.5 h-2.5 rounded-full bg-[#007AFF] ring-2 ring-background" />
+                          <span className="absolute -top-0.5 -inset-e-0.5 w-2.5 h-2.5 rounded-full bg-[#007AFF] ring-2 ring-background" />
                         )}
                       </div>
 
@@ -302,7 +302,7 @@ export function NotificationCenter() {
                     {/* Delete button */}
                     <button
                       onClick={(e) => handleDelete(noti.createdAt, e)}
-                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-muted/60 transition-all text-muted-foreground hover:text-red-500 absolute top-3 end-3"
+                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-muted/60 transition-all text-muted-foreground hover:text-red-500 absolute top-3 inset-e-3"
                     >
                       <X className="w-4 h-4" />
                     </button>

@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/drawer";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { useI18n } from "@/lib/i18n";
+import { useI18n } from "@/lib/i18n/client";
 import { Clock, CalendarIcon, CheckCircle2 } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";

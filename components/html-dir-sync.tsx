@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { useI18n } from "@/lib/i18n";
+import { useI18n } from "@/lib/i18n/client";
 
 /**
  * Mounts inside the I18nProvider and keeps <html lang> and <html dir>

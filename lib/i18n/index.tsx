@@ -1,38 +1,6 @@
-"use client";
-
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
-} from "react";
-
 export type Lang = "en" | "ar";
 
-interface I18nContextType {
-  lang: Lang;
-  setLang: (lang: Lang) => void;
-  t: (key: string) => string;
-  dir: "ltr" | "rtl";
-}
-
-const I18nContext = createContext<I18nContextType>({
-  lang: "ar",
-  setLang: () => { },
-  t: (key) => key,
-  dir: "rtl",
-});
-
-export function useI18n() {
-  return useContext(I18nContext);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Translations
-// ─────────────────────────────────────────────────────────────────────────────
-
-const translations: Record<Lang, Record<string, string>> = {
+export const translations: Record<Lang, Record<string, string>> = {
   en: {
     // Nav
     "nav.dashboard": "Dashboard",
@@ -1373,45 +1341,3 @@ const translations: Record<Lang, Record<string, string>> = {
     "toast.reportSubmitted": "تم إرسال البلاغ",
   },
 };
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Provider
-// ─────────────────────────────────────────────────────────────────────────────
-
-export function I18nProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLangState] = useState<Lang>("ar");
-
-  useEffect(() => {
-    const stored = localStorage.getItem("marmar_lang") as Lang | null;
-    if (stored === "ar" || stored === "en") {
-      setLangState(stored);
-    }
-  }, []);
-
-  const setLang = useCallback((newLang: Lang) => {
-    setLangState(newLang);
-    localStorage.setItem("marmar_lang", newLang);
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.setAttribute("lang", lang);
-    document.documentElement.setAttribute("dir", lang === "ar" ? "rtl" : "ltr");
-    document.documentElement.style.fontFamily =
-      lang === "ar"
-        ? "var(--font-cairo), sans-serif"
-        : "var(--font-sans), sans-serif";
-  }, [lang]);
-
-  const t = useCallback(
-    (key: string) => translations[lang]?.[key] ?? translations["en"]?.[key] ?? key,
-    [lang]
-  );
-
-  const dir: "ltr" | "rtl" = lang === "ar" ? "rtl" : "ltr";
-
-  return (
-    <I18nContext.Provider value={{ lang, setLang, t, dir }}>
-      {children}
-    </I18nContext.Provider>
-  );
-}

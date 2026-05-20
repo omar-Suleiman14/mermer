@@ -4,7 +4,7 @@ import { useTheme } from "next-themes"
 import { Toaster as Sonner, type ToasterProps } from "sonner"
 import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon } from "lucide-react"
 import { IOSSpinner } from "@/components/ui/spinner"
-import { useI18n } from "@/lib/i18n"
+import { useI18n } from "@/lib/i18n/client"
 
 const Toaster = ({ position, ...props }: ToasterProps) => {
   const { theme = "system" } = useTheme()

@@ -44,7 +44,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useI18n } from "@/lib/i18n";
+import { useI18n } from "@/lib/i18n/client";
 import { useMemo, useState, useRef, useEffect, memo, useCallback } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";

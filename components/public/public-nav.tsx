@@ -5,7 +5,7 @@ import { SignedIn, SignedOut } from "@clerk/nextjs";
 import { Sun, Moon } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
-import { useI18n } from "@/lib/i18n";
+import { useI18n } from "@/lib/i18n/client";
 import { LanguageToggle } from "@/components/language-toggle";
 import { cn } from "@/lib/utils";
 

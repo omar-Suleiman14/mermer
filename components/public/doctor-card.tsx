@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { MapPin, Building2 } from "lucide-react";
-import { useI18n } from "@/lib/i18n";
+import { useI18n } from "@/lib/i18n/client";
 import { formatDoctorTitle, isAvailableToday, translateSpecialty } from "@/lib/doctor-display";
 import type { PublicDoctor } from "@/lib/doctor-constants";
 import { StarRating } from "./star-rating";

@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Plus, Pencil, Trash2, Check, X, MessageSquare, Copy } from "lucide-react";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { motion, AnimatePresence } from "framer-motion";
-import { useI18n } from "@/lib/i18n";
+import { useI18n } from "@/lib/i18n/client";
 import { createPortal } from "react-dom";
 
 function getTemplateVariables(t: (key: string) => string) {
@@ -252,7 +252,7 @@ function EditorForm({ name, setName, body, setBody, onSave, onCancel, preview, s
   }
 
   return (
-    <div className="border border-[#007AFF]/30 bg-[#007AFF]/[0.03] rounded-xl p-4 space-y-3">
+    <div className="border border-[#007AFF]/30 bg-[#007AFF]/3 rounded-xl p-4 space-y-3">
       <input
         value={name}
         onChange={(e) => setName(e.target.value)}
