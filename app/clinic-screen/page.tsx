@@ -261,9 +261,11 @@ export default function ClinicScreen() {
 
   const locale = lang === "ar" ? "ar-EG" : "en-US";
 
-  // Manually construct time to ensure perfect monospacing even in Arabic
+  // Manually split the localized time into fixed blocks to prevent jittering
   const h12 = time.getHours() % 12 || 12;
-  const timeNumStr = `${h12.toString().padStart(2, "0")}:${time.getMinutes().toString().padStart(2, "0")}:${time.getSeconds().toString().padStart(2, "0")}`;
+  const hStr = h12.toLocaleString(locale, { minimumIntegerDigits: 2 });
+  const mStr = time.getMinutes().toLocaleString(locale, { minimumIntegerDigits: 2 });
+  const sStr = time.getSeconds().toLocaleString(locale, { minimumIntegerDigits: 2 });
   const ampmStr = time.getHours() >= 12 ? (lang === "ar" ? "م" : "PM") : (lang === "ar" ? "ص" : "AM");
 
   const dateString = time.toLocaleDateString(locale, {
@@ -319,11 +321,13 @@ export default function ClinicScreen() {
               </h2>
 
               <div className="w-full flex items-center justify-center" style={{ height: '1.2em', fontSize: 'clamp(2.5rem, 6vw, 4.5rem)' }}>
-                <div className="flex items-baseline justify-center gap-2 sm:gap-3" dir="ltr">
-                  <span className="font-bold font-mono tracking-tight text-foreground w-[8ch] text-center">
-                    {timeNumStr}
-                  </span>
-                  <span className="font-bold text-muted-foreground w-[2em] text-center text-[0.6em]">
+                <div className="flex items-baseline justify-center" dir={lang === "ar" ? "rtl" : "ltr"}>
+                  <span className="font-bold text-foreground text-center inline-block w-[1.2em]">{hStr}</span>
+                  <span className="font-bold text-foreground text-center inline-block w-[0.4em] opacity-80">:</span>
+                  <span className="font-bold text-foreground text-center inline-block w-[1.2em]">{mStr}</span>
+                  <span className="font-bold text-foreground text-center inline-block w-[0.4em] opacity-80">:</span>
+                  <span className="font-bold text-foreground text-center inline-block w-[1.2em]">{sStr}</span>
+                  <span className="font-bold text-muted-foreground text-center inline-block w-[2em] text-[0.6em] mx-1 sm:mx-2">
                     {ampmStr}
                   </span>
                 </div>
