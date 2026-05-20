@@ -70,6 +70,7 @@ const translations: Record<Lang, Record<string, string>> = {
     "dashboard.contract": "Contract",
     "dashboard.followUp": "Follow-up",
     "dashboard.clinicScreenCopied": "Clinic Screen link copied",
+    "dashboard.copyClinicLink": "Copy Clinic Link",
 
     // Schedule
     "schedule.title": "Schedule",
@@ -756,6 +757,7 @@ const translations: Record<Lang, Record<string, string>> = {
     "dashboard.contract": "عقد",
     "dashboard.followUp": "متابعة",
     "dashboard.clinicScreenCopied": "تم نسخ رابط شاشة العيادة",
+    "dashboard.copyClinicLink": "نسخ رابط العيادة",
 
     // Schedule
     "schedule.title": "الجدول",

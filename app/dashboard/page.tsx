@@ -528,7 +528,7 @@ export default function DashboardPage() {
               className="flex items-center gap-1.5 text-xs font-semibold bg-muted text-foreground px-3 py-1.5 rounded-xl hover:bg-muted/80 transition-colors"
             >
               <LinkIcon className="w-3.5 h-3.5" />
-              Copy Clinic Link
+              {t("dashboard.copyClinicLink")}
             </button>
             <Link
               href="/dashboard/queue"

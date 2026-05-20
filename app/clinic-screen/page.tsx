@@ -315,16 +315,18 @@ export default function ClinicScreen() {
           {/* Content inside the squircle */}
           <div className="relative z-10 flex flex-row items-stretch justify-between w-full h-full p-12 lg:p-16">
             {/* LEFT SIDE: Clinic Name & Time */}
-            <div className="flex-1 flex flex-col items-center justify-center text-center pr-8 border-r border-border/20">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-foreground tracking-tight mb-8">
+            <div className="flex-1 flex flex-col items-center justify-center text-center pr-8 border-r border-border/20 overflow-hidden">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-foreground tracking-tight mb-8 max-w-full truncate">
                 {currentUser.clinicName}
               </h2>
 
-              <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tighter text-foreground whitespace-nowrap" style={{ fontVariantNumeric: 'tabular-nums', minWidth: '7ch', textAlign: 'center' }}>
-                {timeString}
-              </h1>
+              <div className="w-full flex items-center justify-center" style={{ height: '1.2em', fontSize: 'clamp(3rem, 8vw, 6rem)' }}>
+                <span className="font-bold tracking-tighter text-foreground whitespace-nowrap block" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  {timeString}
+                </span>
+              </div>
 
-              <p className="mt-6 text-xl md:text-2xl lg:text-3xl font-medium text-muted-foreground" style={{ minWidth: '14ch', textAlign: 'center' }}>
+              <p className="mt-6 text-xl md:text-2xl lg:text-3xl font-medium text-muted-foreground whitespace-nowrap">
                 {dateString}
               </p>
 
