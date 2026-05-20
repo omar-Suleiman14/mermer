@@ -22,9 +22,9 @@ import {
   GripVertical,
   XCircle,
   CalendarIcon,
-  RefreshCw,
   X,
   MoreHorizontal,
+  Link as LinkIcon,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -132,8 +132,7 @@ const SortableApptItem = memo(function SortableApptItem({
       style={style}
       className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${
         !isDone ? "hover:shadow-md" : ""
-      } ${
-        isDragging ? "opacity-90 shadow-2xl scale-[1.02] bg-[var(--background)] border-[#007AFF]/40" : 
+        isDragging ? "opacity-90 shadow-2xl scale-[1.02] bg-background border-[#007AFF]/40" : 
         isDone ? "opacity-55 bg-muted/20 border-border/40" : "bg-card border-black/5 dark:border-white/5 shadow-sm"
       }`}
     >
@@ -141,15 +140,13 @@ const SortableApptItem = memo(function SortableApptItem({
       {!isDone && (
         <div 
           {...attributes} 
-          {...listeners} 
-          className="flex-shrink-0 -ms-2 p-1 text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors cursor-grab active:cursor-grabbing outline-none"
+          className="shrink-0 -ms-2 p-1 text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors cursor-grab active:cursor-grabbing outline-none"
         >
           <GripVertical className="w-4 h-4" />
         </div>
       )}
 
-      {/* Time */}
-      <div className="flex flex-col items-center w-14 flex-shrink-0">
+      <div className="flex flex-col items-center w-14 shrink-0">
         <Clock className="w-3 h-3 text-muted-foreground mb-0.5" />
         <span className="text-xs font-bold text-[#1a1916] dark:text-[#f0efea]">
           {formatTime(appt.date, lang === "ar" ? "ar-EG" : "en-US")}
@@ -157,7 +154,7 @@ const SortableApptItem = memo(function SortableApptItem({
       </div>
 
       {/* Avatar */}
-      <div className="w-10 h-10 rounded-full bg-[#007AFF]/10 flex items-center justify-center flex-shrink-0">
+      <div className="w-10 h-10 rounded-full bg-[#007AFF]/10 flex items-center justify-center shrink-0">
         <span className="text-sm font-bold text-[#007AFF]">
           {initials}
         </span>
@@ -204,11 +201,10 @@ const SortableApptItem = memo(function SortableApptItem({
       </div>
 
       {isDone ? (
-        <Badge className="text-[10px] border bg-[#34c759]/10 text-[#34c759] border-[#34c759]/30 flex-shrink-0">
+        <Badge className="text-[10px] border bg-[#34c759]/10 text-[#34c759] border-[#34c759]/30 shrink-0">
           {t("dashboard.done")}
         </Badge>
-      ) : (
-        <div className="flex items-center gap-1 flex-shrink-0">
+        <div className="flex items-center gap-1 shrink-0">
           <div className="flex items-center gap-1 max-[500px]:hidden">
             <button
               onClick={onComplete}
@@ -246,7 +242,7 @@ const SortableApptItem = memo(function SortableApptItem({
           <div className="hidden max-[500px]:block">
             <DropdownMenu dir={dir}>
               <DropdownMenuTrigger asChild>
-                <button className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted/80 text-muted-foreground transition-colors">
+                <button className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted/80 text-muted-foreground transition-colors">
                   <MoreHorizontal className="w-4 h-4" />
                 </button>
               </DropdownMenuTrigger>
@@ -521,6 +517,16 @@ export default function DashboardPage() {
               {formatFullDate(todayTs, lang === "ar" ? "ar-EG" : "en-US")}
             </p>
 
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(`${window.location.origin}/clinic-screen`);
+                toast.success(t("dashboard.clinicScreenCopied") || "Clinic Screen link copied");
+              }}
+              className="flex items-center gap-1.5 text-xs font-semibold bg-muted text-foreground px-3 py-1.5 rounded-xl hover:bg-muted/80 transition-colors"
+            >
+              <LinkIcon className="w-3.5 h-3.5" />
+              Copy Clinic Link
+            </button>
             <Link
               href="/dashboard/queue"
               className="flex items-center gap-1.5 text-xs font-semibold bg-[#007AFF] text-white px-3 py-1.5 rounded-xl hover:bg-[#0062cc] transition-colors"
@@ -630,7 +636,7 @@ export default function DashboardPage() {
               animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={{ y: 40, opacity: 0, scale: 0.97 }}
               transition={{ type: "spring", stiffness: 380, damping: 30 }}
-              className="relative z-10 w-full sm:max-w-md bg-[var(--background)] rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
+              className="relative z-10 w-full sm:max-w-md bg-background rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
             >
               <div className="sm:hidden w-12 h-1 rounded-full bg-border mx-auto mt-3 mb-1" />
               <div className="px-6 py-4 border-b border-border">
@@ -661,8 +667,7 @@ export default function DashboardPage() {
                     <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("schedule.newDate")} <span className="text-red-500">*</span></p>
                     <Popover open={rescheduleCalOpen} onOpenChange={setRescheduleCalOpen}>
                       <PopoverTrigger asChild>
-                        <button className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border rounded-2xl transition-colors text-left ${rescheduleModal.isContract ? "hover:border-[#AF52DE]/50" : "hover:border-[#007AFF]/50"} ${!rescheduleDate ? "border-red-400/60" : "border-border"}`}>
-                          <CalendarIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                          <CalendarIcon className="w-4 h-4 text-muted-foreground shrink-0" />
                           <span className={rescheduleDate ? "" : "text-muted-foreground"}>
                             {rescheduleDate ? rescheduleDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Pick date"}
                           </span>
@@ -741,7 +746,7 @@ export default function DashboardPage() {
               animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={{ y: 40, opacity: 0, scale: 0.95 }}
               transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              className="relative z-10 w-full sm:max-w-sm bg-[var(--background)] rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
+              className="relative z-10 w-full sm:max-w-sm bg-background rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
             >
               <div className="sm:hidden w-10 h-1 rounded-full bg-border mx-auto mt-2.5 mb-1" />
               <div className="px-5 pt-4 pb-2">
@@ -760,8 +765,7 @@ export default function DashboardPage() {
                     key={tpl._id}
                     onClick={() => sendWithTemplate(tpl.body)}
                     className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl hover:bg-[#007AFF]/8 transition-colors text-left group"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-[#007AFF]/10 flex items-center justify-center flex-shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-[#007AFF]/10 flex items-center justify-center shrink-0">
                       <MessageCircle className="w-4 h-4 text-[#007AFF]" />
                     </div>
                     <div className="flex-1 min-w-0">

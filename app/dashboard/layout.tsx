@@ -62,7 +62,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
   if (currentUser?.isBlocked) {
     return (
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-background" dir={dir}>
+      <div className="fixed inset-0 z-9999 flex items-center justify-center p-4 bg-background" dir={dir}>
         <div className="w-full max-w-sm bg-card border border-border/50 rounded-2xl shadow-2xl overflow-hidden p-6 text-center space-y-4">
           <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto text-red-500 mb-2">
             <AlertTriangle className="w-8 h-8" />
@@ -103,7 +103,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
       )}
 
       {showBannedPopup && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" dir={dir}>
+        <div className="fixed inset-0 z-200 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" dir={dir}>
           <div className="w-full max-w-sm bg-card border border-border/50 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden p-6 relative">
             <button onClick={() => {
               setShowBannedPopup(false);

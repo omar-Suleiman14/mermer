@@ -249,7 +249,7 @@ export default function SettingsPage() {
   async function handlePhotoUpload(file: File) {
     setUploadingPhoto(true);
     try {
-      const uploadUrl = await generateUploadUrl({ clerkId: user.id });
+      const uploadUrl = await generateUploadUrl({ clerkId });
       const res = await fetch(uploadUrl, { method: "POST", headers: { "Content-Type": file.type }, body: file });
       const { storageId } = await res.json();
       await saveProfilePhoto({ clerkId, storageId: storageId as Id<"_storage"> });
@@ -301,7 +301,7 @@ export default function SettingsPage() {
               </div>
             )}
           </div>
-          <p className="text-[12px] text-muted-foreground ms-4 mt-[-20px] mb-8">
+          <p className="text-[12px] text-muted-foreground ms-4 -mt-5 mb-8">
             {t("settings.appearanceHint")}
           </p>
         </section>
@@ -328,7 +328,7 @@ export default function SettingsPage() {
                 <span className="text-muted-foreground text-sm">+20</span>
                 <input id="settings-phone" name="phone" type="tel" value={phone.replace(/^\+?20/, "").replace(/^0/, "")}
                   onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))} placeholder="1142529590"
-                  className={`${inputClass} !flex-none w-[120px] sm:w-[150px] !text-left`} />
+                  className={`${inputClass} flex-none! w-30 sm:w-37.5 text-left!`} />
               </div>
             </div>
 
@@ -350,7 +350,7 @@ export default function SettingsPage() {
                 placeholder="350" className={inputClass} />
             </div>
           </div>
-          <p className="text-[12px] text-muted-foreground ms-4 mt-[-20px] mb-8">
+          <p className="text-[12px] text-muted-foreground ms-4 -mt-5 mb-8">
             {t("settings.clinicHint")}
           </p>
         </section>
@@ -427,7 +427,7 @@ export default function SettingsPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
@@ -436,7 +436,7 @@ export default function SettingsPage() {
               className="w-full max-w-md bg-card rounded-2xl shadow-xl overflow-hidden"
             >
               <div className="p-5 flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+                <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
                   <AlertTriangle className="w-5 h-5 text-amber-500" />
                 </div>
                 <div className="w-full">
