@@ -32,18 +32,18 @@ export function I18nProvider({
   const [lang, setLangState] = useState<Lang>(initialLang);
 
   useEffect(() => {
-    const stored = localStorage.getItem("marmar_lang") as Lang | null;
+    const stored = localStorage.getItem("marmer_lang") as Lang | null;
     if (stored === "ar" || stored === "en") {
       setLangState(stored);
       // Sync cookie so server components see it
-      document.cookie = `marmar_lang=${stored}; path=/; max-age=31536000`;
+      document.cookie = `marmer_lang=${stored}; path=/; max-age=31536000`;
     }
   }, []);
 
   const setLang = useCallback((newLang: Lang) => {
     setLangState(newLang);
-    localStorage.setItem("marmar_lang", newLang);
-    document.cookie = `marmar_lang=${newLang}; path=/; max-age=31536000`;
+    localStorage.setItem("marmer_lang", newLang);
+    document.cookie = `marmer_lang=${newLang}; path=/; max-age=31536000`;
   }, []);
 
   useEffect(() => {

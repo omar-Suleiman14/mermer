@@ -235,7 +235,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "stats.overview": "Overview",
 
     // Onboarding
-    "onboarding.welcome": "Welcome to Marmar",
+    "onboarding.welcome": "Welcome to marmer",
     "onboarding.setup": "Set up your practice",
     "onboarding.setupDesc": "Takes 2 minutes. You can update everything later in Settings.",
     "onboarding.yourDetails": "Your Details",
@@ -269,7 +269,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "onboarding.next": "Next",
     "onboarding.finishSetup": "Finish Setup",
     "onboarding.saving": "Saving…",
-    "onboarding.welcomeSuccess": "Welcome to Marmar! Your profile is ready.",
+    "onboarding.welcomeSuccess": "Welcome to marmer! Your profile is ready.",
     "onboarding.feePerVisit": "Fee Per Visit",
     "onboarding.feeDesc": "Used in analytics and shown on your public profile.",
 
@@ -576,7 +576,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "profile.notFound": "Doctor Not Found",
     "profile.notFoundDesc": "This profile does not exist or is not public.",
     "profile.back": "Back",
-    "profile.brandName": "Marmar",
+    "profile.brandName": "marmer",
     "profile.reviewsCount": "{count} reviews",
     "profile.openInMaps": "Open in Google Maps",
     "profile.viewLocation": "View Location",

@@ -13,7 +13,7 @@ export default async function PrivacyPage() {
             {dir === "rtl" ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
             {lang === "ar" ? "العودة للرئيسية" : "Back to home"}
           </Link>
-          <span className="font-bold text-lg tracking-tight text-[#007AFF]">Marmar</span>
+          <span className="font-bold text-lg tracking-tight text-[#007AFF]">marmer</span>
         </div>
       </nav>
 
@@ -52,11 +52,11 @@ export default async function PrivacyPage() {
                 <p>لديك الحق في الوصول إلى معلوماتك الشخصية، تحديثها، أو حذفها. إذا كنت ترغب في ممارسة هذه الحقوق، يرجى الاتصال بفريق الدعم لدينا.</p>
 
                 <h2 className="text-[#1a1916] dark:text-[#f0efea] font-semibold mt-8 mb-2">7. اتصل بنا</h2>
-                <p>لأي أسئلة أو استفسارات تتعلق بخصوصيتك، يرجى الاتصال بنا على privacy@marmarcare.com.</p>
+                <p>لأي أسئلة أو استفسارات تتعلق بخصوصيتك، يرجى الاتصال بنا على privacy@marmercare.com.</p>
               </>
             ) : (
               <>
-                <p>At Marmar Care, we take your privacy seriously. This Privacy Policy explains how we collect, use, and protect your personal and medical information.</p>
+                <p>At marmer Care, we take your privacy seriously. This Privacy Policy explains how we collect, use, and protect your personal and medical information.</p>
 
                 <h2 className="text-[#1a1916] dark:text-[#f0efea] font-semibold mt-8 mb-2">1. Information We Collect</h2>
                 <p>We collect information you provide directly, such as your name, contact details, and appointment history. For doctors, we collect professional credentials, clinic details, and working hours.</p>
@@ -77,7 +77,7 @@ export default async function PrivacyPage() {
                 <p>You have the right to access, update, or delete your personal information. If you wish to exercise these rights, please contact our support team.</p>
 
                 <h2 className="text-[#1a1916] dark:text-[#f0efea] font-semibold mt-8 mb-2">7. Contact Us</h2>
-                <p>For any questions or concerns regarding your privacy, please contact us at privacy@marmarcare.com.</p>
+                <p>For any questions or concerns regarding your privacy, please contact us at privacy@marmercare.com.</p>
               </>
             )}
           </div>
@@ -86,7 +86,7 @@ export default async function PrivacyPage() {
 
       <footer className="border-t border-black/6 dark:border-white/6 py-6 px-6">
         <div className="max-w-3xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-[#6b6a63] dark:text-[#8e8d86]">
-          <p>© 2026 Marmar. {lang === "ar" ? "جميع الحقوق محفوظة." : "All rights reserved."}</p>
+          <p>© 2026 marmer. {lang === "ar" ? "جميع الحقوق محفوظة." : "All rights reserved."}</p>
           <div className="flex gap-5">
             <Link href="/terms" className="hover:text-[#007AFF] transition-colors">
               {lang === "ar" ? "الشروط والأحكام" : "Terms and Conditions"}
