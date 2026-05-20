@@ -112,7 +112,14 @@ export const createContract = mutation({
     downPayment: v.optional(v.number()),
     downPaymentType: v.optional(v.union(v.literal("fixed"), v.literal("percentage"))),
     costPerVisit: v.optional(v.number()),
-    visitFrequency: v.optional(v.string()),
+    visitFrequency: v.optional(v.union(
+      v.literal("daily"),
+      v.literal("weekly"),
+      v.literal("bi-weekly"),
+      v.literal("monthly"),
+      v.literal("custom"),
+      v.literal("manual")
+    )),
     customIntervalDays: v.optional(v.number()),
     startDate: v.number(),
     contractFileId: v.optional(v.id("_storage")),
@@ -221,7 +228,14 @@ export const updateContract = mutation({
       downPaymentType: v.optional(
         v.union(v.literal("fixed"), v.literal("percentage"))
       ),
-      visitFrequency: v.optional(v.string()),
+      visitFrequency: v.optional(v.union(
+        v.literal("daily"),
+        v.literal("weekly"),
+        v.literal("bi-weekly"),
+        v.literal("monthly"),
+        v.literal("custom"),
+        v.literal("manual")
+      )),
       customIntervalDays: v.optional(v.number()),
       durationDays: v.optional(v.number()),
       contractFileId: v.optional(v.id("_storage")),
@@ -255,7 +269,7 @@ export const deleteContract = mutation({
     const contractVisits = await ctx.db
       .query("visits")
       .withIndex("by_contract", (q) => q.eq("contractId", args.contractId))
-      .collect();
+      .take(1000);
 
     await Promise.all(contractVisits.map((v) => ctx.db.delete(v._id)));
 
@@ -274,8 +288,12 @@ export const updateContractDefaults = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
-    const { clerkId, ...fields } = args;
-    await ctx.db.patch(user._id, fields);
+    // Explicitly pick allowed fields to prevent schema bypass
+    const patch: any = {};
+    if (args.contractDefaultDownPayment !== undefined) patch.contractDefaultDownPayment = args.contractDefaultDownPayment;
+    if (args.contractDefaultDownPaymentType !== undefined) patch.contractDefaultDownPaymentType = args.contractDefaultDownPaymentType;
+    if (args.contractDefaultCostPerVisit !== undefined) patch.contractDefaultCostPerVisit = args.contractDefaultCostPerVisit;
+    await ctx.db.patch(user._id, patch);
   },
 });
 
@@ -389,7 +407,7 @@ export const getContractStats = query({
     const visits = await ctx.db
       .query("visits")
       .withIndex("by_contract", (q) => q.eq("contractId", args.contractId))
-      .collect();
+      .take(1000);
 
     const completed = visits.filter((v) => v.status === "completed").length;
     const paid = visits.filter((v) => v.status === "completed" && v.isPaid).length;

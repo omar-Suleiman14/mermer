@@ -24,11 +24,12 @@ export const listFollowUpsByPatient = query({
     const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return [];
 
-    return await ctx.db
+    const followUps = await ctx.db
       .query("followUps")
       .withIndex("by_patient", (q) => q.eq("patientId", args.patientId))
       .order("desc")
       .take(50);
+    return followUps.filter((f) => f.doctorId === user._id);
   },
 });
 

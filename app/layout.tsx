@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Cairo, Playfair_Display, Plus_Jakarta_Sans } from "next/font/google";
+import { Cairo, Playfair_Display, Inter, Outfit } from "next/font/google";
 import "./globals.css";
 import ConvexClientProvider from "@/components/ConvexClientProvider";
 import { ClerkProvider } from "@clerk/nextjs";
@@ -9,8 +9,14 @@ import { cn } from "@/lib/utils";
 import { I18nProvider } from "@/lib/i18n";
 import { HtmlDirSync } from "@/components/html-dir-sync";
 
-const plusJakarta = Plus_Jakarta_Sans({
-  variable: "--font-jakarta",
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const outfit = Outfit({
+  variable: "--font-outfit",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
@@ -45,29 +51,30 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning style={{ fontSize: "106%" }}>
       <body
         className={cn(
-          plusJakarta.variable,
+          inter.variable,
           playfair.variable,
           cairo.variable,
+          outfit.variable,
           "antialiased"
         )}
         suppressHydrationWarning
       >
-        <ClerkProvider dynamic>
-          <ConvexClientProvider>
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="light"
-              enableSystem={false}
-              disableTransitionOnChange
-            >
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem={false}
+          disableTransitionOnChange
+        >
+          <ClerkProvider dynamic>
+            <ConvexClientProvider>
               <I18nProvider>
                 <HtmlDirSync />
                 {children}
                 <Toaster richColors />
               </I18nProvider>
-            </ThemeProvider>
-          </ConvexClientProvider>
-        </ClerkProvider>
+            </ConvexClientProvider>
+          </ClerkProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

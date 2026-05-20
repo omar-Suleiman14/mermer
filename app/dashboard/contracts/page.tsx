@@ -80,6 +80,7 @@ function VisitSlotPicker({
   endHour,
   slotMin,
   availableDays,
+  reservedTimes,
 }: {
   index: number;
   date: Date | undefined;
@@ -91,28 +92,10 @@ function VisitSlotPicker({
   endHour: number;
   slotMin: number;
   availableDays: string[];
+  reservedTimes: Set<string>;
 }) {
   const { t, lang } = useI18n();
   const [calOpen, setCalOpen] = useState(false);
-
-  const dayStart = date ? new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0).getTime() : 0;
-  const dayEnd = date ? new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999).getTime() : 0;
-
-  const existing = useQuery(
-    api.visits.getVisitsByDateRange,
-    clerkId && date ? { clerkId, startDate: dayStart, endDate: dayEnd } : "skip"
-  );
-
-  const reservedTimes = useMemo(() => {
-    const set = new Set<string>();
-    if (existing) {
-      for (const v of existing) {
-        const d = new Date(v.date);
-        set.add(`${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`);
-      }
-    }
-    return set;
-  }, [existing]);
 
   const slots = useMemo(() => {
     const arr: { timeStr: string; label: string; reserved: boolean }[] = [];
@@ -138,20 +121,20 @@ function VisitSlotPicker({
           </div>
           <div className="text-left">
             <p className="text-sm font-semibold">
-              Visit {index + 1}
+              {t("contracts.visitLabel")} {index + 1}
               <span className="text-red-500 ml-1">*</span>
             </p>
-            <p className="text-xs text-muted-foreground">Select date and time</p>
+            <p className="text-xs text-muted-foreground">{t("contracts.selectDateTime")}</p>
           </div>
         </div>
-        <span className="text-[10px] font-bold uppercase tracking-wider text-[#AF52DE] bg-[#AF52DE]/10 px-2 py-0.5 rounded-full">Required</span>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-[#AF52DE] bg-[#AF52DE]/10 px-2 py-0.5 rounded-full">{t("contracts.required")}</span>
       </div>
 
       <div className="p-4 border-t border-[#AF52DE]/20 space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-1.5">
-              Date <span className="text-red-500">*</span>
+              {t("contracts.date")} <span className="text-red-500">*</span>
             </p>
             <Popover open={calOpen} onOpenChange={setCalOpen}>
               <PopoverTrigger asChild>
@@ -182,7 +165,7 @@ function VisitSlotPicker({
             </Popover>
           </div>
           <div>
-            <p className="text-xs font-medium text-muted-foreground mb-1.5">Time Slot</p>
+            <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("contracts.timeSlot")}</p>
             <div className="max-h-48 overflow-y-auto border border-border rounded-xl divide-y divide-border/50">
               {slots.map(slot => (
                 <button key={slot.timeStr} onClick={() => !slot.reserved && onTimeChange(slot.timeStr)} disabled={slot.reserved}
@@ -250,6 +233,24 @@ function ContractForm({
   const endHour = currentUser?.workingHoursEnd ?? 17;
   const slotMin = currentUser?.slotDurationMinutes ?? 30;
 
+  const firstVisitDayStart = firstVisitDate ? new Date(firstVisitDate.getFullYear(), firstVisitDate.getMonth(), firstVisitDate.getDate(), 0, 0, 0, 0).getTime() : 0;
+  const existingAppts = useQuery(
+    api.appointments.getAppointmentsByDate,
+    clerkId && firstVisitDate ? { clerkId, dayStart: firstVisitDayStart } : "skip"
+  );
+  
+  const reservedTimes = useMemo(() => {
+    const set = new Set<string>();
+    if (existingAppts) {
+      for (const v of existingAppts) {
+        if (v.status === "cancelled") continue;
+        const d = new Date(v.date);
+        set.add(`${d.getHours().toString().padStart(2, "0")}:${d.getMinutes().toString().padStart(2, "0")}`);
+      }
+    }
+    return set;
+  }, [existingAppts]);
+
   // ── Live visit count calculation ─────────────────────────────────────────
   const computedVisits = (() => {
     const total = Number(totalAmount);
@@ -283,12 +284,13 @@ function ContractForm({
   async function handleSave() {
     if (!selectedPatient) return;
     if (!firstVisitDate) { toast.error("Pick a date for the first visit"); return; }
+    if (reservedTimes.has(firstVisitTime)) { toast.error(t("schedule.slotBooked") || "This time slot is already booked"); return; }
 
     setSaving(true);
     try {
       let contractFileId: Id<"_storage"> | undefined;
       if (contractFile) {
-        const url = await generateUploadUrl();
+        const url = await generateUploadUrl({ clerkId });
         const res = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": contractFile.type },
@@ -460,6 +462,7 @@ function ContractForm({
             endHour={endHour}
             slotMin={slotMin}
             availableDays={(currentUser as any)?.availableDays || []}
+            reservedTimes={reservedTimes}
           />
 
           {/* File upload */}

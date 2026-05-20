@@ -48,12 +48,7 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
   const DOW_ABBR: Record<number, string> = { 0: "Sun", 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat" };
   const WEEKEND_DAYS = new Set([0, 6]); // Sun & Sat
   function isNonWorkingDay(d: Date): boolean {
-    const dow = d.getDay();
-    if (workingDayAbbrs.length > 0) {
-      return !workingDayAbbrs.includes(DOW_ABBR[dow]);
-    }
-    // Fallback: block weekends
-    return WEEKEND_DAYS.has(dow);
+    return false;
   }
 
   const activeDateStart = visitDate ? new Date(visitDate.getFullYear(), visitDate.getMonth(), visitDate.getDate(), 0, 0, 0, 0).getTime() : 0;

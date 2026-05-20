@@ -28,6 +28,7 @@ import { IOSSpinner } from "@/components/ui/spinner";
 import { useMemo, type ComponentType } from "react";
 import { useI18n, type Lang } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
+import { useCurrentUser } from "@/components/providers/user-provider";
 
 const DAY_MS = 86400000;
 
@@ -295,88 +296,19 @@ export default function StatisticsPage() {
   const locale = lang === "ar" ? "ar-EG" : "en-US";
   const currencyLabel = t("common.currency");
 
-  const allAppointments = useQuery(api.appointments.listAppointments, clerkId ? { clerkId } : "skip");
+  const statsData = useQuery(api.doctors.getStatsAggregated, clerkId ? { clerkId } : "skip");
   const revenueData = useQuery(api.doctors.getRevenueData, clerkId ? { clerkId } : "skip");
-  const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
-  const allContracts = useQuery(api.contracts.listContracts, clerkId ? { clerkId } : "skip");
+  const { currentUser } = useCurrentUser();
 
   const fmt = (n: number) => formatMoney(n, lang, currencyLabel);
 
   const analytics = useMemo(() => {
-    if (!allAppointments) return null;
+    if (!statsData) return null;
 
     const now = Date.now();
-    const todayStart = startOfDay(now);
-    const weekStart = todayStart - 6 * DAY_MS;
-    const monthStart = todayStart - 29 * DAY_MS;
-    const yearStart = new Date(new Date().getFullYear(), 0, 1).getTime();
 
-    const completed = allAppointments.filter((a) => a.status === "completed");
-    const online = allAppointments.filter((a) => a.source === "online");
-    const manual = allAppointments.filter((a) => a.source === "manual");
-
-    const today = completed.filter((a) => a.date >= todayStart).length;
-    const thisWeek = completed.filter((a) => a.date >= weekStart).length;
-    const thisMonth = completed.filter((a) => a.date >= monthStart).length;
-    const thisYear = completed.filter((a) => a.date >= yearStart).length;
-
-    const dayMap = new Map<number, { total: number; online: number; manual: number }>();
-    for (let i = 29; i >= 0; i--) {
-      const day = todayStart - i * DAY_MS;
-      dayMap.set(day, { total: 0, online: 0, manual: 0 });
-    }
-    completed.forEach((a) => {
-      const day = startOfDay(a.date);
-      if (dayMap.has(day)) {
-        const entry = dayMap.get(day)!;
-        entry.total++;
-        if (a.source === "online") entry.online++;
-        else entry.manual++;
-      }
-    });
-
-    const days = Array.from(dayMap.entries()).map(([ts, counts]) => ({ ts, ...counts }));
-    const maxDay = Math.max(...days.map((d) => d.total), 1);
-
-    const sortedDays = [...days].sort((a, b) => b.total - a.total);
-    const bestDays = sortedDays.slice(0, 3).filter((d) => d.total > 0);
-
-    const dowCounts = [0, 0, 0, 0, 0, 0, 0];
-    completed.forEach((a) => {
-      dowCounts[new Date(a.date).getDay()]++;
-    });
-    const maxDow = Math.max(...dowCounts, 1);
-
-    const totalCompleted = completed.length;
-    const onlineCompleted = completed.filter((a) => a.source === "online").length;
-    const manualCompleted = totalCompleted - onlineCompleted;
-    const onlinePct = totalCompleted > 0 ? Math.round((onlineCompleted / totalCompleted) * 100) : 0;
-
-    const cancelled = allAppointments.filter((a) => a.status === "cancelled").length;
-    const completionRate =
-      allAppointments.length > 0 ? Math.round((totalCompleted / allAppointments.length) * 100) : 0;
-    const cancellationRate =
-      allAppointments.length > 0 ? Math.round((cancelled / allAppointments.length) * 100) : 0;
-
-    const uniquePatients = new Set(completed.map((a) => a.patientId?.toString()).filter(Boolean)).size;
-
-    let bestWeekStart = todayStart;
-    let bestWeekCount = 0;
-    for (let i = 0; i <= 23; i++) {
-      const wStart = todayStart - (29 - i) * DAY_MS;
-      const wEnd = wStart + 7 * DAY_MS;
-      const count = completed.filter((a) => a.date >= wStart && a.date < wEnd).length;
-      if (count > bestWeekCount) {
-        bestWeekCount = count;
-        bestWeekStart = wStart;
-      }
-    }
-
-    const workingDays = days.filter((d) => d.total > 0).length;
-    const avgVisitsPerDay = workingDays > 0 ? Math.round((thisMonth / Math.max(workingDays, 1)) * 10) / 10 : 0;
-
-    const lastDay = days[days.length - 1];
-    const prevDay = days[days.length - 2];
+    const lastDay = statsData.days[statsData.days.length - 1];
+    const prevDay = statsData.days[statsData.days.length - 2];
     const visitDelta = (lastDay?.total ?? 0) - (prevDay?.total ?? 0);
 
     let revenue30 = 0;
@@ -411,34 +343,33 @@ export default function StatisticsPage() {
       }
     }
 
-    const bestVisitDay = bestDays[0] ?? null;
-    const weekEndTs = bestWeekStart + 6 * DAY_MS;
+    const bestVisitDay = statsData.bestDays[0] ?? null;
 
     return {
-      today,
-      thisWeek,
-      thisMonth,
-      thisYear,
-      totalAll: allAppointments.length,
-      totalCompleted,
-      onlineCompleted,
-      manualCompleted,
-      onlinePct,
-      days,
-      maxDay,
-      bestDays,
-      dowCounts,
-      maxDow,
-      onlineBookings: online.length,
-      manualBookings: manual.length,
-      completionRate,
-      cancellationRate,
-      cancelled,
-      uniquePatients,
-      avgVisitsPerDay,
-      bestWeekStart,
-      bestWeekCount,
-      weekEndTs,
+      today: statsData.today,
+      thisWeek: statsData.thisWeek,
+      thisMonth: statsData.thisMonth,
+      thisYear: statsData.thisYear,
+      totalAll: statsData.totalAll,
+      totalCompleted: statsData.totalCompleted,
+      onlineCompleted: statsData.onlineCompleted,
+      manualCompleted: statsData.manualCompleted,
+      onlinePct: statsData.onlinePct,
+      days: statsData.days,
+      maxDay: statsData.maxDay,
+      bestDays: statsData.bestDays,
+      dowCounts: statsData.dowCounts,
+      maxDow: statsData.maxDow,
+      onlineBookings: statsData.onlineCompleted,
+      manualBookings: statsData.manualCompleted,
+      completionRate: statsData.completionRate,
+      cancellationRate: statsData.cancellationRate,
+      cancelled: statsData.cancelled,
+      uniquePatients: statsData.uniquePatients,
+      avgVisitsPerDay: statsData.avgVisitsPerDay,
+      bestWeekStart: statsData.bestWeekStart,
+      bestWeekCount: statsData.bestWeekCount,
+      weekEndTs: statsData.weekEndTs,
       visitDelta,
       revenue30,
       projected30,
@@ -447,8 +378,17 @@ export default function StatisticsPage() {
       bestRevenueDay,
       bestMonth,
       bestVisitDay,
+      // Contract stats (from server)
+      activeContractsCount: statsData.activeContractsCount,
+      expiredContractsCount: statsData.expiredContractsCount,
+      totalContractedValue: statsData.totalContractedValue,
+      totalCollected: statsData.totalCollected,
+      outstanding: statsData.outstanding,
+      contractVisitsThisMonthCount: statsData.contractVisitsThisMonthCount,
+      topContracts: statsData.topContracts,
+      consultationFee: statsData.consultationFee,
     };
-  }, [allAppointments, revenueData]);
+  }, [statsData, revenueData]);
 
   const isLoading = allAppointments === undefined;
   const wlabels = useMemo(() => weekdayLabels(t), [t]);

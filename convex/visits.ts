@@ -121,6 +121,18 @@ export const createVisit = mutation({
     const patient = await ctx.db.get(args.patientId);
     if (!patient || patient.doctorId !== user._id) throw new Error("Patient not found");
 
+    if (args.date) {
+      const doctorOffsetMinutes = user.timezoneOffset ?? -180;
+      const localTimeMs = args.date - (doctorOffsetMinutes * 60 * 1000);
+      const localDate = new Date(localTimeMs);
+      const bookingHour = localDate.getUTCHours();
+      const startHour = user.workingHoursStart ?? 9;
+      const endHour = user.workingHoursEnd ?? 17;
+      if (bookingHour < startHour || bookingHour >= endHour) {
+        throw new Error(`Appointment must be within working hours: ${startHour}:00 - ${endHour}:00`);
+      }
+    }
+
     return await ctx.db.insert("visits", {
       patientId: args.patientId,
       doctorId: user._id,
@@ -201,6 +213,19 @@ export const deleteVisit = mutation({
     const user = await requireAuthUser(ctx, args.clerkId);
     const visit = await ctx.db.get(args.visitId);
     if (!visit || visit.doctorId !== user._id) throw new Error("Not found");
+    
+    if (visit.contractId) {
+      const contract = await ctx.db.get(visit.contractId);
+      if (contract && visit.status === "completed") {
+        const costPerVisit = contract.costPerVisit ?? 0;
+        await ctx.db.patch(contract._id, {
+          completedVisits: Math.max(0, (contract.completedVisits ?? 0) - 1),
+          paidVisits: visit.isPaid ? Math.max(0, (contract.paidVisits ?? 0) - 1) : contract.paidVisits,
+          unpaidBalance: !visit.isPaid ? Math.max(0, (contract.unpaidBalance ?? 0) - costPerVisit) : contract.unpaidBalance,
+        });
+      }
+    }
+    
     await ctx.db.delete(args.visitId);
   },
 });
@@ -210,10 +235,17 @@ export const updateVisit = mutation({
     clerkId: v.string(),
     visitId: v.id("visits"),
     updates: v.object({
-      status: v.optional(v.string()),
+      status: v.optional(
+        v.union(
+          v.literal("confirmed"),
+          v.literal("cancelled"),
+          v.literal("completed")
+        )
+      ),
       notes: v.optional(v.string()),
       prescriptionImageId: v.optional(v.id("_storage")),
       date: v.optional(v.number()),
+      isPaid: v.optional(v.boolean()),
     }),
   },
   handler: async (ctx, args) => {
@@ -225,7 +257,37 @@ export const updateVisit = mutation({
     if (args.updates.status) patch.status = args.updates.status;
     if (args.updates.notes) patch.notes = args.updates.notes;
     if (args.updates.prescriptionImageId) patch.prescriptionImageId = args.updates.prescriptionImageId;
-    if (args.updates.date) patch.date = args.updates.date;
+    if (args.updates.date) {
+      const doctorOffsetMinutes = user.timezoneOffset ?? -180;
+      const localTimeMs = args.updates.date - (doctorOffsetMinutes * 60 * 1000);
+      const localDate = new Date(localTimeMs);
+      const bookingHour = localDate.getUTCHours();
+      const startHour = user.workingHoursStart ?? 9;
+      const endHour = user.workingHoursEnd ?? 17;
+      if (bookingHour < startHour || bookingHour >= endHour) {
+        throw new Error(`Appointment must be within working hours`);
+      }
+      patch.date = args.updates.date;
+    }
+
+    if (args.updates.isPaid !== undefined) {
+      patch.isPaid = args.updates.isPaid;
+    }
+
+    // Handle contract balance updates if isPaid changed
+    if (visit.contractId && visit.status === "completed" && args.updates.isPaid !== undefined && args.updates.isPaid !== visit.isPaid) {
+      const contract = await ctx.db.get(visit.contractId);
+      if (contract) {
+        const costPerVisit = contract.costPerVisit ?? 0;
+        const paidVisitsDelta = args.updates.isPaid ? 1 : -1;
+        const unpaidBalanceDelta = args.updates.isPaid ? -costPerVisit : costPerVisit;
+        
+        await ctx.db.patch(contract._id, {
+          paidVisits: Math.max(0, (contract.paidVisits ?? 0) + paidVisitsDelta),
+          unpaidBalance: Math.max(0, (contract.unpaidBalance ?? 0) + unpaidBalanceDelta),
+        });
+      }
+    }
 
     await ctx.db.patch(args.visitId, patch);
   },
@@ -250,6 +312,17 @@ export const bulkRescheduleVisits = mutation({
       args.updates.map(async (update) => {
         const visit = await ctx.db.get(update.visitId);
         if (!visit || visit.doctorId !== user._id) return;
+
+        // Working hours validation
+        const doctorOffsetMinutes = user.timezoneOffset ?? -180;
+        const localTimeMs = update.newDate - (doctorOffsetMinutes * 60 * 1000);
+        const localDate = new Date(localTimeMs);
+        const bookingHour = localDate.getUTCHours();
+        const startHour = user.workingHoursStart ?? 9;
+        const endHour = user.workingHoursEnd ?? 17;
+        if (bookingHour < startHour || bookingHour >= endHour) {
+          throw new Error(`Rescheduled time must be within working hours: ${startHour}:00 - ${endHour}:00`);
+        }
 
         // Conflict check — same pattern as updateAppointment
         const conflict = await ctx.db

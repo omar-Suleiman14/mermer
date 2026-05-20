@@ -26,7 +26,7 @@ export const getQueueByDate = query({
       .withIndex("by_doctor_date", (q) =>
         q.eq("doctorId", user._id).eq("queueDate", queueDate)
       )
-      .collect();
+      .take(500);
 
     const items = args.includeDone
       ? queueItems
@@ -71,7 +71,7 @@ export const getTodayQueue = query({
       .withIndex("by_doctor_date", (q) =>
         q.eq("doctorId", user._id).eq("queueDate", queueDate)
       )
-      .collect();
+      .take(500);
 
     const activeItems = queueItems
       .filter((q) => q.status !== "done")
@@ -111,7 +111,7 @@ export const addToQueue = mutation({
       .withIndex("by_doctor_date", (q) =>
         q.eq("doctorId", user._id).eq("queueDate", queueDate)
       )
-      .collect();
+      .take(500);
 
     const active = existingForDate.filter((q) => q.status !== "done");
 
@@ -139,6 +139,9 @@ export const addToQueue = mutation({
 
     // Denormalize patient info to avoid N reads in query
     const patient = await ctx.db.get(args.patientId);
+    if (!patient || patient.doctorId !== user._id) {
+      throw new Error("Patient not found or unauthorized");
+    }
 
     return await ctx.db.insert("queue", {
       doctorId: user._id,
@@ -182,7 +185,7 @@ export const markDone = mutation({
         .withIndex("by_doctor_date", (q) =>
           q.eq("doctorId", user._id).eq("queueDate", item.queueDate!)
         )
-        .collect();
+        .take(500);
 
       const waiting = remaining
         .filter((q) => q.status === "waiting" && q._id !== args.queueId)
@@ -254,7 +257,7 @@ export const clearDone = mutation({
       .withIndex("by_doctor_status", (q) =>
         q.eq("doctorId", user._id).eq("status", "done")
       )
-      .collect();
+      .take(500);
 
     // If a date is specified, only clear done for that date
     const toDelete = args.date

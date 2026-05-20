@@ -15,6 +15,7 @@ export function UserSync() {
       clerkId: user.id,
       name: user.fullName ?? user.firstName ?? "Doctor",
       email: user.primaryEmailAddress?.emailAddress,
+      timezoneOffset: new Date().getTimezoneOffset(),
     }).catch(console.error);
   }, [isLoaded, user, getOrCreate]);
 

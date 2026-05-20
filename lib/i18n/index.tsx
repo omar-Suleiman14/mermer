@@ -141,6 +141,16 @@ const translations: Record<Lang, Record<string, string>> = {
     "contracts.visitsText": "visits",
     "contracts.deleteConfirmTitle": "Delete Contract",
     "contracts.deleteConfirmDesc": "Are you sure you want to delete this contract? This action cannot be undone.",
+    "contracts.visitLabel": "Visit",
+    "contracts.selectDateTime": "Select date and time",
+    "contracts.required": "Required",
+    "contracts.date": "Date",
+    "contracts.timeSlot": "Time Slot",
+    "schedule.rescheduleVisit": "Reschedule Visit",
+    "schedule.rescheduleContractVisit": "Reschedule Contract Visit",
+    "schedule.contractNoCancel": "Contract visits cannot be cancelled. Please pick a new date and time.",
+    "schedule.pickNewDateTime": "Please pick a new date and time to reschedule this visit.",
+    "schedule.newDate": "New Date",
 
     // Stats
     "stats.title": "Analytics",
@@ -816,6 +826,16 @@ const translations: Record<Lang, Record<string, string>> = {
     "contracts.visitsText": "زيارات",
     "contracts.deleteConfirmTitle": "حذف العقد",
     "contracts.deleteConfirmDesc": "هل أنت متأكد من رغبتك في حذف هذا العقد؟ لا يمكن التراجع عن هذا الإجراء.",
+    "contracts.visitLabel": "زيارة",
+    "contracts.selectDateTime": "حدد التاريخ والوقت",
+    "contracts.required": "مطلوب",
+    "contracts.date": "التاريخ",
+    "contracts.timeSlot": "الوقت",
+    "schedule.rescheduleVisit": "إعادة جدولة الزيارة",
+    "schedule.rescheduleContractVisit": "إعادة جدولة زيارة العقد",
+    "schedule.contractNoCancel": "لا يمكن إلغاء زيارات العقد. يرجى اختيار تاريخ ووقت جديدين.",
+    "schedule.pickNewDateTime": "يرجى اختيار تاريخ ووقت جديدين لإعادة جدولة هذه الزيارة.",
+    "schedule.newDate": "تاريخ جديد",
 
     // Stats
     "stats.title": "التحليلات",

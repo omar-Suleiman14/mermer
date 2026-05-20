@@ -20,8 +20,21 @@ export const updatePublicProfile = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
-    const { clerkId, ...fields } = args;
-    await ctx.db.patch(user._id, fields as any);
+    
+    // Explicitly pick fields to prevent schema bypass via ...args
+    const patch: any = {};
+    if (args.specialty !== undefined) patch.specialty = args.specialty;
+    if (args.bio !== undefined) patch.bio = args.bio;
+    if (args.consultationFee !== undefined) patch.consultationFee = args.consultationFee;
+    if (args.languages !== undefined) patch.languages = args.languages;
+    if (args.clinicAddress !== undefined) patch.clinicAddress = args.clinicAddress;
+    if (args.availableDays !== undefined) patch.availableDays = args.availableDays;
+    if (args.availableFrom !== undefined) patch.availableFrom = args.availableFrom;
+    if (args.availableTo !== undefined) patch.availableTo = args.availableTo;
+    if (args.city !== undefined) patch.city = args.city;
+    if (args.profilePhotoId !== undefined) patch.profilePhotoId = args.profilePhotoId;
+
+    await ctx.db.patch(user._id, patch);
   },
 });
 
@@ -353,10 +366,30 @@ export const getDoctorAnalytics = query({
 
     const completed = allAppointments.filter((a) => a.status === "completed");
 
-    // Revenue from visitTypes fees (approximate using consultationFee)
-    const fee = (doctor as any).consultationFee ?? 0;
-    const totalRevenue = completed.length * fee;
-    const monthlyRevenue = thisMonthCompleted.length * fee;
+    const allContracts = await ctx.db
+      .query("contracts")
+      .withIndex("by_doctor", (q) => q.eq("doctorId", args.targetUserId))
+      .take(1000);
+    const contractMap = new Map<string, any>(allContracts.map(c => [c._id.toString(), c]));
+
+    const fee = doctor.consultationFee ?? 0;
+    
+    function getVisitRevenue(a: any) {
+      if (a.status !== "completed") return 0;
+      if (a.source === "follow-up") return 0;
+      if (a.source === "contract") {
+        if (!a.isPaid) return 0;
+        if (a.contractId) {
+          const c = contractMap.get(a.contractId.toString());
+          return c?.costPerVisit ?? 0;
+        }
+        return 0;
+      }
+      return fee;
+    }
+
+    const totalRevenue = completed.reduce((sum, a) => sum + getVisitRevenue(a), 0);
+    const monthlyRevenue = thisMonthCompleted.reduce((sum, a) => sum + getVisitRevenue(a), 0);
 
     const uniquePatients = new Set(completed.map((a) => a.patientId?.toString())).size;
 
@@ -369,6 +402,14 @@ export const getDoctorAnalytics = query({
         ? feedbackItems.reduce((a, b) => a + b.rating, 0) / feedbackItems.length
         : null;
 
+    const feedback = feedbackItems.map((f) => ({
+      _id: f._id,
+      patientName: f.patientName ?? "Anonymous",
+      rating: f.rating,
+      comment: f.comment ?? "",
+      createdAt: f.createdAt,
+    }));
+
     return {
       totalVisits: completed.length,
       monthlyVisits: thisMonthCompleted.length,
@@ -378,6 +419,7 @@ export const getDoctorAnalytics = query({
       avgRating,
       reviewCount: feedbackItems.length,
       joinDate: doctor.createdAt,
+      feedback,
     };
   },
 });
@@ -434,10 +476,7 @@ export const getRevenueData = query({
     now: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
-      .unique();
+    const user = await requireAuthUser(ctx, args.clerkId);
     if (!user) return null;
 
     const fee = (user as any).consultationFee ?? 0;
@@ -586,6 +625,190 @@ export const getRevenueData = query({
       bestDow,
       consultationFee: fee,
       totalAllTime: totalAllTimeVisits + allTimeContractDownPayments,
+    };
+  },
+});
+
+// ─── Unified Stats Aggregation (Eliminates subscription explosion) ───────────
+// Previously the stats page subscribed to listAppointments + listContracts +
+// getRevenueData and computed everything in JS (3 WebSocket subscriptions,
+// ~200+ records each). This single query computes it ALL server-side.
+
+export const getStatsAggregated = query({
+  args: {
+    clerkId: v.string(),
+    now: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx, args.clerkId);
+    if (!user) return null;
+
+    const now = args.now ?? Date.now();
+    const DAY_MS = 86400000;
+    const todayStart = (() => { const d = new Date(now); d.setHours(0,0,0,0); return d.getTime(); })();
+    const weekStart = todayStart - 6 * DAY_MS;
+    const monthStart = todayStart - 29 * DAY_MS;
+    const yearStart = new Date(new Date(now).getFullYear(), 0, 1).getTime();
+
+    // Single indexed read: last 60 days of visits
+    const sixtyDaysAgo = now - 60 * DAY_MS;
+    const recentVisits = await ctx.db
+      .query("visits")
+      .withIndex("by_doctor_date", (q) =>
+        q.eq("doctorId", user._id).gte("date", sixtyDaysAgo)
+      )
+      .take(5000);
+
+    // All visits for lifetime stats (capped)
+    const allVisits = await ctx.db
+      .query("visits")
+      .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+      .take(10000);
+
+    const allContracts = await ctx.db
+      .query("contracts")
+      .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+      .take(1000);
+
+    const contractMap = new Map<string, any>(allContracts.map(c => [c._id.toString(), c]));
+    const fee = user.consultationFee ?? 0;
+
+    function getVisitRevenue(a: any) {
+      if (a.status !== "completed") return 0;
+      if (a.source === "follow-up") return 0;
+      if (a.source === "contract") {
+        if (!a.isPaid) return 0;
+        if (a.contractId) {
+          const c = contractMap.get(a.contractId.toString());
+          return c?.costPerVisit ?? 0;
+        }
+        return 0;
+      }
+      return fee;
+    }
+
+    function startOfDay(ts: number) {
+      const d = new Date(ts);
+      d.setHours(0, 0, 0, 0);
+      return d.getTime();
+    }
+
+    // ── Visit Analytics ──
+    const completed = allVisits.filter((a) => a.status === "completed");
+    const today = completed.filter((a) => a.date >= todayStart).length;
+    const thisWeek = completed.filter((a) => a.date >= weekStart).length;
+    const thisMonth = completed.filter((a) => a.date >= monthStart).length;
+    const thisYear = completed.filter((a) => a.date >= yearStart).length;
+
+    const onlineCompleted = completed.filter((a) => a.source === "online").length;
+    const totalCompleted = completed.length;
+    const manualCompleted = totalCompleted - onlineCompleted;
+    const onlinePct = totalCompleted > 0 ? Math.round((onlineCompleted / totalCompleted) * 100) : 0;
+
+    const cancelled = allVisits.filter((a) => a.status === "cancelled").length;
+    const completionRate = allVisits.length > 0 ? Math.round((totalCompleted / allVisits.length) * 100) : 0;
+    const cancellationRate = allVisits.length > 0 ? Math.round((cancelled / allVisits.length) * 100) : 0;
+
+    const uniquePatients = new Set(completed.map((a) => a.patientId?.toString()).filter(Boolean)).size;
+
+    // Day-by-day for the last 30 days (visits sparkline)
+    const dayMap = new Map<number, { total: number; online: number; manual: number }>();
+    for (let i = 29; i >= 0; i--) {
+      dayMap.set(todayStart - i * DAY_MS, { total: 0, online: 0, manual: 0 });
+    }
+    completed.forEach((a) => {
+      const day = startOfDay(a.date);
+      if (dayMap.has(day)) {
+        const entry = dayMap.get(day)!;
+        entry.total++;
+        if (a.source === "online") entry.online++;
+        else entry.manual++;
+      }
+    });
+    const days = Array.from(dayMap.entries()).map(([ts, counts]) => ({ ts, ...counts }));
+    const maxDay = Math.max(...days.map((d) => d.total), 1);
+
+    // Best days, best week
+    const sortedDays = [...days].sort((a, b) => b.total - a.total);
+    const bestDays = sortedDays.slice(0, 3).filter((d) => d.total > 0);
+
+    const dowCounts = [0, 0, 0, 0, 0, 0, 0];
+    completed.forEach((a) => { dowCounts[new Date(a.date).getDay()]++; });
+    const maxDow = Math.max(...dowCounts, 1);
+
+    let bestWeekStart = todayStart;
+    let bestWeekCount = 0;
+    for (let i = 0; i <= 23; i++) {
+      const wStart = todayStart - (29 - i) * DAY_MS;
+      const wEnd = wStart + 7 * DAY_MS;
+      const count = completed.filter((a) => a.date >= wStart && a.date < wEnd).length;
+      if (count > bestWeekCount) { bestWeekCount = count; bestWeekStart = wStart; }
+    }
+
+    const workingDays = days.filter((d) => d.total > 0).length;
+    const avgVisitsPerDay = workingDays > 0 ? Math.round((thisMonth / Math.max(workingDays, 1)) * 10) / 10 : 0;
+
+    // ── Contract stats ──
+    const activeContracts = allContracts.filter((c) => c.status === "active");
+    const totalContractedValue = allContracts.reduce((s, c) => s + (c.totalAmount ?? 0), 0);
+    const totalCollected = allContracts.reduce((s, c) => {
+      const dp = c.downPaymentType === "percentage"
+        ? ((c.totalAmount ?? 0) * ((c.downPayment ?? 0) / 100))
+        : (c.downPayment ?? 0);
+      return s + dp + (c.paidVisits ?? 0) * (c.costPerVisit ?? 0);
+    }, 0);
+    const outstanding = allContracts.reduce((s, c) => s + (c.unpaidBalance ?? 0), 0);
+    const contractVisitsThisMonth = completed.filter(
+      (a) => a.source === "contract" && a.date >= monthStart
+    );
+
+    // Top active contracts (first 5)
+    const topContracts = activeContracts.slice(0, 5).map((c) => ({
+      _id: c._id,
+      patientName: c.patientName,
+      completedVisits: c.completedVisits ?? 0,
+      numVisits: c.numVisits,
+      costPerVisit: c.costPerVisit ?? 0,
+      totalAmount: c.totalAmount ?? 0,
+      paidVisits: c.paidVisits ?? 0,
+      downPayment: c.downPayment ?? 0,
+      downPaymentType: c.downPaymentType,
+    }));
+
+    return {
+      // Visit analytics
+      today,
+      thisWeek,
+      thisMonth,
+      thisYear,
+      totalAll: allVisits.length,
+      totalCompleted,
+      onlineCompleted,
+      manualCompleted,
+      onlinePct,
+      days,
+      maxDay,
+      bestDays,
+      dowCounts,
+      maxDow,
+      completionRate,
+      cancellationRate,
+      cancelled,
+      uniquePatients,
+      avgVisitsPerDay,
+      bestWeekStart,
+      bestWeekCount,
+      weekEndTs: bestWeekStart + 6 * DAY_MS,
+      // Contract stats
+      activeContractsCount: activeContracts.length,
+      expiredContractsCount: allContracts.length - activeContracts.length,
+      totalContractedValue,
+      totalCollected,
+      outstanding,
+      contractVisitsThisMonthCount: contractVisitsThisMonth.length,
+      topContracts,
+      // Fee
+      consultationFee: fee,
     };
   },
 });

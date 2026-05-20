@@ -32,8 +32,11 @@ export default defineSchema({
     availableFrom: v.optional(v.string()),
     availableTo: v.optional(v.string()),
 
+    timezoneOffset: v.optional(v.number()),
+
     // Admin controls
     isBanned: v.optional(v.boolean()),
+    isBlocked: v.optional(v.boolean()),
     
     // Legacy fields (kept only to prevent schema validation crashes on old records)
     telegramId: v.optional(v.string()),
@@ -65,7 +68,16 @@ export default defineSchema({
     contractDefaultDownPayment: v.optional(v.number()),
     contractDefaultDownPaymentType: v.optional(v.union(v.literal("fixed"), v.literal("percentage"))),
     contractDefaultCostPerVisit: v.optional(v.number()),
-    contractDefaultVisitFrequency: v.optional(v.string()),
+    contractDefaultVisitFrequency: v.optional(
+      v.union(
+        v.literal("daily"),
+        v.literal("weekly"),
+        v.literal("bi-weekly"),
+        v.literal("monthly"),
+        v.literal("custom"),
+        v.literal("manual")
+      )
+    ),
     contractDefaultDurationDays: v.optional(v.number()),
 
     // Queue display token (kept optional for existing records — feature removed)
@@ -201,7 +213,16 @@ export default defineSchema({
     unpaidBalance: v.optional(v.number()),     // accumulated unpaid amount
 
     // Visit scheduling
-    visitFrequency: v.optional(v.string()),
+    visitFrequency: v.optional(
+      v.union(
+        v.literal("daily"),
+        v.literal("weekly"),
+        v.literal("bi-weekly"),
+        v.literal("monthly"),
+        v.literal("custom"),
+        v.literal("manual")
+      )
+    ),
     customIntervalDays: v.optional(v.number()),
     startDate: v.number(),
     endDate: v.optional(v.number()),

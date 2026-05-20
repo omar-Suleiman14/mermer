@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { MessageTemplatesSection } from "@/components/message-templates-section";
 import { useI18n } from "@/lib/i18n";
 import { useTheme } from "next-themes";
+import React from "react";
 import { LanguageToggle } from "@/components/language-toggle";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -66,14 +67,13 @@ export default function SettingsPage() {
   const [rescheduling, setRescheduling] = useState(false);
 
   type AvailabilityUpdates = {
-    workingDays?: string[];
     workingHoursStart?: number;
     workingHoursEnd?: number;
     isAlwaysOpen?: boolean;
     slotMin?: number;
   };
   const [pendingAvailability, setPendingAvailability] = useState<AvailabilityUpdates | null>(null);
-  const [conflictReason, setConflictReason] = useState<"days" | "hours">("days");
+  const [conflictReason, setConflictReason] = useState<"hours">("hours");
 
   function requestAvailabilityChange(updates: AvailabilityUpdates) {
     if (upcomingVisits === undefined) {
@@ -81,10 +81,8 @@ export default function SettingsPage() {
       return;
     }
 
-    const isDaysChange = updates.workingDays !== undefined;
     const isHoursChange = updates.workingHoursStart !== undefined || updates.workingHoursEnd !== undefined || updates.isAlwaysOpen !== undefined;
 
-    const newDays = updates.workingDays ?? workingDays;
     const newAlwaysOpen = updates.isAlwaysOpen ?? isAlwaysOpen;
     const newStart = newAlwaysOpen ? 0 : (updates.workingHoursStart ?? Number(workingHoursStart));
     const newEnd = newAlwaysOpen ? 24 : (updates.workingHoursEnd ?? Number(workingHoursEnd));
@@ -92,11 +90,7 @@ export default function SettingsPage() {
     const conflicts = upcomingVisits.filter(v => {
       if (v.status !== "confirmed" || new Date(v.date).getTime() <= Date.now()) return false;
       const vDate = new Date(v.date);
-      const dayName = vDate.toLocaleDateString("en-US", { weekday: "short" });
       const timeInHours = vDate.getHours() + vDate.getMinutes() / 60;
-
-      // Day conflict: visit falls on a day being removed
-      if (isDaysChange && newDays.length > 0 && !newDays.includes(dayName)) return true;
 
       // Hour conflict: visit falls outside new working hours window
       if (isHoursChange && !newAlwaysOpen && (timeInHours < newStart || timeInHours >= newEnd)) return true;
@@ -105,7 +99,7 @@ export default function SettingsPage() {
     });
 
     if (conflicts.length > 0) {
-      setConflictReason(isHoursChange ? "hours" : "days");
+      setConflictReason("hours");
       setPendingAvailability(updates);
       setConflictingVisits(conflicts);
       setReschedulePromptOpen(true);
@@ -115,28 +109,16 @@ export default function SettingsPage() {
   }
 
   function applyAvailabilityChange(updates: AvailabilityUpdates) {
-    if (updates.workingDays !== undefined) setWorkingDays(updates.workingDays);
     if (updates.workingHoursStart !== undefined) setWHS(String(updates.workingHoursStart));
     if (updates.workingHoursEnd !== undefined) setWHE(String(updates.workingHoursEnd));
     if (updates.isAlwaysOpen !== undefined) setIsAlwaysOpen(updates.isAlwaysOpen);
     if (updates.slotMin !== undefined) setSlotMin(String(updates.slotMin));
   }
 
-  function handleToggleWorkingDay(d: string) {
-    if (workingDays.includes(d)) {
-      // Removing a day → check for conflicts with upcoming visits
-      requestAvailabilityChange({ workingDays: workingDays.filter(x => x !== d) });
-    } else {
-      // Adding a day → can never create conflicts, apply directly
-      setWorkingDays(prev => [...prev, d]);
-    }
-  }
-
   async function handleReschedule(direction: "before" | "after" | "futureDate") {
     setRescheduling(true);
     try {
       const updates: { visitId: any; newDate: number }[] = [];
-      const newDays = pendingAvailability?.workingDays ?? workingDays;
       const newAlwaysOpen = pendingAvailability?.isAlwaysOpen ?? isAlwaysOpen;
       const newStartH = newAlwaysOpen ? 0 : (pendingAvailability?.workingHoursStart ?? Number(workingHoursStart));
 
@@ -149,12 +131,9 @@ export default function SettingsPage() {
           if (direction === "before") attempt.setDate(attempt.getDate() - 1);
           else attempt.setDate(attempt.getDate() + 1);
 
-          const dayName = attempt.toLocaleDateString("en-US", { weekday: "short" });
-          if (newDays.length === 0 || newDays.includes(dayName)) {
-            attempt.setHours(newStartH || 9, 0, 0, 0);
-            foundMs = attempt.getTime();
-            break;
-          }
+          attempt.setHours(newStartH || 9, 0, 0, 0);
+          foundMs = attempt.getTime();
+          break;
         }
 
         if (foundMs !== null) {
@@ -176,6 +155,7 @@ export default function SettingsPage() {
   }
 
   // ── State ──
+  const [selectKey, setSelectKey] = useState(0);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [clinicName, setClinicName] = useState("");
@@ -243,34 +223,33 @@ export default function SettingsPage() {
         workingHoursEnd: isAlwaysOpen ? 24 : Number(workingHoursEnd),
         slotDurationMinutes: slotMin ? Number(slotMin) : 30,
         bio: bio || undefined,
-        publicProfile,
-        workingDays: workingDays.length > 0 ? workingDays : undefined,
+        publicProfile: false,
         feePerVisit: consultationFee ? Number(consultationFee) : undefined,
       });
-      toast.success(t("toast.settingsSaved"));
-    } catch { toast.error(t("toast.settingsSaveFailed")); }
-  }, [clerkId, currentUser, name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, publicProfile, workingDays, consultationFee, updateProfile, t]);
+      toast.success(t("toast.settingsSaved"), { id: "settings-save" });
+    } catch { toast.error(t("toast.settingsSaveFailed"), { id: "settings-save-error" }); }
+  }, [clerkId, currentUser, name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, consultationFee, updateProfile, t]);
 
   function triggerSave() {
     if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(doSave, 1000);
+    saveTimer.current = setTimeout(doSave, 2000);
   }
 
   // Trigger save on any field change (skip initial load)
   const prevValues = useRef("");
   useEffect(() => {
     if (!initialised.current) return;
-    const key = JSON.stringify({ name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, publicProfile, workingDays, consultationFee });
+    const key = JSON.stringify({ name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, consultationFee });
     if (prevValues.current && key !== prevValues.current) {
       triggerSave();
     }
     prevValues.current = key;
-  }, [name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, publicProfile, workingDays, consultationFee]);
+  }, [name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, consultationFee]);
 
   async function handlePhotoUpload(file: File) {
     setUploadingPhoto(true);
     try {
-      const uploadUrl = await generateUploadUrl();
+      const uploadUrl = await generateUploadUrl({ clerkId: user.id });
       const res = await fetch(uploadUrl, { method: "POST", headers: { "Content-Type": file.type }, body: file });
       const { storageId } = await res.json();
       await saveProfilePhoto({ clerkId, storageId: storageId as Id<"_storage"> });
@@ -291,97 +270,6 @@ export default function SettingsPage() {
 
       <div className="flex-1 overflow-auto p-4 sm:p-6 max-w-3xl mx-auto w-full pb-20">
 
-        {/* ═══════════════════════════════════════════════════════════ */}
-        {/* VISIBILITY                                                  */}
-        {/* ═══════════════════════════════════════════════════════════ */}
-        <section>
-          <h3 className={sectionTitleClass}>{t("settings.visibilitySection") || "Visibility"}</h3>
-          <div className={blockClass}>
-            <div className={`${rowClass} !py-5`}>
-              <div>
-                <label htmlFor="settings-public-profile" className="text-sm font-semibold flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-[#007AFF]" /> {t("settings.publicProfile") || "Public Profile"}
-                </label>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {t("settings.publicProfileDesc") || "Allow patients to find and book you online."}
-                </p>
-              </div>
-              <div className="flex-shrink-0 flex items-center">
-                <Switch
-                  id="settings-public-profile"
-                  name="publicProfile"
-                  checked={publicProfile}
-                  onCheckedChange={(c) => setPublicProfile(c)}
-                />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ═══════════════════════════════════════════════════════════ */}
-        {/* NOTIFICATIONS                                               */}
-        {/* ═══════════════════════════════════════════════════════════ */}
-        <section>
-          <h3 className={sectionTitleClass}>{t("settings.notifications") || "Notifications"}</h3>
-          <div className={blockClass}>
-            <div className={`${rowClass} !py-5`}>
-              <div>
-                <label htmlFor="settings-notifications" className="text-sm font-semibold flex items-center gap-2">
-                  <Bell className="w-4 h-4 text-[#007AFF]" /> {t("settings.onlineBookingAlerts") || "Online Booking Alerts"}
-                </label>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {t("settings.notificationsDesc") || "Get notified immediately when a patient books online"}
-                </p>
-              </div>
-              <div className="flex-shrink-0 flex items-center gap-4">
-                <button
-                  onClick={() => {
-                    if (Notification.permission === "granted") {
-                      try {
-                        const noti = new window.Notification("Test Notification", {
-                          body: "This is a test notification from Marmar",
-                          requireInteraction: true,
-                        });
-                        navigator.serviceWorker?.getRegistration().then((reg) => {
-                          if (reg) reg.showNotification("Test Notification", { body: "This is a test from Service Worker" });
-                        });
-                      } catch (e) {
-                        toast.error("Browser error: " + (e as Error).message);
-                      }
-                    } else {
-                      toast.error("Permission not granted");
-                    }
-                  }}
-                  className="text-xs font-semibold px-3 py-1.5 bg-secondary text-secondary-foreground rounded-lg hover:bg-secondary/80 transition-colors"
-                >
-                  Test
-                </button>
-                <Switch
-                  id="settings-notifications"
-                  name="notifications"
-                  checked={notificationsEnabled}
-                  onCheckedChange={async (checked) => {
-                    if (checked) {
-                      const perm = await Notification.requestPermission();
-                      if (perm === "granted") {
-                        setNotificationsEnabled(true);
-                        localStorage.setItem("muteOnlineBookings", "false");
-                        toast.success("Notifications enabled");
-                      } else {
-                        toast.error("Notification permission denied");
-                        setNotificationsEnabled(false);
-                      }
-                    } else {
-                      localStorage.setItem("muteOnlineBookings", "true");
-                      setNotificationsEnabled(false);
-                      toast.success("Notifications muted");
-                    }
-                  }}
-                />
-              </div>
-            </div>
-          </div>
-        </section>
 
         {/* ═══════════════════════════════════════════════════════════ */}
         {/* APPEARANCE & LANGUAGE                                       */}
@@ -421,63 +309,7 @@ export default function SettingsPage() {
         {/* ═══════════════════════════════════════════════════════════ */}
         {/* PROFILE                                                   */}
         {/* ═══════════════════════════════════════════════════════════ */}
-        <section>
-          <h3 className={sectionTitleClass}>{t("settings.profileSection")}</h3>
-          <div className={blockClass}>
-
-            <div className={`${rowClass} !py-6`}>
-              <div className="flex items-center gap-4">
-                <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-border bg-[#007AFF]/10 flex items-center justify-center flex-shrink-0 shadow-sm">
-                  {profilePhotoUrl ? (
-                    <img src={profilePhotoUrl} alt="Profile" className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-xl font-bold text-[#007AFF]">{(name || "?").charAt(0).toUpperCase()}</span>
-                  )}
-                  <button onClick={() => photoRef.current?.click()} disabled={uploadingPhoto}
-                    className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center rounded-full">
-                    {uploadingPhoto ? <IOSSpinner size={16} className="text-white" /> : <Camera className="w-4 h-4 text-white" />}
-                  </button>
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold">{name || t("settings.yourName")}</h4>
-                  <button onClick={() => photoRef.current?.click()} disabled={uploadingPhoto}
-                    className="text-[13px] text-[#007AFF] hover:underline mt-0.5">
-                    {profilePhotoUrl ? t("settings.changePhoto") : t("settings.uploadPhoto")}
-                  </button>
-                  <input ref={photoRef} type="file" accept="image/*" className="hidden"
-                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePhotoUpload(f); }} />
-                </div>
-              </div>
-            </div>
-
-            <div className={rowClass}>
-              <label htmlFor="settings-full-name" className={labelClass}>{t("settings.fullName")}</label>
-              <input id="settings-full-name" name="fullName" value={name} onChange={(e) => setName(e.target.value)} placeholder={t("settings.placeholderFullName")} className={inputClass} />
-            </div>
-
-            <div className={rowClass}>
-              <label htmlFor="settings-specialty" className={labelClass}>{t("settings.specialty")}</label>
-              <select id="settings-specialty" name="specialty" value={specialty} onChange={(e) => setSpecialty(e.target.value)} className={`${inputClass} sm:text-right appearance-none bg-transparent cursor-pointer`}>
-                <option value="">{t("settings.selectSpecialty")}</option>
-                {SPECIALTIES.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-
-            <div className={rowClass}>
-              <label htmlFor="settings-credentials" className={labelClass}>{t("settings.credentials")}</label>
-              <input id="settings-credentials" name="credentials" value={credentials} onChange={(e) => setCredentials(e.target.value)} placeholder={t("settings.placeholderCredentials")} className={inputClass} />
-            </div>
-
-            <div className={`${rowClass} flex-col !items-start`}>
-              <label htmlFor="settings-bio" className={labelClass}>{t("settings.shortBio")}</label>
-              <textarea id="settings-bio" name="bio" value={bio} onChange={(e) => setBio(e.target.value)} rows={3} placeholder={t("settings.placeholderBio")}
-                className="w-full text-sm bg-transparent focus:outline-none placeholder:text-muted-foreground/60 resize-none mt-2" />
-            </div>
-          </div>
-          <p className="text-[12px] text-muted-foreground ms-4 mt-[-20px] mb-8">
-            {t("settings.profileHint")}
-          </p>
-        </section>
+        {/* Profile Settings Hidden for Now */}
 
         {/* ═══════════════════════════════════════════════════════════ */}
         {/* CLINIC & LOCATION                                         */}
@@ -530,28 +362,6 @@ export default function SettingsPage() {
           <h3 className={sectionTitleClass}>{t("settings.availabilitySection")}</h3>
           <div className={blockClass}>
 
-            {/* Working Days Picker */}
-            <div className={`${rowClass} flex-col !items-start gap-3`}>
-              <label className={`${labelClass} flex items-center gap-2`}>
-                <CalendarDays className="w-4 h-4 text-muted-foreground" />
-                {t("settings.workingDays")}
-              </label>
-              <div className="flex flex-wrap gap-1.5 w-full">
-                {ALL_DAYS.map((d) => (
-                  <button
-                    key={d}
-                    type="button"
-                    onClick={() => handleToggleWorkingDay(d)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${workingDays.includes(d)
-                        ? "bg-[#007AFF] text-white border-[#007AFF]"
-                        : "border-border hover:border-[#007AFF]/40 text-muted-foreground"
-                      }`}
-                  >
-                    {t(`days.${d}`) || d}
-                  </button>
-                ))}
-              </div>
-            </div>
 
             <div className={rowClass}>
               <label htmlFor="settings-open-247" className={labelClass}>{t("settings.open247")}</label>
@@ -561,7 +371,7 @@ export default function SettingsPage() {
             </div>
 
             {!isAlwaysOpen && (
-              <>
+              <React.Fragment key={selectKey}>
                 <div className={rowClass}>
                   <label htmlFor="settings-opens-at" className={labelClass}>{t("settings.opensAt")}</label>
                   <select id="settings-opens-at" name="opensAt" value={workingHoursStart} onChange={(e) => requestAvailabilityChange({ workingHoursStart: Number(e.target.value) })} className={`${inputClass} sm:text-right appearance-none cursor-pointer`}>
@@ -578,7 +388,7 @@ export default function SettingsPage() {
                     ))}
                   </select>
                 </div>
-              </>
+              </React.Fragment>
             )}
 
             <div className={rowClass}>
@@ -671,6 +481,7 @@ export default function SettingsPage() {
                   onClick={() => {
                     setReschedulePromptOpen(false);
                     setPendingAvailability(null);
+                    setSelectKey(k => k + 1);
                   }}
                   disabled={rescheduling}
                   className="px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted/40 rounded-lg transition-colors"

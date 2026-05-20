@@ -19,14 +19,26 @@ export const createAppointment = mutation({
       .unique();
     if (!doctor) throw new Error("Doctor not found");
 
-    // Conflict check against visits table
+    // Rate Limiting: Max 3 upcoming appointments per phone number
+    const upcoming = await ctx.db
+      .query("visits")
+      .withIndex("by_doctor_date", (q) => q.eq("doctorId", doctor._id).gte("date", Date.now() - 86400000))
+      .collect();
+    const phoneUpcoming = upcoming.filter(v => v.patientPhone === args.patientPhone && v.status !== "cancelled");
+    if (phoneUpcoming.length >= 3) {
+      throw new Error("Rate limit exceeded: You already have 3 active appointments.");
+    }
+
+    // Conflict check against visits table (Convex OCC makes this race-condition safe)
     const existing = await ctx.db
       .query("visits")
       .withIndex("by_doctor_date", (q) =>
         q.eq("doctorId", doctor._id).eq("date", args.date)
       )
-      .collect();
-    if (existing.some((v) => v.status !== "cancelled")) {
+      .filter((q) => q.neq(q.field("status"), "cancelled"))
+      .first();
+      
+    if (existing) {
       throw new Error("This time slot is already booked");
     }
 
@@ -82,6 +94,18 @@ export const addManualAppointment = mutation({
 
     const patient = await ctx.db.get(args.patientId);
     if (!patient) throw new Error("Patient not found");
+    if (patient.doctorId !== doctor._id) throw new Error("Access denied");
+
+    // Working hours validation
+    const doctorOffsetMinutes = doctor.timezoneOffset ?? -180;
+    const localTimeMs = args.date - (doctorOffsetMinutes * 60 * 1000);
+    const localDate = new Date(localTimeMs);
+    const bookingHour = localDate.getUTCHours();
+    const startHour = doctor.workingHoursStart ?? 9;
+    const endHour = doctor.workingHoursEnd ?? 17;
+    if (bookingHour < startHour || bookingHour >= endHour) {
+      throw new Error(`Appointment must be within working hours: ${startHour}:00 - ${endHour}:00`);
+    }
 
     // Conflict check
     const conflict = await ctx.db
@@ -89,8 +113,9 @@ export const addManualAppointment = mutation({
       .withIndex("by_doctor_date", (q) =>
         q.eq("doctorId", doctor._id).eq("date", args.date)
       )
-      .collect();
-    if (conflict.some((c) => c.status !== "cancelled")) {
+      .filter((q) => q.neq(q.field("status"), "cancelled"))
+      .first();
+    if (conflict) {
       throw new Error("This time slot is already booked");
     }
 
@@ -183,7 +208,7 @@ export const getAppointmentsByDate = query({
           .gte("date", args.dayStart)
           .lte("date", dayEnd)
       )
-      .collect();
+      .take(500);
 
     // OPTIMIZED: Only fetch patient if denormalized fields are missing (rare).
     return await Promise.all(
@@ -219,7 +244,7 @@ export const getAvailableSlots = query({
       .withIndex("by_doctor_date", (q) =>
         q.eq("doctorId", doctor._id).gte("date", dayStart).lte("date", dayEnd)
       )
-      .collect();
+      .take(200);
 
     return booked
       .filter((b) => b.status !== "cancelled")
@@ -244,7 +269,6 @@ export const updateAppointment = mutation({
       notes: v.optional(v.string()),
       prescriptionImageId: v.optional(v.id("_storage")),
       documentIds: v.optional(v.array(v.id("_storage"))),
-      reminderSentAt: v.optional(v.number()),
       date: v.optional(v.number()),
     }),
   },
@@ -255,6 +279,16 @@ export const updateAppointment = mutation({
     if (!visit || visit.doctorId !== user._id) throw new Error("Not authorized");
 
     if (args.updates.date) {
+      const doctorOffsetMinutes = user.timezoneOffset ?? -180;
+      const localTimeMs = args.updates.date - (doctorOffsetMinutes * 60 * 1000);
+      const localDate = new Date(localTimeMs);
+      const bookingHour = localDate.getUTCHours();
+      const startHour = user.workingHoursStart ?? 9;
+      const endHour = user.workingHoursEnd ?? 17;
+      if (bookingHour < startHour || bookingHour >= endHour) {
+        throw new Error(`Appointment must be within working hours: ${startHour}:00 - ${endHour}:00`);
+      }
+
       const conflict = await ctx.db
         .query("visits")
         .withIndex("by_doctor_date", (q) =>
@@ -285,13 +319,15 @@ export const deleteAppointment = mutation({
 // matching phone number. This limits the blast radius for guessed IDs.
 export const cancelAppointmentByPhone = mutation({
   args: {
+    clerkId: v.string(),
     appointmentId: v.id("visits"),
     patientPhone: v.string(),
   },
   handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx, args.clerkId);
     const visit = await ctx.db.get(args.appointmentId);
-    if (!visit || visit.patientPhone !== args.patientPhone)
-      throw new Error("Not found");
+    if (!visit || visit.doctorId !== user._id)
+      throw new Error("Not found or unauthorized");
 
     // Safety: only allow cancellation of visits created within the last 7 days
     const sevenDaysAgo = Date.now() - 7 * 86400000;

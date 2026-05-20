@@ -48,21 +48,14 @@ export function PublicNav({ className, backHref, backLabel }: PublicNavProps) {
         </div>
 
         <div className="flex items-center gap-1.5 sm:gap-2">
-          {!backHref && (
-            <Link
-              href="/find-a-doctor"
-              className="hidden sm:inline-flex text-sm font-medium text-muted-foreground hover:text-primary px-3 py-2 rounded-xl hover:bg-muted/60 transition-colors"
-            >
-              {dir === "rtl" ? "ابحث عن طبيب" : "Find a Doctor"}
-            </Link>
-          )}
+
           <LanguageToggle compact className="!px-2" />
           {mounted && (
             <button
               type="button"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               aria-label="Toggle theme"
-              className="w-9 h-9 flex items-center justify-center rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+              className="w-9 h-9 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
             >
               {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
@@ -72,15 +65,15 @@ export function PublicNav({ className, backHref, backLabel }: PublicNavProps) {
               <SignedOut>
                 <Link
                   href="/sign-in"
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground px-3 py-2 hidden sm:inline-flex"
+                  className="text-sm font-medium text-muted-foreground hover:text-foreground px-3 py-2 inline-flex"
                 >
-                  {dir === "rtl" ? "للأطباء" : "For doctors"}
+                  {dir === "rtl" ? "تسجيل الدخول" : "Sign In"}
                 </Link>
               </SignedOut>
               <SignedIn>
                 <Link
                   href="/dashboard"
-                  className="text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-xl transition-colors"
+                  className="text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground px-4 py-2 rounded-md transition-colors"
                 >
                   {t("nav.dashboard")}
                 </Link>

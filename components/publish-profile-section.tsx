@@ -223,7 +223,7 @@ export function PublishProfileSection({ clerkId, currentUser, profilePhotoUrl }:
   async function handlePhoto(file: File) {
     setUploadingPhoto(true);
     try {
-      const url = await generateUploadUrl();
+      const url = await generateUploadUrl({ clerkId });
       const res = await fetch(url, { method: "POST", headers: { "Content-Type": file.type }, body: file });
       const { storageId } = await res.json();
       await saveProfilePhoto({ clerkId, storageId: storageId as Id<"_storage"> });

@@ -94,9 +94,7 @@ export function PatientIntakeDrawer({
   const WEEKEND_DAYS = new Set([0, 6]);
 
   function isNonWorkingDay(d: Date): boolean {
-    const dow = d.getDay();
-    if (workingDayAbbrs.length > 0) return !workingDayAbbrs.includes(DOW_ABBR[dow]);
-    return WEEKEND_DAYS.has(dow);
+    return false;
   }
 
   // Query booked slots for selected date

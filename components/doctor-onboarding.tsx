@@ -75,7 +75,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
   const updatePrescriptionTemplate = useMutation(api.users.updatePrescriptionTemplate);
 
   const [step, setStep] = useState(0);
-  const TOTAL_STEPS = 4;
+  const TOTAL_STEPS = 3;
 
   // Step 0 — Basic info
   const [name, setName] = useState(defaultName);
@@ -115,10 +115,9 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
   }
 
   function buildWorkingHours() {
-    const days = selectedDays.length === 7 ? "Daily" : selectedDays.join("–");
     const from = formatTime12h(openFrom);
     const to = formatTime12h(openTo);
-    return days ? `${days} ${from}–${to}` : "";
+    return `Daily ${from}–${to}`;
   }
 
   function formatTime12h(t: string) {
@@ -131,7 +130,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
   async function handlePhotoUpload(file: File) {
     setUploadingPhoto(true);
     try {
-      const url = await generateUploadUrl();
+      const url = await generateUploadUrl({ clerkId });
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": file.type },
@@ -170,9 +169,8 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
         workingHoursEnd: endHour,
         slotDurationMinutes: Number(slotDuration),
         bio: bio || undefined,
-        workingDays: selectedDays.length > 0 ? selectedDays : undefined,
         feePerVisit: feePerVisit ? Number(feePerVisit) : undefined,
-        publicProfile,
+        publicProfile: false,
       });
 
       if (profileStorageId) {
@@ -205,7 +203,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
 
   const canAdvanceStep0 = name.trim().length > 0 && (specialty !== "Other" ? specialty !== "" : customSpecialty.trim().length > 0);
   const canAdvanceStep1 = clinicName.trim().length > 0 && phone.trim().length > 0 && clinicAddressLink.trim().length > 0;
-  const canAdvanceStep2 = selectedDays.length > 0 && feePerVisit.trim().length > 0 && openFrom.trim().length > 0 && openTo.trim().length > 0;
+  const canAdvanceStep2 = feePerVisit.trim().length > 0 && openFrom.trim().length > 0 && openTo.trim().length > 0;
 
   const inputClass =
     "w-full px-4 py-3 text-sm bg-muted/30 border border-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary";
@@ -238,17 +236,6 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
                 <span className="font-semibold text-sm">{t("onboarding.yourDetails")}</span>
               </div>
 
-              <div className="border border-border rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-muted/10">
-                <div>
-                  <p className="text-sm font-semibold">{t("settings.publicProfile") || "Public Profile"}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {t("settings.profileHint") || "Allow patients to find and book you online"}
-                  </p>
-                </div>
-                <div className="flex items-center">
-                  <Switch checked={publicProfile} onCheckedChange={setPublicProfile} />
-                </div>
-              </div>
 
               <div>
                 <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("onboarding.fullName")} *</label>
@@ -327,21 +314,6 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
                 <span className="font-semibold text-sm">{t("onboarding.availability")}</span>
               </div>
 
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-2">{t("onboarding.workingDays")} *</p>
-                <div className="flex flex-wrap gap-2">
-                  {DAYS.map((d) => (
-                    <button key={d} onClick={() => toggleDay(d)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${
-                        selectedDays.includes(d)
-                          ? "bg-[#007AFF] text-white border-[#007AFF]"
-                          : "border-border hover:border-[#007AFF]/40 text-muted-foreground"
-                      }`}>
-                      {t(`days.${d}`) || d}
-                    </button>
-                  ))}
-                </div>
-              </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -393,87 +365,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
             </motion.div>
           )}
 
-          {/* ── Step 3: Photo, Bio & Privacy ── */}
-          {step === 3 && (
-            <motion.div key="step3" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.22 }} className="space-y-5">
-              <div className="flex items-center gap-2 mb-4">
-                <Camera className="w-4 h-4 text-[#007AFF]" />
-                <span className="font-semibold text-sm">{t("onboarding.photoBio")} <span className="text-muted-foreground font-normal">({t("onboarding.optional")})</span></span>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <div
-                  className="w-20 h-20 rounded-2xl bg-[#007AFF]/10 border-2 border-dashed border-[#007AFF]/30 flex items-center justify-center flex-shrink-0 overflow-hidden cursor-pointer hover:bg-[#007AFF]/15 transition-colors"
-                  onClick={() => photoRef.current?.click()}>
-                  {avatarPreview ? (
-                    <img src={avatarPreview} alt="Profile" className="w-full h-full object-cover" />
-                  ) : uploadingPhoto ? (
-                    <IOSSpinner size={24} className="text-[#007AFF]" />
-                  ) : (
-                    <Camera className="w-6 h-6 text-[#007AFF]/60" />
-                  )}
-                </div>
-                <div>
-                  <p className="text-sm font-medium">{t("onboarding.profilePhoto")}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5 mb-2">
-                    {t("onboarding.photoDesc")}
-                  </p>
-                  <button onClick={() => photoRef.current?.click()} disabled={uploadingPhoto}
-                    className="text-xs text-[#007AFF] hover:underline font-medium disabled:opacity-60">
-                    {avatarPreview ? t("onboarding.changePhoto") : t("onboarding.uploadPhoto")}
-                  </button>
-                </div>
-                <input ref={photoRef} type="file" accept="image/*" className="hidden"
-                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePhotoUpload(f); }} />
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-muted-foreground block mb-1.5">
-                  {t("onboarding.shortBio")} <span className="font-normal">({t("onboarding.optional")})</span>
-                </label>
-                <textarea value={bio} onChange={(e) => setBio(e.target.value)}
-                  placeholder={t("onboarding.bioPlaceholder") || "I am a specialist in..."}
-                  rows={4} maxLength={500}
-                  className={`${inputClass} resize-none`} />
-                <p className="text-xs text-muted-foreground mt-1" style={{ textAlign: dir === "rtl" ? "left" : "right" }}>{bio.length}/500</p>
-              </div>
-
-              <div className="flex items-center justify-between p-4 bg-background border border-border rounded-2xl">
-                <div className="flex gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-[#007AFF]/10 flex items-center justify-center flex-shrink-0">
-                    <Bell className="w-5 h-5 text-[#007AFF]" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-semibold">{t("settings.notifications") || "Online Booking Alerts"}</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {t("settings.notificationsDesc") || "Get notified immediately when a patient books online"}
-                    </p>
-                  </div>
-                </div>
-                <Switch
-                  checked={notificationsEnabled}
-                  onCheckedChange={async (checked) => {
-                    if (checked) {
-                      const perm = await Notification.requestPermission();
-                      if (perm === "granted") {
-                        setNotificationsEnabled(true);
-                        toast.success(t("settings.notificationsEnabled") || "Notifications enabled");
-                      } else {
-                        toast.error(t("settings.notificationsDenied") || "Notification permission denied");
-                        setNotificationsEnabled(false);
-                      }
-                    } else {
-                      setNotificationsEnabled(false);
-                    }
-                  }}
-                />
-              </div>
-
-              <div className="bg-[#007AFF]/5 border border-[#007AFF]/20 rounded-2xl p-3 text-xs text-[#007AFF]">
-                {t("onboarding.almostDone")}
-              </div>
-            </motion.div>
-          )}
+          {/* ── Step 3: Photo, Bio & Privacy (Hidden) ── */}
 
         </AnimatePresence>
       </div>
@@ -512,7 +404,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
   if (isMobile) {
     return (
       <Drawer open={true}>
-        <DrawerContent className="p-0 overflow-hidden bg-[var(--background)] border-t-0 rounded-t-2xl flex flex-col max-h-[95vh]">
+        <DrawerContent className="p-0 overflow-hidden bg-[var(--background)] border-t border-border/50 rounded-t-2xl flex flex-col max-h-[95vh] shadow-2xl">
           <DrawerTitle className="sr-only">{t("onboarding.setup")}</DrawerTitle>
           {content}
         </DrawerContent>
@@ -530,7 +422,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
         initial={{ scale: 0.92, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", stiffness: 400, damping: 30 }}
-        className="relative z-10 w-full max-w-3xl h-[85vh] md:h-[80vh] bg-[var(--background)] rounded-2xl overflow-hidden shadow-2xl flex flex-col"
+        className="relative z-10 w-full max-w-3xl h-[85vh] md:h-[80vh] bg-[var(--background)] border border-border/50 rounded-2xl overflow-hidden shadow-2xl flex flex-col"
       >
         {content}
       </motion.div>

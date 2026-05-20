@@ -17,14 +17,17 @@ export async function getAuthUser(
 ): Promise<Doc<"users"> | null> {
   // Server-side JWT identity check
   const identity = await ctx.auth.getUserIdentity();
-  if (identity && identity.subject !== clerkId) {
+  if (!identity) throw new Error("Unauthenticated");
+  if (identity.subject !== clerkId) {
     throw new Error("Unauthorized: identity mismatch");
   }
 
-  return await ctx.db
+  const user = await ctx.db
     .query("users")
     .withIndex("by_clerk_id", (q) => q.eq("clerkId", clerkId))
     .unique();
+
+  return user;
 }
 
 /**
@@ -36,6 +39,8 @@ export async function requireAuthUser(
 ): Promise<Doc<"users">> {
   const user = await getAuthUser(ctx, clerkId);
   if (!user) throw new Error("User not found");
+  if (user.isBlocked) throw new Error("Account is blocked");
+  if (user.isBanned) throw new Error("Account is under contract");
   return user;
 }
 

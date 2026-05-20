@@ -128,6 +128,49 @@ function DoctorAnalyticsPanel({
                 </span>
               </div>
             </div>
+
+            {/* Feedback and comments */}
+            <div className="space-y-3 pt-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Patient Feedback ({(analytics as any).feedback?.length ?? 0})
+              </h3>
+              
+              {!(analytics as any).feedback || (analytics as any).feedback.length === 0 ? (
+                <p className="text-xs text-muted-foreground/60 italic">No feedback comments left yet.</p>
+              ) : (
+                <div className="space-y-2.5">
+                  {(analytics as any).feedback.map((fb: any) => (
+                    <div key={fb._id} className="bg-muted/10 border border-border/40 rounded-xl p-3 space-y-1.5 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-[11px]">{fb.patientName}</span>
+                        <span className="text-[10px] text-muted-foreground/80">
+                          {new Date(fb.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      
+                      <div className="flex items-center gap-0.5 text-amber-500">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`w-3 h-3 ${i < fb.rating ? "fill-amber-500 text-amber-500" : "text-neutral-200 dark:text-neutral-700"}`}
+                          />
+                        ))}
+                      </div>
+                      
+                      {fb.comment ? (
+                        <p className="text-neutral-600 dark:text-neutral-300 leading-relaxed text-[11px] italic">
+                          "{fb.comment}"
+                        </p>
+                      ) : (
+                        <p className="text-neutral-400 dark:text-neutral-500 text-[10px] italic">
+                          No comment left.
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </>
         )}
       </div>
@@ -139,6 +182,8 @@ function DoctorAnalyticsPanel({
 
 function AdminDashboard({ clerkId }: { clerkId: string }) {
   const [search, setSearch] = useState("");
+  const [filterType, setFilterType] = useState<"all" | "active" | "contract" | "blocked">("all");
+  const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
   const [selectedDoctorId, setSelectedDoctorId] = useState<Id<"users"> | null>(null);
   const [selectedDoctorName, setSelectedDoctorName] = useState("");
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -146,15 +191,28 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
   const allDoctors = useQuery(api.users.listAllDoctors, { clerkId });
   const overview = useQuery(api.doctors.getPlatformOverview, { clerkId });
   const banDoctor = useMutation(api.doctors.banDoctor);
+  const toggleBlock = useMutation(api.users.toggleBlockUser);
   const setAdmin = useMutation(api.users.setAdmin);
 
   async function handleBan(targetUserId: Id<"users">, banned: boolean) {
     setLoadingId(targetUserId);
     try {
       await banDoctor({ clerkId, targetUserId, banned });
-      toast.success(banned ? "Doctor banned — profile hidden from feed" : "Doctor unbanned");
+      toast.success(banned ? "Contract status applied" : "Contract status removed");
     } catch {
       toast.error("Failed to update");
+    } finally {
+      setLoadingId(null);
+    }
+  }
+
+  async function handleToggleBlock(targetUserId: Id<"users">, isBlocked: boolean) {
+    setLoadingId(targetUserId);
+    try {
+      await toggleBlock({ clerkId, targetUserId, isBlocked });
+      toast.success(isBlocked ? "User blocked entirely" : "User unblocked");
+    } catch {
+      toast.error("Failed to update block status");
     } finally {
       setLoadingId(null);
     }
@@ -174,11 +232,17 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
 
   const filtered = (allDoctors ?? []).filter(
     (d) =>
-      d.name.toLowerCase().includes(search.toLowerCase()) ||
-      d.clinicName.toLowerCase().includes(search.toLowerCase()) ||
-      (d.specialty ?? "").toLowerCase().includes(search.toLowerCase()) ||
-      (d.email ?? "").toLowerCase().includes(search.toLowerCase())
-  );
+      (filterType === "all" ||
+        (filterType === "active" && !(d as any).isBanned && !(d as any).isBlocked) ||
+        (filterType === "contract" && (d as any).isBanned) ||
+        (filterType === "blocked" && (d as any).isBlocked)) &&
+      (d.name.toLowerCase().includes(search.toLowerCase()) ||
+        d.clinicName.toLowerCase().includes(search.toLowerCase()) ||
+        (d.specialty ?? "").toLowerCase().includes(search.toLowerCase()) ||
+        (d.email ?? "").toLowerCase().includes(search.toLowerCase()))
+  ).sort((a, b) => {
+    return sortOrder === "desc" ? b.createdAt - a.createdAt : a.createdAt - b.createdAt;
+  });
 
   const nonAdmins = filtered.filter((d) => !d.isAdmin);
 
@@ -209,7 +273,7 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
           {[
             { label: "Total Doctors", value: overview?.totalDoctors, icon: Users, color: "#007AFF" },
             { label: "Published", value: overview?.publishedDoctors, icon: Globe, color: "#34c759" },
-            { label: "Banned", value: overview?.bannedDoctors, icon: Ban, color: "#FF3B30" },
+            { label: "Contract", value: overview?.bannedDoctors, icon: Ban, color: "#FF3B30" },
             { label: "Visits (month)", value: overview?.totalVisitsThisMonth, icon: CalendarDays, color: "#FF9500" },
             { label: "Visits (total)", value: overview?.totalVisitsAllTime, icon: TrendingUp, color: "#5856D6" },
           ].map((stat) => (
@@ -230,15 +294,35 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
           ))}
         </div>
 
-        {/* Search */}
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search doctors…"
-            className="w-full pl-9 pr-4 py-2.5 text-sm bg-white dark:bg-[#1c1c1a] border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF]"
-          />
+        {/* Search & Filters */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative w-full sm:max-w-sm flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search doctors…"
+              className="w-full pl-9 pr-4 py-2.5 text-sm bg-white dark:bg-[#1c1c1a] border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF]"
+            />
+          </div>
+          <select
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value as any)}
+            className="px-4 py-2.5 text-sm bg-white dark:bg-[#1c1c1a] border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] outline-none"
+          >
+            <option value="all">All Status</option>
+            <option value="active">Active</option>
+            <option value="contract">Contract</option>
+            <option value="blocked">Blocked</option>
+          </select>
+          <select
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value as any)}
+            className="px-4 py-2.5 text-sm bg-white dark:bg-[#1c1c1a] border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] outline-none"
+          >
+            <option value="desc">Newest First</option>
+            <option value="asc">Oldest First</option>
+          </select>
         </div>
 
         {/* Doctors table */}
@@ -262,13 +346,14 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
               {nonAdmins.map((doc) => {
                 const isLoading = loadingId === doc._id;
                 const isBanned = (doc as any).isBanned === true;
+                const isBlocked = (doc as any).isBlocked === true;
                 const isPublished = doc.publicProfile === true;
                 return (
                   <div key={doc._id} className="grid grid-cols-[1fr,auto,auto,auto,auto] items-center px-5 py-3.5 hover:bg-muted/20 transition-colors">
                     {/* Info */}
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isBanned ? "bg-red-100 dark:bg-red-900/20" : "bg-[#007AFF]/10"}`}>
-                        <span className={`text-xs font-bold ${isBanned ? "text-red-500" : "text-[#007AFF]"}`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isBlocked ? "bg-red-100 dark:bg-red-900/20" : isBanned ? "bg-amber-100 dark:bg-amber-900/20" : "bg-[#007AFF]/10"}`}>
+                        <span className={`text-xs font-bold ${isBlocked ? "text-red-500" : isBanned ? "text-amber-500" : "text-[#007AFF]"}`}>
                           {doc.name.charAt(0).toUpperCase()}
                         </span>
                       </div>
@@ -282,11 +367,13 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
                     {/* Status */}
                     <div className="flex justify-center px-3">
                       <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full border ${
-                        isBanned
+                        isBlocked
                           ? "bg-red-50 dark:bg-red-900/20 text-red-500 border-red-200 dark:border-red-800"
+                          : isBanned
+                          ? "bg-amber-50 dark:bg-amber-900/20 text-amber-500 border-amber-200 dark:border-amber-800"
                           : "bg-[#34c759]/8 text-[#34c759] border-[#34c759]/20"
                       }`}>
-                        {isBanned ? "Banned" : "Active"}
+                        {isBlocked ? "Blocked" : isBanned ? "Contract" : "Active"}
                       </span>
                     </div>
 
@@ -309,14 +396,24 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
                       ) : (
                         <>
                           <button
+                            onClick={() => handleToggleBlock(doc._id, !isBlocked)}
+                            className={`text-[10px] font-semibold px-2 py-1 rounded-lg border transition-colors ${
+                              isBlocked
+                                ? "border-red-500 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                : "border-border text-muted-foreground hover:bg-muted/50"
+                            }`}
+                          >
+                            {isBlocked ? "Unblock" : "Block"}
+                          </button>
+                          <button
                             onClick={() => handleBan(doc._id, !isBanned)}
                             className={`text-[10px] font-semibold px-2 py-1 rounded-lg border transition-colors ${
                               isBanned
                                 ? "border-[#34c759]/40 text-[#34c759] hover:bg-[#34c759]/10"
-                                : "border-red-300 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                : "border-amber-300 text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20"
                             }`}
                           >
-                            {isBanned ? "Unban" : "Ban"}
+                            {isBanned ? "Active" : "Contract"}
                           </button>
                           <button
                             onClick={() => { setSelectedDoctorId(doc._id); setSelectedDoctorName(doc.name); }}

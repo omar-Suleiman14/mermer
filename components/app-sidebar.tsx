@@ -18,6 +18,7 @@ import {
   Shield,
   BarChart3,
   FileText,
+  Monitor,
 } from "lucide-react";
 
 import { useTheme } from "next-themes";
@@ -38,7 +39,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const pathname = usePathname();
   const { user } = useUser();
   const { theme } = useTheme();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   const clerkId = user?.id ?? "";
@@ -50,13 +51,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const isAdmin = currentUser?.isAdmin ?? false;
 
   const navItems = [
-    { title: t("nav.dashboard"), href: "/dashboard", icon: LayoutDashboard },
-    { title: t("nav.patients"), href: "/dashboard/patients", icon: Users },
-    { title: t("nav.schedule"), href: "/dashboard/queue", icon: CalendarDays },
-    { title: t("nav.contracts"), href: "/dashboard/contracts", icon: FileText },
-    { title: t("nav.feedback"), href: "/dashboard/feedback", icon: Star },
-    { title: t("nav.analytics"), href: "/dashboard/stats", icon: BarChart3 },
-    { title: t("nav.settings"), href: "/dashboard/settings", icon: Settings },
+    { title: t("nav.dashboard") || "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { title: t("nav.schedule") || "Schedule", href: "/dashboard/queue", icon: CalendarDays },
+    { title: t("nav.patients") || "Patients", href: "/dashboard/patients", icon: Users },
+    { title: t("nav.contracts") || "Contracts", href: "/dashboard/contracts", icon: FileText },
+    { title: t("nav.feedback") || "Feedback", href: "/dashboard/feedback", icon: Star },
+    { title: t("nav.analytics") || "Analytics", href: "/dashboard/stats", icon: BarChart3 },
+    { title: t("nav.clinicScreen") === "nav.clinicScreen" ? (lang === "ar" ? "شاشة العيادة" : "Clinic Screen") : (t("nav.clinicScreen") || "Clinic Screen"), href: "/clinic-screen", icon: Monitor, target: "_blank" },
+    { title: t("nav.settings") || "Settings", href: "/dashboard/settings", icon: Settings },
   ];
 
   return (
@@ -106,7 +108,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             return (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
-                  <Link href={item.href} className="flex items-center gap-2 relative">
+                  <Link href={item.href} prefetch={true} target={(item as any).target} className="flex items-center gap-2 relative">
                     <item.icon className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
                     <span className="flex-1">{item.title}</span>
                   </Link>

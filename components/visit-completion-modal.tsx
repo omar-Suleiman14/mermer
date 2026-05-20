@@ -78,12 +78,7 @@ export function VisitCompletionModal({
   const DOW_ABBR: Record<number, string> = { 0: "Sun", 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat" };
   const WEEKEND_DAYS = new Set([0, 6]); // Sun & Sat
   function isNonWorkingDay(d: Date): boolean {
-    const dow = d.getDay();
-    if (workingDayAbbrs.length > 0) {
-      return !workingDayAbbrs.includes(DOW_ABBR[dow]);
-    }
-    // Fallback: block weekends
-    return WEEKEND_DAYS.has(dow);
+    return false;
   }
 
   // Follow-up date for slot availability check
@@ -204,13 +199,13 @@ export function VisitCompletionModal({
       const documentIds: Id<"_storage">[] = [];
 
       if (!skip && rxFile) {
-        const rxUploadUrl = await generateUploadUrl();
+        const rxUploadUrl = await generateUploadUrl({ clerkId });
         const rxRes = await fetch(rxUploadUrl, { method: "POST", headers: { "Content-Type": rxFile.type }, body: rxFile });
         const { storageId } = await rxRes.json();
         prescriptionImageId = storageId as Id<"_storage">;
       }
       for (const docFile of extraFiles) {
-        const url = await generateUploadUrl();
+        const url = await generateUploadUrl({ clerkId });
         const res = await fetch(url, { method: "POST", headers: { "Content-Type": docFile.type }, body: docFile });
         const { storageId } = await res.json();
         documentIds.push(storageId as Id<"_storage">);

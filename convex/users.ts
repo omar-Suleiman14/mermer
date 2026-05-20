@@ -18,14 +18,25 @@ export const getOrCreateUser = mutation({
     clerkId: v.string(),
     name: v.string(),
     email: v.optional(v.string()),
+    timezoneOffset: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity || identity.subject !== args.clerkId) {
+      throw new Error("Unauthenticated or identity mismatch");
+    }
+
     const existing = await ctx.db
       .query("users")
       .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
       .unique();
 
-    if (existing) return existing._id;
+    if (existing) {
+      if (args.timezoneOffset !== undefined && existing.timezoneOffset !== args.timezoneOffset) {
+        await ctx.db.patch(existing._id, { timezoneOffset: args.timezoneOffset });
+      }
+      return existing._id;
+    }
 
     const slug = generateSlug(args.name);
 
@@ -41,6 +52,8 @@ export const getOrCreateUser = mutation({
       isAdmin: false,
       qrSlug: slug,
       publicProfile: false,
+      timezoneOffset: args.timezoneOffset,
+      isBlocked: true,
     });
     return id;
   },
@@ -120,8 +133,17 @@ export const updatePrescriptionTemplate = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
-    const { clerkId, ...fields } = args;
-    await ctx.db.patch(user._id, fields);
+    // Explicitly pick allowed prescription fields to prevent schema bypass
+    const patch: any = {};
+    if (args.logoStorageId !== undefined) patch.logoStorageId = args.logoStorageId;
+    if (args.prescriptionDoctorName !== undefined) patch.prescriptionDoctorName = args.prescriptionDoctorName;
+    if (args.prescriptionSpecialty !== undefined) patch.prescriptionSpecialty = args.prescriptionSpecialty;
+    if (args.prescriptionCredentials !== undefined) patch.prescriptionCredentials = args.prescriptionCredentials;
+    if (args.prescriptionClinicName !== undefined) patch.prescriptionClinicName = args.prescriptionClinicName;
+    if (args.prescriptionAddress !== undefined) patch.prescriptionAddress = args.prescriptionAddress;
+    if (args.prescriptionPhone !== undefined) patch.prescriptionPhone = args.prescriptionPhone;
+    if (args.prescriptionWorkingHours !== undefined) patch.prescriptionWorkingHours = args.prescriptionWorkingHours;
+    await ctx.db.patch(user._id, patch);
   },
 });
 
@@ -149,6 +171,7 @@ export const listAllDoctors = query({
       isAdmin: u.isAdmin,
       publicProfile: u.publicProfile,
       isBanned: (u as any).isBanned,
+      isBlocked: (u as any).isBlocked,
       createdAt: u.createdAt,
       qrSlug: u.qrSlug,
     }));
@@ -166,6 +189,19 @@ export const setAdmin = mutation({
   handler: async (ctx, args) => {
     await requireAdmin(ctx, args.clerkId);
     await ctx.db.patch(args.targetUserId, { isAdmin: args.isAdmin });
+  },
+});
+
+// Admin: toggle blocked status
+export const toggleBlockUser = mutation({
+  args: {
+    clerkId: v.string(),
+    targetUserId: v.id("users"),
+    isBlocked: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx, args.clerkId);
+    await ctx.db.patch(args.targetUserId, { isBlocked: args.isBlocked });
   },
 });
 
@@ -221,7 +257,18 @@ export const getDoctorBySlug = query({
     const profilePhotoUrl = doctor.profilePhotoId
       ? await ctx.storage.getUrl(doctor.profilePhotoId)
       : null;
-    return { ...doctor, profilePhotoUrl };
+    return {
+      _id: doctor._id,
+      name: doctor.name,
+      specialty: doctor.specialty,
+      credentials: doctor.credentials,
+      clinicName: doctor.clinicName,
+      clinicAddress: doctor.clinicAddress,
+      clinicAddressLink: doctor.clinicAddressLink,
+      bio: doctor.bio,
+      qrSlug: doctor.qrSlug,
+      profilePhotoUrl,
+    };
   },
 });
 
@@ -233,6 +280,11 @@ export const getDoctorBySlug = query({
 export const claimAdmin = mutation({
   args: { clerkId: v.string() },
   handler: async (ctx, args) => {
+    // Require JWT identity to prevent unauthenticated admin claims
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthenticated");
+    if (identity.subject !== args.clerkId) throw new Error("Identity mismatch");
+
     // OPTIMIZED: Use index to check if any admin exists (O(1) instead of O(N))
     const existingAdmin = await ctx.db
       .query("users")
