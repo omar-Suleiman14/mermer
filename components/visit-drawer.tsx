@@ -169,7 +169,7 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
                 <Popover open={calOpen} onOpenChange={setCalOpen}>
                   <PopoverTrigger asChild>
                     <button type="button" className="w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border border-border rounded-xl hover:border-[#007AFF]/50 transition-colors text-left">
-                      <CalendarIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                      <CalendarIcon className="w-4 h-4 text-muted-foreground shrink-0" />
                       <span className="text-sm">
                         {visitDate ? visitDate.toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { weekday: "short", month: "short", day: "numeric" }) : t("visit.pickDate")}
                       </span>
@@ -246,7 +246,7 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
           <DrawerClose asChild>
             <button
               type="button"
-              className="flex-shrink-0 text-sm text-muted-foreground border border-border rounded-xl px-4 py-2.5 hover:bg-muted/40 transition-colors"
+              className="shrink-0 text-sm text-muted-foreground border border-border rounded-xl px-4 py-2.5 hover:bg-muted/40 transition-colors"
             >
               {t("common.cancel")}
             </button>

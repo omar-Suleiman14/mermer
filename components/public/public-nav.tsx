@@ -25,7 +25,7 @@ export function PublicNav({ className, backHref, backLabel }: PublicNavProps) {
   return (
     <header
       className={cn(
-        "sticky top-0 z-50 w-full border-b border-border/80 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/80",
+        "sticky top-0 z-50 w-full border-b border-border/80 bg-background/95 backdrop-blur-md supports-backdrop-filter:bg-background/80",
         className
       )}
     >
@@ -49,7 +49,7 @@ export function PublicNav({ className, backHref, backLabel }: PublicNavProps) {
 
         <div className="flex items-center gap-1.5 sm:gap-2">
 
-          <LanguageToggle compact className="!px-2" />
+          <LanguageToggle compact className="px-2!" />
           {mounted && (
             <button
               type="button"

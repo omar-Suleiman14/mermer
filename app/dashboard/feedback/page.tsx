@@ -30,7 +30,7 @@ function RatingBar({ label, count, max }: { label: string; count: number; max: n
   return (
     <div className="flex items-center gap-2">
       <span className="text-xs text-muted-foreground w-4 text-end">{label}</span>
-      <Star className="w-3 h-3 text-[#f5a623] fill-[#f5a623] flex-shrink-0" />
+      <Star className="w-3 h-3 text-[#f5a623] fill-[#f5a623] shrink-0" />
       <div className="flex-1 h-1.5 bg-muted/40 rounded-full overflow-hidden">
         <div
           className="h-full bg-[#f5a623] rounded-full transition-all duration-700"
@@ -206,7 +206,7 @@ export default function FeedbackDashboard() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-[#f5a623]/10 flex items-center justify-center flex-shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-[#f5a623]/10 flex items-center justify-center shrink-0">
                         <span className="text-xs font-bold text-[#f5a623]">
                           {f.patientName ? f.patientName.charAt(0).toUpperCase() : "?"}
                         </span>
@@ -216,7 +216,7 @@ export default function FeedbackDashboard() {
                         <StarRow rating={f.rating} />
                       </div>
                     </div>
-                    <span className="text-[10px] text-muted-foreground flex-shrink-0 font-mono">
+                    <span className="text-[10px] text-muted-foreground shrink-0 font-mono">
                       {new Date(f.createdAt).toLocaleDateString(dateLocale, {
                         month: "short",
                         day: "numeric",

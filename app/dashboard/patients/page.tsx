@@ -96,7 +96,7 @@ export default function PatientsPage() {
                     href={`/dashboard/patients/${patient._id}`}
                     className="group bg-white dark:bg-[#1c1c1a] border border-black/5 dark:border-white/5 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-[#007AFF]/20 transition-all flex items-center gap-4"
                   >
-                    <div className={`relative w-12 h-12 rounded-full ${pal.bg} flex items-center justify-center flex-shrink-0`}>
+                    <div className={`relative w-12 h-12 rounded-full ${pal.bg} flex items-center justify-center shrink-0`}>
                       <span className={`text-base font-bold ${pal.text}`}>{initials}</span>
                       {(patient as any).hasActiveContract && (
                         <div className="absolute top-0 right-0 w-3.5 h-3.5 bg-white dark:bg-[#1c1c1a] rounded-full flex items-center justify-center">
@@ -108,12 +108,12 @@ export default function PatientsPage() {
                       <div className="flex items-center gap-2">
                         <p className="font-semibold text-sm group-hover:text-[#007AFF] transition-colors truncate">{patient.name}</p>
                         {(patient as any).hasActiveContract && (
-                          <span className="flex-shrink-0 text-[9px] font-bold text-[#AF52DE] bg-[#AF52DE]/10 px-1.5 py-0.5 rounded-md border border-[#AF52DE]/20 uppercase">
+                          <span className="shrink-0 text-[9px] font-bold text-[#AF52DE] bg-[#AF52DE]/10 px-1.5 py-0.5 rounded-md border border-[#AF52DE]/20 uppercase">
                             {t("dashboard.contract") || "Contract"}
                           </span>
                         )}
                         {(patient as any).hasPastDue && (
-                          <span className="flex-shrink-0 text-[9px] font-bold text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded-md border border-red-500/20 uppercase">
+                          <span className="shrink-0 text-[9px] font-bold text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded-md border border-red-500/20 uppercase">
                             Past Due
                           </span>
                         )}
@@ -133,7 +133,7 @@ export default function PatientsPage() {
                         </div>
                       )}
                     </div>
-                    <ChevronRight className={`w-4 h-4 text-muted-foreground/40 group-hover:text-[#007AFF] flex-shrink-0 transition-colors ${dir === "rtl" ? "rotate-180" : ""}`} />
+                    <ChevronRight className={`w-4 h-4 text-muted-foreground/40 group-hover:text-[#007AFF] shrink-0 transition-colors ${dir === "rtl" ? "rotate-180" : ""}`} />
                   </Link>
                 );
               })}

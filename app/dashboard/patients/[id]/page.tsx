@@ -110,7 +110,7 @@ export default function PatientProfilePage() {
         <div className="bg-card border border-border rounded-2xl p-6">
           <div className="flex items-start gap-5">
             <div className="relative">
-              <div className="w-16 h-16 rounded-full bg-[#007AFF]/10 flex items-center justify-center flex-shrink-0">
+              <div className="w-16 h-16 rounded-full bg-[#007AFF]/10 flex items-center justify-center shrink-0">
                 <span className="text-xl font-bold text-[#007AFF]">{initials}</span>
               </div>
               {contracts?.some(c => c.status === "active") && (
@@ -157,7 +157,7 @@ export default function PatientProfilePage() {
               )}
               {(patient as any).notes && (
                 <div className="mt-3 text-sm text-muted-foreground bg-muted/40 rounded-lg px-3 py-2 flex items-start gap-2">
-                  <StickyNote className="w-3.5 h-3.5 flex-shrink-0 mt-0.5 text-[#007AFF]" />
+                  <StickyNote className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[#007AFF]" />
                   <span className="leading-relaxed">{(patient as any).notes}</span>
                 </div>
               )}
@@ -253,7 +253,7 @@ export default function PatientProfilePage() {
                       {/* Unpaid balance warning */}
                       {hasUnpaid && (
                         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/8 border border-red-500/20">
-                          <AlertCircle className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />
+                          <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
                           <p className="text-xs font-semibold text-red-500">
                             {t("contracts.unpaidBalance") || "Unpaid balance"}: {contract.unpaidBalance.toLocaleString()} {t("common.currency")}
                           </p>

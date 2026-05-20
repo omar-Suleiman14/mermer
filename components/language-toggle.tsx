@@ -26,7 +26,7 @@ export function LanguageToggle({ className, compact = false }: LanguageTogglePro
         className
       )}
     >
-      <Globe className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+      <Globe className="w-4 h-4 shrink-0" aria-hidden="true" />
       {!compact && (
         <span>{t("nav.language")}</span>
       )}

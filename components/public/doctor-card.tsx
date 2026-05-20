@@ -30,7 +30,7 @@ export function DoctorCard({ doctor, className }: DoctorCardProps) {
       )}
     >
       <div className="flex gap-4">
-        <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden bg-muted flex-shrink-0 ring-1 ring-border shadow-sm">
+        <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden bg-muted shrink-0 ring-1 ring-border shadow-sm">
           {doctor.profilePhotoUrl ? (
             <Image
               src={doctor.profilePhotoUrl}

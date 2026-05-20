@@ -43,6 +43,7 @@ export default defineSchema({
 
     // Doctor profile photo
     profilePhotoId: v.optional(v.id("_storage")),
+    profilePhotoUrl: v.optional(v.string()),
 
     // Denormalized stats for performance (prevents N+1 in feed)
     avgRating: v.optional(v.number()),

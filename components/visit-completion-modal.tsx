@@ -287,12 +287,12 @@ export function VisitCompletionModal({
             animate={{ y: 0, opacity: 1, scale: 1 }}
             exit={{ y: 40, opacity: 0, scale: 0.97 }}
             transition={{ type: "spring", stiffness: 380, damping: 30 }}
-            className="relative z-10 w-full sm:max-w-lg bg-[var(--background)] rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[92vh] flex flex-col overflow-hidden"
+            className="relative z-10 w-full sm:max-w-lg bg-background rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[92vh] flex flex-col overflow-hidden"
           >
-            <div className="sm:hidden w-12 h-1 rounded-full bg-border mx-auto mt-3 mb-1 flex-shrink-0" />
+            <div className="sm:hidden w-12 h-1 rounded-full bg-border mx-auto mt-3 mb-1 shrink-0" />
 
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border flex-shrink-0">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
               <div>
                 <h2 className="text-base font-semibold">{t("visit.completeVisit")}</h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
@@ -315,7 +315,7 @@ export function VisitCompletionModal({
                   className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-3 mb-4 mt-[-8px]"
                 >
                   <div className="flex items-start gap-2.5">
-                    <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0" />
+                    <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
                     <div>
                       {(contractData?.unpaidBalance ?? 0) > 0 && (
                         <p className="text-sm font-bold text-amber-600">
@@ -394,7 +394,7 @@ export function VisitCompletionModal({
                       <p className="text-sm font-medium">{t("visit.prescriptionPhoto")}</p>
                       <div className="flex items-center justify-between p-3 rounded-2xl border border-border bg-muted/30">
                         <div className="flex items-center gap-3 overflow-hidden">
-                          <FileText className="w-5 h-5 text-[#007AFF] flex-shrink-0" />
+                          <FileText className="w-5 h-5 text-[#007AFF] shrink-0" />
                           <span className="text-sm font-medium truncate">{rxFile?.name || "Prescription file"}</span>
                         </div>
                         <button
@@ -501,7 +501,7 @@ export function VisitCompletionModal({
                               <Popover open={nextContractCalOpen} onOpenChange={setNextContractCalOpen}>
                                 <PopoverTrigger asChild>
                                   <button className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border rounded-2xl hover:border-[#AF52DE]/50 transition-colors text-left ${!nextContractDate ? "border-red-400/60" : "border-border"}`}>
-                                    <CalendarIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                                    <CalendarIcon className="w-4 h-4 text-muted-foreground shrink-0" />
                                     <span className={nextContractDate ? "" : "text-muted-foreground"}>
                                       {nextContractDate ? nextContractDate.toLocaleDateString(dateLocale, { weekday: "short", month: "short", day: "numeric" }) : t("visit.pickDate")}
                                     </span>
@@ -545,7 +545,7 @@ export function VisitCompletionModal({
                           <p className="text-xs text-muted-foreground">{t("visit.inPerson")}</p>
                         </div>
                       </div>
-                      <div className="flex-shrink-0 pointer-events-none">
+                      <div className="shrink-0 pointer-events-none">
                         <Switch checked={scheduleFollowUp} />
                       </div>
                     </div>
@@ -560,7 +560,7 @@ export function VisitCompletionModal({
                                 <Popover open={fuCalOpen} onOpenChange={setFuCalOpen}>
                                   <PopoverTrigger asChild>
                                     <button className="w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border border-border rounded-2xl hover:border-[#007AFF]/50 transition-colors text-left">
-                                      <CalendarIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                                      <CalendarIcon className="w-4 h-4 text-muted-foreground shrink-0" />
                                       <span className="text-sm">{fuDate ? fuDate.toLocaleDateString(dateLocale, { weekday: "short", month: "short", day: "numeric" }) : t("visit.pickDate")}</span>
                                     </button>
                                   </PopoverTrigger>

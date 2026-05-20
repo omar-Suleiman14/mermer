@@ -75,8 +75,8 @@ function DoctorCardPreview({
   return (
     <div className="bg-white dark:bg-[#1c1c1a] border border-black/8 dark:border-white/8 rounded-2xl overflow-hidden shadow-sm max-w-xs w-full">
       {/* Photo + badge */}
-      <div className="relative h-24 bg-gradient-to-br from-[#007AFF]/20 to-[#5856D6]/20 flex items-center justify-start px-5 gap-4">
-        <div className="w-16 h-16 rounded-2xl bg-[#007AFF]/10 border-2 border-white dark:border-[#1c1c1a] overflow-hidden flex items-center justify-center flex-shrink-0 shadow-md">
+      <div className="relative h-24 bg-linear-to-br from-[#007AFF]/20 to-[#5856D6]/20 flex items-center justify-start px-5 gap-4">
+        <div className="w-16 h-16 rounded-2xl bg-[#007AFF]/10 border-2 border-white dark:border-[#1c1c1a] overflow-hidden flex items-center justify-center shrink-0 shadow-md">
           {photoUrl ? (
             <img src={photoUrl} alt={name} className="w-full h-full object-cover" />
           ) : (
@@ -244,7 +244,7 @@ export function PublishProfileSection({ clerkId, currentUser, profilePhotoUrl }:
   return (
     <div className="space-y-6">
       {/* Publish toggle */}
-      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-[#007AFF]/5 to-[#5856D6]/5 border border-[#007AFF]/15 rounded-2xl">
+      <div className="flex items-center justify-between p-4 bg-linear-to-r from-[#007AFF]/5 to-[#5856D6]/5 border border-[#007AFF]/15 rounded-2xl">
         <div className="flex items-center gap-3">
           <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${isPublished ? "bg-[#34c759]/15" : "bg-muted/40"}`}>
             {isPublished ? <Globe className="w-4 h-4 text-[#34c759]" /> : <Lock className="w-4 h-4 text-muted-foreground" />}
@@ -285,8 +285,8 @@ export function PublishProfileSection({ clerkId, currentUser, profilePhotoUrl }:
         {checks.map((c) => (
           <div key={c.label} className="flex items-center gap-2.5 text-sm">
             {c.done
-              ? <CheckCircle2 className="w-4 h-4 text-[#34c759] flex-shrink-0" />
-              : <XCircle className="w-4 h-4 text-muted-foreground/30 flex-shrink-0" />}
+              ? <CheckCircle2 className="w-4 h-4 text-[#34c759] shrink-0" />
+              : <XCircle className="w-4 h-4 text-muted-foreground/30 shrink-0" />}
             <span className={c.done ? "text-foreground" : "text-muted-foreground"}>{c.label}</span>
           </div>
         ))}
@@ -300,7 +300,7 @@ export function PublishProfileSection({ clerkId, currentUser, profilePhotoUrl }:
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-2">Profile Photo</p>
             <div className="flex items-center gap-3">
-              <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-[#007AFF]/10 flex items-center justify-center flex-shrink-0">
+              <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-[#007AFF]/10 flex items-center justify-center shrink-0">
                 {profilePhotoUrl
                   ? <img src={profilePhotoUrl} alt="Photo" className="w-full h-full object-cover" />
                   : <span className="text-xl font-bold text-[#007AFF]">{(currentUser.name || "D").charAt(0)}</span>}

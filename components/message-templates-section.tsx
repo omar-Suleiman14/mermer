@@ -117,7 +117,7 @@ export function MessageTemplatesSection({ clerkId, clinicAddressLink }: { clerkI
                 />
               ) : (
                 <div className="flex items-start gap-3 p-3 rounded-xl border border-border bg-card group hover:border-[#007AFF]/20 transition-colors">
-                  <MessageSquare className="w-4 h-4 text-[#007AFF] mt-0.5 flex-shrink-0" />
+                  <MessageSquare className="w-4 h-4 text-[#007AFF] mt-0.5 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold">{tpl.name}</p>
                     <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{tpl.body}</p>
@@ -293,7 +293,7 @@ function EditorForm({ name, setName, body, setBody, onSave, onCancel, preview, s
                 transform: "translateY(-100%)",
                 zIndex: 9999,
               }}
-              className="bg-[var(--background)] border border-border rounded-xl shadow-2xl overflow-hidden"
+              className="bg-background border border-border rounded-xl shadow-2xl overflow-hidden"
             >
               {filtered.map((v, i) => (
                 <button
@@ -304,7 +304,7 @@ function EditorForm({ name, setName, body, setBody, onSave, onCancel, preview, s
                     i === mentionIdx ? "bg-[#007AFF]/10" : "hover:bg-muted/40"
                   }`}
                 >
-                  <span className="text-[10px] font-mono font-bold text-[#007AFF] bg-[#007AFF]/10 px-2 py-0.5 rounded-md flex-shrink-0">
+                  <span className="text-[10px] font-mono font-bold text-[#007AFF] bg-[#007AFF]/10 px-2 py-0.5 rounded-md shrink-0">
                     {v.key}
                   </span>
                   <div className="flex-1 min-w-0">

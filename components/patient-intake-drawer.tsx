@@ -351,7 +351,7 @@ export function PatientIntakeDrawer({
             <div>
               <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("drawer.phone")} *</label>
               <div className="flex">
-                <span className="flex items-center px-3 bg-muted/60 border border-border border-r-0 rounded-l-xl text-sm text-muted-foreground font-mono flex-shrink-0">+20</span>
+                <span className="flex items-center px-3 bg-muted/60 border border-border border-r-0 rounded-l-xl text-sm text-muted-foreground font-mono shrink-0">+20</span>
                 <input
                   type="tel"
                   value={form.phone}
@@ -381,7 +381,7 @@ export function PatientIntakeDrawer({
             )}
             <div className="relative">
               <div className="flex items-center border border-border rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-[#007AFF] bg-background">
-                <Search className="w-3.5 h-3.5 text-muted-foreground ml-3 flex-shrink-0" />
+                <Search className="w-3.5 h-3.5 text-muted-foreground ml-3 shrink-0" />
                 <input
                   value={conditionSearch}
                   onChange={(e) => { setConditionSearch(e.target.value); setConditionDropdownOpen(true); }}
@@ -397,7 +397,7 @@ export function PatientIntakeDrawer({
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -4 }}
                     transition={{ duration: 0.12 }}
-                    className="absolute left-0 right-0 mt-1 bg-[var(--background)] border border-border rounded-xl shadow-lg max-h-40 overflow-y-auto z-30"
+                    className="absolute left-0 right-0 mt-1 bg-background border border-border rounded-xl shadow-lg max-h-40 overflow-y-auto z-30"
                   >
                     {filteredConditions.map((c) => {
                       const selected = form.chronicConditions.includes(c);
@@ -408,7 +408,7 @@ export function PatientIntakeDrawer({
                           onClick={() => { toggleCondition(c); }}
                           className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-muted/40 ${selected ? "text-[#007AFF] font-medium" : ""}`}
                         >
-                          {selected && <Check className="w-3.5 h-3.5 text-[#007AFF] flex-shrink-0" />}
+                          {selected && <Check className="w-3.5 h-3.5 text-[#007AFF] shrink-0" />}
                           <span className={selected ? "" : "ml-5"}>{c}</span>
                         </button>
                       );
@@ -467,7 +467,7 @@ export function PatientIntakeDrawer({
                           <Popover open={calOpen} onOpenChange={setCalOpen}>
                             <PopoverTrigger asChild>
                               <button type="button" className="w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border border-border rounded-xl hover:border-[#007AFF]/50 transition-colors text-left">
-                                <CalendarIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                                <CalendarIcon className="w-4 h-4 text-muted-foreground shrink-0" />
                                 <span>
                                   {visitDate
                                     ? visitDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
@@ -557,7 +557,7 @@ export function PatientIntakeDrawer({
           <DrawerClose asChild>
             <button
               type="button"
-              className="flex-shrink-0 text-sm text-muted-foreground border border-border rounded-xl px-4 py-2.5 hover:bg-muted/40 transition-colors"
+              className="shrink-0 text-sm text-muted-foreground border border-border rounded-xl px-4 py-2.5 hover:bg-muted/40 transition-colors"
             >
               {t("common.cancel")}
             </button>

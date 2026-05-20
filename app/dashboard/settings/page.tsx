@@ -44,7 +44,7 @@ export default function SettingsPage() {
   const [mounted, setMounted] = useState(false);
 
   const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
-  const profilePhotoUrl = useQuery(api.users.getProfilePhotoUrl, clerkId ? { clerkId } : "skip");
+  const profilePhotoUrl = currentUser?.profilePhotoUrl;
   const updateProfile = useMutation(api.users.updateProfile);
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   const saveProfilePhoto = useMutation(api.users.saveProfilePhoto);
@@ -260,7 +260,7 @@ export default function SettingsPage() {
 
   const blockClass = "bg-card border border-border rounded-xl shadow-sm divide-y divide-border overflow-hidden mb-8";
   const rowClass = "flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-2 sm:gap-4 transition-colors focus-within:bg-muted/10 hover:bg-muted/5";
-  const labelClass = "text-sm font-medium flex items-center gap-2 flex-shrink-0 min-w-[140px]";
+  const labelClass = "text-sm font-medium flex items-center gap-2 shrink-0 min-w-[140px]";
   const inputClass = "flex-1 w-full bg-transparent text-sm sm:text-right focus:outline-none placeholder:text-muted-foreground/60 focus:text-[#007AFF] transition-colors";
   const sectionTitleClass = "text-[13px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 ms-4";
 
@@ -394,7 +394,7 @@ export default function SettingsPage() {
             <div className={rowClass}>
               <label htmlFor="settings-slot-duration" className={labelClass}>{t("settings.slotDurationLabel")}</label>
               <div className="flex items-center gap-2 flex-1 sm:justify-end">
-                <input id="settings-slot-duration" name="slotDuration" type="number" value={slotMin} onChange={(e) => setSlotMin(e.target.value)} min={5} max={120} className={`${inputClass} !flex-none w-16 sm:text-right`} dir="ltr" />
+                <input id="settings-slot-duration" name="slotDuration" type="number" value={slotMin} onChange={(e) => setSlotMin(e.target.value)} min={5} max={120} className={`${inputClass} flex-none! w-16 sm:text-right`} dir="ltr" />
                 <span className="text-sm text-muted-foreground">{t("settings.mins")}</span>
               </div>
             </div>
@@ -451,7 +451,7 @@ export default function SettingsPage() {
                         <span className="font-medium text-foreground">
                           {new Date(v.date).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                         </span>
-                        <span className="truncate ml-2 max-w-[120px]">{v.reasonForVisit || "Visit"}</span>
+                        <span className="truncate ml-2 max-w-30">{v.reasonForVisit || "Visit"}</span>
                       </div>
                     ))}
                   </div>

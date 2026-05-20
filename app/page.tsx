@@ -29,13 +29,13 @@ export default function LandingPage() {
   const { t, dir, lang } = useI18n();
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-slate-50 dark:bg-zinc-950 text-foreground" dir={dir}>
+    <div className="min-h-dvh flex flex-col bg-slate-50 dark:bg-zinc-950 text-foreground" dir={dir}>
       <PublicNav />
 
       <main className="flex-1">
         {/* ── HERO SECTION ── */}
         <section className="relative overflow-hidden pt-12 pb-20 lg:pt-20 lg:pb-28 border-b border-slate-200/50 dark:border-zinc-900 bg-white dark:bg-zinc-900/40">
-          <div className="absolute inset-0 bg-[radial-gradient(#0055ff_1px,transparent_1px)] [background-size:16px_16px] opacity-[0.03] dark:opacity-[0.05] pointer-events-none" />
+          <div className="absolute inset-0 bg-[radial-gradient(#0055ff_1px,transparent_1px)] bg-size-[16px_16px] opacity-[0.03] dark:opacity-[0.05] pointer-events-none" />
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid lg:grid-cols-12 gap-12 items-center">
               
@@ -101,9 +101,9 @@ export default function LandingPage() {
 
               {/* Right Column: Dashboard UI Skeleton Mockup */}
               <div className="lg:col-span-5 relative flex justify-center lg:justify-end">
-                <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/10 to-transparent blur-3xl rounded-full" />
+                <div className="absolute inset-0 bg-linear-to-tr from-blue-500/10 to-transparent blur-3xl rounded-full" />
                 
-                <div className="relative w-full max-w-[460px] bg-white dark:bg-zinc-950 border border-slate-200/80 dark:border-zinc-800 rounded-xl overflow-hidden shadow-2xl flex h-[400px]">
+                <div className="relative w-full max-w-115 bg-white dark:bg-zinc-950 border border-slate-200/80 dark:border-zinc-800 rounded-xl overflow-hidden shadow-2xl flex h-100">
                   
                   {/* Sidebar Skeleton */}
                   <div className="w-14 sm:w-36 bg-slate-50 dark:bg-zinc-900 border-e border-slate-200/80 dark:border-zinc-800 flex flex-col pt-5 pb-4">
@@ -145,7 +145,7 @@ export default function LandingPage() {
                       </div>
 
                       {/* Main panel mock */}
-                      <div className="flex-1 h-full min-h-[140px] w-full bg-slate-50 dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800/80 rounded-lg flex flex-col p-4 gap-3">
+                      <div className="flex-1 h-full min-h-35 w-full bg-slate-50 dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800/80 rounded-lg flex flex-col p-4 gap-3">
                          <div className="h-3 w-32 bg-slate-200 dark:bg-zinc-800 rounded mb-2" />
                          <div className="h-10 w-full bg-white dark:bg-zinc-950 rounded-md border border-slate-100 dark:border-zinc-800/80" />
                          <div className="h-10 w-full bg-white dark:bg-zinc-950 rounded-md border border-slate-100 dark:border-zinc-800/80" />
@@ -371,7 +371,7 @@ export default function LandingPage() {
         <section className="py-16 bg-slate-50 dark:bg-zinc-950">
           <div className="max-w-5xl mx-auto px-4 sm:px-6">
             <div className="bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-lg p-8 sm:p-12 shadow-lg text-center relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-tr from-blue-500/5 via-transparent to-transparent pointer-events-none" />
+              <div className="absolute inset-0 bg-linear-to-tr from-blue-500/5 via-transparent to-transparent pointer-events-none" />
               
               <div className="relative space-y-6 max-w-2xl mx-auto">
                 <h2 className="text-3xl font-extrabold text-slate-900 dark:text-white leading-tight">

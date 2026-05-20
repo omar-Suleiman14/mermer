@@ -340,6 +340,7 @@ export const saveProfilePhoto = mutation({
   args: { clerkId: v.string(), storageId: v.id("_storage") },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
-    await ctx.db.patch(user._id, { profilePhotoId: args.storageId });
+    const storageUrl = await ctx.storage.getUrl(args.storageId);
+    await ctx.db.patch(user._id, { profilePhotoId: args.storageId, profilePhotoUrl: storageUrl ?? undefined });
   },
 });

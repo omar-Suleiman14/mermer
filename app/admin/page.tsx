@@ -352,7 +352,7 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
                   <div key={doc._id} className="grid grid-cols-[1fr,auto,auto,auto,auto] items-center px-5 py-3.5 hover:bg-muted/20 transition-colors">
                     {/* Info */}
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isBlocked ? "bg-red-100 dark:bg-red-900/20" : isBanned ? "bg-amber-100 dark:bg-amber-900/20" : "bg-[#007AFF]/10"}`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isBlocked ? "bg-red-100 dark:bg-red-900/20" : isBanned ? "bg-amber-100 dark:bg-amber-900/20" : "bg-[#007AFF]/10"}`}>
                         <span className={`text-xs font-bold ${isBlocked ? "text-red-500" : isBanned ? "text-amber-500" : "text-[#007AFF]"}`}>
                           {doc.name.charAt(0).toUpperCase()}
                         </span>

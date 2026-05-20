@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect, memo } from "react";
+import { useState, useMemo, useRef, useEffect, memo, useCallback } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -169,15 +169,15 @@ const DraggableApptItem = memo(function DraggableApptItem({
         <div
           {...attributes}
           {...listeners}
-          className="flex-shrink-0 -ms-2 p-1 text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors cursor-grab active:cursor-grabbing outline-none"
+          className="shrink-0 -ms-2 p-1 text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors cursor-grab active:cursor-grabbing outline-none"
         >
           <GripVertical className="w-4 h-4" />
         </div>
       )}
 
-      <span className="text-xs font-bold w-14 flex-shrink-0 text-start">{formatTime(ts, lang)}</span>
+      <span className="text-xs font-bold w-14 shrink-0 text-start">{formatTime(ts, lang)}</span>
 
-      <div className="w-8 h-8 rounded-full bg-[#007AFF]/10 flex items-center justify-center flex-shrink-0">
+      <div className="w-8 h-8 rounded-full bg-[#007AFF]/10 flex items-center justify-center shrink-0">
         <span className="text-xs font-bold text-[#007AFF]">{initials}</span>
       </div>
 
@@ -217,11 +217,11 @@ const DraggableApptItem = memo(function DraggableApptItem({
       </div>
 
       {isDone ? (
-        <Badge className="text-[10px] border bg-[#34c759]/10 text-[#34c759] border-[#34c759]/30 flex-shrink-0">
+        <Badge className="text-[10px] border bg-[#34c759]/10 text-[#34c759] border-[#34c759]/30 shrink-0">
           {t("dashboard.done")}
         </Badge>
       ) : (
-        <div className="flex items-center gap-1 flex-shrink-0">
+        <div className="flex items-center gap-1 shrink-0">
           <div className="flex items-center gap-1 max-[500px]:hidden">
             {!isSelectedDayPast ? (
               <>
@@ -265,7 +265,7 @@ const DraggableApptItem = memo(function DraggableApptItem({
           <div className="hidden max-[500px]:block">
             <DropdownMenu dir={dir}>
               <DropdownMenuTrigger asChild>
-                <button className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted/80 text-muted-foreground transition-colors">
+                <button className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted/80 text-muted-foreground transition-colors">
                   <MoreHorizontal className="w-4 h-4" />
                 </button>
               </DropdownMenuTrigger>
@@ -481,10 +481,10 @@ export default function SchedulePage() {
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
-  async function handleCompleteVisit(
+  const handleCompleteVisit = useCallback(async (
     prescriptionImageId?: Id<"_storage">,
     notes?: string
-  ) {
+  ) => {
     if (!completionModal) return;
     try {
       await updateAppointment({
@@ -497,9 +497,9 @@ export default function SchedulePage() {
     } catch {
       toast.error(t("toast.visitCompleteFailed"));
     }
-  }
+  }, [clerkId, completionModal, updateAppointment, t]);
 
-  async function handleCancel(appointmentId: Id<"visits">) {
+  const handleCancel = useCallback(async (appointmentId: Id<"visits">) => {
     try {
       await updateAppointment({
         clerkId,
@@ -510,9 +510,9 @@ export default function SchedulePage() {
     } catch {
       toast.error(t("toast.cancelAppointmentFailed"));
     }
-  }
+  }, [clerkId, updateAppointment, t]);
 
-  async function handleReschedule() {
+  const handleReschedule = useCallback(async () => {
     if (!rescheduleModal || !rescheduleDate) return;
     setRescheduling(true);
     try {
@@ -525,7 +525,7 @@ export default function SchedulePage() {
       setRescheduleDate(undefined);
     } catch { toast.error("Failed to reschedule"); }
     finally { setRescheduling(false); }
-  }
+  }, [clerkId, rescheduleModal, rescheduleDate, rescheduleTime, updateAppointment, t]);
 
   // Working days from doctor profile for reschedule calendar
   const rescheduleWorkingDays: string[] = (currentUser as any)?.availableDays ?? [];
@@ -564,11 +564,11 @@ export default function SchedulePage() {
     return slots;
   }, [currentUser, rescheduleDateAppointments, rescheduleModal?.visitId, lang]);
 
-  const handleDragStart = (event: DragStartEvent) => {
+  const handleDragStart = useCallback((event: DragStartEvent) => {
     setActiveAppt(event.active.data.current?.appt ?? null);
-  };
+  }, []);
 
-  const handleDragEnd = async (event: DragEndEvent) => {
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     setActiveAppt(null);
     const { active, over } = event;
     if (!over) return;
@@ -591,7 +591,7 @@ export default function SchedulePage() {
     } catch {
       toast.error(t("toast.scheduleReorderFailed"));
     }
-  };
+  }, [clerkId, appointmentsBySlot, swapAppointments, updateAppointment, t]);
 
   function openTemplatePicker(patientName: string, patientPhone: string, appointmentDate: number, e: React.MouseEvent) {
     setTemplatePicker({ patientName, patientPhone, appointmentDate, anchorX: e.clientX, anchorY: e.clientY });
@@ -675,7 +675,7 @@ export default function SchedulePage() {
                       <button
                         key={dayTs}
                         onClick={() => setSelectedDay(dayTs)}
-                        className={`flex-shrink-0 flex flex-col items-center py-2 px-2.5 rounded-xl text-xs transition-all min-w-[44px] ${
+                        className={`shrink-0 flex flex-col items-center py-2 px-2.5 rounded-xl text-xs transition-all min-w-11 ${
                           isSelected
                             ? "bg-[#007AFF] text-white"
                             : isToday
@@ -837,7 +837,7 @@ export default function SchedulePage() {
                   {typeof document !== "undefined" && (
                     <DragOverlay>
                       {activeAppt ? (
-                        <div className="opacity-90 shadow-2xl scale-[1.02] bg-[var(--background)] border border-[#007AFF]/40 rounded-xl overflow-hidden">
+                        <div className="opacity-90 shadow-2xl scale-[1.02] bg-background border border-[#007AFF]/40 rounded-xl overflow-hidden">
                           <DraggableApptItem
                             appt={activeAppt}
                             ts={activeAppt.date}
@@ -929,7 +929,7 @@ export default function SchedulePage() {
               animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={{ y: 40, opacity: 0, scale: 0.97 }}
               transition={{ type: "spring", stiffness: 380, damping: 30 }}
-              className="relative z-10 w-full sm:max-w-md bg-[var(--background)] rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
+              className="relative z-10 w-full sm:max-w-md bg-background rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
             >
               <div className="sm:hidden w-12 h-1 rounded-full bg-border mx-auto mt-3 mb-1" />
               <div className="px-6 py-4 border-b border-border">
@@ -961,7 +961,7 @@ export default function SchedulePage() {
                     <Popover open={rescheduleCalOpen} onOpenChange={setRescheduleCalOpen}>
                       <PopoverTrigger asChild>
                         <button className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border rounded-xl transition-colors text-left ${rescheduleModal.isContract ? "hover:border-[#AF52DE]/50" : "hover:border-[#007AFF]/50"} ${!rescheduleDate ? "border-red-400/60" : "border-border"}`}>
-                          <CalendarIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                          <CalendarIcon className="w-4 h-4 text-muted-foreground shrink-0" />
                           <span className={rescheduleDate ? "" : "text-muted-foreground"}>
                             {rescheduleDate ? rescheduleDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Pick date"}
                           </span>
@@ -1040,7 +1040,7 @@ export default function SchedulePage() {
               animate={{ y: 0, opacity: 1, scale: 1 }}
               exit={{ y: 40, opacity: 0, scale: 0.95 }}
               transition={{ type: "spring", stiffness: 400, damping: 30 }}
-              className="relative z-10 w-full sm:max-w-sm bg-[var(--background)] rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
+              className="relative z-10 w-full sm:max-w-sm bg-background rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
             >
               <div className="sm:hidden w-10 h-1 rounded-full bg-border mx-auto mt-2.5 mb-1" />
               <div className="px-5 pt-4 pb-2">
@@ -1061,7 +1061,7 @@ export default function SchedulePage() {
                     onClick={() => sendWithTemplate(tpl.body)}
                     className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#007AFF]/8 transition-colors text-left group"
                   >
-                    <div className="w-8 h-8 rounded-full bg-[#007AFF]/10 flex items-center justify-center flex-shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-[#007AFF]/10 flex items-center justify-center shrink-0">
                       <MessageCircle className="w-4 h-4 text-[#007AFF]" />
                     </div>
                     <div className="flex-1 min-w-0">

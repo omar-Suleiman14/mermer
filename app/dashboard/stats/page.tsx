@@ -95,7 +95,7 @@ function RevenueBarChart({
         return (
           <div
             key={i}
-            className="flex flex-col items-center gap-0.5 flex-shrink-0 group/bar relative"
+            className="flex flex-col items-center gap-0.5 shrink-0 group/bar relative"
             style={{ width: "calc(100% / 60)", minWidth: 6 }}
           >
             <div className="absolute bottom-full mb-1 start-1/2 -translate-x-1/2 opacity-0 group-hover/bar:opacity-100 transition-opacity pointer-events-none z-10">
@@ -150,7 +150,7 @@ function VisitsSparkline({
         return (
           <div
             key={day.ts}
-            className="flex flex-col items-center justify-end flex-shrink-0 group/v relative"
+            className="flex flex-col items-center justify-end shrink-0 group/v relative"
             style={{ width: "calc(100% / 30)", minWidth: 5 }}
           >
             <div className="absolute bottom-full mb-1 start-1/2 -translate-x-1/2 opacity-0 group-hover/v:opacity-100 transition-opacity z-10 pointer-events-none">
@@ -186,7 +186,7 @@ function DowRow({
   const pct = max > 0 ? (count / max) * 100 : 0;
   return (
     <div className="flex items-center gap-3">
-      <span className="text-xs font-medium w-10 text-muted-foreground flex-shrink-0 text-end tabular-nums">
+      <span className="text-xs font-medium w-10 text-muted-foreground shrink-0 text-end tabular-nums">
         {label}
       </span>
       <div className="flex-1 h-2 bg-muted/40 rounded-full overflow-hidden min-h-[8px]">
@@ -237,7 +237,7 @@ function RevenueSourcesChart({
   return (
     <div className="flex items-center gap-6">
       {/* Donut */}
-      <svg width={128} height={128} viewBox="0 0 128 128" className="flex-shrink-0">
+      <svg width={128} height={128} viewBox="0 0 128 128" className="shrink-0">
         {total === 0 ? (
           <circle cx={cx} cy={cy} r={R} fill="none" stroke="currentColor" strokeWidth={20} className="text-muted/40" />
         ) : (
@@ -266,7 +266,7 @@ function RevenueSourcesChart({
           <div key={s.label}>
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: s.color }} />
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: s.color }} />
                 <span className="text-xs font-medium text-muted-foreground">{s.label}</span>
               </div>
               <span className="text-xs font-semibold tabular-nums">{s.pct}%</span>
@@ -752,7 +752,7 @@ export default function StatisticsPage() {
                         initial={{ width: 0 }}
                         animate={{ width: `${Math.min(100, Math.round((totalCollected / totalContractedValue) * 100))}%` }}
                         transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
-                        className="h-full rounded-full bg-gradient-to-r from-violet-500 to-emerald-500"
+                        className="h-full rounded-full bg-linear-to-r from-violet-500 to-emerald-500"
                       />
                     </div>
                     <p className="text-[10px] text-muted-foreground mt-1">
@@ -779,11 +779,11 @@ export default function StatisticsPage() {
                             {c.completedVisits ?? 0}/{c.numVisits ?? "?"} {t("stats.visits")} · {t("stats.feePerVisit")} {fmt(c.costPerVisit ?? 0)}
                           </p>
                         </div>
-                        <div className="text-right flex-shrink-0">
+                        <div className="text-right shrink-0">
                           <p className="text-xs font-bold tabular-nums">{fmt(paid)}</p>
                           <p className="text-[9px] text-muted-foreground">{paidPct}%</p>
                         </div>
-                        <div className="w-12 flex-shrink-0">
+                        <div className="w-12 shrink-0">
                           <div className="h-1.5 bg-muted/60 rounded-full overflow-hidden">
                             <div className="h-full bg-violet-500 rounded-full" style={{ width: `${paidPct}%` }} />
                           </div>

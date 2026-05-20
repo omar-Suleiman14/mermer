@@ -144,7 +144,7 @@ export function AddToQueueDrawer({
                   onClick={() => handleSelectPatient(p._id)}
                   className="w-full flex items-center gap-3 p-3 rounded-xl border border-border hover:border-[#007AFF]/40 hover:bg-[#007AFF]/5 transition-all text-left group"
                 >
-                  <div className="w-9 h-9 rounded-full bg-[#007AFF]/10 flex items-center justify-center flex-shrink-0">
+                  <div className="w-9 h-9 rounded-full bg-[#007AFF]/10 flex items-center justify-center shrink-0">
                     <span className="text-sm font-bold text-[#007AFF]">
                       {p.name.charAt(0).toUpperCase()}
                     </span>
@@ -157,7 +157,7 @@ export function AddToQueueDrawer({
                       {p.age}y · {p.phone}
                     </p>
                   </div>
-                  <UserPlus className="w-4 h-4 text-muted-foreground group-hover:text-[#007AFF] flex-shrink-0" />
+                  <UserPlus className="w-4 h-4 text-muted-foreground group-hover:text-[#007AFF] shrink-0" />
                 </button>
               ))
             )}

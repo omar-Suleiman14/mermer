@@ -72,7 +72,7 @@ function TemplatePicker({
         animate={{ y: 0, opacity: 1, scale: 1 }}
         exit={{ y: 40, opacity: 0, scale: 0.95 }}
         transition={{ type: "spring", stiffness: 400, damping: 30 }}
-        className="relative z-10 w-full sm:max-w-sm bg-[var(--background)] rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
+        className="relative z-10 w-full sm:max-w-sm bg-background rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
       >
         <div className="sm:hidden w-10 h-1 rounded-full bg-border mx-auto mt-2.5 mb-1" />
         <div className="px-5 pt-4 pb-2">
@@ -95,7 +95,7 @@ function TemplatePicker({
               onClick={() => send(tpl.body)}
               className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#007AFF]/8 transition-colors text-left group"
             >
-              <div className="w-8 h-8 rounded-full bg-[#007AFF]/10 flex items-center justify-center flex-shrink-0">
+              <div className="w-8 h-8 rounded-full bg-[#007AFF]/10 flex items-center justify-center shrink-0">
                 <MessageCircle className="w-4 h-4 text-[#007AFF]" />
               </div>
               <div className="flex-1 min-w-0">
@@ -239,7 +239,7 @@ export function NotificationCenter() {
           </div>
 
           {/* List */}
-          <div className="max-h-[400px] overflow-y-auto divide-y divide-border/40">
+          <div className="max-h-100 overflow-y-auto divide-y divide-border/40">
             {notifications.length === 0 ? (
               <div className="p-8 text-center text-sm text-muted-foreground">
                 <Bell className="w-8 h-8 mx-auto mb-2 opacity-20" />
@@ -256,7 +256,7 @@ export function NotificationCenter() {
                   >
                     <div className="flex gap-3 pe-8">
                       {/* Icon */}
-                      <div className="relative flex-shrink-0 mt-0.5">
+                      <div className="relative shrink-0 mt-0.5">
                         <div className="w-8 h-8 rounded-full bg-[#007AFF]/10 flex items-center justify-center">
                           <Calendar className="w-4 h-4 text-[#007AFF]" />
                         </div>

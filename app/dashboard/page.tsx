@@ -25,6 +25,7 @@ import {
   X,
   MoreHorizontal,
   Link as LinkIcon,
+  RefreshCw,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -44,7 +45,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useI18n } from "@/lib/i18n";
-import { useMemo, useState, useRef, useEffect, memo } from "react";
+import { useMemo, useState, useRef, useEffect, memo, useCallback } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -132,6 +133,7 @@ const SortableApptItem = memo(function SortableApptItem({
       style={style}
       className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${
         !isDone ? "hover:shadow-md" : ""
+      } ${
         isDragging ? "opacity-90 shadow-2xl scale-[1.02] bg-background border-[#007AFF]/40" : 
         isDone ? "opacity-55 bg-muted/20 border-border/40" : "bg-card border-black/5 dark:border-white/5 shadow-sm"
       }`}
@@ -204,6 +206,7 @@ const SortableApptItem = memo(function SortableApptItem({
         <Badge className="text-[10px] border bg-[#34c759]/10 text-[#34c759] border-[#34c759]/30 shrink-0">
           {t("dashboard.done")}
         </Badge>
+      ) : (
         <div className="flex items-center gap-1 shrink-0">
           <div className="flex items-center gap-1 max-[500px]:hidden">
             <button
@@ -359,14 +362,14 @@ export default function DashboardPage() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [templatePicker]);
 
-  async function handleCancelVisit(appointmentId: Id<"visits">) {
+  const handleCancelVisit = useCallback(async (appointmentId: Id<"visits">) => {
     try {
       await cancelAppointment({ clerkId, appointmentId, updates: { status: "cancelled" } });
       toast.success("Appointment cancelled");
     } catch { toast.error("Failed to cancel"); }
-  }
+  }, [clerkId, cancelAppointment]);
 
-  async function handleReschedule() {
+  const handleReschedule = useCallback(async () => {
     if (!rescheduleModal || !rescheduleDate) return;
     setRescheduling(true);
     try {
@@ -379,7 +382,7 @@ export default function DashboardPage() {
       setRescheduleDate(undefined);
     } catch { toast.error("Failed to reschedule"); }
     finally { setRescheduling(false); }
-  }
+  }, [clerkId, rescheduleModal, rescheduleDate, rescheduleTime, updateAppointment]);
 
   // Working days from doctor profile for reschedule calendar
   const workingDayAbbrs: string[] = (currentUser as any)?.availableDays ?? [];
@@ -419,10 +422,10 @@ export default function DashboardPage() {
     return slots;
   }, [currentUser, rescheduleDateAppointments, rescheduleModal?.visitId, lang]);
 
-  async function handleCompleteVisit(
+  const handleCompleteVisit = useCallback(async (
     prescriptionImageId?: Id<"_storage">,
     notes?: string
-  ) {
+  ) => {
     if (!completionModal) return;
     try {
       await updateAppointment({
@@ -435,9 +438,9 @@ export default function DashboardPage() {
     } catch {
       toast.error("Failed to complete visit");
     }
-  }
+  }, [clerkId, completionModal, updateAppointment]);
 
-  const handleDragEnd = async (event: DragEndEvent) => {
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
@@ -451,7 +454,7 @@ export default function DashboardPage() {
     } catch {
       toast.error("Failed to swap appointments");
     }
-  };
+  }, [clerkId, swapAppointments]);
 
   function openTemplatePicker(patientName: string, patientPhone: string, appointmentDate: number, e: React.MouseEvent) {
     setTemplatePicker({ patientName, patientPhone, appointmentDate, anchorX: e.clientX, anchorY: e.clientY });
@@ -667,6 +670,7 @@ export default function DashboardPage() {
                     <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("schedule.newDate")} <span className="text-red-500">*</span></p>
                     <Popover open={rescheduleCalOpen} onOpenChange={setRescheduleCalOpen}>
                       <PopoverTrigger asChild>
+                        <button className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border rounded-2xl transition-colors text-left ${rescheduleModal.isContract ? "hover:border-[#AF52DE]/50" : "hover:border-[#007AFF]/50"} ${!rescheduleDate ? "border-red-400/60" : "border-border"}`}>
                           <CalendarIcon className="w-4 h-4 text-muted-foreground shrink-0" />
                           <span className={rescheduleDate ? "" : "text-muted-foreground"}>
                             {rescheduleDate ? rescheduleDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Pick date"}
@@ -764,7 +768,8 @@ export default function DashboardPage() {
                   <button
                     key={tpl._id}
                     onClick={() => sendWithTemplate(tpl.body)}
-                    className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl hover:bg-[#007AFF]/8 transition-colors text-left group"
+                    className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left"
+                  >
                     <div className="w-8 h-8 rounded-full bg-[#007AFF]/10 flex items-center justify-center shrink-0">
                       <MessageCircle className="w-4 h-4 text-[#007AFF]" />
                     </div>

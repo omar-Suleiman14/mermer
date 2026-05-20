@@ -67,7 +67,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <div className="flex items-center gap-3 px-2 py-3">
           {/* Clerk UserButton — force popup z-index above SidebarInset */}
           <div
-            className="flex-shrink-0"
+            className="shrink-0"
             style={{ position: "relative", zIndex: 9999, isolation: "isolate" }}
           >
             <UserButton
@@ -109,7 +109,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
                   <Link href={item.href} prefetch={true} target={(item as any).target} className="flex items-center gap-2 relative">
-                    <item.icon className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+                    <item.icon className="w-4 h-4 shrink-0" aria-hidden="true" />
                     <span className="flex-1">{item.title}</span>
                   </Link>
                 </SidebarMenuButton>

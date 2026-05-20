@@ -210,7 +210,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
 
   const content = (
     <>
-      <div className="px-6 pt-8 pb-2 flex-shrink-0">
+      <div className="px-6 pt-8 pb-2 shrink-0">
         <p className="text-[#007AFF] text-xs font-semibold tracking-widest uppercase mb-1">
           {t("onboarding.welcome")}
         </p>
@@ -279,7 +279,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
               <div>
                 <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("onboarding.whatsappPhone")} *</label>
                 <div className="flex gap-2">
-                  <span className="flex items-center px-3 bg-muted/60 border border-border rounded-2xl text-sm text-muted-foreground font-mono flex-shrink-0" dir="ltr">+20</span>
+                  <span className="flex items-center px-3 bg-muted/60 border border-border rounded-2xl text-sm text-muted-foreground font-mono shrink-0" dir="ltr">+20</span>
                   <input value={phone.replace(/^\+?20/, "").replace(/^0/, "")} onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))} placeholder="1142529590" type="tel" className={`flex-1 ${inputClass} !text-left`} dir="ltr" />
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">{t("onboarding.phoneDesc")}</p>
@@ -371,7 +371,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
       </div>
 
       {/* Fixed bottom navigation */}
-      <div className="flex-shrink-0 border-t border-border bg-background px-6 py-4 flex items-center gap-3">
+      <div className="shrink-0 border-t border-border bg-background px-6 py-4 flex items-center gap-3">
         {step > 0 && (
           <button onClick={() => setStep((s) => s - 1)}
             className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors px-3 py-2.5 rounded-2xl hover:bg-muted/40">
@@ -404,7 +404,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
   if (isMobile) {
     return (
       <Drawer open={true}>
-        <DrawerContent className="p-0 overflow-hidden bg-[var(--background)] border-t border-border/50 rounded-t-2xl flex flex-col max-h-[95vh] shadow-2xl">
+        <DrawerContent className="p-0 overflow-hidden bg-background border-t border-border/50 rounded-t-2xl flex flex-col max-h-[95vh] shadow-2xl">
           <DrawerTitle className="sr-only">{t("onboarding.setup")}</DrawerTitle>
           {content}
         </DrawerContent>
@@ -422,7 +422,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
         initial={{ scale: 0.92, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ type: "spring", stiffness: 400, damping: 30 }}
-        className="relative z-10 w-full max-w-3xl h-[85vh] md:h-[80vh] bg-[var(--background)] border border-border/50 rounded-2xl overflow-hidden shadow-2xl flex flex-col"
+        className="relative z-10 w-full max-w-3xl h-[85vh] md:h-[80vh] bg-background border border-border/50 rounded-2xl overflow-hidden shadow-2xl flex flex-col"
       >
         {content}
       </motion.div>
