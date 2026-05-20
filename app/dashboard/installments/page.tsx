@@ -698,7 +698,7 @@ function InstallmentViewDrawer({
 
 // ── Main Page ──────────────────────────────────────────────────────────────
 
-export default function installmentsPage() {
+export default function InstallmentsPage() {
   const { user } = useUser();
   const clerkId = user?.id ?? "";
   const { t, dir } = useI18n();
