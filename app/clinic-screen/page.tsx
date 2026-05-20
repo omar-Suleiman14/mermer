@@ -315,8 +315,8 @@ export default function ClinicScreen() {
           {/* Content inside the squircle */}
           <div className="relative z-10 flex flex-row items-stretch justify-between w-full h-full p-12 lg:p-16">
             {/* LEFT SIDE: Clinic Name & Time */}
-            <div className="flex-1 flex flex-col items-center justify-center text-center pr-8 border-r border-border/20 overflow-hidden">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-foreground tracking-tight mb-8 max-w-full truncate">
+            <div className="flex-1 flex flex-col items-center justify-center text-center pe-8 border-e border-slate-200 dark:border-zinc-700 overflow-hidden">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-foreground tracking-tight mb-8 break-words leading-tight line-clamp-2 max-w-full">
                 {currentUser.clinicName}
               </h2>
 
@@ -363,7 +363,7 @@ export default function ClinicScreen() {
             </div>
 
             {/* RIGHT SIDE: QR Code */}
-            <div className="flex-1 flex flex-col items-center justify-center space-y-6 text-center pl-8">
+            <div className="flex-1 flex flex-col items-center justify-center space-y-6 text-center ps-8">
               <p className="text-2xl md:text-3xl lg:text-4xl text-foreground font-semibold max-w-[80%] leading-relaxed">
                 {lang === "ar" ? "امسح الرمز لترك تقييمك" : "Scan to leave feedback"}
               </p>
