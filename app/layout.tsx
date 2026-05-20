@@ -34,11 +34,11 @@ const cairo = Cairo({
 });
 
 export const metadata: Metadata = {
-  title: "Marmar — Clinic Management for Solo Doctors",
+  title: "marmar",
   description:
-    "Marmar handles your paperwork, patient history, and reminders — so you can focus on what matters.",
+    "the best clinic management system ever",
   icons: {
-    icon: "/favicon.ico",
+    icon: "/icon.svg",
   },
 };
 

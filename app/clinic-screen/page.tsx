@@ -282,10 +282,10 @@ export default function ClinicScreen() {
 
   return (
     <div
-      className="h-dvh overflow-hidden bg-background text-foreground flex items-center justify-center p-4 md:p-8 font-sans"
+      className="h-dvh overflow-hidden bg-background text-foreground flex items-center justify-center p-8 md:p-14 lg:p-20 font-sans"
       dir={lang === "ar" ? "rtl" : "ltr"}
     >
-      <div className="w-full max-w-350 mx-auto flex items-center justify-center">
+      <div className="w-full h-full max-w-350 mx-auto flex items-center justify-center">
         <div className="relative w-full aspect-2/1 max-w-full flex items-center justify-center">
           {/* Hollow Green Squircle SVG for Progress */}
           <svg
