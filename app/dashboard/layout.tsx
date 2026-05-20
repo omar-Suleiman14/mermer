@@ -20,6 +20,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const { dir, lang } = useI18n();
 
   const { currentUser, isLoading } = useCurrentUser();
+  const clerkId = user?.id ?? "";
 
   // Show onboarding when: user loaded, profile exists, but clinicName is the default
   // and specialty hasn't been set yet — i.e. fresh account never completed setup.
