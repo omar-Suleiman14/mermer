@@ -230,7 +230,7 @@ export function FeedbackForm({ slug, doctorName }: FeedbackFormProps) {
         <div className="pt-4 border-t border-slate-100 dark:border-zinc-800 text-center">
           <p className="text-[11px] text-muted-foreground">
             {lang === "ar" ? "مدعوم بواسطة " : "Powered by "}
-            <span className="font-bold text-primary">{lang === "ar" ? "مرمر" : "marmer"}</span>
+            <span className="font-bold text-primary">{lang === "ar" ? "مرمر" : "mermer"}</span>
           </p>
         </div>
       </div>

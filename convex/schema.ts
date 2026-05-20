@@ -65,11 +65,11 @@ export default defineSchema({
     // Queue settings
     slotDurationMinutes: v.optional(v.number()),
 
-    // Contract defaults
-    contractDefaultDownPayment: v.optional(v.number()),
-    contractDefaultDownPaymentType: v.optional(v.union(v.literal("fixed"), v.literal("percentage"))),
-    contractDefaultCostPerVisit: v.optional(v.number()),
-    contractDefaultVisitFrequency: v.optional(
+    // installment defaults
+    installmentDefaultDownPayment: v.optional(v.number()),
+    installmentDefaultDownPaymentType: v.optional(v.union(v.literal("fixed"), v.literal("percentage"))),
+    installmentDefaultCostPerVisit: v.optional(v.number()),
+    installmentDefaultVisitFrequency: v.optional(
       v.union(
         v.literal("daily"),
         v.literal("weekly"),
@@ -79,7 +79,7 @@ export default defineSchema({
         v.literal("manual")
       )
     ),
-    contractDefaultDurationDays: v.optional(v.number()),
+    installmentDefaultDurationDays: v.optional(v.number()),
 
     // Queue display token (kept optional for existing records — feature removed)
     queueDisplayToken: v.optional(v.string()),
@@ -116,7 +116,7 @@ export default defineSchema({
       v.union(
         v.literal("manual"),
         v.literal("online"),
-        v.literal("contract"),
+        v.literal("installment"),
         v.literal("follow-up")
       )
     ),
@@ -136,9 +136,9 @@ export default defineSchema({
     patientAge: v.optional(v.number()),
 
     // Links
-    contractId: v.optional(v.id("contracts")),
+    installmentId: v.optional(v.id("installments")),
 
-    // Payment (for contract visits)
+    // Payment (for installment visits)
     isPaid: v.optional(v.boolean()),
 
     // Clinical data
@@ -157,7 +157,7 @@ export default defineSchema({
     .index("by_patient", ["patientId"])
     .index("by_doctor", ["doctorId"])
     .index("by_doctor_date", ["doctorId", "date"])
-    .index("by_contract", ["contractId"]),
+    .index("by_installment", ["installmentId"]),
 
   // ── QUEUE (waiting room) ──────────────────────────────────────────────────
   queue: defineTable({
@@ -190,8 +190,8 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_doctor", ["doctorId"]),
 
-  // ── CONTRACTS ─────────────────────────────────────────────────────────────
-  contracts: defineTable({
+  // ── installments ─────────────────────────────────────────────────────────────
+  installments: defineTable({
     doctorId: v.id("users"),
     patientId: v.id("patients"),
     patientName: v.string(),
@@ -231,9 +231,9 @@ export default defineSchema({
 
     nextVisitDate: v.optional(v.number()),
 
-    // Uploaded contract file
-    contractFileId: v.optional(v.id("_storage")),
-    contractFileName: v.optional(v.string()),
+    // Uploaded installment file
+    installmentFileId: v.optional(v.id("_storage")),
+    installmentFileName: v.optional(v.string()),
 
     notes: v.optional(v.string()),
     createdAt: v.number(),

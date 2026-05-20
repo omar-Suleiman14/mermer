@@ -62,7 +62,7 @@ export default async function LandingPage() {
                   {dir === "rtl" ? (
                     "مرمر تمنح الأطباء ملفات تعريفية موثقة ومميزة، لجمع وإدارة تقييمات المرضى وبناء سمعة رقمية لا تضاهى."
                   ) : (
-                    "marmer empowers medical professionals with verified public profiles, authentic review tracking, and tools to elevate their online clinical reputation."
+                    "mermer empowers medical professionals with verified public profiles, authentic review tracking, and tools to elevate their online clinical reputation."
                   )}
                 </p>
 
@@ -234,7 +234,7 @@ export default async function LandingPage() {
               {/* Features List */}
               <div className="text-start space-y-6">
                 <span className="text-xs font-bold bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/30 text-primary px-3 py-1 rounded">
-                  {dir === "rtl" ? "لماذا تختار مرمر؟" : "Why Choose marmer?"}
+                  {dir === "rtl" ? "لماذا تختار مرمر؟" : "Why Choose mermer?"}
                 </span>
                 <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 dark:text-white leading-tight">
                   {dir === "rtl" ? "صممنا المنصة خصيصاً لتناسب احتياجات الأطباء والعيادات" : "Tailored Solutions Built for Clinic & Doctor Reputation"}
@@ -243,7 +243,7 @@ export default async function LandingPage() {
                   {dir === "rtl" ? (
                     "تتجاوز مرمر فكرة الحجوزات البسيطة لتركز بالكامل على تعزيز جودة الخدمة وتقديم منصة احترافية لعرض إنجازات الطبيب وإعطاء المرضى صوتاً صادقاً وموثوقاً."
                   ) : (
-                    "marmer shifts focus from pure booking engines to robust healthcare reputation tools. Build a trustworthy connection between doctors and patients using transparent reviews."
+                    "mermer shifts focus from pure booking engines to robust healthcare reputation tools. Build a trustworthy connection between doctors and patients using transparent reviews."
                   )}
                 </p>
 
@@ -321,7 +321,7 @@ export default async function LandingPage() {
               {[
                 {
                   stars: 5,
-                  quote: dir === "rtl" ? "ساعدتني المنصة كثيراً في إظهار تقييمات مرضاي الحقيقية بعيداً عن التشويش والمراجعات الوهمية." : "marmer has solved one of the biggest clinical issues: collecting verified feedback from patients in an organized way.",
+                  quote: dir === "rtl" ? "ساعدتني المنصة كثيراً في إظهار تقييمات مرضاي الحقيقية بعيداً عن التشويش والمراجعات الوهمية." : "mermer has solved one of the biggest clinical issues: collecting verified feedback from patients in an organized way.",
                   author: dir === "rtl" ? "د. أحمد جمال" : "Dr. Ahmed Gamal",
                   role: dir === "rtl" ? "استشاري العظام" : "Orthopedics Consultant"
                 },
@@ -418,7 +418,7 @@ export default async function LandingPage() {
           <div className="grid md:grid-cols-4 gap-8">
             <div className="space-y-4">
               <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
-                {dir === "rtl" ? "مرمر" : "marmer"}
+                {dir === "rtl" ? "مرمر" : "mermer"}
               </h3>
               <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
                 {dir === "rtl" 
@@ -459,14 +459,14 @@ export default async function LandingPage() {
             <div>
               <h4 className="font-bold text-xs uppercase tracking-wider text-slate-700 dark:text-zinc-300 mb-4">{dir === "rtl" ? "الدعم" : "Support"}</h4>
               <p className="text-xs text-slate-500 dark:text-zinc-400">
-                {dir === "rtl" ? "لديك استفسار؟ تواصل مع طاقم الدعم السريري الخاص بنا عبر قنوات الدعم. واتصل بنا على +201035555282" : "Need help? Contact our clinical helper staff via support channels. Give us a call on +201035555282"}
+                {dir === "rtl" ? "لديك استفسار؟ تواصل مع طاقم الدعم السريري الخاص بنا عبر قنوات الدعم. واتصل بنا على +201023456789" : "Need help? Contact our clinical helper staff via support channels. Give us a call on +201023456789"}
               </p>
             </div>
           </div>
 
           <div className="pt-8 mt-8 border-t border-slate-100 dark:border-zinc-900/60 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-muted-foreground">
             <span>
-              © {new Date().getFullYear()} {dir === "rtl" ? "مرمر" : "marmer"}. All rights reserved.
+              © {new Date().getFullYear()} {dir === "rtl" ? "مرمر" : "mermer"}. All rights reserved.
             </span>
           </div>
         </div>

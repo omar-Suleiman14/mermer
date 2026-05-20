@@ -65,7 +65,7 @@ const STATUS_CONFIG = {
   expired: { label: "Expired", color: "bg-red-500/10 text-red-500 border-red-500/30" },
 } as const;
 
-// ── Contract Form ──────────────────────────────────────────────────────────
+// ── installment Form ──────────────────────────────────────────────────────────
 
 // ── Visit Slot Picker (used in step 2) ─────────────────────────────────────
 
@@ -121,20 +121,20 @@ function VisitSlotPicker({
           </div>
           <div className="text-left">
             <p className="text-sm font-semibold">
-              {t("contracts.visitLabel")} {index + 1}
+              {t("installments.visitLabel")} {index + 1}
               <span className="text-red-500 ml-1">*</span>
             </p>
-            <p className="text-xs text-muted-foreground">{t("contracts.selectDateTime")}</p>
+            <p className="text-xs text-muted-foreground">{t("installments.selectDateTime")}</p>
           </div>
         </div>
-        <span className="text-[10px] font-bold uppercase tracking-wider text-[#AF52DE] bg-[#AF52DE]/10 px-2 py-0.5 rounded-full">{t("contracts.required")}</span>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-[#AF52DE] bg-[#AF52DE]/10 px-2 py-0.5 rounded-full">{t("installments.required")}</span>
       </div>
 
       <div className="p-4 border-t border-[#AF52DE]/20 space-y-4">
         <div className="grid grid-cols-2 gap-3">
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-1.5">
-              {t("contracts.date")} <span className="text-red-500">*</span>
+              {t("installments.date")} <span className="text-red-500">*</span>
             </p>
             <Popover open={calOpen} onOpenChange={setCalOpen}>
               <PopoverTrigger asChild>
@@ -165,7 +165,7 @@ function VisitSlotPicker({
             </Popover>
           </div>
           <div>
-            <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("contracts.timeSlot")}</p>
+            <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("installments.timeSlot")}</p>
             <div className="max-h-48 overflow-y-auto border border-border rounded-xl divide-y divide-border/50">
               {slots.map(slot => (
                 <button key={slot.timeStr} onClick={() => !slot.reserved && onTimeChange(slot.timeStr)} disabled={slot.reserved}
@@ -183,7 +183,7 @@ function VisitSlotPicker({
   );
 }
 
-function ContractForm({
+function installmentForm({
   clerkId,
   onClose,
 }: {
@@ -192,7 +192,7 @@ function ContractForm({
 }) {
   const patients = useQuery(api.patients.listPatients, clerkId ? { clerkId } : "skip");
   const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
-  const createContract = useMutation(api.contracts.createContract);
+  const createinstallment = useMutation(api.installments.createinstallment);
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   const { t } = useI18n();
 
@@ -208,16 +208,16 @@ function ContractForm({
   // Load defaults once currentUser is available
   useEffect(() => {
     if (!currentUser) return;
-    setDownPayment(String((currentUser as any).contractDefaultDownPayment ?? ""));
-    setDownPaymentType((currentUser as any).contractDefaultDownPaymentType ?? "fixed");
-    setCostPerVisit(String((currentUser as any).contractDefaultCostPerVisit ?? ""));
+    setDownPayment(String((currentUser as any).installmentDefaultDownPayment ?? ""));
+    setDownPaymentType((currentUser as any).installmentDefaultDownPaymentType ?? "fixed");
+    setCostPerVisit(String((currentUser as any).installmentDefaultCostPerVisit ?? ""));
   }, [currentUser?._id]);
 
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [notes, setNotes] = useState("");
 
   // File upload
-  const [contractFile, setContractFile] = useState<File | null>(null);
+  const [installmentFile, setinstallmentFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -271,7 +271,7 @@ function ContractForm({
       toast.error("File too large — max 20 MB");
       return;
     }
-    setContractFile(file);
+    setinstallmentFile(file);
   };
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -288,23 +288,23 @@ function ContractForm({
 
     setSaving(true);
     try {
-      let contractFileId: Id<"_storage"> | undefined;
-      if (contractFile) {
+      let installmentFileId: Id<"_storage"> | undefined;
+      if (installmentFile) {
         const url = await generateUploadUrl({ clerkId });
         const res = await fetch(url, {
           method: "POST",
-          headers: { "Content-Type": contractFile.type },
-          body: contractFile,
+          headers: { "Content-Type": installmentFile.type },
+          body: installmentFile,
         });
         const { storageId } = await res.json();
-        contractFileId = storageId as Id<"_storage">;
+        installmentFileId = storageId as Id<"_storage">;
       }
 
       // Build first visit timestamp (client-side, correct timezone)
       const [hh, mm] = firstVisitTime.split(":").map(Number);
       const firstTs = new Date(firstVisitDate.getFullYear(), firstVisitDate.getMonth(), firstVisitDate.getDate(), hh, mm, 0, 0);
 
-      await createContract({
+      await createinstallment({
         clerkId,
         patientId: selectedPatient.id,
         totalAmount: totalAmount ? Number(totalAmount) : undefined,
@@ -312,16 +312,16 @@ function ContractForm({
         downPaymentType: downPayment ? downPaymentType : undefined,
         costPerVisit: costPerVisit ? Number(costPerVisit) : undefined,
         startDate: firstTs.getTime(),
-        contractFileId,
-        contractFileName: contractFile?.name,
+        installmentFileId,
+        installmentFileName: installmentFile?.name,
         notes: notes || undefined,
         visitSchedules: [firstTs.getTime()],
       });
 
-      toast.success("Contract created");
+      toast.success("installment created");
       onClose();
     } catch (e: any) {
-      toast.error(e.message ?? "Failed to create contract");
+      toast.error(e.message ?? "Failed to create installment");
     } finally {
       setSaving(false);
     }
@@ -353,9 +353,9 @@ function ContractForm({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
           <div>
-            <h2 className="text-base font-semibold">{t("contracts.newContract")}</h2>
+            <h2 className="text-base font-semibold">{t("installments.newinstallment")}</h2>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {t("contracts.newContractSubtitle")}
+              {t("installments.newinstallmentsubtitle")}
             </p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted/60 transition-colors">
@@ -366,7 +366,7 @@ function ContractForm({
         <div className="overflow-y-auto flex-1 p-6 space-y-6">
           {/* Patient selector */}
           <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">{t("contracts.patient")} *</label>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">{t("installments.patient")} *</label>
             {selectedPatient ? (
               <div className="flex items-center gap-3 p-3 rounded-xl border border-[#007AFF]/30 bg-[#007AFF]/5">
                 <div className="w-8 h-8 rounded-full bg-[#007AFF]/10 flex items-center justify-center text-[#007AFF] font-bold text-sm">
@@ -381,12 +381,12 @@ function ContractForm({
               <div>
                 <div className="relative mb-2">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("contracts.searchPatient")}
+                  <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("installments.searchPatient")}
                     className="w-full pl-10 pr-4 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF]" />
                 </div>
                 <div className="max-h-40 overflow-y-auto border border-border rounded-xl divide-y divide-border">
                   {filteredPatients.length === 0 ? (
-                    <p className="text-xs text-muted-foreground p-3 text-center">{t("contracts.noPatients")}</p>
+                    <p className="text-xs text-muted-foreground p-3 text-center">{t("installments.noPatients")}</p>
                   ) : filteredPatients.map((p) => (
                     <button key={p._id} onClick={() => setSelectedPatient({ id: p._id, name: p.name })}
                       className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-muted/50 transition-colors text-left">
@@ -407,12 +407,12 @@ function ContractForm({
           {/* Financials */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">{t("contracts.totalAmount")}</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">{t("installments.totalAmount")}</label>
               <input type="number" value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} placeholder="5000"
                 className="w-full px-4 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF]" />
             </div>
             <div>
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">{t("contracts.downPayment")}</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">{t("installments.downPayment")}</label>
               <div className="flex gap-2">
                 <input type="number" value={downPayment} onChange={(e) => setDownPayment(e.target.value)} placeholder="500"
                   className="flex-1 px-4 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] min-w-0" />
@@ -428,7 +428,7 @@ function ContractForm({
           {/* Cost per visit + live visit count */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">{t("contracts.costPerVisit")}</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">{t("installments.costPerVisit")}</label>
               <input type="number" value={costPerVisit} onChange={(e) => setCostPerVisit(e.target.value)} placeholder="500"
                 className="w-full px-4 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF]" />
             </div>
@@ -437,14 +437,14 @@ function ContractForm({
                 <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#34c759]/10 border border-[#34c759]/30">
                   <CheckCircle2 className="w-4 h-4 text-[#34c759] shrink-0" />
                   <div>
-                    <p className="text-sm font-bold text-[#34c759]">{computedVisits} {t("contracts.visits")}</p>
-                    <p className="text-[10px] text-muted-foreground">{t("contracts.toSchedule")}</p>
+                    <p className="text-sm font-bold text-[#34c759]">{computedVisits} {t("installments.visits")}</p>
+                    <p className="text-[10px] text-muted-foreground">{t("installments.toSchedule")}</p>
                   </div>
                 </div>
               ) : (
                 <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-muted/40 border border-border">
                   <Users className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <p className="text-xs text-muted-foreground">{t("contracts.enterAmounts")}</p>
+                  <p className="text-xs text-muted-foreground">{t("installments.enterAmounts")}</p>
                 </div>
               )}
             </div>
@@ -467,12 +467,12 @@ function ContractForm({
 
           {/* File upload */}
           <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">{t("contracts.contractDoc")}</label>
-            {contractFile ? (
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">{t("installments.installmentDoc")}</label>
+            {installmentFile ? (
               <div className="flex items-center gap-3 p-3 rounded-xl border border-border bg-muted/30">
                 <FileText className="w-5 h-5 text-[#007AFF] shrink-0" />
-                <span className="text-sm flex-1 truncate">{contractFile.name}</span>
-                <button onClick={() => setContractFile(null)} className="p-1 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-red-500">
+                <span className="text-sm flex-1 truncate">{installmentFile.name}</span>
+                <button onClick={() => setinstallmentFile(null)} className="p-1 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-red-500">
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -481,8 +481,8 @@ function ContractForm({
                 onClick={() => fileInputRef.current?.click()}
                 className={`border-2 border-dashed rounded-xl p-6 flex flex-col items-center gap-2 cursor-pointer transition-all ${isDragging ? "border-[#007AFF] bg-[#007AFF]/5" : "border-border hover:border-[#007AFF]/40 hover:bg-muted/20"}`}>
                 <Upload className={`w-6 h-6 ${isDragging ? "text-[#007AFF]" : "text-muted-foreground"}`} />
-                <p className="text-sm font-medium">{t("contracts.dropFile")} <span className="text-[#007AFF]">{t("contracts.browse")}</span></p>
-                <p className="text-xs text-muted-foreground">{t("contracts.fileInfo")}</p>
+                <p className="text-sm font-medium">{t("installments.dropFile")} <span className="text-[#007AFF]">{t("installments.browse")}</span></p>
+                <p className="text-xs text-muted-foreground">{t("installments.fileInfo")}</p>
               </div>
             )}
             <input ref={fileInputRef} type="file" accept=".pdf,image/*" className="hidden"
@@ -491,8 +491,8 @@ function ContractForm({
 
           {/* Notes */}
           <div>
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">{t("contracts.notes")}</label>
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder={t("contracts.notesPlaceholder")}
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">{t("installments.notes")}</label>
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder={t("installments.notesPlaceholder")}
               className="w-full px-4 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] resize-none" />
           </div>
 
@@ -515,7 +515,7 @@ function ContractForm({
             {saving ? (
               <><IOSSpinner size={15} className="text-white" /> {t("onboarding.saving")}</>
             ) : (
-              <><CheckCircle2 className="w-4 h-4" /> {t("contracts.createContract")}</>
+              <><CheckCircle2 className="w-4 h-4" /> {t("installments.createinstallment")}</>
             )}
           </button>
         </div>
@@ -524,18 +524,18 @@ function ContractForm({
   );
 }
 
-// ── Contract View Drawer (read-only) ──────────────────────────────────────
+// ── installment View Drawer (read-only) ──────────────────────────────────────
 
-function ContractViewDrawer({
-  contract,
+function installmentViewDrawer({
+  installment,
   clerkId,
   onClose,
 }: {
-  contract: any;
+  installment: any;
   clerkId: string;
   onClose: () => void;
 }) {
-  const waiveUnpaidBalance = useMutation(api.contracts.waiveUnpaidBalance);
+  const waiveUnpaidBalance = useMutation(api.installments.waiveUnpaidBalance);
   const { t } = useI18n();
   const [waiving, setWaiving] = useState(false);
   const [waiveConfirm, setWaiveConfirm] = useState(false);
@@ -543,18 +543,18 @@ function ContractViewDrawer({
   async function handleWaive() {
     setWaiving(true);
     try {
-      await waiveUnpaidBalance({ clerkId, contractId: contract._id });
-      toast.success(t("contracts.waiveSuccess"));
+      await waiveUnpaidBalance({ clerkId, installmentId: installment._id });
+      toast.success(t("installments.waiveSuccess"));
       onClose();
-    } catch { toast.error(t("contracts.waiveFail")); }
+    } catch { toast.error(t("installments.waiveFail")); }
     finally { setWaiving(false); setWaiveConfirm(false); }
   }
 
   const { dir } = useI18n();
 
-  const cfg = STATUS_CONFIG[contract.status as keyof typeof STATUS_CONFIG];
-  const progress = contract.numVisits > 0
-    ? Math.min(100, Math.round(((contract.completedVisits ?? 0) / contract.numVisits) * 100))
+  const cfg = STATUS_CONFIG[installment.status as keyof typeof STATUS_CONFIG];
+  const progress = installment.numVisits > 0
+    ? Math.min(100, Math.round(((installment.completedVisits ?? 0) / installment.numVisits) * 100))
     : 0;
 
   return (
@@ -579,10 +579,10 @@ function ContractViewDrawer({
         <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base font-semibold">{contract.patientName}</h2>
-              <Badge className={`text-[10px] border ${cfg?.color} font-semibold px-2`}>{cfg ? t(`contracts.${contract.status}`) : contract.status}</Badge>
+              <h2 className="text-base font-semibold">{installment.patientName}</h2>
+              <Badge className={`text-[10px] border ${cfg?.color} font-semibold px-2`}>{cfg ? t(`installments.${installment.status}`) : installment.status}</Badge>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">{t("contracts.contract")} · {fmtDate(contract.startDate, t("common.currency") === "ج.م" ? "ar-EG" : "en-US")}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{t("installments.installment")} · {fmtDate(installment.startDate, t("common.currency") === "ج.م" ? "ar-EG" : "en-US")}</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted/60 transition-colors"><X className="w-4 h-4" /></button>
         </div>
@@ -591,10 +591,10 @@ function ContractViewDrawer({
           {/* Financials */}
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: t("contracts.total"), value: contract.totalAmount ? `${contract.totalAmount.toLocaleString()} ${t("common.currency")}` : "—" },
-              { label: t("contracts.downPayment"), value: contract.downPayment ? `${contract.downPayment.toLocaleString()} ${contract.downPaymentType === "percentage" ? "%" : t("common.currency")}` : "—" },
-              { label: t("contracts.costPerVisitShort"), value: contract.costPerVisit ? `${contract.costPerVisit.toLocaleString()} ${t("common.currency")}` : "—" },
-              { label: t("contracts.remainingBalance"), value: contract.remainingBalance > 0 ? `${contract.remainingBalance.toLocaleString()} ${t("common.currency")}` : t("contracts.settled") },
+              { label: t("installments.total"), value: installment.totalAmount ? `${installment.totalAmount.toLocaleString()} ${t("common.currency")}` : "—" },
+              { label: t("installments.downPayment"), value: installment.downPayment ? `${installment.downPayment.toLocaleString()} ${installment.downPaymentType === "percentage" ? "%" : t("common.currency")}` : "—" },
+              { label: t("installments.costPerVisitShort"), value: installment.costPerVisit ? `${installment.costPerVisit.toLocaleString()} ${t("common.currency")}` : "—" },
+              { label: t("installments.remainingBalance"), value: installment.remainingBalance > 0 ? `${installment.remainingBalance.toLocaleString()} ${t("common.currency")}` : t("installments.settled") },
             ].map((item) => (
               <div key={item.label} className="bg-muted/40 rounded-xl p-3">
                 <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">{item.label}</p>
@@ -604,28 +604,28 @@ function ContractViewDrawer({
           </div>
 
           {/* Visits progress */}
-          {contract.numVisits > 0 && (
+          {installment.numVisits > 0 && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="font-medium">{t("contracts.visitProgress")}</span>
-                <span className="text-muted-foreground">{contract.completedVisits ?? 0} / {contract.numVisits} {t("contracts.completed")}</span>
+                <span className="font-medium">{t("installments.visitProgress")}</span>
+                <span className="text-muted-foreground">{installment.completedVisits ?? 0} / {installment.numVisits} {t("installments.completed")}</span>
               </div>
               <div className="h-2 bg-muted/40 rounded-full overflow-hidden">
                 <div className="h-full bg-[#007AFF] rounded-full transition-all" style={{ width: `${progress}%` }} />
               </div>
               <div className="flex justify-between text-[11px] text-muted-foreground">
-                <span>{contract.paidVisits ?? 0} {t("contracts.paid")} · {(contract.completedVisits ?? 0) - (contract.paidVisits ?? 0)} {t("contracts.unpaid").toLowerCase()}</span>
-                <span>{contract.visitsLeft} {t("contracts.remaining")}</span>
+                <span>{installment.paidVisits ?? 0} {t("installments.paid")} · {(installment.completedVisits ?? 0) - (installment.paidVisits ?? 0)} {t("installments.unpaid").toLowerCase()}</span>
+                <span>{installment.visitsLeft} {t("installments.remaining")}</span>
               </div>
             </div>
           )}
 
           {/* Unpaid balance */}
-          {contract.unpaidBalance > 0 && (
+          {installment.unpaidBalance > 0 && (
             <div className="flex items-center justify-between p-4 rounded-xl bg-red-500/8 border border-red-500/20">
               <div>
-                <p className="text-xs font-semibold text-red-500">{t("contracts.unpaidBalance")}</p>
-                <p className="text-lg font-bold text-red-500">{contract.unpaidBalance.toLocaleString()} {t("common.currency")}</p>
+                <p className="text-xs font-semibold text-red-500">{t("installments.unpaidBalance")}</p>
+                <p className="text-lg font-bold text-red-500">{installment.unpaidBalance.toLocaleString()} {t("common.currency")}</p>
               </div>
               <button
                 onClick={() => setWaiveConfirm(true)}
@@ -633,7 +633,7 @@ function ContractViewDrawer({
                 className="flex items-center gap-1.5 text-xs font-semibold text-white px-3 py-2 rounded-lg transition-colors bg-red-500 hover:bg-red-600 disabled:opacity-60"
               >
                 {waiving ? <IOSSpinner size={12} className="text-white" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                {t("contracts.waive")}
+                {t("installments.waive")}
               </button>
             </div>
           )}
@@ -642,9 +642,9 @@ function ContractViewDrawer({
           <AlertDialog open={waiveConfirm} onOpenChange={setWaiveConfirm}>
             <AlertDialogContent dir={dir}>
               <AlertDialogHeader>
-                <AlertDialogTitle className="text-red-500">{t("contracts.waive")}</AlertDialogTitle>
+                <AlertDialogTitle className="text-red-500">{t("installments.waive")}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  {t("contracts.waiveConfirm")}
+                  {t("installments.waiveConfirm")}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
@@ -656,37 +656,37 @@ function ContractViewDrawer({
                     handleWaive();
                   }}
                 >
-                  {t("contracts.waive")}
+                  {t("installments.waive")}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
           </AlertDialog>
 
           {/* Notes */}
-          {contract.notes && (
+          {installment.notes && (
             <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{t("contracts.notes")}</p>
-              <p className="text-sm text-muted-foreground leading-relaxed">{contract.notes}</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">{t("installments.notes")}</p>
+              <p className="text-sm text-muted-foreground leading-relaxed">{installment.notes}</p>
             </div>
           )}
 
           {/* Next visit */}
-          {contract.status === "active" && contract.nextVisitDate && (
+          {installment.status === "active" && installment.nextVisitDate && (
             <div className="flex items-center gap-2 p-3 rounded-xl bg-[#007AFF]/8 border border-[#007AFF]/20">
               <CalendarIcon className="w-4 h-4 text-[#007AFF] shrink-0" />
               <div>
-                <p className="text-[10px] text-muted-foreground">{t("contracts.nextVisit")}</p>
-                <p className="text-sm font-semibold text-[#007AFF]">{fmtDate(contract.nextVisitDate, t("common.currency") === "ج.م" ? "ar-EG" : "en-US", true)}</p>
+                <p className="text-[10px] text-muted-foreground">{t("installments.nextVisit")}</p>
+                <p className="text-sm font-semibold text-[#007AFF]">{fmtDate(installment.nextVisitDate, t("common.currency") === "ج.م" ? "ar-EG" : "en-US", true)}</p>
               </div>
             </div>
           )}
 
-          {/* Contract file */}
-          {contract.fileUrl && (
-            <a href={contract.fileUrl} target="_blank" rel="noreferrer" download
+          {/* installment file */}
+          {installment.fileUrl && (
+            <a href={installment.fileUrl} target="_blank" rel="noreferrer" download
               className="flex items-center gap-2 p-3 rounded-xl border border-border hover:border-[#007AFF]/40 hover:bg-muted/20 transition-all">
               <FileText className="w-4 h-4 text-[#007AFF] shrink-0" />
-              <span className="text-sm font-medium text-[#007AFF]">{t("contracts.viewDoc")}</span>
+              <span className="text-sm font-medium text-[#007AFF]">{t("installments.viewDoc")}</span>
               <Download className="w-3.5 h-3.5 text-muted-foreground ml-auto" />
             </a>
           )}
@@ -698,25 +698,25 @@ function ContractViewDrawer({
 
 // ── Main Page ──────────────────────────────────────────────────────────────
 
-export default function ContractsPage() {
+export default function installmentsPage() {
   const { user } = useUser();
   const clerkId = user?.id ?? "";
   const { t, dir } = useI18n();
-  const contracts = useQuery(api.contracts.listContracts, clerkId ? { clerkId } : "skip");
-  const deleteContract = useMutation(api.contracts.deleteContract);
+  const installments = useQuery(api.installments.listinstallments, clerkId ? { clerkId } : "skip");
+  const deleteinstallment = useMutation(api.installments.deleteinstallment);
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState<Id<"contracts"> | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<Id<"installments"> | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [viewContract, setViewContract] = useState<any | null>(null);
-  const [contractSearch, setContractSearch] = useState("");
+  const [viewinstallment, setViewinstallment] = useState<any | null>(null);
+  const [installmentsearch, setinstallmentsearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "expired">("all");
 
-  async function handleDelete(id: Id<"contracts">) {
+  async function handleDelete(id: Id<"installments">) {
     setDeleting(id);
     try {
-      await deleteContract({ clerkId, contractId: id });
-      toast.success("Contract deleted");
+      await deleteinstallment({ clerkId, installmentId: id });
+      toast.success("installment deleted");
     } catch {
       toast.error("Failed to delete");
     } finally {
@@ -724,30 +724,30 @@ export default function ContractsPage() {
     }
   }
 
-  const active = (contracts ?? []).filter((c) => c.status === "active").length;
-  const expired = (contracts ?? []).filter((c) => c.status === "expired").length;
+  const active = (installments ?? []).filter((c) => c.status === "active").length;
+  const expired = (installments ?? []).filter((c) => c.status === "expired").length;
 
-  const filteredContracts = useMemo(() => {
-    if (!contracts) return undefined;
-    return contracts.filter((c) => {
+  const filteredinstallments = useMemo(() => {
+    if (!installments) return undefined;
+    return installments.filter((c) => {
       if (statusFilter !== "all" && c.status !== statusFilter) return false;
-      if (contractSearch.trim()) {
-        const q = contractSearch.toLowerCase();
+      if (installmentsearch.trim()) {
+        const q = installmentsearch.toLowerCase();
         if (!c.patientName?.toLowerCase().includes(q)) return false;
       }
       return true;
     });
-  }, [contracts, contractSearch, statusFilter]);
+  }, [installments, installmentsearch, statusFilter]);
 
   return (
     <div className="flex flex-col h-full">
-      <PageHeader title={t("contracts.title")} description={t("contracts.subtitle")}>
+      <PageHeader title={t("installments.title")} description={t("installments.subtitle")}>
         <button
           onClick={() => setCreateOpen(true)}
           className="flex items-center gap-1.5 text-xs bg-[#007AFF] text-white px-3 py-1.5 rounded-lg hover:bg-[#0062cc] transition-colors font-semibold"
         >
           <Plus className="w-3.5 h-3.5" />
-          {t("contracts.newContract")}
+          {t("installments.newinstallment")}
         </button>
       </PageHeader>
 
@@ -757,8 +757,8 @@ export default function ContractsPage() {
           {/* Stats */}
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: t("contracts.active"), value: active, color: "text-[#34c759]", bg: "bg-[#34c759]/10" },
-              { label: t("contracts.expired"), value: expired, color: "text-red-500", bg: "bg-red-500/10" },
+              { label: t("installments.active"), value: active, color: "text-[#34c759]", bg: "bg-[#34c759]/10" },
+              { label: t("installments.expired"), value: expired, color: "text-red-500", bg: "bg-red-500/10" },
             ].map((s) => (
               <div key={s.label} className="bg-card border border-border rounded-xl p-4 text-center">
                 <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
@@ -771,10 +771,10 @@ export default function ContractsPage() {
           <div className="bg-white dark:bg-[#1c1c1a] border border-black/5 dark:border-white/5 rounded-2xl shadow-sm overflow-hidden">
             <div className="flex items-center gap-2 px-6 py-4 border-b border-border/50">
               <FileText className="w-5 h-5 text-[#007AFF]" />
-              <h2 className="font-bold text-base">{t("contracts.allContracts")}</h2>
-              {contracts !== undefined && (
+              <h2 className="font-bold text-base">{t("installments.allinstallments")}</h2>
+              {installments !== undefined && (
                 <span className="ml-auto text-xs text-muted-foreground">
-                  {filteredContracts?.length ?? 0} {t("contracts.total")}
+                  {filteredinstallments?.length ?? 0} {t("installments.total")}
                 </span>
               )}
             </div>
@@ -784,9 +784,9 @@ export default function ContractsPage() {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
-                  value={contractSearch}
-                  onChange={(e) => setContractSearch(e.target.value)}
-                  placeholder={t("contracts.searchContracts") || "Search by patient name…"}
+                  value={installmentsearch}
+                  onChange={(e) => setinstallmentsearch(e.target.value)}
+                  placeholder={t("installments.searchinstallments") || "Search by patient name…"}
                   className="w-full pl-10 pr-4 py-2 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] placeholder:text-muted-foreground/60"
                 />
               </div>
@@ -801,28 +801,28 @@ export default function ContractsPage() {
                         : "border-border text-muted-foreground hover:border-[#007AFF]/40"
                     }`}
                   >
-                    {f === "all" ? t("contracts.allContracts") : t(`contracts.${f}`)}
+                    {f === "all" ? t("installments.allinstallments") : t(`installments.${f}`)}
                   </button>
                 ))}
               </div>
             </div>
 
             <div className="p-4 space-y-3">
-              {filteredContracts === undefined ? (
+              {filteredinstallments === undefined ? (
                 Array.from({ length: 3 }).map((_, i) => (
                   <Skeleton key={i} className="h-24 w-full rounded-xl bg-black/5 dark:bg-white/5" />
                 ))
-              ) : filteredContracts.length === 0 ? (
+              ) : filteredinstallments.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <div className="w-14 h-14 rounded-2xl bg-[#007AFF]/10 flex items-center justify-center mb-4">
                     <FileText className="w-7 h-7 text-[#007AFF]" />
                   </div>
-                  {contractSearch.trim() || statusFilter !== "all" ? (
+                  {installmentsearch.trim() || statusFilter !== "all" ? (
                     <>
-                      <p className="text-sm font-semibold mb-1">{t("contracts.noResults") || "No contracts found"}</p>
-                      <p className="text-xs text-muted-foreground mb-4">{t("contracts.noResultsDesc") || "Try adjusting your search or filters."}</p>
+                      <p className="text-sm font-semibold mb-1">{t("installments.noResults") || "No installments found"}</p>
+                      <p className="text-xs text-muted-foreground mb-4">{t("installments.noResultsDesc") || "Try adjusting your search or filters."}</p>
                       <button
-                        onClick={() => { setContractSearch(""); setStatusFilter("all"); }}
+                        onClick={() => { setinstallmentsearch(""); setStatusFilter("all"); }}
                         className="text-xs font-semibold text-[#007AFF] hover:underline"
                       >
                         {t("feed.clearAll") || "Clear all"}
@@ -830,24 +830,24 @@ export default function ContractsPage() {
                     </>
                   ) : (
                     <>
-                      <p className="text-sm font-semibold mb-1">{t("contracts.noContracts")}</p>
-                      <p className="text-xs text-muted-foreground mb-4">{t("contracts.noContractsDesc")}</p>
+                      <p className="text-sm font-semibold mb-1">{t("installments.noinstallments")}</p>
+                      <p className="text-xs text-muted-foreground mb-4">{t("installments.noinstallmentsDesc")}</p>
                       <button
                         onClick={() => setCreateOpen(true)}
                         className="text-xs font-semibold text-[#007AFF] hover:underline flex items-center gap-1"
                       >
-                        <Plus className="w-3.5 h-3.5" /> {t("contracts.newContract")}
+                        <Plus className="w-3.5 h-3.5" /> {t("installments.newinstallment")}
                       </button>
                     </>
                   )}
                 </div>
               ) : (
-                filteredContracts.map((contract) => {
-                  const cfg = STATUS_CONFIG[contract.status as keyof typeof STATUS_CONFIG];
+                filteredinstallments.map((installment) => {
+                  const cfg = STATUS_CONFIG[installment.status as keyof typeof STATUS_CONFIG];
                   return (
                     <div
-                      key={contract._id}
-                      onClick={() => setViewContract(contract)}
+                      key={installment._id}
+                      onClick={() => setViewinstallment(installment)}
                       className="flex items-start gap-4 p-4 rounded-xl border border-black/5 dark:border-white/5 bg-card shadow-sm hover:shadow-md transition-shadow group cursor-pointer"
                     >
                       {/* Icon */}
@@ -859,67 +859,67 @@ export default function ContractsPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
                           <Link
-                            href={`/dashboard/patients/${contract.patientId}`}
+                            href={`/dashboard/patients/${installment.patientId}`}
                             className="font-semibold text-sm hover:text-[#007AFF] transition-colors"
                           >
-                            {contract.patientName}
+                            {installment.patientName}
                           </Link>
                           <Badge className={`text-[10px] border ${cfg.color} font-semibold px-2`}>
-                            {t(`contracts.${contract.status}`)}
+                            {t(`installments.${installment.status}`)}
                           </Badge>
                         </div>
 
                         <div className="flex flex-wrap gap-x-4 gap-y-1 mt-1.5">
-                          {contract.totalAmount && (
+                          {installment.totalAmount && (
                             <span className="text-xs text-muted-foreground flex items-center gap-1">
-                              {t("contracts.total") || "Total"}: {contract.totalAmount.toLocaleString()} {t("common.currency")}
+                              {t("installments.total") || "Total"}: {installment.totalAmount.toLocaleString()} {t("common.currency")}
                             </span>
                           )}
-                          {contract.numVisits && (
+                          {installment.numVisits && (
                             <span className="text-xs font-medium text-[#007AFF] flex items-center gap-1">
                               <Users className="w-3 h-3" />
-                              {contract.completedVisits ?? 0}/{contract.numVisits} {t("contracts.visits")}
-                              {contract.visitsLeft > 0 && (
-                                <span className="text-muted-foreground font-normal">({contract.visitsLeft} {t("contracts.left")})</span>
+                              {installment.completedVisits ?? 0}/{installment.numVisits} {t("installments.visits")}
+                              {installment.visitsLeft > 0 && (
+                                <span className="text-muted-foreground font-normal">({installment.visitsLeft} {t("installments.left")})</span>
                               )}
                             </span>
                           )}
-                          {contract.paidVisits != null && contract.numVisits && (
+                          {installment.paidVisits != null && installment.numVisits && (
                             <span className="text-xs font-medium text-[#34c759] flex items-center gap-1">
                               <CheckCircle2 className="w-3 h-3" />
-                              {contract.paidVisits ?? 0} {t("contracts.paid")}
+                              {installment.paidVisits ?? 0} {t("installments.paid")}
                             </span>
                           )}
-                          {contract.remainingBalance > 0 && (
+                          {installment.remainingBalance > 0 && (
                             <span className="text-xs font-medium text-amber-600 flex items-center gap-1">
-                              {t("contracts.balance")}: {contract.remainingBalance.toLocaleString()} {t("common.currency")}
+                              {t("installments.balance")}: {installment.remainingBalance.toLocaleString()} {t("common.currency")}
                             </span>
                           )}
-                          {contract.unpaidBalance != null && contract.unpaidBalance > 0 && (
+                          {installment.unpaidBalance != null && installment.unpaidBalance > 0 && (
                             <span className="text-xs font-medium text-red-500 flex items-center gap-1">
                               <AlertCircle className="w-3 h-3" />
-                              {t("contracts.unpaid")}: {contract.unpaidBalance.toLocaleString()} {t("common.currency")}
+                              {t("installments.unpaid")}: {installment.unpaidBalance.toLocaleString()} {t("common.currency")}
                             </span>
                           )}
-                          {contract.status === "active" && contract.nextVisitDate && (
+                          {installment.status === "active" && installment.nextVisitDate && (
                             <span className="text-xs text-muted-foreground flex items-center gap-1">
                               <CalendarIcon className="w-3 h-3" />
-                              {t("contracts.next")}: {fmtDate(contract.nextVisitDate, t("common.currency") === "ج.م" ? "ar-EG" : "en-US", true)}
+                              {t("installments.next")}: {fmtDate(installment.nextVisitDate, t("common.currency") === "ج.م" ? "ar-EG" : "en-US", true)}
                             </span>
                           )}
                         </div>
 
                         {/* Progress bar */}
-                        {contract.numVisits && contract.numVisits > 0 && (
+                        {installment.numVisits && installment.numVisits > 0 && (
                           <div className="mt-2">
                             <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
-                              <span>{t("contracts.progress")}</span>
-                              <span>{Math.round(((contract.completedVisits ?? 0) / contract.numVisits) * 100)}%</span>
+                              <span>{t("installments.progress")}</span>
+                              <span>{Math.round(((installment.completedVisits ?? 0) / installment.numVisits) * 100)}%</span>
                             </div>
                             <div className="h-1.5 bg-muted/40 rounded-full overflow-hidden">
                               <div
                                 className="h-full bg-[#007AFF] rounded-full transition-all"
-                                style={{ width: `${Math.min(100, ((contract.completedVisits ?? 0) / contract.numVisits) * 100)}%` }}
+                                style={{ width: `${Math.min(100, ((installment.completedVisits ?? 0) / installment.numVisits) * 100)}%` }}
                               />
                             </div>
                           </div>
@@ -929,12 +929,12 @@ export default function ContractsPage() {
                       {/* Actions */}
                       <div className="flex items-center gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
-                          onClick={(e) => { e.stopPropagation(); setDeleteConfirm(contract._id); }}
-                          disabled={deleting === contract._id}
+                          onClick={(e) => { e.stopPropagation(); setDeleteConfirm(installment._id); }}
+                          disabled={deleting === installment._id}
                           className="p-2 rounded-lg hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-colors"
-                          title={t("contracts.delete")}
+                          title={t("installments.delete")}
                         >
-                          {deleting === contract._id ? <IOSSpinner size={14} /> : <Trash2 className="w-4 h-4" />}
+                          {deleting === installment._id ? <IOSSpinner size={14} /> : <Trash2 className="w-4 h-4" />}
                         </button>
                       </div>
                     </div>
@@ -950,17 +950,17 @@ export default function ContractsPage() {
       {/* Create modal */}
       <AnimatePresence>
         {createOpen && (
-          <ContractForm clerkId={clerkId} onClose={() => setCreateOpen(false)} />
+          <installmentForm clerkId={clerkId} onClose={() => setCreateOpen(false)} />
         )}
       </AnimatePresence>
 
       {/* View drawer */}
       <AnimatePresence>
-        {viewContract && (
-          <ContractViewDrawer
-            contract={viewContract}
+        {viewinstallment && (
+          <installmentViewDrawer
+            installment={viewinstallment}
             clerkId={clerkId}
-            onClose={() => setViewContract(null)}
+            onClose={() => setViewinstallment(null)}
           />
         )}
       </AnimatePresence>
@@ -969,9 +969,9 @@ export default function ContractsPage() {
       <AlertDialog open={!!deleteConfirm} onOpenChange={(v) => !v && setDeleteConfirm(null)}>
         <AlertDialogContent dir={dir}>
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-red-500">{t("contracts.deleteConfirmTitle") || "Delete Contract"}</AlertDialogTitle>
+            <AlertDialogTitle className="text-red-500">{t("installments.deleteConfirmTitle") || "Delete installment"}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t("contracts.deleteConfirmDesc") || "Are you sure you want to delete this contract? This action cannot be undone."}
+              {t("installments.deleteConfirmDesc") || "Are you sure you want to delete this installment? This action cannot be undone."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

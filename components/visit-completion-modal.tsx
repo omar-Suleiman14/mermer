@@ -42,7 +42,7 @@ interface VisitCompletionModalProps {
   patientId?: Id<"patients">;
   patientName: string;
   patientAge?: number;
-  contractId?: Id<"contracts">; // if set → contract visit mode
+  installmentId?: Id<"installments">; // if set → installment visit mode
   onComplete?: () => void;
 }
 
@@ -54,23 +54,23 @@ export function VisitCompletionModal({
   patientId,
   patientName,
   patientAge,
-  contractId,
+  installmentId,
   onComplete,
 }: VisitCompletionModalProps) {
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   const addVisitFiles = useMutation(api.visits.addVisitFiles);
   const createFollowUp = useMutation(api.followUps.createFollowUp);
-  const completeContractVisit = useMutation(api.contracts.completeContractVisit);
-  const waiveUnpaidBalance = useMutation(api.contracts.waiveUnpaidBalance);
+  const completeinstallmentVisit = useMutation(api.installments.completeinstallmentVisit);
+  const waiveUnpaidBalance = useMutation(api.installments.waiveUnpaidBalance);
   const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
-  const isContractVisit = !!contractId;
+  const isinstallmentVisit = !!installmentId;
   const { t, lang, dir } = useI18n();
   const dateLocale = lang === "ar" ? "ar-EG" : "en-US";
 
-  /** Contract data (for unpaid / past-due banner) */
-  const contractData = useQuery(
-    api.contracts.getContract,
-    clerkId && contractId ? { clerkId, contractId } : "skip"
+  /** installment data (for unpaid / past-due banner) */
+  const installmentData = useQuery(
+    api.installments.getinstallment,
+    clerkId && installmentId ? { clerkId, installmentId } : "skip"
   );
 
   /** Working days from doctor profile — falls back to blocking Sat+Sun */
@@ -85,11 +85,11 @@ export function VisitCompletionModal({
   const [fuDate, setFuDate] = useState<Date | undefined>(undefined);
   const [fuCalOpen, setFuCalOpen] = useState(false);
 
-  // Contract visit state (declared early so activeDate can reference it)
-  const [nextContractDate, setNextContractDate] = useState<Date | undefined>(undefined);
+  // installment visit state (declared early so activeDate can reference it)
+  const [nextinstallmentDate, setNextinstallmentDate] = useState<Date | undefined>(undefined);
 
   // Use the correct date for slot availability depending on mode
-  const activeScheduleDate = isContractVisit ? nextContractDate : fuDate;
+  const activeScheduleDate = isinstallmentVisit ? nextinstallmentDate : fuDate;
 
   // Query existing visits on the selected scheduling date to grey out taken slots
   const activeDateStart = activeScheduleDate ? new Date(activeScheduleDate.getFullYear(), activeScheduleDate.getMonth(), activeScheduleDate.getDate(), 0, 0, 0, 0).getTime() : 0;
@@ -144,14 +144,14 @@ export function VisitCompletionModal({
   const [notes, setNotes] = useState("");
   const [waiveConfirm, setWaiveConfirm] = useState(false);
 
-  // Contract visit state
+  // installment visit state
   const [isPaid, setIsPaid] = useState(true);
-  const [nextContractTime, setNextContractTime] = useState("10:00");
-  const [nextContractCalOpen, setNextContractCalOpen] = useState(false);
-  // Next visit is MANDATORY for contract visits — always open, can't be skipped
-  const [scheduleNextContract, setScheduleNextContract] = useState(true);
+  const [nextinstallmentTime, setNextinstallmentTime] = useState("10:00");
+  const [nextinstallmentCalOpen, setNextinstallmentCalOpen] = useState(false);
+  // Next visit is MANDATORY for installment visits — always open, can't be skipped
+  const [scheduleNextinstallment, setScheduleNextinstallment] = useState(true);
 
-  // Follow-up state (non-contract visits only)
+  // Follow-up state (non-installment visits only)
   const [scheduleFollowUp, setScheduleFollowUp] = useState(false);
   const [fuTime, setFuTime] = useState<string>("10:00");
   const [fuNote, setFuNote] = useState("");
@@ -176,16 +176,16 @@ export function VisitCompletionModal({
   }, []);
 
   const handleSave = async (skip = false) => {
-    // Contract visits require a next visit date
-    if (isContractVisit && !nextContractDate) {
+    // installment visits require a next visit date
+    if (isinstallmentVisit && !nextinstallmentDate) {
       toast.error("Please pick the next visit date before completing this visit");
       return;
     }
-    if (!isContractVisit && scheduleFollowUp && !fuDate) {
+    if (!isinstallmentVisit && scheduleFollowUp && !fuDate) {
       toast.error("Please select a follow-up date");
       return;
     }
-    if (!isContractVisit && scheduleFollowUp && fuDate) {
+    if (!isinstallmentVisit && scheduleFollowUp && fuDate) {
       const selectedSlot = timeSlots.find(s => s.timeStr === fuTime);
       if (selectedSlot?.isReserved) {
         toast.error("This time slot is already reserved.");
@@ -211,19 +211,19 @@ export function VisitCompletionModal({
         documentIds.push(storageId as Id<"_storage">);
       }
 
-      if (isContractVisit && contractId) {
-        // Contract visit path — single mutation handles everything
+      if (isinstallmentVisit && installmentId) {
+        // installment visit path — single mutation handles everything
         let nextTs: number | undefined;
-        if (scheduleNextContract && nextContractDate) {
-          const [hh, mm] = nextContractTime.split(":").map(Number);
-          const d = new Date(nextContractDate);
+        if (scheduleNextinstallment && nextinstallmentDate) {
+          const [hh, mm] = nextinstallmentTime.split(":").map(Number);
+          const d = new Date(nextinstallmentDate);
           d.setHours(hh, mm, 0, 0);
           nextTs = d.getTime();
         }
-        await completeContractVisit({
+        await completeinstallmentVisit({
           clerkId,
           visitId,
-          contractId,
+          installmentId,
           isPaid,
           notes: notes || undefined,
           prescriptionImageId,
@@ -231,7 +231,7 @@ export function VisitCompletionModal({
           nextVisitDate: nextTs,
         });
         setDone(true);
-        toast.success(isPaid ? "Visit complete — payment recorded ✓" : "Visit complete — balance added to contract");
+        toast.success(isPaid ? "Visit complete — payment recorded ✓" : "Visit complete — balance added to installment");
       } else {
         // Regular visit path
         if (!skip && (prescriptionImageId || documentIds.length > 0)) {
@@ -259,8 +259,8 @@ export function VisitCompletionModal({
     setRxFile(null); setRxPreviewUrl(null); setExtraFiles([]);
     setNotes(""); setScheduleFollowUp(false); setFuDate(undefined);
     setFuTime(timeSlots.find(s => s.isWorkingHour && !s.isReserved)?.timeStr || "10:00");
-    setFuNote(""); setIsPaid(true); setScheduleNextContract(true);
-    setNextContractDate(undefined); setNextContractTime("10:00"); setDone(false);
+    setFuNote(""); setIsPaid(true); setScheduleNextinstallment(true);
+    setNextinstallmentDate(undefined); setNextinstallmentTime("10:00"); setDone(false);
     onOpenChange(false);
   };
 
@@ -306,8 +306,8 @@ export function VisitCompletionModal({
 
             <div className="overflow-y-auto flex-1 p-6 space-y-5">
               {/* ── Unpaid / Past-Due Warning Banner ── */}
-              {isContractVisit && !done && contractData && (
-                (contractData.unpaidBalance ?? 0) > 0 || contractData.status === "expired"
+              {isinstallmentVisit && !done && installmentData && (
+                (installmentData.unpaidBalance ?? 0) > 0 || installmentData.status === "expired"
               ) && (
                 <motion.div
                   initial={{ opacity: 0, y: -6 }}
@@ -317,19 +317,19 @@ export function VisitCompletionModal({
                   <div className="flex items-start gap-2.5">
                     <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
                     <div>
-                      {(contractData?.unpaidBalance ?? 0) > 0 && (
+                      {(installmentData?.unpaidBalance ?? 0) > 0 && (
                         <p className="text-sm font-bold text-amber-600">
-                          Unpaid balance: {contractData!.unpaidBalance!.toLocaleString()} {t("contracts.currency") || "EGP"}
+                          Unpaid balance: {installmentData!.unpaidBalance!.toLocaleString()} {t("installments.currency") || "EGP"}
                         </p>
                       )}
-                      {contractData?.status === "expired" && (
-                        <p className="text-sm font-bold text-amber-600">Contract is expired</p>
+                      {installmentData?.status === "expired" && (
+                        <p className="text-sm font-bold text-amber-600">installment is expired</p>
                       )}
                       <p className="text-xs text-amber-600/80 mt-0.5">Discuss with patient before proceeding</p>
                     </div>
                   </div>
                   
-                  {(contractData?.unpaidBalance ?? 0) > 0 && (
+                  {(installmentData?.unpaidBalance ?? 0) > 0 && (
                     <button
                       type="button"
                       onClick={(e) => { e.preventDefault(); e.stopPropagation(); setWaiveConfirm(true); }}
@@ -337,7 +337,7 @@ export function VisitCompletionModal({
                       className="w-full text-sm font-semibold bg-amber-500 text-white px-3 py-2.5 rounded-xl hover:bg-amber-600 transition-colors disabled:opacity-60 flex items-center justify-center gap-2 shadow-sm"
                     >
                       {isSaving ? <IOSSpinner size={14} className="text-white" /> : <CheckCircle2 className="w-4 h-4" />}
-                      {t("contracts.waive") || "Waive Balance"}
+                      {t("installments.waive") || "Waive Balance"}
                     </button>
                   )}
                 </motion.div>
@@ -457,8 +457,8 @@ export function VisitCompletionModal({
                     />
                   </div>
 
-                  {/* ─── Contract visit: Paid switch + Next Visit ──── */}
-                  {isContractVisit ? (
+                  {/* ─── installment visit: Paid switch + Next Visit ──── */}
+                  {isinstallmentVisit ? (
                     <div className="space-y-3">
                       {/* Paid / Unpaid toggle */}
                       <div className="border border-border rounded-2xl p-4 flex items-center justify-between">
@@ -474,7 +474,7 @@ export function VisitCompletionModal({
                         />
                       </div>
 
-                      {/* Schedule next contract visit — mandatory, always open */}
+                      {/* Schedule next installment visit — mandatory, always open */}
                       <div className="border border-[#AF52DE]/30 bg-[#AF52DE]/4 rounded-2xl overflow-hidden">
                         <div className="w-full flex items-center justify-between px-4 py-3">
                           <div className="flex items-center gap-2.5">
@@ -483,10 +483,10 @@ export function VisitCompletionModal({
                             </div>
                             <div className="text-left">
                               <p className="text-sm font-semibold">
-                                {t("visit.scheduleNextContract")}
+                                {t("visit.scheduleNextinstallment")}
                                 <span className="text-red-500 ml-1">*</span>
                               </p>
-                              <p className="text-xs text-muted-foreground">{t("visit.bookNextContract")}</p>
+                              <p className="text-xs text-muted-foreground">{t("visit.bookNextinstallment")}</p>
                             </div>
                           </div>
                           <span className="text-[10px] font-bold uppercase tracking-wider text-[#AF52DE] bg-[#AF52DE]/10 px-2 py-0.5 rounded-full">Required</span>
@@ -498,17 +498,17 @@ export function VisitCompletionModal({
                               <p className="text-xs font-medium text-muted-foreground mb-1.5">
                                 {t("visit.date")} <span className="text-red-500">*</span>
                               </p>
-                              <Popover open={nextContractCalOpen} onOpenChange={setNextContractCalOpen}>
+                              <Popover open={nextinstallmentCalOpen} onOpenChange={setNextinstallmentCalOpen}>
                                 <PopoverTrigger asChild>
-                                  <button className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border rounded-2xl hover:border-[#AF52DE]/50 transition-colors text-left ${!nextContractDate ? "border-red-400/60" : "border-border"}`}>
+                                  <button className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border rounded-2xl hover:border-[#AF52DE]/50 transition-colors text-left ${!nextinstallmentDate ? "border-red-400/60" : "border-border"}`}>
                                     <CalendarIcon className="w-4 h-4 text-muted-foreground shrink-0" />
-                                    <span className={nextContractDate ? "" : "text-muted-foreground"}>
-                                      {nextContractDate ? nextContractDate.toLocaleDateString(dateLocale, { weekday: "short", month: "short", day: "numeric" }) : t("visit.pickDate")}
+                                    <span className={nextinstallmentDate ? "" : "text-muted-foreground"}>
+                                      {nextinstallmentDate ? nextinstallmentDate.toLocaleDateString(dateLocale, { weekday: "short", month: "short", day: "numeric" }) : t("visit.pickDate")}
                                     </span>
                                   </button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-0" align="start">
-                                  <Calendar mode="single" selected={nextContractDate} onSelect={(d) => { if (d) { setNextContractDate(d); setNextContractCalOpen(false); } }} disabled={(d) => d < new Date() || isNonWorkingDay(d)} />
+                                  <Calendar mode="single" selected={nextinstallmentDate} onSelect={(d) => { if (d) { setNextinstallmentDate(d); setNextinstallmentCalOpen(false); } }} disabled={(d) => d < new Date() || isNonWorkingDay(d)} />
                                 </PopoverContent>
                               </Popover>
                             </div>
@@ -516,11 +516,11 @@ export function VisitCompletionModal({
                               <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("visit.timeSlot")}</p>
                               <div className="max-h-48 overflow-y-auto border border-border rounded-2xl divide-y divide-border/50">
                                 {timeSlots.filter(s => s.isWorkingHour).map(slot => (
-                                  <button key={slot.timeStr} onClick={() => !slot.isReserved && setNextContractTime(slot.timeStr)} disabled={slot.isReserved}
-                                    className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${slot.isReserved ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed line-through" : nextContractTime === slot.timeStr ? "bg-[#AF52DE]/10 text-[#AF52DE] font-semibold" : "hover:bg-muted/30"}`}>
+                                  <button key={slot.timeStr} onClick={() => !slot.isReserved && setNextinstallmentTime(slot.timeStr)} disabled={slot.isReserved}
+                                    className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${slot.isReserved ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed line-through" : nextinstallmentTime === slot.timeStr ? "bg-[#AF52DE]/10 text-[#AF52DE] font-semibold" : "hover:bg-muted/30"}`}>
                                     <span>{slot.label}</span>
                                     {slot.isReserved && <span className="text-[10px] font-medium text-red-400 uppercase tracking-wider">{t("visit.reserved")}</span>}
-                                    {!slot.isReserved && nextContractTime === slot.timeStr && <CheckCircle2 className="w-3.5 h-3.5" />}
+                                    {!slot.isReserved && nextinstallmentTime === slot.timeStr && <CheckCircle2 className="w-3.5 h-3.5" />}
                                   </button>
                                 ))}
                               </div>
@@ -632,9 +632,9 @@ export function VisitCompletionModal({
     <AlertDialog open={waiveConfirm} onOpenChange={setWaiveConfirm}>
       <AlertDialogContent dir={dir}>
         <AlertDialogHeader>
-          <AlertDialogTitle className="text-amber-500">{t("contracts.waive") || "Waive Balance"}</AlertDialogTitle>
+          <AlertDialogTitle className="text-amber-500">{t("installments.waive") || "Waive Balance"}</AlertDialogTitle>
           <AlertDialogDescription>
-            {t("contracts.waiveConfirm") || "Waive the full unpaid balance? This cannot be undone."}
+            {t("installments.waiveConfirm") || "Waive the full unpaid balance? This cannot be undone."}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -645,17 +645,17 @@ export function VisitCompletionModal({
               e.preventDefault();
               setIsSaving(true);
               try {
-                await waiveUnpaidBalance({ clerkId, contractId: contractData!._id });
-                toast.success(t("contracts.waiveSuccess") || "Unpaid balance waived.");
+                await waiveUnpaidBalance({ clerkId, installmentId: installmentData!._id });
+                toast.success(t("installments.waiveSuccess") || "Unpaid balance waived.");
               } catch {
-                toast.error(t("contracts.waiveFail") || "Failed to waive balance");
+                toast.error(t("installments.waiveFail") || "Failed to waive balance");
               } finally {
                 setIsSaving(false);
                 setWaiveConfirm(false);
               }
             }}
           >
-            {isSaving ? <IOSSpinner size={14} className="text-white" /> : t("contracts.waive") || "Waive"}
+            {isSaving ? <IOSSpinner size={14} className="text-white" /> : t("installments.waive") || "Waive"}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

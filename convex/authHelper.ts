@@ -40,7 +40,7 @@ export async function requireAuthUser(
   const user = await getAuthUser(ctx, clerkId);
   if (!user) throw new Error("User not found");
   if (user.isBlocked) throw new Error("Account is blocked");
-  if (user.isBanned) throw new Error("Account is under contract");
+  if (user.isBanned) throw new Error("Account is under installment");
   return user;
 }
 

@@ -41,7 +41,7 @@ export function PublicNav({ className, backHref, backLabel }: PublicNavProps) {
           ) : (
             <Link href="/" className="flex items-center gap-2.5 shrink-0">
               <span className="font-semibold text-[17px] tracking-tight">
-                {dir === "rtl" ? "مرمر" : "marmer"}
+                {dir === "rtl" ? "مرمر" : "mermer"}
               </span>
             </Link>
           )}

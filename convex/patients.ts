@@ -2,7 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUser, requireAuthUser } from "./authHelper";
 
-// FIX #5: Batch-fetch contracts for all patients in one query instead of N+1
+// FIX #5: Batch-fetch installments for all patients in one query instead of N+1
 export const listPatients = query({
   args: { clerkId: v.string() },
   handler: async (ctx, args) => {
@@ -15,15 +15,15 @@ export const listPatients = query({
       .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
       .take(500);
 
-    // BATCH: Fetch ALL contracts for this doctor once, then group in JS
-    const allContracts = await ctx.db
-      .query("contracts")
+    // BATCH: Fetch ALL installments for this doctor once, then group in JS
+    const allinstallments = await ctx.db
+      .query("installments")
       .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
       .take(2000);
 
     // Build a Set of patientIds that have unpaid balances
     const pastDuePatientIds = new Set<string>();
-    for (const c of allContracts) {
+    for (const c of allinstallments) {
       if ((c.unpaidBalance ?? 0) > 0) {
         pastDuePatientIds.add(c.patientId.toString());
       }
@@ -69,17 +69,17 @@ export const searchPatients = query({
     const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return [];
 
-    // BATCH: Fetch ALL contracts for this doctor once
-    const allContracts = await ctx.db
-      .query("contracts")
+    // BATCH: Fetch ALL installments for this doctor once
+    const allinstallments = await ctx.db
+      .query("installments")
       .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
       .take(2000);
 
     const pastDuePatientIds = new Set<string>();
-    const activeContractPatientIds = new Set<string>();
-    for (const c of allContracts) {
+    const activeinstallmentPatientIds = new Set<string>();
+    for (const c of allinstallments) {
       if ((c.unpaidBalance ?? 0) > 0) pastDuePatientIds.add(c.patientId.toString());
-      if (c.status === "active") activeContractPatientIds.add(c.patientId.toString());
+      if (c.status === "active") activeinstallmentPatientIds.add(c.patientId.toString());
     }
 
     // Helper to enrich patients with hasPastDue using pre-fetched data
@@ -87,7 +87,7 @@ export const searchPatients = query({
       return patientsArray.map((p) => ({
         ...p,
         hasPastDue: pastDuePatientIds.has(p._id.toString()),
-        hasActiveContract: activeContractPatientIds.has(p._id.toString()),
+        hasActiveinstallment: activeinstallmentPatientIds.has(p._id.toString()),
       }));
     };
 
@@ -195,7 +195,7 @@ export const updatePatient = mutation({
   },
 });
 
-// FIX #23: Cascade deletes — remove associated visits, contracts, follow-ups, queue entries
+// FIX #23: Cascade deletes — remove associated visits, installments, follow-ups, queue entries
 export const deletePatient = mutation({
   args: { clerkId: v.string(), patientId: v.id("patients") },
   handler: async (ctx, args) => {
@@ -204,9 +204,9 @@ export const deletePatient = mutation({
     if (!patient || patient.doctorId !== user._id) throw new Error("Not found");
 
     // Fetch all related records in parallel
-    const [visits, contracts, followUps, queueItems] = await Promise.all([
+    const [visits, installments, followUps, queueItems] = await Promise.all([
       ctx.db.query("visits").withIndex("by_patient", (q) => q.eq("patientId", args.patientId)).collect(),
-      ctx.db.query("contracts").withIndex("by_patient", (q) => q.eq("patientId", args.patientId)).collect(),
+      ctx.db.query("installments").withIndex("by_patient", (q) => q.eq("patientId", args.patientId)).collect(),
       ctx.db.query("followUps").withIndex("by_patient", (q) => q.eq("patientId", args.patientId)).collect(),
       ctx.db.query("queue").withIndex("by_doctor", (q) => q.eq("doctorId", user._id)).collect(),
     ]);
@@ -214,7 +214,7 @@ export const deletePatient = mutation({
     // Delete all related records in parallel + the patient itself
     await Promise.all([
       ...visits.map((v) => ctx.db.delete(v._id)),
-      ...contracts.map((c) => ctx.db.delete(c._id)),
+      ...installments.map((c) => ctx.db.delete(c._id)),
       ...followUps.map((f) => ctx.db.delete(f._id)),
       ...queueItems.filter((q) => q.patientId === args.patientId).map((q) => ctx.db.delete(q._id)),
       ctx.db.delete(args.patientId),

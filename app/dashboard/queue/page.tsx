@@ -136,7 +136,7 @@ const DraggableApptItem = memo(function DraggableApptItem({
   onReschedule: () => void;
 }) {
   const { t, dir, lang } = useI18n();
-  const isContractVisit = appt.source === "contract";
+  const isinstallmentVisit = appt.source === "installment";
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: appt._id,
     disabled: isSelectedDayPast || isDone,
@@ -197,9 +197,9 @@ const DraggableApptItem = memo(function DraggableApptItem({
             <span className="text-[9px] font-bold uppercase tracking-wider bg-[#007AFF]/10 text-[#007AFF] border border-[#007AFF]/20 px-1.5 py-0.5 rounded-full">
               {t("dashboard.online")}
             </span>
-          ) : appt.source === "contract" ? (
+          ) : appt.source === "installment" ? (
             <span className="text-[9px] font-bold uppercase tracking-wider bg-[#AF52DE]/10 text-[#AF52DE] border border-[#AF52DE]/20 px-1.5 py-0.5 rounded-full">
-              {t("schedule.contract")}
+              {t("schedule.installment")}
             </span>
           ) : appt.source === "follow-up" ? (
             <span className="text-[9px] font-bold uppercase tracking-wider bg-[#FF9500]/10 text-[#FF9500] border border-[#FF9500]/20 px-1.5 py-0.5 rounded-full">
@@ -242,11 +242,11 @@ const DraggableApptItem = memo(function DraggableApptItem({
                 <button
                   onClick={onReschedule}
                   title="Reschedule"
-                  className={`p-1.5 rounded-lg transition-colors ${isContractVisit ? "text-[#AF52DE] hover:bg-[#AF52DE]/10" : "text-[#007AFF] hover:bg-[#007AFF]/10"}`}
+                  className={`p-1.5 rounded-lg transition-colors ${isinstallmentVisit ? "text-[#AF52DE] hover:bg-[#AF52DE]/10" : "text-[#007AFF] hover:bg-[#007AFF]/10"}`}
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                 </button>
-                {!isContractVisit && (
+                {!isinstallmentVisit && (
                   <button
                     onClick={onCancel}
                     title={t("schedule.cancelTitle") || "Cancel"}
@@ -283,11 +283,11 @@ const DraggableApptItem = memo(function DraggableApptItem({
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={onReschedule} className={`gap-2 cursor-pointer font-medium ${isContractVisit ? "text-[#AF52DE] focus:text-[#AF52DE] focus:bg-[#AF52DE]/10" : "text-[#007AFF] focus:text-[#007AFF] focus:bg-[#007AFF]/10"}`}>
+                    <DropdownMenuItem onClick={onReschedule} className={`gap-2 cursor-pointer font-medium ${isinstallmentVisit ? "text-[#AF52DE] focus:text-[#AF52DE] focus:bg-[#AF52DE]/10" : "text-[#007AFF] focus:text-[#007AFF] focus:bg-[#007AFF]/10"}`}>
                       <RefreshCw className="w-4 h-4" />
                       <span>Reschedule</span>
                     </DropdownMenuItem>
-                    {!isContractVisit && (
+                    {!isinstallmentVisit && (
                       <DropdownMenuItem onClick={onCancel} className="gap-2 cursor-pointer font-medium text-red-500 focus:text-red-500 focus:bg-red-500/10">
                         <XCircle className="w-4 h-4" />
                         <span>{t("common.cancel") || "Cancel"}</span>
@@ -355,7 +355,7 @@ export default function SchedulePage() {
   const [preselectedSlot, setPreselectedSlot] = useState<number | null>(null);
 
   const [cancelModal, setCancelModal] = useState<Id<"visits"> | null>(null);
-  const [rescheduleModal, setRescheduleModal] = useState<{ visitId: Id<"visits">; patientName: string; isContract?: boolean } | null>(null);
+  const [rescheduleModal, setRescheduleModal] = useState<{ visitId: Id<"visits">; patientName: string; isinstallment?: boolean } | null>(null);
   const [rescheduleDate, setRescheduleDate] = useState<Date | undefined>(undefined);
   const [rescheduleTime, setRescheduleTime] = useState("10:00");
   const [rescheduleCalOpen, setRescheduleCalOpen] = useState(false);
@@ -366,7 +366,7 @@ export default function SchedulePage() {
     patientId?: Id<"patients">;
     patientName: string;
     patientAge?: number;
-    contractId?: Id<"contracts">;
+    installmentId?: Id<"installments">;
   } | null>(null);
 
   // Template picker state
@@ -821,10 +821,10 @@ export default function SchedulePage() {
                                   isSelectedDayPast={isSelectedDayPast}
                                   isDone={isDone}
                                   initials={initials}
-                                  onComplete={() => setCompletionModal({ appointmentId: appt._id, patientId: appt.patientId ?? undefined, patientName: appt.patientName, patientAge: appt.patientAge, contractId: appt.contractId ?? undefined })}
+                                  onComplete={() => setCompletionModal({ appointmentId: appt._id, patientId: appt.patientId ?? undefined, patientName: appt.patientName, patientAge: appt.patientAge, installmentId: appt.installmentId ?? undefined })}
                                   onReminder={(e: React.MouseEvent) => appt.patientPhone && openTemplatePicker(appt.patientName, appt.patientPhone, appt.date, e)}
                                   onCancel={() => setCancelModal(appt._id)}
-                                  onReschedule={() => setRescheduleModal({ visitId: appt._id, patientName: appt.patientName, isContract: appt.source === "contract" })}
+                                  onReschedule={() => setRescheduleModal({ visitId: appt._id, patientName: appt.patientName, isinstallment: appt.source === "installment" })}
                                 />
                               );
                             })}
@@ -908,7 +908,7 @@ export default function SchedulePage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Reschedule Modal for Contract Visits */}
+      {/* Reschedule Modal for installment Visits */}
       <AnimatePresence>
         {rescheduleModal && (
           <motion.div
@@ -934,19 +934,19 @@ export default function SchedulePage() {
               <div className="sm:hidden w-12 h-1 rounded-full bg-border mx-auto mt-3 mb-1" />
               <div className="px-6 py-4 border-b border-border">
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${rescheduleModal.isContract ? "bg-[#AF52DE]/10" : "bg-[#007AFF]/10"}`}>
-                    <RefreshCw className={`w-5 h-5 ${rescheduleModal.isContract ? "text-[#AF52DE]" : "text-[#007AFF]"}`} />
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${rescheduleModal.isinstallment ? "bg-[#AF52DE]/10" : "bg-[#007AFF]/10"}`}>
+                    <RefreshCw className={`w-5 h-5 ${rescheduleModal.isinstallment ? "text-[#AF52DE]" : "text-[#007AFF]"}`} />
                   </div>
                   <div>
                     <h2 className="text-base font-semibold">
-                      {rescheduleModal.isContract ? t("schedule.rescheduleContractVisit") : t("schedule.rescheduleVisit")}
+                      {rescheduleModal.isinstallment ? t("schedule.rescheduleinstallmentVisit") : t("schedule.rescheduleVisit")}
                     </h2>
                     <p className="text-xs text-muted-foreground mt-0.5">{rescheduleModal.patientName}</p>
                   </div>
                 </div>
-                {rescheduleModal.isContract ? (
+                {rescheduleModal.isinstallment ? (
                   <p className="text-xs text-muted-foreground mt-3 bg-[#AF52DE]/5 border border-[#AF52DE]/20 rounded-lg px-3 py-2">
-                    {t("schedule.contractNoCancel")}
+                    {t("schedule.installmentNoCancel")}
                   </p>
                 ) : (
                   <p className="text-xs text-muted-foreground mt-3 bg-[#007AFF]/5 border border-[#007AFF]/20 rounded-lg px-3 py-2">
@@ -960,7 +960,7 @@ export default function SchedulePage() {
                     <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("schedule.newDate")} <span className="text-red-500">*</span></p>
                     <Popover open={rescheduleCalOpen} onOpenChange={setRescheduleCalOpen}>
                       <PopoverTrigger asChild>
-                        <button className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border rounded-xl transition-colors text-left ${rescheduleModal.isContract ? "hover:border-[#AF52DE]/50" : "hover:border-[#007AFF]/50"} ${!rescheduleDate ? "border-red-400/60" : "border-border"}`}>
+                        <button className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border rounded-xl transition-colors text-left ${rescheduleModal.isinstallment ? "hover:border-[#AF52DE]/50" : "hover:border-[#007AFF]/50"} ${!rescheduleDate ? "border-red-400/60" : "border-border"}`}>
                           <CalendarIcon className="w-4 h-4 text-muted-foreground shrink-0" />
                           <span className={rescheduleDate ? "" : "text-muted-foreground"}>
                             {rescheduleDate ? rescheduleDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Pick date"}
@@ -973,11 +973,11 @@ export default function SchedulePage() {
                     </Popover>
                   </div>
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("contracts.timeSlot")}</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("installments.timeSlot")}</p>
                     <div className="max-h-48 overflow-y-auto border border-border rounded-xl divide-y divide-border/50">
                       {rescheduleSlots.map(slot => (
                         <button key={slot.timeStr} onClick={() => setRescheduleTime(slot.timeStr)}
-                          className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${rescheduleTime === slot.timeStr ? (rescheduleModal.isContract ? "bg-[#AF52DE]/10 text-[#AF52DE] font-semibold" : "bg-[#007AFF]/10 text-[#007AFF] font-semibold") : "hover:bg-muted/30"}`}>
+                          className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${rescheduleTime === slot.timeStr ? (rescheduleModal.isinstallment ? "bg-[#AF52DE]/10 text-[#AF52DE] font-semibold" : "bg-[#007AFF]/10 text-[#007AFF] font-semibold") : "hover:bg-muted/30"}`}>
                           <span>{slot.label}</span>
                           {rescheduleTime === slot.timeStr && <CheckCircle2 className="w-3.5 h-3.5" />}
                         </button>
@@ -995,7 +995,7 @@ export default function SchedulePage() {
                   <button
                     onClick={handleReschedule}
                     disabled={!rescheduleDate || rescheduling}
-                    className={`flex-1 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors disabled:opacity-60 flex items-center justify-center gap-2 ${rescheduleModal.isContract ? "bg-[#AF52DE] hover:bg-[#9B3DC8]" : "bg-[#007AFF] hover:bg-[#005bb5]"}`}
+                    className={`flex-1 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors disabled:opacity-60 flex items-center justify-center gap-2 ${rescheduleModal.isinstallment ? "bg-[#AF52DE] hover:bg-[#9B3DC8]" : "bg-[#007AFF] hover:bg-[#005bb5]"}`}
                   >
                     {rescheduling ? <IOSSpinner size={16} className="text-white" /> : <RefreshCw className="w-4 h-4" />}
                     Reschedule
@@ -1015,9 +1015,9 @@ export default function SchedulePage() {
         patientId={completionModal?.patientId}
         patientName={completionModal?.patientName ?? ""}
         patientAge={completionModal?.patientAge}
-        contractId={completionModal?.contractId}
+        installmentId={completionModal?.installmentId}
         onComplete={() => {
-          if (completionModal && !completionModal.contractId) {
+          if (completionModal && !completionModal.installmentId) {
             handleCompleteVisit();
           }
           setCompletionModal(null);

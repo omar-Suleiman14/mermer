@@ -98,18 +98,18 @@ export default function PatientsPage() {
                   >
                     <div className={`relative w-12 h-12 rounded-full ${pal.bg} flex items-center justify-center shrink-0`}>
                       <span className={`text-base font-bold ${pal.text}`}>{initials}</span>
-                      {(patient as any).hasActiveContract && (
+                      {(patient as any).hasActiveinstallment && (
                         <div className="absolute top-0 right-0 w-3.5 h-3.5 bg-white dark:bg-[#1c1c1a] rounded-full flex items-center justify-center">
-                          <div className="w-2.5 h-2.5 rounded-full bg-[#AF52DE] animate-pulse" title="Active Contract" />
+                          <div className="w-2.5 h-2.5 rounded-full bg-[#AF52DE] animate-pulse" title="Active installment" />
                         </div>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="font-semibold text-sm group-hover:text-[#007AFF] transition-colors truncate">{patient.name}</p>
-                        {(patient as any).hasActiveContract && (
+                        {(patient as any).hasActiveinstallment && (
                           <span className="shrink-0 text-[9px] font-bold text-[#AF52DE] bg-[#AF52DE]/10 px-1.5 py-0.5 rounded-md border border-[#AF52DE]/20 uppercase">
-                            {t("dashboard.contract") || "Contract"}
+                            {t("dashboard.installment") || "installment"}
                           </span>
                         )}
                         {(patient as any).hasPastDue && (

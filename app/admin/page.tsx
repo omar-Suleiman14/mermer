@@ -182,7 +182,7 @@ function DoctorAnalyticsPanel({
 
 function AdminDashboard({ clerkId }: { clerkId: string }) {
   const [search, setSearch] = useState("");
-  const [filterType, setFilterType] = useState<"all" | "active" | "contract" | "blocked">("all");
+  const [filterType, setFilterType] = useState<"all" | "active" | "installment" | "blocked">("all");
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
   const [selectedDoctorId, setSelectedDoctorId] = useState<Id<"users"> | null>(null);
   const [selectedDoctorName, setSelectedDoctorName] = useState("");
@@ -198,7 +198,7 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
     setLoadingId(targetUserId);
     try {
       await banDoctor({ clerkId, targetUserId, banned });
-      toast.success(banned ? "Contract status applied" : "Contract status removed");
+      toast.success(banned ? "installment status applied" : "installment status removed");
     } catch {
       toast.error("Failed to update");
     } finally {
@@ -234,7 +234,7 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
     (d) =>
       (filterType === "all" ||
         (filterType === "active" && !(d as any).isBanned && !(d as any).isBlocked) ||
-        (filterType === "contract" && (d as any).isBanned) ||
+        (filterType === "installment" && (d as any).isBanned) ||
         (filterType === "blocked" && (d as any).isBlocked)) &&
       (d.name.toLowerCase().includes(search.toLowerCase()) ||
         d.clinicName.toLowerCase().includes(search.toLowerCase()) ||
@@ -257,7 +257,7 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
             </div>
             <div>
               <h1 className="text-sm font-bold">Admin Panel</h1>
-              <p className="text-xs text-muted-foreground">marmer platform control</p>
+              <p className="text-xs text-muted-foreground">mermer platform control</p>
             </div>
           </div>
           <span className="text-xs font-semibold text-[#34c759] bg-[#34c759]/10 border border-[#34c759]/20 px-2.5 py-1 rounded-full flex items-center gap-1.5">
@@ -273,7 +273,7 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
           {[
             { label: "Total Doctors", value: overview?.totalDoctors, icon: Users, color: "#007AFF" },
             { label: "Published", value: overview?.publishedDoctors, icon: Globe, color: "#34c759" },
-            { label: "Contract", value: overview?.bannedDoctors, icon: Ban, color: "#FF3B30" },
+            { label: "installment", value: overview?.bannedDoctors, icon: Ban, color: "#FF3B30" },
             { label: "Visits (month)", value: overview?.totalVisitsThisMonth, icon: CalendarDays, color: "#FF9500" },
             { label: "Visits (total)", value: overview?.totalVisitsAllTime, icon: TrendingUp, color: "#5856D6" },
           ].map((stat) => (
@@ -312,7 +312,7 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
           >
             <option value="all">All Status</option>
             <option value="active">Active</option>
-            <option value="contract">Contract</option>
+            <option value="installment">installment</option>
             <option value="blocked">Blocked</option>
           </select>
           <select
@@ -373,7 +373,7 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
                           ? "bg-amber-50 dark:bg-amber-900/20 text-amber-500 border-amber-200 dark:border-amber-800"
                           : "bg-[#34c759]/8 text-[#34c759] border-[#34c759]/20"
                       }`}>
-                        {isBlocked ? "Blocked" : isBanned ? "Contract" : "Active"}
+                        {isBlocked ? "Blocked" : isBanned ? "installment" : "Active"}
                       </span>
                     </div>
 
@@ -413,7 +413,7 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
                                 : "border-amber-300 text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20"
                             }`}
                           >
-                            {isBanned ? "Active" : "Contract"}
+                            {isBanned ? "Active" : "installment"}
                           </button>
                           <button
                             onClick={() => { setSelectedDoctorId(doc._id); setSelectedDoctorName(doc.name); }}

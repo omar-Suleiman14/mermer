@@ -356,7 +356,7 @@ export function PatientIntakeDrawer({
                   type="tel"
                   value={form.phone}
                   onChange={(e) => set("phone", e.target.value.replace(/\D/g, ""))}
-                  placeholder="1142529590"
+                  placeholder="1023456789"
                   className={`flex-1 ${inputClass} rounded-l-none`}
                   required
                 />

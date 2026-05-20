@@ -39,7 +39,7 @@ const cairo = Cairo({
 });
 
 export const metadata: Metadata = {
-  title: "marmer",
+  title: "mermer",
   description:
     "the best clinic management system ever",
   icons: {

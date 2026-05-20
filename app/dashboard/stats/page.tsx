@@ -378,14 +378,14 @@ export default function StatisticsPage() {
       bestRevenueDay,
       bestMonth,
       bestVisitDay,
-      // Contract stats (from server)
-      activeContractsCount: statsData.activeContractsCount,
-      expiredContractsCount: statsData.expiredContractsCount,
-      totalContractedValue: statsData.totalContractedValue,
+      // installment stats (from server)
+      activeinstallmentsCount: statsData.activeinstallmentsCount,
+      expiredinstallmentsCount: statsData.expiredinstallmentsCount,
+      totalinstallmentedValue: statsData.totalinstallmentedValue,
       totalCollected: statsData.totalCollected,
       outstanding: statsData.outstanding,
-      contractVisitsThisMonthCount: statsData.contractVisitsThisMonthCount,
-      topContracts: statsData.topContracts,
+      installmentVisitsThisMonthCount: statsData.installmentVisitsThisMonthCount,
+      topinstallments: statsData.topinstallments,
       consultationFee: statsData.consultationFee,
     };
   }, [statsData, revenueData]);
@@ -639,14 +639,14 @@ export default function StatisticsPage() {
           {!isLoading && analytics && revenueData && revenueData !== null && (() => {
             const fee = analytics.consultationFee ?? 0;
             const regularCount = analytics.manualCompleted + analytics.onlineCompleted;
-            const contractCount = analytics.contractVisitsThisMonthCount ?? 0;
+            const installmentCount = analytics.installmentVisitsThisMonthCount ?? 0;
             const regularRev = regularCount * fee;
-            const contractRev = (analytics.totalCollected ?? 0) > 0 ? analytics.totalCollected! - regularRev : contractCount * fee;
-            const total = regularRev + Math.max(contractRev, 0);
+            const installmentRev = (analytics.totalCollected ?? 0) > 0 ? analytics.totalCollected! - regularRev : installmentCount * fee;
+            const total = regularRev + Math.max(installmentRev, 0);
             const pct = (v: number) => total > 0 ? Math.round((v / total) * 100) : 0;
             const sources = [
               { label: t("stats.sourceRegular"), value: regularRev, color: "#007AFF", pct: pct(regularRev) },
-              { label: t("stats.sourceContracts"), value: Math.max(contractRev, 0), color: "#AF52DE", pct: pct(Math.max(contractRev, 0)) },
+              { label: t("stats.sourceinstallments"), value: Math.max(installmentRev, 0), color: "#AF52DE", pct: pct(Math.max(installmentRev, 0)) },
             ].filter((s) => s.value > 0);
             return (
               <section className={cn(cardClass(), "p-5 sm:p-6")}>
@@ -666,8 +666,8 @@ export default function StatisticsPage() {
                     <p className="text-[10px] text-muted-foreground">{t("stats.visits")}</p>
                   </div>
                   <div>
-                    <p className="text-[10px] text-muted-foreground">{t("stats.sourceContracts")}</p>
-                    <p className="text-sm font-bold tabular-nums mt-0.5">{contractCount}</p>
+                    <p className="text-[10px] text-muted-foreground">{t("stats.sourceinstallments")}</p>
+                    <p className="text-sm font-bold tabular-nums mt-0.5">{installmentCount}</p>
                     <p className="text-[10px] text-muted-foreground">{t("stats.visits")}</p>
                   </div>
                   <div>
@@ -681,26 +681,26 @@ export default function StatisticsPage() {
           })()}
 
 
-          {/* Contract Income Breakdown */}
-          {!isLoading && analytics && (analytics.activeContractsCount ?? 0) > 0 && (() => {
-            const active = analytics.topContracts ?? [];
-            const activeCount = analytics.activeContractsCount ?? 0;
-            const totalContractedValue = analytics.totalContractedValue ?? 0;
+          {/* installment Income Breakdown */}
+          {!isLoading && analytics && (analytics.activeinstallmentsCount ?? 0) > 0 && (() => {
+            const active = analytics.topinstallments ?? [];
+            const activeCount = analytics.activeinstallmentsCount ?? 0;
+            const totalinstallmentedValue = analytics.totalinstallmentedValue ?? 0;
             const totalCollected = analytics.totalCollected ?? 0;
             const outstanding = analytics.outstanding ?? 0;
-            const monthlyContractRev = (analytics.contractVisitsThisMonthCount ?? 0) * (analytics.consultationFee ?? 0);
+            const monthlyinstallmentRev = (analytics.installmentVisitsThisMonthCount ?? 0) * (analytics.consultationFee ?? 0);
 
             return (
               <section className={cn(cardClass(), "p-5 sm:p-6")}>
                 <h2 className="font-semibold text-sm flex items-center gap-2 mb-5">
                   <TrendingUp className="w-4 h-4 text-violet-500" />
-                  {t("stats.contractIncome")}
+                  {t("stats.installmentIncome")}
                 </h2>
 
                 {/* Summary tiles */}
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
                   <div className="rounded-2xl bg-violet-500/8 border border-violet-500/15 p-3 text-center">
-                    <p className="text-[10px] text-muted-foreground">{t("stats.activeContracts")}</p>
+                    <p className="text-[10px] text-muted-foreground">{t("stats.activeinstallments")}</p>
                     <p className="text-xl font-bold mt-0.5">{activeCount}</p>
                   </div>
                   <div className="rounded-2xl bg-emerald-500/8 border border-emerald-500/15 p-3 text-center">
@@ -712,35 +712,35 @@ export default function StatisticsPage() {
                     <p className="text-base font-bold mt-0.5 tabular-nums">{fmt(outstanding)}</p>
                   </div>
                   <div className="rounded-2xl bg-sky-500/8 border border-sky-500/15 p-3 text-center">
-                    <p className="text-[10px] text-muted-foreground">{t("stats.monthlyContractRev")}</p>
-                    <p className="text-base font-bold mt-0.5 tabular-nums">{fmt(monthlyContractRev)}</p>
+                    <p className="text-[10px] text-muted-foreground">{t("stats.monthlyinstallmentRev")}</p>
+                    <p className="text-base font-bold mt-0.5 tabular-nums">{fmt(monthlyinstallmentRev)}</p>
                   </div>
                 </div>
 
                 {/* Progress bar: collected vs total */}
-                {totalContractedValue > 0 && (
+                {totalinstallmentedValue > 0 && (
                   <div className="mb-5">
                     <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
-                      <span>{t("stats.collected")} / {t("stats.totalContractValue")}</span>
-                      <span className="tabular-nums font-semibold">{fmt(totalCollected)} / {fmt(totalContractedValue)}</span>
+                      <span>{t("stats.collected")} / {t("stats.totalinstallmentValue")}</span>
+                      <span className="tabular-nums font-semibold">{fmt(totalCollected)} / {fmt(totalinstallmentedValue)}</span>
                     </div>
                     <div className="h-2.5 bg-muted/40 rounded-full overflow-hidden">
                       <motion.div
                         initial={{ width: 0 }}
-                        animate={{ width: `${Math.min(100, Math.round((totalCollected / totalContractedValue) * 100))}%` }}
+                        animate={{ width: `${Math.min(100, Math.round((totalCollected / totalinstallmentedValue) * 100))}%` }}
                         transition={{ duration: 0.75, ease: [0.22, 1, 0.36, 1] }}
                         className="h-full rounded-full bg-linear-to-r from-violet-500 to-emerald-500"
                       />
                     </div>
                     <p className="text-[10px] text-muted-foreground mt-1">
-                      {Math.round((totalCollected / totalContractedValue) * 100)}% {t("stats.collectedPct")}
+                      {Math.round((totalCollected / totalinstallmentedValue) * 100)}% {t("stats.collectedPct")}
                     </p>
                   </div>
                 )}
 
-                {/* Per-contract rows */}
+                {/* Per-installment rows */}
                 <div className="space-y-2">
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("stats.activeContracts")}</p>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("stats.activeinstallments")}</p>
                   {active.slice(0, 5).map((c: any) => {
                     const dp = c.downPaymentType === "percentage"
                       ? ((c.totalAmount ?? 0) * ((c.downPayment ?? 0) / 100))
@@ -769,7 +769,7 @@ export default function StatisticsPage() {
                     );
                   })}
                   {activeCount === 0 && (
-                    <p className="text-xs text-muted-foreground text-center py-3">{t("stats.noActiveContracts")}</p>
+                    <p className="text-xs text-muted-foreground text-center py-3">{t("stats.noActiveinstallments")}</p>
                   )}
                 </div>
               </section>

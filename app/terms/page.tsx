@@ -13,7 +13,7 @@ export default async function TermsPage() {
             {dir === "rtl" ? <ArrowRight className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4" />}
             {lang === "ar" ? "العودة للرئيسية" : "Back to home"}
           </Link>
-          <span className="font-bold text-lg tracking-tight text-[#007AFF]">marmer</span>
+          <span className="font-bold text-lg tracking-tight text-[#007AFF]">mermer</span>
         </div>
       </nav>
 
@@ -52,14 +52,14 @@ export default async function TermsPage() {
                 <p>يجوز لنا تعديل هذه الشروط في أي وقت. استمرار استخدام المنصة بعد التغييرات يعتبر قبولاً للشروط الجديدة.</p>
 
                 <h2 className="text-[#1a1916] dark:text-[#f0efea] font-semibold mt-8 mb-2">7. اتصل بنا</h2>
-                <p>إذا كان لديك أي أسئلة حول هذه الشروط، يرجى الاتصال بنا على support@marmercare.com.</p>
+                <p>إذا كان لديك أي أسئلة حول هذه الشروط، يرجى الاتصال بنا على support@mermercare.com.</p>
               </>
             ) : (
               <>
-                <p>Welcome to marmer Care. By accessing or using our services, you agree to be bound by these Terms and Conditions.</p>
+                <p>Welcome to mermer Care. By accessing or using our services, you agree to be bound by these Terms and Conditions.</p>
 
                 <h2 className="text-[#1a1916] dark:text-[#f0efea] font-semibold mt-8 mb-2">1. Services Provided</h2>
-                <p>marmer Care provides a clinic management platform and online booking system for doctors and patients. We facilitate the scheduling and management of medical appointments but do not provide medical advice or services directly.</p>
+                <p>mermer Care provides a clinic management platform and online booking system for doctors and patients. We facilitate the scheduling and management of medical appointments but do not provide medical advice or services directly.</p>
 
                 <h2 className="text-[#1a1916] dark:text-[#f0efea] font-semibold mt-8 mb-2">2. User Accounts</h2>
                 <p>To use certain features, you must register for an account. You are responsible for maintaining the confidentiality of your account information and for all activities that occur under your account.</p>
@@ -71,13 +71,13 @@ export default async function TermsPage() {
                 <p>Patients may cancel or reschedule appointments subject to the individual clinic&apos;s policies. Doctors are responsible for setting and communicating these policies.</p>
 
                 <h2 className="text-[#1a1916] dark:text-[#f0efea] font-semibold mt-8 mb-2">5. Limitation of Liability</h2>
-                <p>marmer Care is not liable for any direct, indirect, incidental, or consequential damages resulting from the use or inability to use our services, or for any medical decisions made based on the platform.</p>
+                <p>mermer Care is not liable for any direct, indirect, incidental, or consequential damages resulting from the use or inability to use our services, or for any medical decisions made based on the platform.</p>
 
                 <h2 className="text-[#1a1916] dark:text-[#f0efea] font-semibold mt-8 mb-2">6. Changes to Terms</h2>
                 <p>We may modify these Terms at any time. Continued use of the platform after changes constitutes acceptance of the new Terms.</p>
 
                 <h2 className="text-[#1a1916] dark:text-[#f0efea] font-semibold mt-8 mb-2">7. Contact Us</h2>
-                <p>If you have any questions about these Terms, please contact us at support@marmercare.com.</p>
+                <p>If you have any questions about these Terms, please contact us at support@mermercare.com.</p>
               </>
             )}
           </div>
@@ -86,7 +86,7 @@ export default async function TermsPage() {
 
       <footer className="border-t border-black/6 dark:border-white/6 py-6 px-6">
         <div className="max-w-3xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-[#6b6a63] dark:text-[#8e8d86]">
-          <p>© 2026 marmer. {lang === "ar" ? "جميع الحقوق محفوظة." : "All rights reserved."}</p>
+          <p>© 2026 mermer. {lang === "ar" ? "جميع الحقوق محفوظة." : "All rights reserved."}</p>
           <div className="flex gap-5">
             <Link href="/privacy" className="hover:text-[#007AFF] transition-colors">
               {lang === "ar" ? "سياسة الخصوصية" : "Privacy Policy"}

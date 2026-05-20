@@ -44,13 +44,13 @@ export default function PatientProfilePage() {
   const [completionTarget, setCompletionTarget] = useState<{
     visitId: Id<"visits">;
     visitDate: number;
-    contractId?: string;
+    installmentId?: string;
   } | null>(null);
 
   const patient = useQuery(api.patients.getPatient, clerkId ? { patientId, clerkId } : "skip");
   const visits = useQuery(api.visits.getVisitsByPatient, clerkId ? { patientId, clerkId } : "skip");
-  const contracts = useQuery(
-    api.contracts.listContractsByPatient,
+  const installments = useQuery(
+    api.installments.listinstallmentsByPatient,
     clerkId ? { patientId, clerkId } : "skip"
   );
 
@@ -113,23 +113,23 @@ export default function PatientProfilePage() {
               <div className="w-16 h-16 rounded-full bg-[#007AFF]/10 flex items-center justify-center shrink-0">
                 <span className="text-xl font-bold text-[#007AFF]">{initials}</span>
               </div>
-              {contracts?.some(c => c.status === "active") && (
+              {installments?.some(c => c.status === "active") && (
                 <div className="absolute top-0 right-0 w-4 h-4 bg-background rounded-full flex items-center justify-center">
-                  <div className="w-3 h-3 rounded-full bg-[#AF52DE] animate-pulse" title="Active Contract" />
+                  <div className="w-3 h-3 rounded-full bg-[#AF52DE] animate-pulse" title="Active installment" />
                 </div>
               )}
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 mb-1">
                 <h2 className="text-xl font-bold tracking-tight">{patient.name}</h2>
-                {contracts?.some(c => c.status === "active") && (
+                {installments?.some(c => c.status === "active") && (
                   <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#AF52DE]/10 border border-[#AF52DE]/20">
-                    <span className="text-[10px] font-bold text-[#AF52DE] uppercase tracking-wider">{t("dashboard.contract") || "Contract"}</span>
+                    <span className="text-[10px] font-bold text-[#AF52DE] uppercase tracking-wider">{t("dashboard.installment") || "installment"}</span>
                   </div>
                 )}
-                {contracts?.some(c => (c.unpaidBalance ?? 0) > 0) && (
+                {installments?.some(c => (c.unpaidBalance ?? 0) > 0) && (
                   <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/20">
-                    <span className="text-[10px] font-bold text-red-500 uppercase tracking-wider">{t("contracts.unpaidBalance") || "Past Due"}</span>
+                    <span className="text-[10px] font-bold text-red-500 uppercase tracking-wider">{t("installments.unpaidBalance") || "Past Due"}</span>
                   </div>
                 )}
               </div>
@@ -165,32 +165,32 @@ export default function PatientProfilePage() {
           </div>
         </div>
 
-        {/* Contracts (Moved to top if they exist) */}
-        {(contracts === undefined || contracts.length > 0) && (
+        {/* installments (Moved to top if they exist) */}
+        {(installments === undefined || installments.length > 0) && (
           <div>
             <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
               <ScrollText className="w-4 h-4 text-[#AF52DE]" />
-              {t("contracts.title") || "Contracts"}
-              {contracts !== undefined && contracts.length > 0 && (
+              {t("installments.title") || "installments"}
+              {installments !== undefined && installments.length > 0 && (
                 <span className="text-xs text-muted-foreground font-normal">
-                  ({contracts.length})
+                  ({installments.length})
                 </span>
               )}
             </h3>
 
-            {contracts === undefined ? (
+            {installments === undefined ? (
               <Skeleton className="h-20 rounded-xl" />
             ) : (
               <div className="space-y-3">
-                {contracts.map((contract: any) => {
-                  const isActive = contract.status === "active";
-                  const progress = contract.numVisits > 0
-                    ? Math.min(100, Math.round(((contract.completedVisits ?? 0) / contract.numVisits) * 100))
+                {installments.map((installment: any) => {
+                  const isActive = installment.status === "active";
+                  const progress = installment.numVisits > 0
+                    ? Math.min(100, Math.round(((installment.completedVisits ?? 0) / installment.numVisits) * 100))
                     : 0;
-                  const hasUnpaid = (contract.unpaidBalance ?? 0) > 0;
+                  const hasUnpaid = (installment.unpaidBalance ?? 0) > 0;
                   return (
                     <div
-                      key={contract._id}
+                      key={installment._id}
                       className={`bg-card border rounded-xl p-4 space-y-3 ${
                         hasUnpaid ? "border-red-500/30" : "border-border"
                       }`}
@@ -202,43 +202,43 @@ export default function PatientProfilePage() {
                               ? "bg-[#34c759]/10 text-[#34c759] border-[#34c759]/30"
                               : "bg-red-500/10 text-red-500 border-red-500/30"
                           }`}>
-                            {isActive ? (t("contracts.active") || "Active") : (t("contracts.expired") || "Expired")}
+                            {isActive ? (t("installments.active") || "Active") : (t("installments.expired") || "Expired")}
                           </span>
                           <span className="text-xs text-muted-foreground">
-                            {t("contracts.started") || "Started"} {new Date(contract.startDate).toLocaleDateString(dateLocale, { month: "short", day: "numeric", year: "numeric" })}
+                            {t("installments.started") || "Started"} {new Date(installment.startDate).toLocaleDateString(dateLocale, { month: "short", day: "numeric", year: "numeric" })}
                           </span>
                         </div>
                         <Link
-                          href="/dashboard/contracts"
+                          href="/dashboard/installments"
                           className="text-xs text-[#007AFF] hover:underline"
                         >
-                          {t("contracts.view") || "View"} →
+                          {t("installments.view") || "View"} →
                         </Link>
                       </div>
 
                       <div className="flex flex-wrap gap-x-4 gap-y-1">
-                        {contract.totalAmount && (
+                        {installment.totalAmount && (
                           <span className="text-xs text-muted-foreground">
-                            {t("contracts.total") || "Total"}: <span className="font-semibold text-foreground">{contract.totalAmount.toLocaleString()} {t("common.currency")}</span>
+                            {t("installments.total") || "Total"}: <span className="font-semibold text-foreground">{installment.totalAmount.toLocaleString()} {t("common.currency")}</span>
                           </span>
                         )}
-                        {contract.costPerVisit && (
+                        {installment.costPerVisit && (
                           <span className="text-xs text-muted-foreground">
-                            {t("contracts.costPerVisitShort") || "Per visit"}: <span className="font-semibold text-foreground">{contract.costPerVisit.toLocaleString()} {t("common.currency")}</span>
+                            {t("installments.costPerVisitShort") || "Per visit"}: <span className="font-semibold text-foreground">{installment.costPerVisit.toLocaleString()} {t("common.currency")}</span>
                           </span>
                         )}
                       </div>
 
                       {/* Visit progress */}
-                      {contract.numVisits > 0 && (
+                      {installment.numVisits > 0 && (
                         <div className="space-y-1.5">
                           <div className="flex items-center justify-between text-xs">
                             <span className="text-muted-foreground flex items-center gap-1">
                               <Users className="w-3 h-3" />
-                              {contract.completedVisits ?? 0} / {contract.numVisits} {t("contracts.visitsText") || "visits"}
+                              {installment.completedVisits ?? 0} / {installment.numVisits} {t("installments.visitsText") || "visits"}
                             </span>
                             <span className="text-muted-foreground">
-                              {contract.paidVisits ?? 0} {t("contracts.paid") || "paid"} · {(contract.completedVisits ?? 0) - (contract.paidVisits ?? 0)} {t("contracts.unpaid") || "unpaid"}
+                              {installment.paidVisits ?? 0} {t("installments.paid") || "paid"} · {(installment.completedVisits ?? 0) - (installment.paidVisits ?? 0)} {t("installments.unpaid") || "unpaid"}
                             </span>
                           </div>
                           <div className="h-1.5 bg-muted/40 rounded-full overflow-hidden">
@@ -255,25 +255,25 @@ export default function PatientProfilePage() {
                         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/8 border border-red-500/20">
                           <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
                           <p className="text-xs font-semibold text-red-500">
-                            {t("contracts.unpaidBalance") || "Unpaid balance"}: {contract.unpaidBalance.toLocaleString()} {t("common.currency")}
+                            {t("installments.unpaidBalance") || "Unpaid balance"}: {installment.unpaidBalance.toLocaleString()} {t("common.currency")}
                           </p>
                         </div>
                       )}
 
                       {/* Next visit */}
-                      {isActive && contract.nextVisitDate && (
+                      {isActive && installment.nextVisitDate && (
                         <div className="flex items-center gap-2 text-xs">
                           <CalendarIcon className="w-3 h-3 text-[#007AFF]" />
-                          <span className="text-muted-foreground">{t("contracts.nextVisit") || "Next visit"}:</span>
+                          <span className="text-muted-foreground">{t("installments.nextVisit") || "Next visit"}:</span>
                           <span className="font-semibold text-[#007AFF]">
-                            {new Date(contract.nextVisitDate).toLocaleDateString(dateLocale, { weekday: "short", month: "short", day: "numeric" })}
+                            {new Date(installment.nextVisitDate).toLocaleDateString(dateLocale, { weekday: "short", month: "short", day: "numeric" })}
                           </span>
                         </div>
                       )}
 
                       {/* Notes */}
-                      {contract.notes && (
-                        <p className="text-xs text-muted-foreground leading-relaxed border-t border-border pt-2">{contract.notes}</p>
+                      {installment.notes && (
+                        <p className="text-xs text-muted-foreground leading-relaxed border-t border-border pt-2">{installment.notes}</p>
                       )}
                     </div>
                   );
@@ -334,9 +334,9 @@ export default function PatientProfilePage() {
                         <span className="text-[9px] font-bold uppercase tracking-wider bg-[#007AFF]/10 text-[#007AFF] border border-[#007AFF]/20 px-1.5 py-0.5 rounded-full">
                           {t("dashboard.online")}
                         </span>
-                      ) : visit.source === "contract" ? (
+                      ) : visit.source === "installment" ? (
                         <span className="text-[9px] font-bold uppercase tracking-wider bg-purple-500/10 text-purple-500 border border-purple-500/20 px-1.5 py-0.5 rounded-full">
-                          {t("dashboard.contract")}
+                          {t("dashboard.installment")}
                         </span>
                       ) : visit.source === "follow-up" ? (
                         <span className="text-[9px] font-bold uppercase tracking-wider bg-[#FF9500]/10 text-[#FF9500] border border-[#FF9500]/20 px-1.5 py-0.5 rounded-full">
@@ -367,7 +367,7 @@ export default function PatientProfilePage() {
                             setCompletionTarget({
                               visitId: visit._id as Id<"visits">,
                               visitDate: visit.date,
-                              contractId: visit.contractId,
+                              installmentId: visit.installmentId,
                             })
                           }
                           className="flex items-center gap-1.5 text-[11px] text-muted-foreground border border-border px-2.5 py-1 rounded-lg hover:border-[#007AFF]/40 hover:text-[#007AFF] transition-colors"
@@ -381,7 +381,7 @@ export default function PatientProfilePage() {
 
                   {visit.reasonForVisit && (
                     <p className="text-sm font-medium">
-                      {visit.reasonForVisit === "Contract visit" ? (t("stats.sourceContracts") || "Contract Visit") : visit.reasonForVisit}
+                      {visit.reasonForVisit === "installment visit" ? (t("stats.sourceinstallments") || "installment Visit") : visit.reasonForVisit}
                     </p>
                   )}
 
@@ -476,7 +476,7 @@ export default function PatientProfilePage() {
           )}
         </div>
 
-        {/* Contracts section moved to top */}
+        {/* installments section moved to top */}
       </div>
 
       {/* Drawers */}
@@ -514,7 +514,7 @@ export default function PatientProfilePage() {
           patientId={patientId}
           patientName={patient.name}
           patientAge={patient.age}
-          contractId={completionTarget.contractId as Id<"contracts"> | undefined}
+          installmentId={completionTarget.installmentId as Id<"installments"> | undefined}
           onComplete={() => setCompletionTarget(null)}
         />
       )}

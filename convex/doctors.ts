@@ -366,21 +366,21 @@ export const getDoctorAnalytics = query({
 
     const completed = allAppointments.filter((a) => a.status === "completed");
 
-    const allContracts = await ctx.db
-      .query("contracts")
+    const allinstallments = await ctx.db
+      .query("installments")
       .withIndex("by_doctor", (q) => q.eq("doctorId", args.targetUserId))
       .take(1000);
-    const contractMap = new Map<string, any>(allContracts.map(c => [c._id.toString(), c]));
+    const installmentMap = new Map<string, any>(allinstallments.map(c => [c._id.toString(), c]));
 
     const fee = doctor.consultationFee ?? 0;
     
     function getVisitRevenue(a: any) {
       if (a.status !== "completed") return 0;
       if (a.source === "follow-up") return 0;
-      if (a.source === "contract") {
+      if (a.source === "installment") {
         if (!a.isPaid) return 0;
-        if (a.contractId) {
-          const c = contractMap.get(a.contractId.toString());
+        if (a.installmentId) {
+          const c = installmentMap.get(a.installmentId.toString());
           return c?.costPerVisit ?? 0;
         }
         return 0;
@@ -491,20 +491,20 @@ export const getRevenueData = query({
       )
       .take(5000);
 
-    const allContracts = await ctx.db
-      .query("contracts")
+    const allinstallments = await ctx.db
+      .query("installments")
       .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
       .take(1000);
 
-    const contractMap = new Map<string, any>(allContracts.map(c => [c._id.toString(), c]));
+    const installmentMap = new Map<string, any>(allinstallments.map(c => [c._id.toString(), c]));
 
     function getVisitRevenue(a: any) {
       if (a.status !== "completed") return 0;
       if (a.source === "follow-up") return 0;
-      if (a.source === "contract") {
+      if (a.source === "installment") {
         if (!a.isPaid) return 0;
-        if (a.contractId) {
-          const c = contractMap.get(a.contractId.toString());
+        if (a.installmentId) {
+          const c = installmentMap.get(a.installmentId.toString());
           return c?.costPerVisit ?? 0;
         }
         return 0;
@@ -537,8 +537,8 @@ export const getRevenueData = query({
       }
     });
 
-    // Add contract down payments
-    allContracts.forEach((c) => {
+    // Add installment down payments
+    allinstallments.forEach((c) => {
       const day = startOfDay(c.createdAt);
       if (dayMap.has(day)) {
         const dp = c.downPaymentType === "percentage"
@@ -578,8 +578,8 @@ export const getRevenueData = query({
       dowTotals[dow] += getVisitRevenue(a);
       dowCounts[dow]++;
     });
-    // Also include all time contract down payments for total all time calculation
-    const allTimeContractDownPayments = allContracts.reduce((sum, c) => {
+    // Also include all time installment down payments for total all time calculation
+    const allTimeinstallmentDownPayments = allinstallments.reduce((sum, c) => {
       return sum + (c.downPaymentType === "percentage"
         ? ((c.totalAmount ?? 0) * ((c.downPayment ?? 0) / 100))
         : (c.downPayment ?? 0));
@@ -624,13 +624,13 @@ export const getRevenueData = query({
       pctChange,
       bestDow,
       consultationFee: fee,
-      totalAllTime: totalAllTimeVisits + allTimeContractDownPayments,
+      totalAllTime: totalAllTimeVisits + allTimeinstallmentDownPayments,
     };
   },
 });
 
 // ─── Unified Stats Aggregation (Eliminates subscription explosion) ───────────
-// Previously the stats page subscribed to listAppointments + listContracts +
+// Previously the stats page subscribed to listAppointments + listinstallments +
 // getRevenueData and computed everything in JS (3 WebSocket subscriptions,
 // ~200+ records each). This single query computes it ALL server-side.
 
@@ -665,21 +665,21 @@ export const getStatsAggregated = query({
       .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
       .take(10000);
 
-    const allContracts = await ctx.db
-      .query("contracts")
+    const allinstallments = await ctx.db
+      .query("installments")
       .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
       .take(1000);
 
-    const contractMap = new Map<string, any>(allContracts.map(c => [c._id.toString(), c]));
+    const installmentMap = new Map<string, any>(allinstallments.map(c => [c._id.toString(), c]));
     const fee = user.consultationFee ?? 0;
 
     function getVisitRevenue(a: any) {
       if (a.status !== "completed") return 0;
       if (a.source === "follow-up") return 0;
-      if (a.source === "contract") {
+      if (a.source === "installment") {
         if (!a.isPaid) return 0;
-        if (a.contractId) {
-          const c = contractMap.get(a.contractId.toString());
+        if (a.installmentId) {
+          const c = installmentMap.get(a.installmentId.toString());
           return c?.costPerVisit ?? 0;
         }
         return 0;
@@ -748,22 +748,22 @@ export const getStatsAggregated = query({
     const workingDays = days.filter((d) => d.total > 0).length;
     const avgVisitsPerDay = workingDays > 0 ? Math.round((thisMonth / Math.max(workingDays, 1)) * 10) / 10 : 0;
 
-    // ── Contract stats ──
-    const activeContracts = allContracts.filter((c) => c.status === "active");
-    const totalContractedValue = allContracts.reduce((s, c) => s + (c.totalAmount ?? 0), 0);
-    const totalCollected = allContracts.reduce((s, c) => {
+    // ── installment stats ──
+    const activeinstallments = allinstallments.filter((c) => c.status === "active");
+    const totalinstallmentedValue = allinstallments.reduce((s, c) => s + (c.totalAmount ?? 0), 0);
+    const totalCollected = allinstallments.reduce((s, c) => {
       const dp = c.downPaymentType === "percentage"
         ? ((c.totalAmount ?? 0) * ((c.downPayment ?? 0) / 100))
         : (c.downPayment ?? 0);
       return s + dp + (c.paidVisits ?? 0) * (c.costPerVisit ?? 0);
     }, 0);
-    const outstanding = allContracts.reduce((s, c) => s + (c.unpaidBalance ?? 0), 0);
-    const contractVisitsThisMonth = completed.filter(
-      (a) => a.source === "contract" && a.date >= monthStart
+    const outstanding = allinstallments.reduce((s, c) => s + (c.unpaidBalance ?? 0), 0);
+    const installmentVisitsThisMonth = completed.filter(
+      (a) => a.source === "installment" && a.date >= monthStart
     );
 
-    // Top active contracts (first 5)
-    const topContracts = activeContracts.slice(0, 5).map((c) => ({
+    // Top active installments (first 5)
+    const topinstallments = activeinstallments.slice(0, 5).map((c) => ({
       _id: c._id,
       patientName: c.patientName,
       completedVisits: c.completedVisits ?? 0,
@@ -799,14 +799,14 @@ export const getStatsAggregated = query({
       bestWeekStart,
       bestWeekCount,
       weekEndTs: bestWeekStart + 6 * DAY_MS,
-      // Contract stats
-      activeContractsCount: activeContracts.length,
-      expiredContractsCount: allContracts.length - activeContracts.length,
-      totalContractedValue,
+      // installment stats
+      activeinstallmentsCount: activeinstallments.length,
+      expiredinstallmentsCount: allinstallments.length - activeinstallments.length,
+      totalinstallmentedValue,
       totalCollected,
       outstanding,
-      contractVisitsThisMonthCount: contractVisitsThisMonth.length,
-      topContracts,
+      installmentVisitsThisMonthCount: installmentVisitsThisMonth.length,
+      topinstallments,
       // Fee
       consultationFee: fee,
     };

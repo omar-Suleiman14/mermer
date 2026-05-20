@@ -105,7 +105,7 @@ export const createVisit = mutation({
       v.union(
         v.literal("manual"),
         v.literal("online"),
-        v.literal("contract"),
+        v.literal("installment"),
         v.literal("follow-up")
       )
     ),
@@ -214,14 +214,14 @@ export const deleteVisit = mutation({
     const visit = await ctx.db.get(args.visitId);
     if (!visit || visit.doctorId !== user._id) throw new Error("Not found");
     
-    if (visit.contractId) {
-      const contract = await ctx.db.get(visit.contractId);
-      if (contract && visit.status === "completed") {
-        const costPerVisit = contract.costPerVisit ?? 0;
-        await ctx.db.patch(contract._id, {
-          completedVisits: Math.max(0, (contract.completedVisits ?? 0) - 1),
-          paidVisits: visit.isPaid ? Math.max(0, (contract.paidVisits ?? 0) - 1) : contract.paidVisits,
-          unpaidBalance: !visit.isPaid ? Math.max(0, (contract.unpaidBalance ?? 0) - costPerVisit) : contract.unpaidBalance,
+    if (visit.installmentId) {
+      const installment = await ctx.db.get(visit.installmentId);
+      if (installment && visit.status === "completed") {
+        const costPerVisit = installment.costPerVisit ?? 0;
+        await ctx.db.patch(installment._id, {
+          completedVisits: Math.max(0, (installment.completedVisits ?? 0) - 1),
+          paidVisits: visit.isPaid ? Math.max(0, (installment.paidVisits ?? 0) - 1) : installment.paidVisits,
+          unpaidBalance: !visit.isPaid ? Math.max(0, (installment.unpaidBalance ?? 0) - costPerVisit) : installment.unpaidBalance,
         });
       }
     }
@@ -274,17 +274,17 @@ export const updateVisit = mutation({
       patch.isPaid = args.updates.isPaid;
     }
 
-    // Handle contract balance updates if isPaid changed
-    if (visit.contractId && visit.status === "completed" && args.updates.isPaid !== undefined && args.updates.isPaid !== visit.isPaid) {
-      const contract = await ctx.db.get(visit.contractId);
-      if (contract) {
-        const costPerVisit = contract.costPerVisit ?? 0;
+    // Handle installment balance updates if isPaid changed
+    if (visit.installmentId && visit.status === "completed" && args.updates.isPaid !== undefined && args.updates.isPaid !== visit.isPaid) {
+      const installment = await ctx.db.get(visit.installmentId);
+      if (installment) {
+        const costPerVisit = installment.costPerVisit ?? 0;
         const paidVisitsDelta = args.updates.isPaid ? 1 : -1;
         const unpaidBalanceDelta = args.updates.isPaid ? -costPerVisit : costPerVisit;
         
-        await ctx.db.patch(contract._id, {
-          paidVisits: Math.max(0, (contract.paidVisits ?? 0) + paidVisitsDelta),
-          unpaidBalance: Math.max(0, (contract.unpaidBalance ?? 0) + unpaidBalanceDelta),
+        await ctx.db.patch(installment._id, {
+          paidVisits: Math.max(0, (installment.paidVisits ?? 0) + paidVisitsDelta),
+          unpaidBalance: Math.max(0, (installment.unpaidBalance ?? 0) + unpaidBalanceDelta),
         });
       }
     }

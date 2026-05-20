@@ -41,22 +41,22 @@ function nextVisitDate(
 
 // ─── Queries ─────────────────────────────────────────────────────────────────
 
-export const listContracts = query({
+export const listinstallments = query({
   args: { clerkId: v.string() },
   handler: async (ctx, args) => {
     const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return [];
 
-    const contracts = await ctx.db
-      .query("contracts")
+    const installments = await ctx.db
+      .query("installments")
       .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
       .order("desc")
       .take(200);
 
     return await Promise.all(
-      contracts.map(async (c) => {
-        const fileUrl = c.contractFileId
-          ? await ctx.storage.getUrl(c.contractFileId)
+      installments.map(async (c) => {
+        const fileUrl = c.installmentFileId
+          ? await ctx.storage.getUrl(c.installmentFileId)
           : null;
         const completed = c.completedVisits ?? 0;
         const total = c.numVisits ?? 0;
@@ -69,42 +69,42 @@ export const listContracts = query({
   },
 });
 
-export const getContract = query({
-  args: { clerkId: v.string(), contractId: v.id("contracts") },
+export const getinstallment = query({
+  args: { clerkId: v.string(), installmentId: v.id("installments") },
   handler: async (ctx, args) => {
     const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return null;
 
-    const contract = await ctx.db.get(args.contractId);
-    if (!contract || contract.doctorId !== user._id) return null;
+    const installment = await ctx.db.get(args.installmentId);
+    if (!installment || installment.doctorId !== user._id) return null;
 
-    const fileUrl = contract.contractFileId
-      ? await ctx.storage.getUrl(contract.contractFileId)
+    const fileUrl = installment.installmentFileId
+      ? await ctx.storage.getUrl(installment.installmentFileId)
       : null;
 
-    return { ...contract, fileUrl };
+    return { ...installment, fileUrl };
   },
 });
 
-export const listContractsByPatient = query({
+export const listinstallmentsByPatient = query({
   args: { clerkId: v.string(), patientId: v.id("patients") },
   handler: async (ctx, args) => {
     const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return [];
 
-    const contracts = await ctx.db
-      .query("contracts")
+    const installments = await ctx.db
+      .query("installments")
       .withIndex("by_patient", (q) => q.eq("patientId", args.patientId))
       .order("desc")
       .take(50);
 
-    return contracts.filter((c) => c.doctorId === user._id);
+    return installments.filter((c) => c.doctorId === user._id);
   },
 });
 
 // ─── Mutations ────────────────────────────────────────────────────────────────
 
-export const createContract = mutation({
+export const createinstallment = mutation({
   args: {
     clerkId: v.string(),
     patientId: v.id("patients"),
@@ -122,8 +122,8 @@ export const createContract = mutation({
     )),
     customIntervalDays: v.optional(v.number()),
     startDate: v.number(),
-    contractFileId: v.optional(v.id("_storage")),
-    contractFileName: v.optional(v.string()),
+    installmentFileId: v.optional(v.id("_storage")),
+    installmentFileName: v.optional(v.string()),
     notes: v.optional(v.string()),
     // Explicit visit schedule — each entry is a timestamp (date + time combined)
     visitSchedules: v.optional(v.array(v.number())),
@@ -165,7 +165,7 @@ export const createContract = mutation({
       ? schedules.find((s) => s > Date.now()) ?? schedules[0]
       : undefined;
 
-    const id = await ctx.db.insert("contracts", {
+    const id = await ctx.db.insert("installments", {
       doctorId: user._id,
       patientId: args.patientId,
       patientName: patient.name,
@@ -180,15 +180,15 @@ export const createContract = mutation({
       startDate: args.startDate,
       endDate,
       nextVisitDate: nextVisit,
-      contractFileId: args.contractFileId,
-      contractFileName: args.contractFileName,
+      installmentFileId: args.installmentFileId,
+      installmentFileName: args.installmentFileName,
       notes: args.notes,
       createdAt: Date.now(),
     });
 
     // ── Create visits from explicit schedules ──────────────────────────────
     const createdAt = Date.now();
-    const label = `Contract visit`;
+    const label = `installment visit`;
 
     if (schedules.length > 0) {
       // FIX: Use Promise.all instead of sequential loop for visit creation
@@ -201,9 +201,9 @@ export const createContract = mutation({
             patientPhone: patient.phone,
             patientAge: patient.age,
             date: visitDate,
-            source: "contract",
+            source: "installment",
             status: "confirmed",
-            contractId: id,
+            installmentId: id,
             reasonForVisit: label,
             createdAt,
           })
@@ -215,10 +215,10 @@ export const createContract = mutation({
   },
 });
 
-export const updateContract = mutation({
+export const updateinstallment = mutation({
   args: {
     clerkId: v.string(),
-    contractId: v.id("contracts"),
+    installmentId: v.id("installments"),
     updates: v.object({
       status: v.optional(
         v.union(v.literal("active"), v.literal("expired"))
@@ -238,8 +238,8 @@ export const updateContract = mutation({
       )),
       customIntervalDays: v.optional(v.number()),
       durationDays: v.optional(v.number()),
-      contractFileId: v.optional(v.id("_storage")),
-      contractFileName: v.optional(v.string()),
+      installmentFileId: v.optional(v.id("_storage")),
+      installmentFileName: v.optional(v.string()),
       notes: v.optional(v.string()),
       nextVisitDate: v.optional(v.number()),
     }),
@@ -247,52 +247,52 @@ export const updateContract = mutation({
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
 
-    const contract = await ctx.db.get(args.contractId);
-    if (!contract || contract.doctorId !== user._id)
+    const installment = await ctx.db.get(args.installmentId);
+    if (!installment || installment.doctorId !== user._id)
       throw new Error("Not authorized");
 
-    await ctx.db.patch(args.contractId, args.updates);
+    await ctx.db.patch(args.installmentId, args.updates);
   },
 });
 
 // FIX #4: Use Promise.all() instead of sequential loop for visit deletion
-export const deleteContract = mutation({
-  args: { clerkId: v.string(), contractId: v.id("contracts") },
+export const deleteinstallment = mutation({
+  args: { clerkId: v.string(), installmentId: v.id("installments") },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
 
-    const contract = await ctx.db.get(args.contractId);
-    if (!contract || contract.doctorId !== user._id)
+    const installment = await ctx.db.get(args.installmentId);
+    if (!installment || installment.doctorId !== user._id)
       throw new Error("Not authorized");
 
-    // Parallel deletion of all auto-generated visits for this contract
-    const contractVisits = await ctx.db
+    // Parallel deletion of all auto-generated visits for this installment
+    const installmentVisits = await ctx.db
       .query("visits")
-      .withIndex("by_contract", (q) => q.eq("contractId", args.contractId))
+      .withIndex("by_installment", (q) => q.eq("installmentId", args.installmentId))
       .take(1000);
 
-    await Promise.all(contractVisits.map((v) => ctx.db.delete(v._id)));
+    await Promise.all(installmentVisits.map((v) => ctx.db.delete(v._id)));
 
-    await ctx.db.delete(args.contractId);
+    await ctx.db.delete(args.installmentId);
   },
 });
 
-export const updateContractDefaults = mutation({
+export const updateinstallmentDefaults = mutation({
   args: {
     clerkId: v.string(),
-    contractDefaultDownPayment: v.optional(v.number()),
-    contractDefaultDownPaymentType: v.optional(
+    installmentDefaultDownPayment: v.optional(v.number()),
+    installmentDefaultDownPaymentType: v.optional(
       v.union(v.literal("fixed"), v.literal("percentage"))
     ),
-    contractDefaultCostPerVisit: v.optional(v.number()),
+    installmentDefaultCostPerVisit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
     // Explicitly pick allowed fields to prevent schema bypass
     const patch: any = {};
-    if (args.contractDefaultDownPayment !== undefined) patch.contractDefaultDownPayment = args.contractDefaultDownPayment;
-    if (args.contractDefaultDownPaymentType !== undefined) patch.contractDefaultDownPaymentType = args.contractDefaultDownPaymentType;
-    if (args.contractDefaultCostPerVisit !== undefined) patch.contractDefaultCostPerVisit = args.contractDefaultCostPerVisit;
+    if (args.installmentDefaultDownPayment !== undefined) patch.installmentDefaultDownPayment = args.installmentDefaultDownPayment;
+    if (args.installmentDefaultDownPaymentType !== undefined) patch.installmentDefaultDownPaymentType = args.installmentDefaultDownPaymentType;
+    if (args.installmentDefaultCostPerVisit !== undefined) patch.installmentDefaultCostPerVisit = args.installmentDefaultCostPerVisit;
     await ctx.db.patch(user._id, patch);
   },
 });
@@ -300,32 +300,32 @@ export const updateContractDefaults = mutation({
 export const waiveUnpaidBalance = mutation({
   args: {
     clerkId: v.string(),
-    contractId: v.id("contracts"),
+    installmentId: v.id("installments"),
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
 
-    const contract = await ctx.db.get(args.contractId);
-    if (!contract || contract.doctorId !== user._id) throw new Error("Contract not found");
+    const installment = await ctx.db.get(args.installmentId);
+    if (!installment || installment.doctorId !== user._id) throw new Error("installment not found");
 
     // Waive: zero out unpaid balance, treat all visits as paid
-    const completedVisits = contract.completedVisits ?? 0;
-    const wasClosed = completedVisits >= (contract.numVisits ?? 0);
-    await ctx.db.patch(args.contractId, {
+    const completedVisits = installment.completedVisits ?? 0;
+    const wasClosed = completedVisits >= (installment.numVisits ?? 0);
+    await ctx.db.patch(args.installmentId, {
       unpaidBalance: 0,
       paidVisits: completedVisits,
-      status: wasClosed ? "expired" : contract.status,
+      status: wasClosed ? "expired" : installment.status,
     });
   },
 });
 
-// ─── Complete a contract visit + schedule next one ────────────────────────────
+// ─── Complete a installment visit + schedule next one ────────────────────────────
 
-export const completeContractVisit = mutation({
+export const completeinstallmentVisit = mutation({
   args: {
     clerkId: v.string(),
     visitId: v.id("visits"),
-    contractId: v.id("contracts"),
+    installmentId: v.id("installments"),
     isPaid: v.boolean(),
     notes: v.optional(v.string()),
     prescriptionImageId: v.optional(v.id("_storage")),
@@ -339,8 +339,8 @@ export const completeContractVisit = mutation({
     const visit = await ctx.db.get(args.visitId);
     if (!visit || visit.doctorId !== user._id) throw new Error("Visit not found");
 
-    const contract = await ctx.db.get(args.contractId);
-    if (!contract || contract.doctorId !== user._id) throw new Error("Contract not found");
+    const installment = await ctx.db.get(args.installmentId);
+    if (!installment || installment.doctorId !== user._id) throw new Error("installment not found");
 
     // Mark current visit completed
     await ctx.db.patch(args.visitId, {
@@ -351,16 +351,16 @@ export const completeContractVisit = mutation({
       documentIds: args.documentIds,
     });
 
-    // Update contract payment counters
-    const costPerVisit = contract.costPerVisit ?? 0;
-    const completedVisits = (contract.completedVisits ?? 0) + 1;
-    const paidVisits = (contract.paidVisits ?? 0) + (args.isPaid ? 1 : 0);
-    const unpaidBalance = (contract.unpaidBalance ?? 0) + (args.isPaid ? 0 : costPerVisit);
-    const numVisits = contract.numVisits ?? 0;
+    // Update installment payment counters
+    const costPerVisit = installment.costPerVisit ?? 0;
+    const completedVisits = (installment.completedVisits ?? 0) + 1;
+    const paidVisits = (installment.paidVisits ?? 0) + (args.isPaid ? 1 : 0);
+    const unpaidBalance = (installment.unpaidBalance ?? 0) + (args.isPaid ? 0 : costPerVisit);
+    const numVisits = installment.numVisits ?? 0;
 
-    // Check if contract is done — all visits completed AND no unpaid balance
+    // Check if installment is done — all visits completed AND no unpaid balance
     const allVisitsDone = numVisits > 0 && completedVisits >= numVisits;
-    const isContractDone = allVisitsDone && unpaidBalance === 0;
+    const isinstallmentDone = allVisitsDone && unpaidBalance === 0;
 
     // Schedule next visit if provided and there are remaining visits
     let nextVisitId: string | undefined;
@@ -373,48 +373,48 @@ export const completeContractVisit = mutation({
         patientPhone: visit.patientPhone ?? patient?.phone,
         patientAge: visit.patientAge ?? patient?.age,
         date: args.nextVisitDate,
-        source: "contract",
+        source: "installment",
         status: "confirmed",
-        contractId: args.contractId,
-        reasonForVisit: "Contract visit",
+        installmentId: args.installmentId,
+        reasonForVisit: "installment visit",
         createdAt: Date.now(),
       });
     }
 
-    await ctx.db.patch(args.contractId, {
+    await ctx.db.patch(args.installmentId, {
       completedVisits,
       paidVisits,
       unpaidBalance,
       nextVisitDate: args.nextVisitDate ?? undefined,
-      status: isContractDone ? "expired" : contract.status,
+      status: isinstallmentDone ? "expired" : installment.status,
     });
 
-    return { nextVisitId, isContractDone, unpaidBalance };
+    return { nextVisitId, isinstallmentDone, unpaidBalance };
   },
 });
 
-// ─── Get contract visit stats ─────────────────────────────────────────────────
+// ─── Get installment visit stats ─────────────────────────────────────────────────
 
-export const getContractStats = query({
-  args: { clerkId: v.string(), contractId: v.id("contracts") },
+export const getinstallmentstats = query({
+  args: { clerkId: v.string(), installmentId: v.id("installments") },
   handler: async (ctx, args) => {
     const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return null;
 
-    const contract = await ctx.db.get(args.contractId);
-    if (!contract || contract.doctorId !== user._id) return null;
+    const installment = await ctx.db.get(args.installmentId);
+    if (!installment || installment.doctorId !== user._id) return null;
 
     const visits = await ctx.db
       .query("visits")
-      .withIndex("by_contract", (q) => q.eq("contractId", args.contractId))
+      .withIndex("by_installment", (q) => q.eq("installmentId", args.installmentId))
       .take(1000);
 
     const completed = visits.filter((v) => v.status === "completed").length;
     const paid = visits.filter((v) => v.status === "completed" && v.isPaid).length;
     const unpaid = visits.filter((v) => v.status === "completed" && !v.isPaid).length;
-    const total = contract.numVisits ?? visits.length;
+    const total = installment.numVisits ?? visits.length;
     const remaining = Math.max(0, total - completed);
-    const costPerVisit = contract.costPerVisit ?? 0;
+    const costPerVisit = installment.costPerVisit ?? 0;
 
     return {
       total,
@@ -422,9 +422,9 @@ export const getContractStats = query({
       remaining,
       paid,
       unpaid,
-      unpaidBalance: contract.unpaidBalance ?? unpaid * costPerVisit,
+      unpaidBalance: installment.unpaidBalance ?? unpaid * costPerVisit,
       costPerVisit,
-      totalAmount: contract.totalAmount,
+      totalAmount: installment.totalAmount,
     };
   },
 });

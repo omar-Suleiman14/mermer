@@ -327,7 +327,7 @@ export default function SettingsPage() {
               <div className="flex items-center gap-1 flex-1 justify-end" dir="ltr">
                 <span className="text-muted-foreground text-sm">+20</span>
                 <input id="settings-phone" name="phone" type="tel" value={phone.replace(/^\+?20/, "").replace(/^0/, "")}
-                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))} placeholder="1142529590"
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))} placeholder="1023456789"
                   className={`${inputClass} flex-none! w-30 sm:w-37.5 text-left!`} />
               </div>
             </div>

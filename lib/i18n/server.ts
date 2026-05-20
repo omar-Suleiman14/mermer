@@ -3,7 +3,7 @@ import { translations, Lang } from "./index";
 
 export async function getServerI18n() {
   const cookieStore = await cookies();
-  const langCookie = cookieStore.get("marmer_lang")?.value;
+  const langCookie = cookieStore.get("mermer_lang")?.value;
   const lang: Lang = (langCookie === "en" || langCookie === "ar") ? langCookie : "ar";
 
   const t = (key: string) => {

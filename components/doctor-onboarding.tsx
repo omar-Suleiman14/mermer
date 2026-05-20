@@ -280,7 +280,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
                 <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("onboarding.whatsappPhone")} *</label>
                 <div className="flex gap-2">
                   <span className="flex items-center px-3 bg-muted/60 border border-border rounded-2xl text-sm text-muted-foreground font-mono shrink-0" dir="ltr">+20</span>
-                  <input value={phone.replace(/^\+?20/, "").replace(/^0/, "")} onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))} placeholder="1142529590" type="tel" className={`flex-1 ${inputClass} text-left!`} dir="ltr" />
+                  <input value={phone.replace(/^\+?20/, "").replace(/^0/, "")} onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))} placeholder="1023456789" type="tel" className={`flex-1 ${inputClass} text-left!`} dir="ltr" />
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">{t("onboarding.phoneDesc")}</p>
               </div>
