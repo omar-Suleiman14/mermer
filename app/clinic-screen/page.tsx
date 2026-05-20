@@ -320,11 +320,11 @@ export default function ClinicScreen() {
                 {currentUser.clinicName}
               </h2>
 
-              <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tighter text-foreground tabular-nums whitespace-nowrap">
+              <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold tracking-tighter text-foreground whitespace-nowrap" style={{ fontVariantNumeric: 'tabular-nums', minWidth: '7ch', textAlign: 'center' }}>
                 {timeString}
               </h1>
 
-              <p className="mt-6 text-xl md:text-2xl lg:text-3xl font-medium text-muted-foreground">
+              <p className="mt-6 text-xl md:text-2xl lg:text-3xl font-medium text-muted-foreground" style={{ minWidth: '14ch', textAlign: 'center' }}>
                 {dateString}
               </p>
 
