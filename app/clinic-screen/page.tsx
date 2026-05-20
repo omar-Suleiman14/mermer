@@ -298,7 +298,7 @@ export default function ClinicScreen() {
               fill="none"
               stroke="currentColor"
               strokeWidth="4"
-              className="text-muted/20"
+              className="text-slate-200 dark:text-zinc-800"
             />
             <motion.path
               d={rectPath}
@@ -321,7 +321,7 @@ export default function ClinicScreen() {
               </h2>
 
               <div className="w-full flex items-center justify-center" style={{ height: '1.2em', fontSize: 'clamp(2.5rem, 6vw, 4.5rem)' }}>
-                <div className="flex items-baseline justify-center" dir={lang === "ar" ? "rtl" : "ltr"}>
+                <div className="flex items-baseline justify-center" dir="ltr">
                   <span className="font-bold text-foreground text-center inline-block w-[1.2em]">{hStr}</span>
                   <span className="font-bold text-foreground text-center inline-block w-[0.4em] opacity-80">:</span>
                   <span className="font-bold text-foreground text-center inline-block w-[1.2em]">{mStr}</span>
@@ -368,7 +368,7 @@ export default function ClinicScreen() {
                 {lang === "ar" ? "امسح الرمز لترك تقييمك" : "Scan to leave feedback"}
               </p>
 
-              <div className="bg-white p-6 md:p-8 rounded-[2rem] border border-border/50">
+              <div className="bg-white p-6 md:p-8 rounded-[2rem] border border-slate-200 dark:border-zinc-800">
                 {qrSrc ? (
                   <img
                     src={qrSrc}

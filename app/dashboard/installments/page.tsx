@@ -183,7 +183,7 @@ function VisitSlotPicker({
   );
 }
 
-function installmentForm({
+function InstallmentForm({
   clerkId,
   onClose,
 }: {
@@ -526,7 +526,7 @@ function installmentForm({
 
 // ── installment View Drawer (read-only) ──────────────────────────────────────
 
-function installmentViewDrawer({
+function InstallmentViewDrawer({
   installment,
   clerkId,
   onClose,
@@ -950,14 +950,14 @@ export default function installmentsPage() {
       {/* Create modal */}
       <AnimatePresence>
         {createOpen && (
-          <installmentForm clerkId={clerkId} onClose={() => setCreateOpen(false)} />
+          <InstallmentForm clerkId={clerkId} onClose={() => setCreateOpen(false)} />
         )}
       </AnimatePresence>
 
       {/* View drawer */}
       <AnimatePresence>
         {viewinstallment && (
-          <installmentViewDrawer
+          <InstallmentViewDrawer
             installment={viewinstallment}
             clerkId={clerkId}
             onClose={() => setViewinstallment(null)}

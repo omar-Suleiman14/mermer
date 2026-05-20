@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Cairo, Playfair_Display, Inter, Outfit } from "next/font/google";
+import { Cairo, Inter } from "next/font/google";
 import "./globals.css";
 import ConvexClientProvider from "@/components/ConvexClientProvider";
 import { ClerkProvider } from "@clerk/nextjs";
@@ -17,19 +17,7 @@ const inter = Inter({
   display: "swap",
 });
 
-const outfit = Outfit({
-  variable: "--font-outfit",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  display: "swap",
-});
 
-const playfair = Playfair_Display({
-  variable: "--font-playfair",
-  subsets: ["latin"],
-  style: ["normal", "italic"],
-  display: "swap",
-});
 
 const cairo = Cairo({
   variable: "--font-cairo",
@@ -58,7 +46,7 @@ export default async function RootLayout({
     <html lang={lang} dir={dir} suppressHydrationWarning style={{ fontSize: "106%" }}>
       <body
         className={cn(
-          lang === "ar" ? cairo.variable : cn(inter.variable, playfair.variable, outfit.variable),
+          lang === "ar" ? cairo.variable : inter.variable,
           "antialiased"
         )}
         suppressHydrationWarning

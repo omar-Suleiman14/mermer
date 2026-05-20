@@ -131,7 +131,7 @@ const SortableApptItem = memo(function SortableApptItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-4 p-4 rounded-2xl border transition-all ${
+      className={`flex items-center gap-2 sm:gap-4 p-3 sm:p-4 rounded-2xl border transition-all ${
         !isDone ? "hover:shadow-md" : ""
       } ${
         isDragging ? "opacity-90 shadow-2xl scale-[1.02] bg-background border-[#007AFF]/40" : 
@@ -148,7 +148,7 @@ const SortableApptItem = memo(function SortableApptItem({
         </div>
       )}
 
-      <div className="flex flex-col items-center w-14 shrink-0">
+      <div className="flex flex-col items-center w-12 sm:w-14 shrink-0">
         <Clock className="w-3 h-3 text-muted-foreground mb-0.5" />
         <span className="text-xs font-bold text-[#1a1916] dark:text-[#f0efea]">
           {formatTime(appt.date, lang === "ar" ? "ar-EG" : "en-US")}
@@ -173,9 +173,9 @@ const SortableApptItem = memo(function SortableApptItem({
               {appt.patientName}
             </Link>
           ) : (
-            <span className="font-semibold text-sm">
-              {appt.patientName}
-            </span>
+              <span className="font-semibold text-sm truncate">
+                {appt.patientName}
+              </span>
           )}
           {appt.source === "online" ? (
             <span className="text-[9px] font-bold uppercase tracking-wider bg-[#007AFF]/10 text-[#007AFF] border border-[#007AFF]/20 px-1.5 py-0.5 rounded-full">
@@ -208,7 +208,7 @@ const SortableApptItem = memo(function SortableApptItem({
         </Badge>
       ) : (
         <div className="flex items-center gap-1 shrink-0">
-          <div className="flex items-center gap-1 max-[500px]:hidden">
+          <div className="hidden sm:flex items-center gap-1">
             <button
               onClick={onComplete}
               className="p-2 rounded-full hover:bg-muted/80 text-muted-foreground hover:text-[#007AFF] transition-colors"
@@ -242,7 +242,7 @@ const SortableApptItem = memo(function SortableApptItem({
               </button>
             )}
           </div>
-          <div className="hidden max-[500px]:block">
+          <div className="block sm:hidden">
             <DropdownMenu dir={dir}>
               <DropdownMenuTrigger asChild>
                 <button className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted/80 text-muted-foreground transition-colors">
@@ -510,12 +510,17 @@ export default function DashboardPage() {
 
       {/* Today's Schedule */}
       <div className="bg-white dark:bg-[#1c1c1a] border border-black/5 dark:border-white/5 rounded-2xl shadow-sm overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/50">
-          <div className="flex items-center gap-2">
-            <Activity className="w-5 h-5 text-[#007AFF]" />
-            <h2 className="font-bold text-base">{t("dashboard.todaysVisits")}</h2>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 sm:px-6 py-4 border-b border-border/50 gap-4">
+          <div className="flex items-center justify-between w-full sm:w-auto">
+            <div className="flex items-center gap-2">
+              <Activity className="w-5 h-5 text-[#007AFF]" />
+              <h2 className="font-bold text-base">{t("dashboard.todaysVisits")}</h2>
+            </div>
+            <p className="text-xs text-muted-foreground block sm:hidden">
+              {formatFullDate(todayTs, lang === "ar" ? "ar-EG" : "en-US")}
+            </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
             <p className="text-xs text-muted-foreground hidden sm:block">
               {formatFullDate(todayTs, lang === "ar" ? "ar-EG" : "en-US")}
             </p>

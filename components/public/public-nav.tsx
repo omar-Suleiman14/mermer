@@ -39,10 +39,8 @@ export function PublicNav({ className, backHref, backLabel }: PublicNavProps) {
               {backLabel}
             </Link>
           ) : (
-            <Link href="/" className="flex items-center gap-2.5 shrink-0">
-              <span className="font-semibold text-[17px] tracking-tight">
-                {dir === "rtl" ? "مرمر" : "mermer"}
-              </span>
+            <Link href="/" className="flex items-center shrink-0">
+              <img src="/icon.svg" alt="mermer" className="h-6 w-auto" />
             </Link>
           )}
         </div>

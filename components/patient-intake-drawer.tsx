@@ -350,7 +350,7 @@ export function PatientIntakeDrawer({
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("drawer.phone")} *</label>
-              <div className="flex">
+              <div className="flex" dir="ltr">
                 <span className="flex items-center px-3 bg-muted/60 border border-border border-r-0 rounded-l-xl text-sm text-muted-foreground font-mono shrink-0">+20</span>
                 <input
                   type="tel"
@@ -406,7 +406,7 @@ export function PatientIntakeDrawer({
                           key={c}
                           type="button"
                           onClick={() => { toggleCondition(c); }}
-                          className={`w-full flex items-center gap-2 px-3 py-2 text-left text-sm transition-colors hover:bg-muted/40 ${selected ? "text-[#007AFF] font-medium" : ""}`}
+                          className={`w-full flex items-center gap-2 px-3 py-2 text-start text-sm transition-colors hover:bg-muted/40 ${selected ? "text-[#007AFF] font-medium" : ""}`}
                         >
                           {selected && <Check className="w-3.5 h-3.5 text-[#007AFF] shrink-0" />}
                           <span className={selected ? "" : "ml-5"}>{c}</span>
@@ -417,7 +417,7 @@ export function PatientIntakeDrawer({
                       <button
                         type="button"
                         onClick={addCustomCondition}
-                        className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-sm text-[#007AFF] font-medium hover:bg-[#007AFF]/5 border-t border-border transition-colors"
+                        className="w-full flex items-center gap-2 px-3 py-2.5 text-start text-sm text-[#007AFF] font-medium hover:bg-[#007AFF]/5 border-t border-border transition-colors"
                       >
                         <Plus className="w-3.5 h-3.5" />
                         Add &quot;{conditionSearch.trim()}&quot;
@@ -466,7 +466,7 @@ export function PatientIntakeDrawer({
                           </p>
                           <Popover open={calOpen} onOpenChange={setCalOpen}>
                             <PopoverTrigger asChild>
-                              <button type="button" className="w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border border-border rounded-xl hover:border-[#007AFF]/50 transition-colors text-left">
+                              <button type="button" className="w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border border-border rounded-xl hover:border-[#007AFF]/50 transition-colors text-start">
                                 <CalendarIcon className="w-4 h-4 text-muted-foreground shrink-0" />
                                 <span>
                                   {visitDate

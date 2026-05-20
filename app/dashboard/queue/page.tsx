@@ -156,7 +156,7 @@ const DraggableApptItem = memo(function DraggableApptItem({
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-3 px-4 py-3 rounded-xl border transition-all ${
+      className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 sm:py-3 rounded-xl border transition-all ${
         !isSelectedDayPast && !isDone ? "hover:shadow-md" : ""
       } ${
         isDone
@@ -175,7 +175,7 @@ const DraggableApptItem = memo(function DraggableApptItem({
         </div>
       )}
 
-      <span className="text-xs font-bold w-14 shrink-0 text-start">{formatTime(ts, lang)}</span>
+      <span className="text-xs font-bold w-16 shrink-0 text-start">{formatTime(ts, lang)}</span>
 
       <div className="w-8 h-8 rounded-full bg-[#007AFF]/10 flex items-center justify-center shrink-0">
         <span className="text-xs font-bold text-[#007AFF]">{initials}</span>
@@ -191,7 +191,7 @@ const DraggableApptItem = memo(function DraggableApptItem({
               {appt.patientName}
             </Link>
           ) : (
-            <span className="font-semibold text-sm">{appt.patientName}</span>
+            <span className="font-semibold text-sm truncate">{appt.patientName}</span>
           )}
           {appt.source === "online" ? (
             <span className="text-[9px] font-bold uppercase tracking-wider bg-[#007AFF]/10 text-[#007AFF] border border-[#007AFF]/20 px-1.5 py-0.5 rounded-full">
@@ -222,7 +222,7 @@ const DraggableApptItem = memo(function DraggableApptItem({
         </Badge>
       ) : (
         <div className="flex items-center gap-1 shrink-0">
-          <div className="flex items-center gap-1 max-[500px]:hidden">
+          <div className="hidden sm:flex items-center gap-1">
             {!isSelectedDayPast ? (
               <>
                 <button
@@ -262,7 +262,7 @@ const DraggableApptItem = memo(function DraggableApptItem({
               </Badge>
             )}
           </div>
-          <div className="hidden max-[500px]:block">
+          <div className="block sm:hidden">
             <DropdownMenu dir={dir}>
               <DropdownMenuTrigger asChild>
                 <button className="shrink-0 w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted/80 text-muted-foreground transition-colors">
@@ -650,7 +650,7 @@ export default function SchedulePage() {
           <div className="bg-white dark:bg-[#1c1c1a] border border-black/5 dark:border-white/5 rounded-2xl shadow-sm overflow-hidden">
 
             {/* Week strip */}
-            <div className="px-5 pt-5 pb-4 border-b border-border/50" ref={stripContainerRef}>
+            <div className="px-3 sm:px-5 pt-3 sm:pt-5 pb-3 sm:pb-4 border-b border-border/50" ref={stripContainerRef}>
               <div className="flex items-center gap-2">
                 {/* Back week */}
                 <button
@@ -710,7 +710,7 @@ export default function SchedulePage() {
                 </button>
               </div>
 
-              <div className="flex items-center justify-between mt-3">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mt-3 gap-2">
                 <div>
                   <span className="font-bold text-sm">
                     {isSelectedDayToday ? t("schedule.today") + " — " : ""}{formatFullDate(selectedDay, lang)}

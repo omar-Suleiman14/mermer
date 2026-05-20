@@ -417,9 +417,7 @@ export default async function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-4 gap-8">
             <div className="space-y-4">
-              <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
-                {dir === "rtl" ? "مرمر" : "mermer"}
-              </h3>
+              <img src="/icon.svg" alt="mermer" className="h-8 w-auto mb-4" />
               <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
                 {dir === "rtl" 
                   ? "منصة متكاملة لجمع وإدارة مراجعات المرضى للأطباء والعيادات بكفاءة وأمان كامل."

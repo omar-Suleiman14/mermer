@@ -261,7 +261,7 @@ export default function SettingsPage() {
   const blockClass = "bg-card border border-border rounded-xl shadow-sm divide-y divide-border overflow-hidden mb-8";
   const rowClass = "flex flex-col sm:flex-row sm:items-center justify-between p-4 gap-2 sm:gap-4 transition-colors focus-within:bg-muted/10 hover:bg-muted/5";
   const labelClass = "text-sm font-medium flex items-center gap-2 shrink-0 min-w-[140px]";
-  const inputClass = "flex-1 w-full bg-transparent text-sm sm:text-right focus:outline-none placeholder:text-muted-foreground/60 focus:text-[#007AFF] transition-colors";
+  const inputClass = "flex-1 w-full bg-transparent text-sm text-start sm:text-end focus:outline-none placeholder:text-muted-foreground/60 focus:text-[#007AFF] transition-colors";
   const sectionTitleClass = "text-[13px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 ms-4";
 
   return (
@@ -281,7 +281,7 @@ export default function SettingsPage() {
               <label className={labelClass}>
                 <Globe className="w-4 h-4 text-muted-foreground" /> {t("settings.language")}
               </label>
-              <div className="flex-1 flex justify-end">
+              <div className="flex-1 flex sm:justify-end">
                 <LanguageToggle />
               </div>
             </div>
@@ -290,7 +290,7 @@ export default function SettingsPage() {
                 <label htmlFor="settings-dark-mode" className={labelClass}>
                   <Palette className="w-4 h-4 text-muted-foreground" /> {t("settings.darkMode")}
                 </label>
-                <div className="flex-1 flex justify-end">
+                <div className="flex-1 flex sm:justify-end">
                   <Switch
                     id="settings-dark-mode"
                     name="darkMode"
@@ -324,11 +324,11 @@ export default function SettingsPage() {
 
             <div className={rowClass}>
               <label htmlFor="settings-phone" className={labelClass}>{t("settings.phoneWhatsapp")}</label>
-              <div className="flex items-center gap-1 flex-1 justify-end" dir="ltr">
-                <span className="text-muted-foreground text-sm">+20</span>
+              <div className="flex items-center gap-1 flex-1 sm:justify-end">
+                <span className="text-muted-foreground text-sm" dir="ltr">+20</span>
                 <input id="settings-phone" name="phone" type="tel" value={phone.replace(/^\+?20/, "").replace(/^0/, "")}
                   onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))} placeholder="1023456789"
-                  className={`${inputClass} flex-none! w-30 sm:w-37.5 text-left!`} />
+                  className={`${inputClass} flex-none! w-30 sm:w-37.5 text-start sm:text-end`} dir="ltr" />
               </div>
             </div>
 
@@ -365,7 +365,7 @@ export default function SettingsPage() {
 
             <div className={rowClass}>
               <label htmlFor="settings-open-247" className={labelClass}>{t("settings.open247")}</label>
-              <div className="flex-1 flex justify-end">
+              <div className="flex-1 flex sm:justify-end">
                 <Switch id="settings-open-247" name="open247" checked={isAlwaysOpen} onCheckedChange={(c) => requestAvailabilityChange({ isAlwaysOpen: c })} />
               </div>
             </div>
@@ -374,7 +374,7 @@ export default function SettingsPage() {
               <React.Fragment key={selectKey}>
                 <div className={rowClass}>
                   <label htmlFor="settings-opens-at" className={labelClass}>{t("settings.opensAt")}</label>
-                  <select id="settings-opens-at" name="opensAt" value={workingHoursStart} onChange={(e) => requestAvailabilityChange({ workingHoursStart: Number(e.target.value) })} className={`${inputClass} sm:text-right appearance-none cursor-pointer`}>
+                  <select id="settings-opens-at" name="opensAt" value={workingHoursStart} onChange={(e) => requestAvailabilityChange({ workingHoursStart: Number(e.target.value) })} className={`${inputClass} sm:text-end appearance-none cursor-pointer`}>
                     {Array.from({ length: 24 }, (_, h) => (
                       <option key={h} value={h}>{h === 0 ? "12:00 AM" : h === 12 ? "12:00 PM" : h < 12 ? `${h}:00 AM` : `${h - 12}:00 PM`}</option>
                     ))}
@@ -382,7 +382,7 @@ export default function SettingsPage() {
                 </div>
                 <div className={rowClass}>
                   <label htmlFor="settings-closes-at" className={labelClass}>{t("settings.closesAt")}</label>
-                  <select id="settings-closes-at" name="closesAt" value={workingHoursEnd} onChange={(e) => requestAvailabilityChange({ workingHoursEnd: Number(e.target.value) })} className={`${inputClass} sm:text-right appearance-none cursor-pointer`}>
+                  <select id="settings-closes-at" name="closesAt" value={workingHoursEnd} onChange={(e) => requestAvailabilityChange({ workingHoursEnd: Number(e.target.value) })} className={`${inputClass} sm:text-end appearance-none cursor-pointer`}>
                     {Array.from({ length: 24 }, (_, h) => (
                       <option key={h} value={h}>{h === 0 ? "12:00 AM" : h === 12 ? "12:00 PM" : h < 12 ? `${h}:00 AM` : `${h - 12}:00 PM`}</option>
                     ))}
@@ -394,7 +394,7 @@ export default function SettingsPage() {
             <div className={rowClass}>
               <label htmlFor="settings-slot-duration" className={labelClass}>{t("settings.slotDurationLabel")}</label>
               <div className="flex items-center gap-2 flex-1 sm:justify-end">
-                <input id="settings-slot-duration" name="slotDuration" type="number" value={slotMin} onChange={(e) => setSlotMin(e.target.value)} min={5} max={120} className={`${inputClass} flex-none! w-16 sm:text-right`} dir="ltr" />
+                <input id="settings-slot-duration" name="slotDuration" type="number" value={slotMin} onChange={(e) => setSlotMin(e.target.value)} min={5} max={120} className={`${inputClass} flex-none! w-16 text-start sm:text-end`} dir="ltr" />
                 <span className="text-sm text-muted-foreground">{t("settings.mins")}</span>
               </div>
             </div>
