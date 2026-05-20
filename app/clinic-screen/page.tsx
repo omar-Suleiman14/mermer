@@ -261,12 +261,10 @@ export default function ClinicScreen() {
 
   const locale = lang === "ar" ? "ar-EG" : "en-US";
 
-  const timeString = time.toLocaleTimeString(locale, {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-  });
+  // Manually construct time to ensure perfect monospacing even in Arabic
+  const h12 = time.getHours() % 12 || 12;
+  const timeNumStr = `${h12.toString().padStart(2, "0")}:${time.getMinutes().toString().padStart(2, "0")}:${time.getSeconds().toString().padStart(2, "0")}`;
+  const ampmStr = time.getHours() >= 12 ? (lang === "ar" ? "م" : "PM") : (lang === "ar" ? "ص" : "AM");
 
   const dateString = time.toLocaleDateString(locale, {
     weekday: "long",
@@ -321,9 +319,14 @@ export default function ClinicScreen() {
               </h2>
 
               <div className="w-full flex items-center justify-center" style={{ height: '1.2em', fontSize: 'clamp(2.5rem, 6vw, 4.5rem)' }}>
-                <span className="font-bold font-mono text-foreground whitespace-nowrap block">
-                  {timeString}
-                </span>
+                <div className="flex items-baseline justify-center gap-2 sm:gap-3" dir="ltr">
+                  <span className="font-bold font-mono tracking-tight text-foreground w-[8ch] text-center">
+                    {timeNumStr}
+                  </span>
+                  <span className="font-bold text-muted-foreground w-[2em] text-center text-[0.6em]">
+                    {ampmStr}
+                  </span>
+                </div>
               </div>
 
               <p className="mt-6 text-xl md:text-2xl lg:text-3xl font-medium text-muted-foreground whitespace-nowrap">
