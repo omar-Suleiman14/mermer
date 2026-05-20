@@ -323,7 +323,7 @@ export default function DashboardPage() {
 
   const rescheduleDateStart = useMemo(() => {
     if (!rescheduleDate) return undefined;
-    return startOfDay(rescheduleDate).getTime();
+    return startOfDay(rescheduleDate.getTime());
   }, [rescheduleDate]);
 
   const rescheduleDateAppointments = useQuery(
