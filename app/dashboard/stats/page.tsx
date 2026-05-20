@@ -85,7 +85,7 @@ function RevenueBarChart({
   return (
     <div
       className={cn(
-        "flex items-end gap-px h-32 overflow-x-auto overscroll-x-contain pb-1 pt-1 -mx-1 px-1 scroll-smooth [scrollbar-width:thin]",
+        "flex items-end gap-px h-32 overflow-x-auto overscroll-x-contain pb-1 pt-1 -mx-1 px-1 scroll-smooth scrollbar-thin",
         isRtl && "flex-row-reverse"
       )}
       dir="ltr"
@@ -98,7 +98,7 @@ function RevenueBarChart({
             className="flex flex-col items-center gap-0.5 shrink-0 group/bar relative"
             style={{ width: "calc(100% / 60)", minWidth: 6 }}
           >
-            <div className="absolute bottom-full mb-1 start-1/2 -translate-x-1/2 opacity-0 group-hover/bar:opacity-100 transition-opacity pointer-events-none z-10">
+            <div className="absolute bottom-full mb-1 inset-s-1/2 -translate-x-1/2 opacity-0 group-hover/bar:opacity-100 transition-opacity pointer-events-none z-10">
               <div className="bg-foreground text-background text-[9px] font-semibold px-1.5 py-1 rounded-md whitespace-nowrap shadow-lg text-center">
                 {new Date(day.date).toLocaleDateString(locale, { month: "short", day: "numeric" })}
                 <br />
@@ -141,7 +141,7 @@ function VisitsSparkline({
   return (
     <div
       className={cn(
-        "flex items-end gap-px h-32 overflow-x-auto overscroll-x-contain pb-1 -mx-1 px-1 scroll-smooth [scrollbar-width:thin]",
+        "flex items-end gap-px h-32 overflow-x-auto overscroll-x-contain pb-1 -mx-1 px-1 scroll-smooth scrollbar-thin",
         isRtl && "flex-row-reverse"
       )}
     >
@@ -153,7 +153,7 @@ function VisitsSparkline({
             className="flex flex-col items-center justify-end shrink-0 group/v relative"
             style={{ width: "calc(100% / 30)", minWidth: 5 }}
           >
-            <div className="absolute bottom-full mb-1 start-1/2 -translate-x-1/2 opacity-0 group-hover/v:opacity-100 transition-opacity z-10 pointer-events-none">
+            <div className="absolute bottom-full mb-1 inset-s-1/2 -translate-x-1/2 opacity-0 group-hover/v:opacity-100 transition-opacity z-10 pointer-events-none">
               <div className="bg-foreground text-background text-[9px] font-semibold px-1.5 py-1 rounded-md shadow-lg whitespace-nowrap">
                 {new Date(day.ts).toLocaleDateString(locale, { month: "short", day: "numeric" })}
                 <br />
@@ -189,7 +189,7 @@ function DowRow({
       <span className="text-xs font-medium w-10 text-muted-foreground shrink-0 text-end tabular-nums">
         {label}
       </span>
-      <div className="flex-1 h-2 bg-muted/40 rounded-full overflow-hidden min-h-[8px]">
+      <div className="flex-1 h-2 bg-muted/40 rounded-full overflow-hidden min-h-2">
         <motion.div
           initial={{ width: 0 }}
           animate={{ width: `${pct}%` }}
@@ -390,7 +390,7 @@ export default function StatisticsPage() {
     };
   }, [statsData, revenueData]);
 
-  const isLoading = allAppointments === undefined;
+  const isLoading = statsData === undefined;
   const wlabels = useMemo(() => weekdayLabels(t), [t]);
 
   const pros: string[] = [];
@@ -550,7 +550,7 @@ export default function StatisticsPage() {
           {/* Pros / cons */}
           {!isLoading && analytics && (pros.length > 0 || cons.length > 0) && (
             <section className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className={cn(cardClass(), "p-5 border-emerald-500/15 bg-emerald-500/[0.03]")}>
+              <div className={cn(cardClass(), "p-5 border-emerald-500/15 bg-emerald-500/3")}>
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400 mb-3 flex items-center gap-2">
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   {t("stats.pros")}
@@ -565,7 +565,7 @@ export default function StatisticsPage() {
                   {pros.length === 0 && <li className="text-muted-foreground text-sm">—</li>}
                 </ul>
               </div>
-              <div className={cn(cardClass(), "p-5 border-amber-500/20 bg-amber-500/[0.04]")}>
+              <div className={cn(cardClass(), "p-5 border-amber-500/20 bg-amber-500/4")}>
                 <h3 className="text-xs font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-400 mb-3 flex items-center gap-2">
                   <AlertCircle className="w-3.5 h-3.5" />
                   {t("stats.cons")}
@@ -637,17 +637,16 @@ export default function StatisticsPage() {
 
           {/* Revenue Sources Breakdown */}
           {!isLoading && analytics && revenueData && revenueData !== null && (() => {
-            const fee = revenueData.consultationFee ?? 0;
-            const completed = (allAppointments ?? []).filter((a) => a.status === "completed");
-            const regularVisits = completed.filter((a) => !a.source || a.source === "manual" || a.source === "online");
-            const contractVisits = completed.filter((a) => a.source === "contract" && (a as any).isPaid !== false);
-            const regularRev = regularVisits.length * fee;
-            const contractRev = contractVisits.reduce((s, a) => s + ((a as any).costPerVisit ?? fee), 0);
-            const total = regularRev + contractRev;
+            const fee = analytics.consultationFee ?? 0;
+            const regularCount = analytics.manualCompleted + analytics.onlineCompleted;
+            const contractCount = analytics.contractVisitsThisMonthCount ?? 0;
+            const regularRev = regularCount * fee;
+            const contractRev = (analytics.totalCollected ?? 0) > 0 ? analytics.totalCollected! - regularRev : contractCount * fee;
+            const total = regularRev + Math.max(contractRev, 0);
             const pct = (v: number) => total > 0 ? Math.round((v / total) * 100) : 0;
             const sources = [
               { label: t("stats.sourceRegular"), value: regularRev, color: "#007AFF", pct: pct(regularRev) },
-              { label: t("stats.sourceContracts"), value: contractRev, color: "#AF52DE", pct: pct(contractRev) },
+              { label: t("stats.sourceContracts"), value: Math.max(contractRev, 0), color: "#AF52DE", pct: pct(Math.max(contractRev, 0)) },
             ].filter((s) => s.value > 0);
             return (
               <section className={cn(cardClass(), "p-5 sm:p-6")}>
@@ -663,12 +662,12 @@ export default function StatisticsPage() {
                 <div className="mt-4 pt-4 border-t border-border/50 grid grid-cols-3 gap-3 text-center">
                   <div>
                     <p className="text-[10px] text-muted-foreground">{t("stats.sourceRegular")}</p>
-                    <p className="text-sm font-bold tabular-nums mt-0.5">{regularVisits.length}</p>
+                    <p className="text-sm font-bold tabular-nums mt-0.5">{regularCount}</p>
                     <p className="text-[10px] text-muted-foreground">{t("stats.visits")}</p>
                   </div>
                   <div>
                     <p className="text-[10px] text-muted-foreground">{t("stats.sourceContracts")}</p>
-                    <p className="text-sm font-bold tabular-nums mt-0.5">{contractVisits.length}</p>
+                    <p className="text-sm font-bold tabular-nums mt-0.5">{contractCount}</p>
                     <p className="text-[10px] text-muted-foreground">{t("stats.visits")}</p>
                   </div>
                   <div>
@@ -683,35 +682,13 @@ export default function StatisticsPage() {
 
 
           {/* Contract Income Breakdown */}
-          {!isLoading && allContracts && allContracts.length > 0 && (() => {
-            const now = Date.now();
-            const monthStart = now - 30 * DAY_MS;
-
-            const active = allContracts.filter((c) => c.status === "active");
-            const expired = allContracts.filter((c) => c.status === "expired");
-
-            // Total contracted amount (all contracts)
-            const totalContractedValue = allContracts.reduce((s, c) => s + (c.totalAmount ?? 0), 0);
-
-            // Collected = completed paid visits * costPerVisit + down payments
-            const totalCollected = allContracts.reduce((s, c) => {
-              const dp = c.downPaymentType === "percentage"
-                ? ((c.totalAmount ?? 0) * ((c.downPayment ?? 0) / 100))
-                : (c.downPayment ?? 0);
-              const paidVisitRev = (c.paidVisits ?? 0) * (c.costPerVisit ?? 0);
-              return s + dp + paidVisitRev;
-            }, 0);
-
-            const outstanding = allContracts.reduce((s, c) => s + (c.unpaidBalance ?? 0), 0);
-
-            // Monthly contract revenue: contract visits completed this month
-            const contractVisitsThisMonth = (allAppointments ?? []).filter(
-              (a) => a.source === "contract" && a.status === "completed" && a.date >= monthStart
-            );
-            const monthlyContractRev = contractVisitsThisMonth.reduce(
-              (s, a) => s + ((a as any).costPerVisit ?? 0),
-              0
-            );
+          {!isLoading && analytics && (analytics.activeContractsCount ?? 0) > 0 && (() => {
+            const active = analytics.topContracts ?? [];
+            const activeCount = analytics.activeContractsCount ?? 0;
+            const totalContractedValue = analytics.totalContractedValue ?? 0;
+            const totalCollected = analytics.totalCollected ?? 0;
+            const outstanding = analytics.outstanding ?? 0;
+            const monthlyContractRev = (analytics.contractVisitsThisMonthCount ?? 0) * (analytics.consultationFee ?? 0);
 
             return (
               <section className={cn(cardClass(), "p-5 sm:p-6")}>
@@ -724,7 +701,7 @@ export default function StatisticsPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
                   <div className="rounded-2xl bg-violet-500/8 border border-violet-500/15 p-3 text-center">
                     <p className="text-[10px] text-muted-foreground">{t("stats.activeContracts")}</p>
-                    <p className="text-xl font-bold mt-0.5">{active.length}</p>
+                    <p className="text-xl font-bold mt-0.5">{activeCount}</p>
                   </div>
                   <div className="rounded-2xl bg-emerald-500/8 border border-emerald-500/15 p-3 text-center">
                     <p className="text-[10px] text-muted-foreground">{t("stats.collected")}</p>
@@ -764,7 +741,7 @@ export default function StatisticsPage() {
                 {/* Per-contract rows */}
                 <div className="space-y-2">
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">{t("stats.activeContracts")}</p>
-                  {active.slice(0, 5).map((c) => {
+                  {active.slice(0, 5).map((c: any) => {
                     const dp = c.downPaymentType === "percentage"
                       ? ((c.totalAmount ?? 0) * ((c.downPayment ?? 0) / 100))
                       : (c.downPayment ?? 0);
@@ -791,7 +768,7 @@ export default function StatisticsPage() {
                       </div>
                     );
                   })}
-                  {active.length === 0 && (
+                  {activeCount === 0 && (
                     <p className="text-xs text-muted-foreground text-center py-3">{t("stats.noActiveContracts")}</p>
                   )}
                 </div>
