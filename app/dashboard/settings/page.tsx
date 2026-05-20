@@ -328,7 +328,7 @@ export default function SettingsPage() {
                 <span className="text-muted-foreground text-sm shrink-0">+20</span>
                 <input id="settings-phone" name="phone" type="tel" value={phone.replace(/^\+?20/, "").replace(/^0/, "")}
                   onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))} placeholder="1023456789"
-                  className="bg-transparent text-sm focus:outline-none placeholder:text-muted-foreground/60 focus:text-[#007AFF] transition-colors w-full max-w-[120px] text-left" dir="ltr" />
+                  className="bg-transparent text-sm focus:outline-none placeholder:text-muted-foreground/60 focus:text-[#007AFF] transition-colors w-full max-w-30 text-left" dir="ltr" />
               </div>
             </div>
 
@@ -394,7 +394,7 @@ export default function SettingsPage() {
             <div className={rowClass}>
               <label htmlFor="settings-slot-duration" className={labelClass}>{t("settings.slotDurationLabel")}</label>
               <div className="flex items-center justify-end gap-2 flex-1 min-w-0">
-                <input id="settings-slot-duration" name="slotDuration" type="number" value={slotMin} onChange={(e) => setSlotMin(e.target.value)} min={5} max={120} className={`${inputClass} max-w-[60px]`} dir="ltr" />
+                <input id="settings-slot-duration" name="slotDuration" type="number" value={slotMin} onChange={(e) => setSlotMin(e.target.value)} min={5} max={120} className={`${inputClass} max-w-15`} dir="ltr" />
                 <span className="text-sm text-muted-foreground shrink-0">{t("settings.mins")}</span>
               </div>
             </div>
