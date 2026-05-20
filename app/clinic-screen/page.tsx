@@ -282,7 +282,7 @@ export default function ClinicScreen() {
 
   return (
     <div
-      className="min-h-screen bg-background text-foreground flex items-center justify-center p-4 md:p-8 font-sans"
+      className="h-dvh overflow-hidden bg-background text-foreground flex items-center justify-center p-4 md:p-8 font-sans"
       dir={lang === "ar" ? "rtl" : "ltr"}
     >
       <div className="w-full max-w-350 mx-auto flex items-center justify-center">
@@ -304,7 +304,7 @@ export default function ClinicScreen() {
               d={rectPath}
               fill="none"
               stroke={strokeColor}
-              strokeWidth="12"
+              strokeWidth="20"
               strokeLinecap="round"
               initial={{ pathLength: 0 }}
               animate={{ pathLength: progress }}
