@@ -320,8 +320,8 @@ export default function ClinicScreen() {
                 {currentUser.clinicName}
               </h2>
 
-              <div className="w-full flex items-center justify-center" style={{ height: '1.2em', fontSize: 'clamp(3rem, 8vw, 6rem)' }}>
-                <span className="font-bold tracking-tighter text-foreground whitespace-nowrap block" style={{ fontVariantNumeric: 'tabular-nums' }}>
+              <div className="w-full flex items-center justify-center" style={{ height: '1.2em', fontSize: 'clamp(2.5rem, 6vw, 4.5rem)' }}>
+                <span className="font-bold font-mono text-foreground whitespace-nowrap block">
                   {timeString}
                 </span>
               </div>

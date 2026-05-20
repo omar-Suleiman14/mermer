@@ -30,7 +30,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (currentUser?.isBanned) {
       const lastDismissed = localStorage.getItem("bannedPopupDismissedAt");
-      if (!lastDismissed || Date.now() - parseInt(lastDismissed) > 24 * 60 * 60 * 1000) {
+      if (!lastDismissed || Date.now() - parseInt(lastDismissed) > 3 * 24 * 60 * 60 * 1000) {
         setShowBannedPopup(true);
       }
     }
