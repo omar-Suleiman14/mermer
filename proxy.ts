@@ -4,15 +4,22 @@ import { NextResponse } from "next/server";
 const isProtectedRoute = createRouteMatcher(["/dashboard(.*)"]);
 
 export default clerkMiddleware(async (auth, req) => {
-  const { userId } = await auth();
+  const isLandingPage = req.nextUrl.pathname === "/";
 
-  // If user is signed in and visits the landing page, redirect to dashboard
-  if (userId && req.nextUrl.pathname === "/") {
-    const dashboardUrl = new URL("/dashboard", req.url);
-    return NextResponse.redirect(dashboardUrl);
+  if (isLandingPage) {
+    const hasSession =
+      req.cookies.has("__session") || req.cookies.has("__clerk_db_jwt");
+
+    if (hasSession) {
+      const { userId } = await auth();
+      if (userId) {
+        return NextResponse.redirect(new URL("/dashboard", req.url));
+      }
+    }
+
+    return NextResponse.next();
   }
 
-  // Protect dashboard routes
   if (isProtectedRoute(req)) {
     await auth.protect();
   }
@@ -20,9 +27,7 @@ export default clerkMiddleware(async (auth, req) => {
 
 export const config = {
   matcher: [
-    // Skip Next.js internals and all static files, unless found in search params
     "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
-    // Always run for API routes
     "/(api|trpc)(.*)",
   ],
 };
