@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthUser, requireAuthUser } from "./authHelper";
+import { getAuthUser, requireAuthUser, logAction } from "./authHelper";
 
 // ─── Public booking (online) ─────────────────────────────────────────────────
 
@@ -306,6 +306,8 @@ export const updateAppointment = mutation({
     }
 
     await ctx.db.patch(args.appointmentId, args.updates);
+    
+    await logAction(ctx, user, "Updated Appointment", `Updated visit status to ${args.updates.status || "changed"}`);
   },
 });
 

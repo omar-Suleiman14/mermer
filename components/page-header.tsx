@@ -7,10 +7,11 @@ import { NotificationCenter } from "@/components/notification-center";
 interface PageHeaderProps {
   title: string;
   description?: string;
+  action?: React.ReactNode;
   children?: React.ReactNode;
 }
 
-export function PageHeader({ title, description, children }: PageHeaderProps) {
+export function PageHeader({ title, description, action, children }: PageHeaderProps) {
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 px-4 border-b border-border/60 bg-background">
       <SidebarTrigger className="-ms-1 text-muted-foreground hover:text-foreground" />
@@ -22,6 +23,7 @@ export function PageHeader({ title, description, children }: PageHeaderProps) {
         )}
       </div>
       <div className="flex items-center gap-2 ms-auto">
+        {action}
         {children}
         <NotificationCenter />
       </div>

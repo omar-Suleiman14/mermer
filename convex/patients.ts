@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthUser, requireAuthUser } from "./authHelper";
+import { getAuthUser, requireAuthUser, logAction } from "./authHelper";
 
 // FIX #5: Batch-fetch installments for all patients in one query instead of N+1
 export const listPatients = query({
@@ -157,7 +157,7 @@ export const createPatient = mutation({
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
 
-    return await ctx.db.insert("patients", {
+    const patientId = await ctx.db.insert("patients", {
       doctorId: user._id,
       name: args.name,
       age: args.age,
@@ -166,6 +166,10 @@ export const createPatient = mutation({
       notes: args.notes,
       createdAt: Date.now(),
     });
+
+    await logAction(ctx, user, "Added Patient", `Registered new patient: ${args.name}`, patientId);
+
+    return patientId;
   },
 });
 
@@ -192,6 +196,7 @@ export const updatePatient = mutation({
       chronicConditions: args.chronicConditions,
       notes: args.notes,
     });
+    await logAction(ctx, user, "Updated Patient", `Updated details for ${args.name}`, args.patientId);
   },
 });
 

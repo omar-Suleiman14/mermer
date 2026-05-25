@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { Id } from "./_generated/dataModel";
 import { getAuthUser, requireAuthUser, requireAdmin } from "./authHelper";
 
 function generateSlug(name: string): string {
@@ -38,11 +39,35 @@ export const getOrCreateUser = mutation({
       return existing._id;
     }
 
-    const slug = generateSlug(args.name);
+    // Check if there is a pending invitation for this email
+    let role: "doctor" | "assistant" = "doctor";
+    let clinicId: Id<"users"> | undefined = undefined;
+    let permissions: string[] | undefined = undefined;
+    let name = args.name;
+
+    if (args.email) {
+      const invitation = await ctx.db
+        .query("invitations")
+        .withIndex("by_email", (q) => q.eq("email", args.email!))
+        .filter((q) => q.eq(q.field("status"), "pending"))
+        .first();
+
+      if (invitation) {
+        role = "assistant";
+        clinicId = invitation.doctorId;
+        permissions = invitation.permissions;
+        name = invitation.name; // Use the name the doctor gave them
+        
+        // Mark invitation as accepted
+        await ctx.db.patch(invitation._id, { status: "accepted" });
+      }
+    }
+
+    const slug = generateSlug(name);
 
     const id = await ctx.db.insert("users", {
       clerkId: args.clerkId,
-      name: args.name,
+      name,
       email: args.email,
       phone: "",
       clinicName: "My Clinic",
@@ -53,7 +78,10 @@ export const getOrCreateUser = mutation({
       qrSlug: slug,
       publicProfile: false,
       timezoneOffset: args.timezoneOffset,
-      isBlocked: true,
+      isBlocked: role === "doctor" ? true : false, // Assistants don't need manual unblocking, their doctor is already approved
+      role,
+      clinicId,
+      permissions,
     });
     return id;
   },
@@ -62,7 +90,93 @@ export const getOrCreateUser = mutation({
 export const getCurrentUser = query({
   args: { clerkId: v.string() },
   handler: async (ctx, args) => {
-    return await getAuthUser(ctx, args.clerkId);
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity || identity.subject !== args.clerkId) return null;
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .unique();
+
+    if (!user) return null;
+
+    // For assistants: return their own record (role/permissions correct)
+    // but overlay the doctor's clinic name so the sidebar shows the right clinic
+    if (user.role === "assistant" && user.clinicId) {
+      const doctor = await ctx.db.get(user.clinicId);
+      return { ...user, clinicName: doctor?.clinicName ?? user.clinicName };
+    }
+
+    return user;
+  },
+});
+
+export const getPendingInvitation = query({
+  args: { clerkId: v.string() },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity || identity.subject !== args.clerkId) return null;
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .unique();
+
+    if (!user?.email) return null;
+    // Already an assistant — no pending invite needed
+    if (user.role === "assistant") return null;
+
+    const invitation = await ctx.db
+      .query("invitations")
+      .withIndex("by_email", (q) => q.eq("email", user.email!))
+      .filter((q) => q.eq(q.field("status"), "pending"))
+      .first();
+
+    if (!invitation) return null;
+
+    const doctor = await ctx.db.get(invitation.doctorId);
+    return {
+      ...invitation,
+      doctorName: doctor?.name ?? "Doctor",
+      doctorClinicName: doctor?.clinicName ?? "the clinic",
+    };
+  },
+});
+
+export const acceptInvitation = mutation({
+  args: { clerkId: v.string(), invitationId: v.id("invitations") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity || identity.subject !== args.clerkId) throw new Error("Unauthenticated");
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
+      .unique();
+    if (!user) throw new Error("User not found");
+
+    const invitation = await ctx.db.get(args.invitationId);
+    if (!invitation || invitation.email !== user.email) throw new Error("Invitation not found");
+
+    await ctx.db.patch(user._id, {
+      role: "assistant",
+      clinicId: invitation.doctorId,
+      permissions: invitation.permissions,
+      name: invitation.name,
+    });
+    await ctx.db.delete(invitation._id);
+  },
+});
+
+export const declineInvitation = mutation({
+  args: { clerkId: v.string(), invitationId: v.id("invitations") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity || identity.subject !== args.clerkId) throw new Error("Unauthenticated");
+
+    const invitation = await ctx.db.get(args.invitationId);
+    if (!invitation) return;
+    await ctx.db.delete(invitation._id);
   },
 });
 
@@ -342,5 +456,118 @@ export const saveProfilePhoto = mutation({
     const user = await requireAuthUser(ctx, args.clerkId);
     const storageUrl = await ctx.storage.getUrl(args.storageId);
     await ctx.db.patch(user._id, { profilePhotoId: args.storageId, profilePhotoUrl: storageUrl ?? undefined });
+  },
+});
+
+// ── Staff Management ────────────────────────────────────────────────────────
+
+export const listStaff = query({
+  args: { clerkId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx, args.clerkId);
+    // Only doctors can list staff
+    if (user.role === "assistant") return { staff: [], invitations: [] };
+
+    const staff = await ctx.db
+      .query("users")
+      .withIndex("by_clinic_id", (q) => q.eq("clinicId", user._id))
+      .collect();
+
+    const invitations = await ctx.db
+      .query("invitations")
+      .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+      .filter((q) => q.eq(q.field("status"), "pending"))
+      .collect();
+
+    return { staff, invitations };
+  },
+});
+
+export const inviteStaff = mutation({
+  args: {
+    clerkId: v.string(),
+    email: v.string(),
+    name: v.string(),
+    roleName: v.string(),
+    permissions: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx, args.clerkId);
+    if (user.role === "assistant") throw new Error("Only doctors can invite staff");
+
+    // Check if there's already a pending invite for this email
+    const existing = await ctx.db
+      .query("invitations")
+      .withIndex("by_email", (q) => q.eq("email", args.email))
+      .filter((q) => q.eq(q.field("status"), "pending"))
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        name: args.name,
+        role: args.roleName,
+        permissions: args.permissions,
+      });
+    } else {
+      await ctx.db.insert("invitations", {
+        doctorId: user._id,
+        email: args.email,
+        name: args.name,
+        role: args.roleName,
+        permissions: args.permissions,
+        status: "pending",
+        createdAt: Date.now(),
+      });
+    }
+  },
+});
+
+export const updateStaffPermissions = mutation({
+  args: {
+    clerkId: v.string(),
+    staffId: v.id("users"),
+    permissions: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx, args.clerkId);
+    if (user.role === "assistant") throw new Error("Only doctors can update staff");
+
+    const staff = await ctx.db.get(args.staffId);
+    if (!staff || staff.clinicId !== user._id) throw new Error("Staff not found");
+
+    await ctx.db.patch(args.staffId, { permissions: args.permissions });
+  },
+});
+
+export const removeStaff = mutation({
+  args: {
+    clerkId: v.string(),
+    staffId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx, args.clerkId);
+    if (user.role === "assistant") throw new Error("Only doctors can remove staff");
+
+    const staff = await ctx.db.get(args.staffId);
+    if (!staff || staff.clinicId !== user._id) throw new Error("Staff not found");
+
+    // Remove them by unlinking them from the clinic
+    await ctx.db.patch(args.staffId, { clinicId: undefined, role: "doctor" });
+  },
+});
+
+export const removeInvitation = mutation({
+  args: {
+    clerkId: v.string(),
+    invitationId: v.id("invitations"),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx, args.clerkId);
+    if (user.role === "assistant") throw new Error("Only doctors can remove invitations");
+
+    const inv = await ctx.db.get(args.invitationId);
+    if (!inv || inv.doctorId !== user._id) throw new Error("Invitation not found");
+
+    await ctx.db.delete(args.invitationId);
   },
 });

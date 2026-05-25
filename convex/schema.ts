@@ -14,6 +14,11 @@ export default defineSchema({
     isAdmin: v.optional(v.boolean()),
     tier: v.optional(v.string()), // Kept to allow existing records to pass validation
 
+    // Staff / Assistant fields
+    role: v.optional(v.union(v.literal("doctor"), v.literal("assistant"))),
+    clinicId: v.optional(v.id("users")), // For assistants, this points to their doctor
+    permissions: v.optional(v.array(v.string())), // e.g. ["manage_queue", "manage_patients", "manage_settings", "manage_history", "manage_analytics"]
+
     // Doctor public profile
     qrSlug: v.optional(v.string()),
     specialty: v.optional(v.string()),
@@ -81,13 +86,33 @@ export default defineSchema({
     ),
     installmentDefaultDurationDays: v.optional(v.number()),
 
-    // Queue display token (kept optional for existing records — feature removed)
     queueDisplayToken: v.optional(v.string()),
   })
     .index("by_clerk_id", ["clerkId"])
     .index("by_qr_slug", ["qrSlug"])
     .index("by_public_profile", ["publicProfile"])
-    .index("by_isAdmin", ["isAdmin"]),
+    .index("by_isAdmin", ["isAdmin"])
+    .index("by_clinic_id", ["clinicId"]),
+
+  invitations: defineTable({
+    doctorId: v.id("users"),
+    email: v.string(),
+    name: v.string(), // What the doctor calls them
+    role: v.string(), // Role name assigned by doctor
+    permissions: v.array(v.string()),
+    status: v.union(v.literal("pending"), v.literal("accepted")),
+    createdAt: v.number(),
+  }).index("by_email", ["email"]).index("by_doctor", ["doctorId"]),
+
+  auditLogs: defineTable({
+    clinicId: v.id("users"),
+    userId: v.id("users"), // the user who performed the action
+    userName: v.string(), // store denormalized name so we don't have to join
+    action: v.string(),
+    entityId: v.optional(v.string()),
+    details: v.string(),
+    timestamp: v.number(),
+  }).index("by_clinic", ["clinicId"]).index("by_clinic_timestamp", ["clinicId", "timestamp"]),
 
   patients: defineTable({
     doctorId: v.id("users"),
@@ -137,6 +162,9 @@ export default defineSchema({
 
     // Links
     installmentId: v.optional(v.id("installments")),
+    
+    // Who created/modified this visit (for history display)
+    actionBy: v.optional(v.string()),
 
     // Payment (for installment visits)
     isPaid: v.optional(v.boolean()),

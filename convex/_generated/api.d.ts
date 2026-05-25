@@ -9,6 +9,7 @@
  */
 
 import type * as appointments from "../appointments.js";
+import type * as auditLogs from "../auditLogs.js";
 import type * as authHelper from "../authHelper.js";
 import type * as chronicConditions from "../chronicConditions.js";
 import type * as clinicalOptions from "../clinicalOptions.js";
@@ -32,6 +33,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   appointments: typeof appointments;
+  auditLogs: typeof auditLogs;
   authHelper: typeof authHelper;
   chronicConditions: typeof chronicConditions;
   clinicalOptions: typeof clinicalOptions;

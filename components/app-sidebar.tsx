@@ -20,6 +20,7 @@ import {
   FileText,
   Monitor,
   History,
+  UserCheck,
 } from "lucide-react";
 
 
@@ -51,18 +52,33 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   );
 
   const isAdmin = currentUser?.isAdmin ?? false;
+  const isAssistant = currentUser?.role === "assistant";
+  const userPerms: string[] = currentUser?.permissions ?? [];
 
-  const navItems = [
-    { title: t("nav.dashboard") || "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { title: t("nav.schedule") || "Schedule", href: "/dashboard/queue", icon: CalendarDays },
-    { title: t("nav.patients") || "Patients", href: "/dashboard/patients", icon: Users },
-    { title: t("nav.installments") || "installments", href: "/dashboard/installments", icon: FileText },
-    { title: t("nav.feedback") || "Feedback", href: "/dashboard/feedback", icon: Star },
-    { title: t("nav.analytics") || "Analytics", href: "/dashboard/stats", icon: BarChart3 },
-    { title: t("nav.history") || "History", href: "/dashboard/history", icon: History },
-    { title: t("nav.clinicScreen") === "nav.clinicScreen" ? (lang === "ar" ? "شاشة العيادة" : "Clinic Screen") : (t("nav.clinicScreen") || "Clinic Screen"), href: "/clinic-screen", icon: Monitor, target: "_blank" },
-    { title: t("nav.settings") || "Settings", href: "/dashboard/settings", icon: Settings },
+  const allNavItems = [
+    { title: t("nav.dashboard") || "Dashboard", href: "/dashboard", icon: LayoutDashboard, perm: null },
+    { title: t("nav.schedule") || "Schedule", href: "/dashboard/queue", icon: CalendarDays, perm: "manage_queue" },
+    { title: t("nav.patients") || "Patients", href: "/dashboard/patients", icon: Users, perm: "manage_patients" },
+    { title: t("nav.installments") || "Installments", href: "/dashboard/installments", icon: FileText, perm: "manage_installments" },
+    { title: t("nav.feedback") || "Feedback", href: "/dashboard/feedback", icon: Star, perm: null },
+    { title: t("nav.analytics") || "Analytics", href: "/dashboard/stats", icon: BarChart3, perm: "manage_analytics", doctorOnly: true },
+    { title: t("nav.history") || "History", href: "/dashboard/history", icon: History, perm: "manage_history", doctorOnly: true },
+    { title: t("nav.clinicScreen") === "nav.clinicScreen" ? (lang === "ar" ? "شاشة العيادة" : "Clinic Screen") : (t("nav.clinicScreen") || "Clinic Screen"), href: "/clinic-screen", icon: Monitor, target: "_blank", perm: null },
+    { title: t("nav.staff") || "Staff", href: "/dashboard/staff", icon: UserCheck, perm: null, doctorOnly: true },
+    { title: t("nav.settings") || "Settings", href: "/dashboard/settings", icon: Settings, perm: "manage_settings", doctorOnly: true },
   ];
+
+  const navItems = allNavItems.filter((item) => {
+    // Doctor always sees everything
+    if (!isAssistant) return true;
+    // Items marked doctorOnly are hidden for assistants by default unless they have the perm
+    if ((item as any).doctorOnly) {
+      return item.perm ? userPerms.includes(item.perm) : false;
+    }
+    // If item requires a perm, check it
+    if (item.perm) return userPerms.includes(item.perm);
+    return true;
+  });
 
   return (
     <Sidebar collapsible="icon" {...props}>

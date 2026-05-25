@@ -1,7 +1,7 @@
 "use client";
 
 import { useUser, SignOutButton } from "@clerk/nextjs";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
@@ -11,9 +11,10 @@ import { DoctorOnboarding } from "@/components/doctor-onboarding";
 import { useState, useEffect } from "react";
 import { useI18n } from "@/lib/i18n/client";
 import { OnlineBookingNotifier } from "@/components/online-booking-notifier";
-import { AlertTriangle, X } from "lucide-react";
+import { AlertTriangle, X, Building2, UserCheck, UserX } from "lucide-react";
 import { UserProvider, useCurrentUser } from "@/components/providers/user-provider";
 import { IOSSpinner } from "@/components/ui/spinner";
+import { toast } from "sonner";
 
 function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const { user, isLoaded } = useUser();
@@ -22,8 +23,13 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const { currentUser, isLoading } = useCurrentUser();
   const clerkId = user?.id ?? "";
 
-  // Show onboarding when: user loaded, profile exists, but clinicName is the default
-  // and specialty hasn't been set yet — i.e. fresh account never completed setup.
+  // Invite flow for new users signing up
+  const pendingInvite = useQuery(api.users.getPendingInvitation, clerkId ? { clerkId } : "skip");
+  const acceptInvite = useMutation(api.users.acceptInvitation);
+  const declineInvite = useMutation(api.users.declineInvitation);
+  const [inviteLoading, setInviteLoading] = useState<"accept" | "decline" | null>(null);
+  const [inviteDeclined, setInviteDeclined] = useState(false);
+
   const [onboardingDone, setOnboardingDone] = useState(false);
   const [showBannedPopup, setShowBannedPopup] = useState(false);
 
@@ -42,8 +48,16 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     currentUser !== undefined &&
     currentUser !== null &&
     !onboardingDone &&
+    currentUser.role !== "assistant" &&
     currentUser.clinicName === "My Clinic" &&
     !currentUser.specialty;
+
+  // Show invite card for new users who have a pending invite
+  // Don't show if they're already an assistant, or if they declined
+  const showInviteCard =
+    !!pendingInvite &&
+    !inviteDeclined &&
+    currentUser?.role !== "assistant";
 
   const sidebarSide = dir === "rtl" ? "right" : "left";
 
@@ -89,7 +103,82 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         </SidebarProvider>
       </div>
 
-      {needsOnboarding && (
+      {/* New-user invite card — shown on top of onboarding or dashboard */}
+      {showInviteCard && (
+        <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm" dir={dir}>
+          <div className="w-full sm:max-w-sm bg-card border border-border/50 rounded-t-3xl sm:rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.5)] overflow-hidden">
+            {/* Header gradient */}
+            <div className="h-2 bg-gradient-to-r from-[#007AFF] to-[#5AC8FA]" />
+            <div className="p-6">
+              <div className="flex items-center gap-4 mb-5">
+                <div className="w-14 h-14 rounded-2xl bg-[#007AFF]/10 border border-[#007AFF]/20 flex items-center justify-center shrink-0">
+                  <Building2 className="w-7 h-7 text-[#007AFF]" />
+                </div>
+                <div>
+                  <p className="text-[11px] font-semibold text-[#007AFF] uppercase tracking-wider mb-0.5">
+                    {lang === "ar" ? "دعوة لعيادة" : "Clinic Invitation"}
+                  </p>
+                  <h2 className="text-lg font-bold leading-tight">
+                    {pendingInvite.doctorClinicName}
+                  </h2>
+                </div>
+              </div>
+
+              <p className="text-sm text-muted-foreground leading-relaxed mb-6">
+                {lang === "ar"
+                  ? `دعاك ${pendingInvite.doctorName} للانضمام إلى عيادة "${pendingInvite.doctorClinicName}" بصفتك ${pendingInvite.role}. إذا قبلت، ستُربط حسابك بهذه العيادة وستُعدَّل صلاحياتك وفقًا لذلك.`
+                  : `${pendingInvite.doctorName} has invited you to join "${pendingInvite.doctorClinicName}" as ${pendingInvite.role}. If you accept, your account will be linked to this clinic.`}
+              </p>
+
+              <div className="flex gap-3">
+                <button
+                  disabled={!!inviteLoading}
+                  onClick={async () => {
+                    setInviteLoading("accept");
+                    try {
+                      await acceptInvite({ clerkId, invitationId: pendingInvite._id });
+                      toast.success(lang === "ar" ? "مرحباً بك في العيادة! 🎉" : "Welcome to the clinic! 🎉");
+                    } catch {
+                      toast.error("Failed to accept");
+                    }
+                    setInviteLoading(null);
+                  }}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 bg-[#007AFF] text-white text-sm font-bold rounded-xl hover:bg-[#007AFF]/90 active:scale-95 transition-all disabled:opacity-60"
+                >
+                  <UserCheck className="w-4 h-4" />
+                  {inviteLoading === "accept" ? "..." : (lang === "ar" ? "قبول الدعوة" : "Accept Invitation")}
+                </button>
+                <button
+                  disabled={!!inviteLoading}
+                  onClick={async () => {
+                    setInviteLoading("decline");
+                    try {
+                      await declineInvite({ clerkId, invitationId: pendingInvite._id });
+                      setInviteDeclined(true);
+                      toast(lang === "ar" ? "تم رفض الدعوة" : "Invitation declined");
+                    } catch {
+                      toast.error("Failed");
+                    }
+                    setInviteLoading(null);
+                  }}
+                  className="flex items-center gap-2 px-4 py-3 bg-muted text-muted-foreground text-sm font-semibold rounded-xl hover:bg-muted/80 active:scale-95 transition-all disabled:opacity-60"
+                >
+                  <UserX className="w-4 h-4" />
+                  {inviteLoading === "decline" ? "..." : (lang === "ar" ? "رفض" : "Decline")}
+                </button>
+              </div>
+
+              {needsOnboarding && !showInviteCard && (
+                <p className="text-center text-[11px] text-muted-foreground mt-4">
+                  {lang === "ar" ? "أو أنشئ عيادتك الخاصة عبر الرفض" : "Or set up your own clinic by declining"}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {needsOnboarding && !showInviteCard && (
         <DoctorOnboarding
           clerkId={clerkId}
           defaultName={user?.fullName ?? user?.firstName ?? "Doctor"}

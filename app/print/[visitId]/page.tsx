@@ -27,6 +27,9 @@ export default function PrintPrescriptionPage({
 
   useEffect(() => {
     if (data) {
+      // Set document title so print/PDF uses it
+      document.title = `${data.patient.name} - ${format(new Date(data.visit.date), "dd-MM-yyyy")}`;
+      
       // Delay printing slightly to ensure fonts and styles are loaded
       const timer = setTimeout(() => {
         window.print();

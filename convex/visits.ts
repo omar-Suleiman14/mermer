@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
-import { getAuthUser, requireAuthUser } from "./authHelper";
+import { getAuthUser, requireAuthUser, logAction } from "./authHelper";
 
 export const getVisitsByPatient = query({
   args: { patientId: v.id("patients"), clerkId: v.string() },
@@ -133,7 +133,7 @@ export const createVisit = mutation({
       }
     }
 
-    return await ctx.db.insert("visits", {
+    const visitId = await ctx.db.insert("visits", {
       patientId: args.patientId,
       doctorId: user._id,
       date: args.date ?? Date.now(),
@@ -147,7 +147,11 @@ export const createVisit = mutation({
       analysisRequested: args.analysisRequested,
       notes: args.notes,
       createdAt: Date.now(),
+      actionBy: user.actualUserName || "Doctor",
     });
+
+    await logAction(ctx, user, "Created Visit", `Scheduled visit for patient ID: ${args.patientId}`);
+    return visitId;
   },
 });
 
@@ -189,7 +193,16 @@ export const addVisitFiles = mutation({
       ...(args.notes !== undefined ? { notes: args.notes } : {}),
       ...(args.status !== undefined ? { status: args.status } : {}),
       ...(args.prescribedMedications !== undefined ? { prescribedMedications: args.prescribedMedications } : {}),
+      actionBy: user.actualUserName || "Doctor",
     });
+
+    if (args.status === "completed") {
+      await logAction(ctx, user, "Completed Visit", `Completed visit for patient`, args.visitId);
+    } else if (args.status) {
+      await logAction(ctx, user, "Updated Visit", `Updated visit status to ${args.status}`, args.visitId);
+    } else {
+      await logAction(ctx, user, "Updated Visit Files/Notes", `Added files or notes to visit`, args.visitId);
+    }
   },
 });
 
@@ -220,6 +233,7 @@ export const getVisitsByDateRange = query({
       patientId: v.patientId,
       reasonForVisit: v.reasonForVisit,
       status: v.status,
+      actionBy: v.actionBy,
     }));
   },
 });
@@ -243,7 +257,9 @@ export const deleteVisit = mutation({
       }
     }
     
+    // When deleting, we can't save actionBy to the visit, but we log it
     await ctx.db.delete(args.visitId);
+    await logAction(ctx, user, "Deleted Visit", `Deleted visit record`, args.visitId);
   },
 });
 
@@ -306,7 +322,9 @@ export const updateVisit = mutation({
       }
     }
 
+    patch.actionBy = user.actualUserName || "Doctor";
     await ctx.db.patch(args.visitId, patch);
+    await logAction(ctx, user, "Updated Visit", `Updated visit timeline/status`, args.visitId);
   },
 });
 

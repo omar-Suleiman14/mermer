@@ -8,7 +8,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { useState, useMemo } from "react";
 import { format } from "date-fns";
-import { CalendarIcon, Filter, Search, Activity, History, Globe, CheckCircle2, Clock, XCircle, AlertCircle } from "lucide-react";
+import { CalendarIcon, Filter, Search, Activity, History, Globe, CheckCircle2, Clock, XCircle, AlertCircle, Users, ShieldCheck } from "lucide-react";
 
 export default function HistoryPage() {
   const { user } = useUser();
@@ -16,6 +16,7 @@ export default function HistoryPage() {
   const { t, lang } = useI18n();
 
   const rawLogs = useQuery(api.visits.getActivityLog, clerkId ? { clerkId, limit: 500 } : "skip");
+  const auditLogs = useQuery(api.auditLogs.getAuditLogs, clerkId ? { clerkId, limit: 200 } : "skip");
 
   const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("");
@@ -145,9 +146,9 @@ export default function HistoryPage() {
                               month: "short", day: "numeric", hour: "numeric", minute: "2-digit" 
                             })}
                           </p>
-                          <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">
-                            By: {isOnline ? "System" : "Staff"}
-                          </p>
+                          <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider mb-1">
+                             {isOnline ? t("history.actionOnline") || "Online" : ((log as any).actionBy || "Staff")}
+                           </p>
                         </div>
                       </div>
 
@@ -178,6 +179,45 @@ export default function HistoryPage() {
           )}
         </div>
       </div>
+
+      {/* Audit Logs Section */}
+      {auditLogs && auditLogs.length > 0 && (
+        <div className="flex-1 overflow-auto p-4 sm:p-6 max-w-5xl mx-auto w-full pt-0">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4" />
+            {lang === "ar" ? "سجل الإجراءات" : "Action Audit Log"}
+          </h2>
+          <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
+            <div className="divide-y divide-border">
+              {auditLogs.map((log) => (
+                <div key={log._id} className="p-4 flex items-start gap-4 hover:bg-muted/5 transition-colors">
+                  <div className="w-9 h-9 rounded-full bg-[#5AC8FA]/10 border border-[#5AC8FA]/20 flex items-center justify-center shrink-0">
+                    <Users className="w-4 h-4 text-[#5AC8FA]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold">{log.action}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{log.details}</p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(log.timestamp).toLocaleString(lang === "ar" ? "ar-EG" : "en-US", {
+                            month: "short", day: "numeric", hour: "numeric", minute: "2-digit"
+                          })}
+                        </p>
+                        <p className="text-[10px] text-[#5AC8FA] font-semibold mt-1">
+                          {log.userName || "Unknown"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useUser } from "@clerk/nextjs";
-import { Bell, Calendar, Clock, X, Trash2, MessageCircle } from "lucide-react";
+import { Bell, Calendar, Clock, X, Trash2, MessageCircle, UserCheck, UserX, Building2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AnimatePresence, motion } from "framer-motion";
 import { useI18n } from "@/lib/i18n/client";
@@ -123,9 +123,13 @@ export function NotificationCenter() {
   const clerkId = user?.id ?? "";
 
   const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
-  // FIX #7: Use dedicated listOnlineAppointments query instead of fetching ALL 200 visits
   const onlineAppointments = useQuery(api.appointments.listOnlineAppointments, clerkId ? { clerkId } : "skip");
   const messageTemplates = useQuery(api.messageTemplates.listTemplates, clerkId ? { clerkId } : "skip");
+  const pendingInvite = useQuery(api.users.getPendingInvitation, clerkId ? { clerkId } : "skip");
+
+  const acceptInvite = useMutation(api.users.acceptInvitation);
+  const declineInvite = useMutation(api.users.declineInvitation);
+  const [inviteLoading, setInviteLoading] = useState<"accept" | "decline" | null>(null);
 
   // FIX #10: Use timestamp-based read state instead of growing deletedIds set.
   // "lastClearedAt" replaces the old deletedIds set — any notification created
@@ -155,11 +159,10 @@ export function NotificationCenter() {
     .sort((a, b) => b.createdAt - a.createdAt)
     .slice(0, 20);
 
-  // Only compute unread AFTER lastViewedAt has been loaded from localStorage
   const unreadCount =
     lastViewedAt === null
       ? 0
-      : notifications.filter((n) => n.createdAt > lastViewedAt).length;
+      : notifications.filter((n) => n.createdAt > lastViewedAt).length + (pendingInvite ? 1 : 0);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const markAllRead = () => {
@@ -240,7 +243,60 @@ export function NotificationCenter() {
 
           {/* List */}
           <div className="max-h-100 overflow-y-auto divide-y divide-border/40">
-            {notifications.length === 0 ? (
+            {/* Invite notification */}
+            {pendingInvite && (
+              <div className="p-4 bg-[#007AFF]/5 border-b border-[#007AFF]/20">
+                <div className="flex gap-3">
+                  <div className="w-9 h-9 rounded-full bg-[#007AFF]/10 border border-[#007AFF]/20 flex items-center justify-center shrink-0 mt-0.5">
+                    <Building2 className="w-4 h-4 text-[#007AFF]" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold leading-tight mb-0.5">
+                      {lang === "ar" ? "دعوة انضمام للعيادة" : "Clinic Invitation"}
+                    </p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      {lang === "ar"
+                        ? `دعاك ${pendingInvite.doctorName} للانضمام إلى عيادة ${pendingInvite.doctorClinicName} بصفتك ${pendingInvite.role}`
+                        : `${pendingInvite.doctorName} invited you to join ${pendingInvite.doctorClinicName} as ${pendingInvite.role}`}
+                    </p>
+                    <div className="flex gap-2 mt-2.5">
+                      <button
+                        disabled={!!inviteLoading}
+                        onClick={async () => {
+                          setInviteLoading("accept");
+                          try {
+                            await acceptInvite({ clerkId, invitationId: pendingInvite._id });
+                            toast.success(lang === "ar" ? "تم قبول الدعوة" : "Invitation accepted!");
+                          } catch { toast.error("Failed"); }
+                          setInviteLoading(null);
+                        }}
+                        className="flex items-center gap-1.5 text-xs font-semibold bg-[#007AFF] text-white px-3 py-1.5 rounded-lg hover:bg-[#007AFF]/90 transition-colors disabled:opacity-60"
+                      >
+                        <UserCheck className="w-3.5 h-3.5" />
+                        {inviteLoading === "accept" ? "..." : (lang === "ar" ? "قبول" : "Accept")}
+                      </button>
+                      <button
+                        disabled={!!inviteLoading}
+                        onClick={async () => {
+                          setInviteLoading("decline");
+                          try {
+                            await declineInvite({ clerkId, invitationId: pendingInvite._id });
+                            toast(lang === "ar" ? "تم رفض الدعوة" : "Invitation declined");
+                          } catch { toast.error("Failed"); }
+                          setInviteLoading(null);
+                        }}
+                        className="flex items-center gap-1.5 text-xs font-semibold bg-muted text-muted-foreground px-3 py-1.5 rounded-lg hover:bg-muted/80 transition-colors disabled:opacity-60"
+                      >
+                        <UserX className="w-3.5 h-3.5" />
+                        {inviteLoading === "decline" ? "..." : (lang === "ar" ? "رفض" : "Decline")}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {notifications.length === 0 && !pendingInvite ? (
               <div className="p-8 text-center text-sm text-muted-foreground">
                 <Bell className="w-8 h-8 mx-auto mb-2 opacity-20" />
                 <p>{t("notifications.noNew") || "No new notifications"}</p>

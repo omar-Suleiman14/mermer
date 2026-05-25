@@ -27,6 +27,7 @@ import {
   RefreshCw,
   X,
   MoreHorizontal,
+  FolderOpen,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -114,6 +115,19 @@ function DroppableSlot({ id, children }: { id: number, children: React.ReactNode
   );
 }
 
+interface DraggableApptItemProps {
+  appt: any;
+  ts: number;
+  isSelectedDayPast: boolean;
+  isDone: boolean;
+  initials: string;
+  onComplete: () => void;
+  onReminder: (e: React.MouseEvent) => void;
+  onCancel: () => void;
+  onReschedule: () => void;
+  tag?: "current" | "next";
+}
+
 const DraggableApptItem = memo(function DraggableApptItem({
   appt,
   ts,
@@ -124,17 +138,8 @@ const DraggableApptItem = memo(function DraggableApptItem({
   onReminder,
   onCancel,
   onReschedule,
-}: {
-  appt: any;
-  ts: number;
-  isSelectedDayPast: boolean;
-  isDone: boolean;
-  initials: string;
-  onComplete: () => void;
-  onReminder: (e: React.MouseEvent) => void;
-  onCancel: () => void;
-  onReschedule: () => void;
-}) {
+  tag,
+}: DraggableApptItemProps) {
   const { t, dir, lang } = useI18n();
   const isinstallmentVisit = appt.source === "installment";
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -210,6 +215,16 @@ const DraggableApptItem = memo(function DraggableApptItem({
               {t("dashboard.manual")}
             </span>
           )}
+          {tag === "current" && (
+            <span className="text-[9px] font-bold uppercase tracking-wider bg-[#34c759]/15 text-[#34c759] border border-[#34c759]/30 px-1.5 py-0.5 rounded-full">
+              Current
+            </span>
+          )}
+          {tag === "next" && (
+            <span className="text-[9px] font-bold uppercase tracking-wider bg-[#007AFF]/15 text-[#007AFF] border border-[#007AFF]/30 px-1.5 py-0.5 rounded-full">
+              Next
+            </span>
+          )}
         </div>
         {appt.patientPhone && (
           <p className="text-xs text-muted-foreground mt-0.5">{appt.patientPhone}</p>
@@ -227,10 +242,10 @@ const DraggableApptItem = memo(function DraggableApptItem({
               <>
                 <button
                   onClick={onComplete}
-                  className="flex items-center gap-1 text-[11px] font-semibold text-[#34c759] border border-[#34c759]/30 px-2 py-1 rounded-lg hover:bg-[#34c759]/10 transition-colors"
+                  className="flex items-center gap-1 text-[11px] font-semibold text-[#007AFF] border border-[#007AFF]/30 px-2 py-1 rounded-lg hover:bg-[#007AFF]/10 transition-colors"
                 >
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  {t("dashboard.done")}
+                  <FolderOpen className="w-3.5 h-3.5" />
+                  {t("dashboard.openVisit")}
                 </button>
                 <button
                   onClick={onReminder}
@@ -272,9 +287,9 @@ const DraggableApptItem = memo(function DraggableApptItem({
               <DropdownMenuContent align="end" className="w-48">
                 {!isSelectedDayPast ? (
                   <>
-                    <DropdownMenuItem onClick={onComplete} className="gap-2 cursor-pointer font-medium text-[#34c759] focus:text-[#34c759]">
-                      <CheckCircle2 className="w-4 h-4" />
-                      <span>{t("dashboard.done")}</span>
+                    <DropdownMenuItem onClick={onComplete} className="gap-2 cursor-pointer font-medium text-[#007AFF] focus:text-[#007AFF]">
+                      <FolderOpen className="w-4 h-4" />
+                      <span>{t("dashboard.openVisit")}</span>
                     </DropdownMenuItem>
                     {appt.patientPhone && (
                       <DropdownMenuItem onClick={onReminder} className="gap-2 cursor-pointer font-medium text-[#25D366] focus:text-[#25D366]">
@@ -367,6 +382,7 @@ export default function SchedulePage() {
     patientName: string;
     patientAge?: number;
     installmentId?: Id<"installments">;
+    tag?: "current" | "next";
   } | null>(null);
 
   // Template picker state
@@ -473,6 +489,22 @@ export default function SchedulePage() {
     });
     return map;
   }, [rawAppointments, daySlots]);
+
+  // Compute the ordered list of incomplete appointments to determine "current" and "next"
+  const incompleteApptIds = useMemo(() => {
+    const ids: Id<"visits">[] = [];
+    if (!daySlots || !appointmentsBySlot) return ids;
+
+    for (const ts of daySlots) {
+      const appts = appointmentsBySlot.get(ts) || [];
+      for (const appt of appts) {
+        if (appt.status !== "completed") {
+          ids.push(appt._id);
+        }
+      }
+    }
+    return ids;
+  }, [daySlots, appointmentsBySlot]);
 
   const cancelledToday = useMemo(
     () => (rawAppointments ?? []).filter((a) => a.status === "cancelled"),
@@ -764,6 +796,7 @@ export default function SchedulePage() {
                 <DndContext
                   sensors={sensors}
                   onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
                 >
                   {!isWorkingDay && (
                     <div className="mb-4 bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex items-start gap-3">
@@ -812,6 +845,10 @@ export default function SchedulePage() {
                                 .toUpperCase()
                                 .slice(0, 2);
 
+                              const isCurrent = incompleteApptIds[0] === appt._id;
+                              const isNext = incompleteApptIds[1] === appt._id;
+                              const apptTag = isCurrent ? "current" : isNext ? "next" : undefined;
+
                               return (
                                 <DraggableApptItem
                                   key={appt._id}
@@ -820,7 +857,10 @@ export default function SchedulePage() {
                                   isSelectedDayPast={isSelectedDayPast}
                                   isDone={isDone}
                                   initials={initials}
-                                  onComplete={() => setCompletionModal({ appointmentId: appt._id, patientId: appt.patientId ?? undefined, patientName: appt.patientName, patientAge: appt.patientAge, installmentId: appt.installmentId ?? undefined })}
+                                  tag={apptTag}
+                                  onComplete={() => {
+                                    setCompletionModal({ appointmentId: appt._id, patientId: appt.patientId ?? undefined, patientName: appt.patientName, patientAge: appt.patientAge, installmentId: appt.installmentId ?? undefined, tag: apptTag });
+                                  }}
                                   onReminder={(e: React.MouseEvent) => appt.patientPhone && openTemplatePicker(appt.patientName, appt.patientPhone, appt.date, e)}
                                   onCancel={() => setCancelModal(appt._id)}
                                   onReschedule={() => setRescheduleModal({ visitId: appt._id, patientName: appt.patientName, isinstallment: appt.source === "installment" })}
@@ -1015,6 +1055,7 @@ export default function SchedulePage() {
         patientName={completionModal?.patientName ?? ""}
         patientAge={completionModal?.patientAge}
         installmentId={completionModal?.installmentId}
+        tag={completionModal?.tag}
         onComplete={() => {
           if (completionModal && !completionModal.installmentId) {
             handleCompleteVisit();

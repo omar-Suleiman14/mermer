@@ -26,6 +26,7 @@ import {
   MoreHorizontal,
   Link as LinkIcon,
   RefreshCw,
+  FolderOpen,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -96,12 +97,14 @@ const SortableApptItem = memo(function SortableApptItem({
   onReminder,
   onCancel,
   onReschedule,
+  tag,
 }: {
   appt: any;
   onComplete: () => void;
   onReminder: (e: React.MouseEvent) => void;
   onCancel: () => void;
   onReschedule: () => void;
+  tag?: "current" | "next";
 }) {
   const isinstallmentVisit = appt.source === "installment";
   const isDone = appt.status === "completed";
@@ -142,6 +145,7 @@ const SortableApptItem = memo(function SortableApptItem({
       {!isDone && (
         <div 
           {...attributes} 
+          {...listeners}
           className="shrink-0 -ms-2 p-1 text-muted-foreground/30 hover:text-muted-foreground/60 transition-colors cursor-grab active:cursor-grabbing outline-none"
         >
           <GripVertical className="w-4 h-4" />
@@ -194,6 +198,16 @@ const SortableApptItem = memo(function SortableApptItem({
               {t("dashboard.manual")}
             </span>
           )}
+          {tag === "current" && (
+            <span className="text-[9px] font-bold uppercase tracking-wider bg-[#34c759]/15 text-[#34c759] border border-[#34c759]/30 px-1.5 py-0.5 rounded-full">
+              Current
+            </span>
+          )}
+          {tag === "next" && (
+            <span className="text-[9px] font-bold uppercase tracking-wider bg-[#007AFF]/15 text-[#007AFF] border border-[#007AFF]/30 px-1.5 py-0.5 rounded-full">
+              Next
+            </span>
+          )}
         </div>
         <p className="text-xs text-muted-foreground mt-0.5">
           {appt.patientAge && `${appt.patientAge}y`}
@@ -212,9 +226,9 @@ const SortableApptItem = memo(function SortableApptItem({
             <button
               onClick={onComplete}
               className="p-2 rounded-full hover:bg-muted/80 text-muted-foreground hover:text-[#007AFF] transition-colors"
-              title="Complete visit"
+              title="Open visit"
             >
-              <CheckCircle2 className="w-5 h-5" />
+              <FolderOpen className="w-5 h-5" />
             </button>
             {appt.patientPhone && (
               <button
@@ -250,9 +264,9 @@ const SortableApptItem = memo(function SortableApptItem({
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={onComplete} className="gap-2 cursor-pointer font-medium text-[#34c759] focus:text-[#34c759]">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>{t("dashboard.done")}</span>
+                <DropdownMenuItem onClick={onComplete} className="gap-2 cursor-pointer font-medium text-[#007AFF] focus:text-[#007AFF]">
+                  <FolderOpen className="w-4 h-4" />
+                  <span>{t("dashboard.openVisit")}</span>
                 </DropdownMenuItem>
                 {appt.patientPhone && (
                   <DropdownMenuItem onClick={onReminder} className="gap-2 cursor-pointer font-medium text-[#25D366] focus:text-[#25D366]">
@@ -337,6 +351,7 @@ export default function DashboardPage() {
     patientName: string;
     patientAge?: number;
     installmentId?: Id<"installments">;
+    tag?: "current" | "next";
   } | null>(null);
 
   // Template picker state
@@ -499,6 +514,10 @@ export default function DashboardPage() {
       .sort((a, b) => a.date - b.date);
   }, [todayAppointments]);
 
+  const incompleteApptIds = useMemo(() => {
+    return todayVisits.filter(a => a.status !== "completed").map(a => a._id);
+  }, [todayVisits]);
+
   return (
     <div className="flex flex-col h-full">
       <PageHeader
@@ -579,16 +598,23 @@ export default function DashboardPage() {
                 items={todayVisits.map((a) => a._id)}
                 strategy={verticalListSortingStrategy}
               >
-                {todayVisits.map((appt) => (
-                  <SortableApptItem
-                    key={appt._id}
-                    appt={appt}
-                    onComplete={() => setCompletionModal({ appointmentId: appt._id, patientId: appt.patientId ?? undefined, patientName: appt.patientName, patientAge: appt.patientAge, installmentId: appt.installmentId ?? undefined })}
-                    onReminder={(e: React.MouseEvent) => openTemplatePicker(appt.patientName, appt.patientPhone, appt.date, e)}
-                    onCancel={() => setCancelModal(appt._id)}
-                    onReschedule={() => setRescheduleModal({ visitId: appt._id, patientName: appt.patientName, isinstallment: appt.source === "installment" })}
-                  />
-                ))}
+                {todayVisits.map((appt) => {
+                  const isCurrent = incompleteApptIds[0] === appt._id;
+                  const isNext = incompleteApptIds[1] === appt._id;
+                  const apptTag = isCurrent ? "current" : isNext ? "next" : undefined;
+
+                  return (
+                    <SortableApptItem
+                      key={appt._id}
+                      appt={appt}
+                      tag={apptTag}
+                      onComplete={() => setCompletionModal({ appointmentId: appt._id, patientId: appt.patientId ?? undefined, patientName: appt.patientName, patientAge: appt.patientAge, installmentId: appt.installmentId ?? undefined, tag: apptTag })}
+                      onReminder={(e: React.MouseEvent) => openTemplatePicker(appt.patientName, appt.patientPhone, appt.date, e)}
+                      onCancel={() => setCancelModal(appt._id)}
+                      onReschedule={() => setRescheduleModal({ visitId: appt._id, patientName: appt.patientName, isinstallment: appt.source === "installment" })}
+                    />
+                  );
+                })}
               </SortableContext>
             </DndContext>
           )}
@@ -731,6 +757,7 @@ export default function DashboardPage() {
         patientName={completionModal?.patientName ?? ""}
         patientAge={completionModal?.patientAge}
         installmentId={completionModal?.installmentId}
+        tag={completionModal?.tag}
         onComplete={() => {
           if (completionModal && !completionModal.installmentId) {
             handleCompleteVisit();

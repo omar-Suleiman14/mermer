@@ -235,6 +235,15 @@ const DEFAULT_NOTES = [
   "med.note.withWater",
 ];
 
+// ── LocalStorage draft key ─────────────────────────────────────────────────────
+function draftKey(visitId: string) { return `visit_draft_${visitId}`; }
+interface DraftState {
+  notes: string;
+  medications: { name: string; frequency: string; notes: string }[];
+  fuNote: string;
+  fuTime: string;
+}
+
 // ── Modal Props ────────────────────────────────────────────────────────────────
 interface VisitCompletionModalProps {
   open: boolean;
@@ -246,6 +255,7 @@ interface VisitCompletionModalProps {
   patientAge?: number;
   installmentId?: Id<"installments">; // if set → installment visit mode
   onComplete?: () => void;
+  tag?: "current" | "next";
 }
 
 // ── Main Component ─────────────────────────────────────────────────────────────
@@ -259,6 +269,7 @@ export function VisitCompletionModal({
   patientAge,
   installmentId,
   onComplete,
+  tag,
 }: VisitCompletionModalProps) {
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   const addVisitFiles = useMutation(api.visits.addVisitFiles);
@@ -402,6 +413,35 @@ export function VisitCompletionModal({
   const [fuTime, setFuTime] = useState<string>("10:00");
   const [fuNote, setFuNote] = useState("");
 
+  // ── Restore draft from localStorage when modal opens ─────────────────────────
+  useEffect(() => {
+    if (!open || !visitId) return;
+    try {
+      const raw = localStorage.getItem(draftKey(visitId));
+      if (raw) {
+        const draft: DraftState = JSON.parse(raw);
+        if (draft.notes) setNotes(draft.notes);
+        if (draft.medications?.length) setMedications(draft.medications);
+        if (draft.fuNote) setFuNote(draft.fuNote);
+        if (draft.fuTime) setFuTime(draft.fuTime);
+      }
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, visitId]);
+
+  // ── Save draft to localStorage ─────────────────────────────────────────────
+  const saveDraftToStorage = useCallback(() => {
+    if (!visitId) return;
+    const draft: DraftState = { notes, medications, fuNote, fuTime };
+    try { localStorage.setItem(draftKey(visitId), JSON.stringify(draft)); } catch {}
+  }, [visitId, notes, medications, fuNote, fuTime]);
+
+  // ── Clear draft from localStorage ─────────────────────────────────────────
+  const clearDraft = useCallback(() => {
+    if (!visitId) return;
+    try { localStorage.removeItem(draftKey(visitId)); } catch {}
+  }, [visitId]);
+
   // Sync initial fuTime to the first available working hour once loaded
   useEffect(() => {
     if (timeSlots.length > 0 && fuTime === "10:00") {
@@ -540,14 +580,28 @@ export function VisitCompletionModal({
     }
   };
 
-  const handleClose = () => {
+  const forceClose = () => {
     setRxFile(null); setRxPreviewUrl(null); setExtraFiles([]);
     setNotes(""); setScheduleFollowUp(false); setFuDate(undefined);
     setFuTime(timeSlots.find(s => s.isWorkingHour && !s.isReserved)?.timeStr || "10:00");
     setFuNote(""); setIsPaid(true); setScheduleNextinstallment(true);
     setNextinstallmentDate(undefined); setNextinstallmentTime("10:00"); setDone(false);
     setMedications([{ name: "", frequency: "", notes: "" }]);
+    clearDraft();
     onOpenChange(false);
+  };
+
+  // X button or clicking outside: just save draft, don't submit
+  const handleDismiss = () => {
+    saveDraftToStorage();
+    onOpenChange(false);
+  };
+
+  // After a successful save, clear draft and close fully
+  const handleClose = () => {
+    clearDraft();
+    onComplete?.();
+    forceClose();
   };
 
   return (
@@ -560,12 +614,13 @@ export function VisitCompletionModal({
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
         >
+          {/* Backdrop — saves draft, does NOT submit */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={handleClose}
+            onClick={handleDismiss}
           />
 
           <motion.div
@@ -573,19 +628,34 @@ export function VisitCompletionModal({
             animate={{ y: 0, opacity: 1, scale: 1 }}
             exit={{ y: 40, opacity: 0, scale: 0.97 }}
             transition={{ type: "spring", stiffness: 380, damping: 30 }}
-            className="relative z-10 w-full sm:max-w-lg bg-background rounded-t-2xl sm:rounded-2xl shadow-2xl max-h-[92vh] flex flex-col overflow-hidden"
+            className="relative z-10 w-full sm:w-[90vw] sm:max-w-none bg-background rounded-t-2xl sm:rounded-2xl shadow-2xl h-[90vh] max-h-[90vh] flex flex-col overflow-hidden"
           >
             <div className="sm:hidden w-12 h-1 rounded-full bg-border mx-auto mt-3 mb-1 shrink-0" />
 
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
-              <div>
-                <h2 className="text-base font-semibold">{t("visit.completeVisit")}</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {patientName}{patientAge ? ` · ${patientAge}y` : ""}
-                </p>
+              <div className="flex items-center gap-2.5">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-semibold">{t("visit.completeVisit")}</h2>
+                    {tag === "current" && (
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-[#34c759]/15 text-[#34c759] border border-[#34c759]/30 px-2 py-0.5 rounded-full">
+                        Current
+                      </span>
+                    )}
+                    {tag === "next" && (
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-[#007AFF]/15 text-[#007AFF] border border-[#007AFF]/30 px-2 py-0.5 rounded-full">
+                        Next
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {patientName}{patientAge ? ` · ${patientAge}y` : ""}
+                  </p>
+                </div>
               </div>
-              <button onClick={handleClose} className="p-1.5 rounded-lg hover:bg-muted/60 transition-colors">
+              {/* X saves draft, does NOT submit */}
+              <button onClick={handleDismiss} className="p-1.5 rounded-lg hover:bg-muted/60 transition-colors">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -654,7 +724,7 @@ export function VisitCompletionModal({
                     </button>
                     
                     <button
-                      onClick={() => { onComplete?.(); handleClose(); }}
+                      onClick={handleClose}
                       className="flex items-center justify-center px-4 py-3 bg-muted hover:bg-muted/80 rounded-xl transition-colors font-semibold text-sm w-full"
                     >
                       {t("common.close")}
@@ -927,14 +997,14 @@ export function VisitCompletionModal({
                   {/* Actions */}
                   <div className="flex gap-3">
                     <button
-                      onClick={handleClose}
+                      onClick={handleDismiss}
                       disabled={isSaving}
                       className="flex-1 border border-border text-sm font-medium py-2.5 rounded-2xl hover:bg-muted/40 transition-colors disabled:opacity-60"
                     >
-                      {t("common.cancel")}
+                      Save & Close
                     </button>
                     <button
-                      onClick={() => handleSave(false)}
+                      onClick={async () => { await handleSave(false); }}
                       disabled={isSaving}
                       className="flex-1 bg-[#007AFF] text-white text-sm font-semibold py-2.5 rounded-2xl hover:bg-[#0062cc] transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
                     >
