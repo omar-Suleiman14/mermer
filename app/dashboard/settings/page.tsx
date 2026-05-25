@@ -10,6 +10,7 @@ import { Camera, Link as LinkIcon, Globe, Palette, CalendarDays, AlertTriangle, 
 import { IOSSpinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { MessageTemplatesSection } from "@/components/message-templates-section";
+import { ImportExportSection } from "@/components/import-export-section";
 import { useI18n } from "@/lib/i18n/client";
 import { useTheme } from "next-themes";
 import React from "react";
@@ -412,6 +413,11 @@ export default function SettingsPage() {
             {t("settings.messageTemplatesHintAfter")}
           </p>
         </section>
+
+        {/* ═══════════════════════════════════════════════════════════ */}
+        {/* DATA MANAGEMENT                                           */}
+        {/* ═══════════════════════════════════════════════════════════ */}
+        <ImportExportSection clerkId={clerkId} />
 
       </div>
 

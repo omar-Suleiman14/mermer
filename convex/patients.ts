@@ -249,3 +249,46 @@ export const findPatientByNameAndPhone = query({
     return null;
   },
 });
+
+export const exportAllPatients = query({
+  args: { clerkId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx, args.clerkId);
+    if (!user) return [];
+    return await ctx.db
+      .query("patients")
+      .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+      .collect();
+  },
+});
+
+export const batchCreatePatients = mutation({
+  args: {
+    clerkId: v.string(),
+    patients: v.array(v.object({
+      name: v.string(),
+      age: v.number(),
+      phone: v.string(),
+      chronicConditions: v.array(v.string()),
+      notes: v.optional(v.string()),
+    }))
+  },
+  handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx, args.clerkId);
+    const addedIds = [];
+    for (const p of args.patients) {
+      const patientId = await ctx.db.insert("patients", {
+        doctorId: user._id,
+        name: p.name,
+        age: p.age,
+        phone: p.phone,
+        chronicConditions: p.chronicConditions,
+        notes: p.notes,
+        createdAt: Date.now(),
+      });
+      addedIds.push(patientId);
+    }
+    await logAction(ctx, user, "Batch Added Patients", `Registered ${addedIds.length} new patients via import`);
+    return addedIds;
+  },
+});

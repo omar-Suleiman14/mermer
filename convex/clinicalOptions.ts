@@ -32,6 +32,45 @@ export const addMedicationOption = mutation({
   },
 });
 
+export const exportAllMedications = query({
+  args: { clerkId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx, args.clerkId);
+    if (!user) return [];
+    return await ctx.db
+      .query("medicationOptions")
+      .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+      .collect();
+  },
+});
+
+export const batchAddMedicationOptions = mutation({
+  args: { clerkId: v.string(), medications: v.array(v.string()) },
+  handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx, args.clerkId);
+    const addedIds = [];
+    
+    for (const name of args.medications) {
+      const existing = await ctx.db
+        .query("medicationOptions")
+        .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+        .filter((q) => q.eq(q.field("name"), name))
+        .first();
+        
+      if (!existing) {
+        const id = await ctx.db.insert("medicationOptions", {
+          doctorId: user._id,
+          name: name,
+        });
+        addedIds.push(id);
+      } else {
+        addedIds.push(existing._id);
+      }
+    }
+    return addedIds;
+  },
+});
+
 // ── FREQUENCIES ──
 export const getFrequencyOptions = query({
   args: { clerkId: v.string() },
