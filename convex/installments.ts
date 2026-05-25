@@ -102,6 +102,23 @@ export const listinstallmentsByPatient = query({
   },
 });
 
+export const listPastDueinstallments = query({
+  args: { clerkId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx, args.clerkId);
+    if (!user) return [];
+
+    const installments = await ctx.db
+      .query("installments")
+      .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+      .order("desc")
+      .take(500);
+
+    return installments.filter((c) => (c.unpaidBalance ?? 0) > 0 && c.status === "active");
+  },
+});
+
+
 // ─── Mutations ────────────────────────────────────────────────────────────────
 
 export const createinstallment = mutation({

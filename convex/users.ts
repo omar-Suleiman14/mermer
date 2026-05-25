@@ -76,7 +76,7 @@ export const getOrCreateUser = mutation({
       createdAt: Date.now(),
       isAdmin: false,
       qrSlug: slug,
-      publicProfile: false,
+      publicProfile: true,
       timezoneOffset: args.timezoneOffset,
       isBlocked: role === "doctor" ? true : false, // Assistants don't need manual unblocking, their doctor is already approved
       role,

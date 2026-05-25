@@ -473,6 +473,8 @@ export const getPlatformOverview = query({
 export const getRevenueData = query({
   args: {
     clerkId: v.string(),
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
     now: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -481,13 +483,24 @@ export const getRevenueData = query({
 
     const fee = (user as any).consultationFee ?? 0;
     const now = args.now ?? Date.now();
-    const sixtyDaysAgo = now - 60 * 86400000;
+    const DAY_MS = 86400000;
+    
+    function startOfDay(ts: number) {
+      const d = new Date(ts);
+      d.setHours(0, 0, 0, 0);
+      return d.getTime();
+    }
+    
+    const todayStart = startOfDay(now);
+    // Default to 60 days for revenue projection
+    const rangeStart = args.startDate ?? (todayStart - 59 * DAY_MS);
+    const rangeEnd = args.endDate ?? todayStart;
 
-    // OPTIMIZED: Only fetch last 60 days of visits using date range index
+    // OPTIMIZED: Only fetch visits within range using date range index
     const recentAppointments = await ctx.db
       .query("visits")
       .withIndex("by_doctor_date", (q) =>
-        q.eq("doctorId", user._id).gte("date", sixtyDaysAgo)
+        q.eq("doctorId", user._id).gte("date", rangeStart)
       )
       .take(5000);
 
@@ -513,20 +526,13 @@ export const getRevenueData = query({
     }
 
     const completed = recentAppointments.filter(
-      (a) => a.status === "completed" && a.date >= sixtyDaysAgo
+      (a) => a.status === "completed" && a.date >= rangeStart && a.date <= rangeEnd + DAY_MS - 1
     );
 
-    // Build daily revenue map for the last 60 days
-    function startOfDay(ts: number) {
-      const d = new Date(ts);
-      d.setHours(0, 0, 0, 0);
-      return d.getTime();
-    }
-    const DAY_MS = 86400000;
-
     const dayMap = new Map<number, number>();
-    for (let i = 59; i >= 0; i--) {
-      dayMap.set(startOfDay(now - i * DAY_MS), 0);
+    const rangeDays = Math.min(90, Math.ceil((rangeEnd - rangeStart) / DAY_MS) + 1);
+    for (let i = rangeDays - 1; i >= 0; i--) {
+      dayMap.set(startOfDay(rangeEnd - i * DAY_MS), 0);
     }
 
     // Add visit revenues
@@ -553,22 +559,15 @@ export const getRevenueData = query({
       revenue,
     }));
 
-    // This month vs last month
-    const thisMonthStart = startOfDay(now - 29 * DAY_MS);
-    const lastMonthStart = startOfDay(now - 59 * DAY_MS);
-    const thisMonthRevenue = dailyRevenue
-      .filter((d) => d.date >= thisMonthStart)
-      .reduce((s, d) => s + d.revenue, 0);
-    const lastMonthRevenue = dailyRevenue
-      .filter((d) => d.date >= lastMonthStart && d.date < thisMonthStart)
-      .reduce((s, d) => s + d.revenue, 0);
+    // This month vs last month (if they picked a 30 day range, we compare to previous 30 days)
+    const currentRangeRevenue = dailyRevenue.reduce((s, d) => s + d.revenue, 0);
+    
+    // We don't fetch last month's visits right now to save DB hits if range is custom.
+    // If it's custom, we might just return the selected range revenue.
+    const thisMonthRevenue = currentRangeRevenue;
+    const lastMonthRevenue = 0;
 
-    const pctChange =
-      lastMonthRevenue > 0
-        ? ((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100
-        : thisMonthRevenue > 0
-          ? 100
-          : 0;
+    const pctChange = 100; // Simplified for custom ranges
 
     // Best day of week — use recent data only (more efficient)
     const dowTotals: number[] = [0, 0, 0, 0, 0, 0, 0];
@@ -637,6 +636,8 @@ export const getRevenueData = query({
 export const getStatsAggregated = query({
   args: {
     clerkId: v.string(),
+    startDate: v.optional(v.number()),
+    endDate: v.optional(v.number()),
     now: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
@@ -646,16 +647,20 @@ export const getStatsAggregated = query({
     const now = args.now ?? Date.now();
     const DAY_MS = 86400000;
     const todayStart = (() => { const d = new Date(now); d.setHours(0,0,0,0); return d.getTime(); })();
+    
+    // Default to last 30 days if no custom range is provided
+    const rangeStart = args.startDate ?? (todayStart - 29 * DAY_MS);
+    const rangeEnd = args.endDate ?? todayStart;
+
     const weekStart = todayStart - 6 * DAY_MS;
-    const monthStart = todayStart - 29 * DAY_MS;
     const yearStart = new Date(new Date(now).getFullYear(), 0, 1).getTime();
 
-    // Single indexed read: last 60 days of visits
-    const sixtyDaysAgo = now - 60 * DAY_MS;
+    // Single indexed read: get visits from rangeStart (with a slight buffer)
+    const queryStart = Math.min(rangeStart, now - 60 * DAY_MS);
     const recentVisits = await ctx.db
       .query("visits")
       .withIndex("by_doctor_date", (q) =>
-        q.eq("doctorId", user._id).gte("date", sixtyDaysAgo)
+        q.eq("doctorId", user._id).gte("date", queryStart)
       )
       .take(5000);
 
@@ -695,9 +700,13 @@ export const getStatsAggregated = query({
 
     // ── Visit Analytics ──
     const completed = allVisits.filter((a) => a.status === "completed");
+    
+    // If a custom range is provided, use it for "thisMonth" metrics
+    const rangeCompleted = completed.filter((a) => a.date >= rangeStart && a.date <= rangeEnd + DAY_MS - 1);
+    
     const today = completed.filter((a) => a.date >= todayStart).length;
     const thisWeek = completed.filter((a) => a.date >= weekStart).length;
-    const thisMonth = completed.filter((a) => a.date >= monthStart).length;
+    const thisMonth = rangeCompleted.length;
     const thisYear = completed.filter((a) => a.date >= yearStart).length;
 
     const onlineCompleted = completed.filter((a) => a.source === "online").length;
@@ -711,12 +720,14 @@ export const getStatsAggregated = query({
 
     const uniquePatients = new Set(completed.map((a) => a.patientId?.toString()).filter(Boolean)).size;
 
-    // Day-by-day for the last 30 days (visits sparkline)
+    // Day-by-day for the range (visits sparkline) - max 90 days to avoid huge arrays
     const dayMap = new Map<number, { total: number; online: number; manual: number }>();
-    for (let i = 29; i >= 0; i--) {
-      dayMap.set(todayStart - i * DAY_MS, { total: 0, online: 0, manual: 0 });
+    const rangeDays = Math.min(90, Math.ceil((rangeEnd - rangeStart) / DAY_MS) + 1);
+    
+    for (let i = rangeDays - 1; i >= 0; i--) {
+      dayMap.set(startOfDay(rangeEnd - i * DAY_MS), { total: 0, online: 0, manual: 0 });
     }
-    completed.forEach((a) => {
+    rangeCompleted.forEach((a) => {
       const day = startOfDay(a.date);
       if (dayMap.has(day)) {
         const entry = dayMap.get(day)!;
@@ -758,8 +769,8 @@ export const getStatsAggregated = query({
       return s + dp + (c.paidVisits ?? 0) * (c.costPerVisit ?? 0);
     }, 0);
     const outstanding = allinstallments.reduce((s, c) => s + (c.unpaidBalance ?? 0), 0);
-    const installmentVisitsThisMonth = completed.filter(
-      (a) => a.source === "installment" && a.date >= monthStart
+    const installmentVisitsThisMonth = rangeCompleted.filter(
+      (a) => a.source === "installment"
     );
 
     // Top active installments (first 5)

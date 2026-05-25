@@ -24,6 +24,9 @@ import {
   Sparkles,
   AlertCircle,
   Info,
+  Calendar as CalendarIcon,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { useMemo, useState, type ComponentType } from "react";
@@ -292,6 +295,63 @@ function RevenueSourcesChart({
   );
 }
 
+// ── Inline mini calendar for date range picking ──────────────────────────────
+function MiniCalendar({
+  value,
+  onSelect,
+  locale,
+}: {
+  value: Date | null;
+  onSelect: (d: Date) => void;
+  locale: string;
+}) {
+  const today = new Date();
+  const [viewYear, setViewYear] = useState(today.getFullYear());
+  const [viewMonth, setViewMonth] = useState(today.getMonth());
+
+  const firstDay = new Date(viewYear, viewMonth, 1).getDay();
+  const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+  const cells: (number | null)[] = Array(firstDay).fill(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  const monthLabel = new Date(viewYear, viewMonth, 1).toLocaleDateString(locale, { month: "long", year: "numeric" });
+  const dayLabels = ["S", "M", "T", "W", "T", "F", "S"];
+
+  return (
+    <div className="p-2 w-64">
+      <div className="flex items-center justify-between mb-2">
+        <button onClick={() => { const d = new Date(viewYear, viewMonth - 1); setViewYear(d.getFullYear()); setViewMonth(d.getMonth()); }} className="p-1 rounded hover:bg-muted">
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+        <span className="text-xs font-semibold">{monthLabel}</span>
+        <button onClick={() => { const d = new Date(viewYear, viewMonth + 1); setViewYear(d.getFullYear()); setViewMonth(d.getMonth()); }} className="p-1 rounded hover:bg-muted">
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+      <div className="grid grid-cols-7 gap-0.5">
+        {dayLabels.map((l, i) => <div key={i} className="text-[10px] text-center text-muted-foreground font-medium py-0.5">{l}</div>)}
+        {cells.map((day, i) => {
+          if (!day) return <div key={i} />;
+          const isToday = day === today.getDate() && viewMonth === today.getMonth() && viewYear === today.getFullYear();
+          const isSelected = value && day === value.getDate() && viewMonth === value.getMonth() && viewYear === value.getFullYear();
+          return (
+            <button
+              key={i}
+              onClick={() => onSelect(new Date(viewYear, viewMonth, day))}
+              className={cn(
+                "text-xs w-8 h-8 rounded-lg transition-colors",
+                isSelected ? "bg-[#007AFF] text-white font-bold" : isToday ? "bg-muted font-bold" : "hover:bg-muted/60"
+              )}
+            >
+              {day}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function StatisticsPage() {
   const { user } = useUser();
   const clerkId = user?.id ?? "";
@@ -300,8 +360,23 @@ export default function StatisticsPage() {
   const locale = lang === "ar" ? "ar-EG" : "en-US";
   const currencyLabel = t("common.currency");
 
-  const statsData = useQuery(api.doctors.getStatsAggregated, clerkId ? { clerkId } : "skip");
-  const revenueData = useQuery(api.doctors.getRevenueData, clerkId ? { clerkId } : "skip");
+  // ── Date range state ──
+  const todayMs = startOfDay(Date.now());
+  const [dateRange, setDateRange] = useState<{ start: number; end: number }>({
+    start: todayMs - 29 * DAY_MS,
+    end: todayMs,
+  });
+  const [pickingStart, setPickingStart] = useState(false);
+  const [pickingEnd, setPickingEnd] = useState(false);
+
+  const PRESETS = useMemo(() => [
+    { label: lang === "ar" ? "٧ أيام" : "7 days", start: todayMs - 6 * DAY_MS, end: todayMs },
+    { label: lang === "ar" ? "٣٠ يوماً" : "30 days", start: todayMs - 29 * DAY_MS, end: todayMs },
+    { label: lang === "ar" ? "٩٠ يوماً" : "90 days", start: todayMs - 89 * DAY_MS, end: todayMs },
+  ], [todayMs, lang]);
+
+  const statsData = useQuery(api.doctors.getStatsAggregated, clerkId ? { clerkId, startDate: dateRange.start, endDate: dateRange.end } : "skip");
+  const revenueData = useQuery(api.doctors.getRevenueData, clerkId ? { clerkId, startDate: dateRange.start, endDate: dateRange.end } : "skip");
   const { currentUser } = useCurrentUser();
 
   const fmt = (n: number) => formatMoney(n, lang, currencyLabel);
@@ -433,12 +508,84 @@ export default function StatisticsPage() {
       ? new Date(analytics.bestMonth.monthStart).toLocaleDateString(locale, { month: "long", year: "numeric" })
       : "—";
 
+  const fmtRangeDate = (ts: number) => new Date(ts).toLocaleDateString(locale, { month: "short", day: "numeric", year: "numeric" });
+
   return (
     <div className="flex flex-col min-h-0 h-full bg-muted/15">
       <PageHeader title={t("stats.title")} description={t("stats.subtitle")} />
 
       <div className="flex-1 overflow-auto">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 space-y-8 pb-24">
+
+          {/* ─── Date Range Picker ─────────────────────────────────── */}
+          <div className="flex flex-wrap items-center gap-2">
+            {PRESETS.map((p) => {
+              const active = p.start === dateRange.start && p.end === dateRange.end;
+              return (
+                <button
+                  key={p.label}
+                  onClick={() => setDateRange({ start: p.start, end: p.end })}
+                  className={cn(
+                    "text-xs font-semibold px-3.5 py-1.5 rounded-xl border transition-colors",
+                    active
+                      ? "bg-[#007AFF] text-white border-[#007AFF]"
+                      : "bg-card border-border text-muted-foreground hover:border-[#007AFF]/40 hover:text-foreground"
+                  )}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+
+            {/* Start date picker */}
+            <Popover open={pickingStart} onOpenChange={setPickingStart}>
+              <PopoverTrigger asChild>
+                <button className={cn(
+                  "flex items-center gap-1.5 text-xs font-medium px-3.5 py-1.5 rounded-xl border transition-colors bg-card border-border hover:border-[#007AFF]/40",
+                  pickingStart && "border-[#007AFF]"
+                )}>
+                  <CalendarIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span>{fmtRangeDate(dateRange.start)}</span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="p-0 w-auto" align="start">
+                <MiniCalendar
+                  locale={locale}
+                  value={new Date(dateRange.start)}
+                  onSelect={(d) => {
+                    setDateRange((r) => ({ ...r, start: startOfDay(d.getTime()) }));
+                    setPickingStart(false);
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
+
+            <span className="text-xs text-muted-foreground">{lang === "ar" ? "إلى" : "→"}</span>
+
+            {/* End date picker */}
+            <Popover open={pickingEnd} onOpenChange={setPickingEnd}>
+              <PopoverTrigger asChild>
+                <button className={cn(
+                  "flex items-center gap-1.5 text-xs font-medium px-3.5 py-1.5 rounded-xl border transition-colors bg-card border-border hover:border-[#007AFF]/40",
+                  pickingEnd && "border-[#007AFF]"
+                )}>
+                  <CalendarIcon className="w-3.5 h-3.5 text-muted-foreground" />
+                  <span>{fmtRangeDate(dateRange.end)}</span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="p-0 w-auto" align="start">
+                <MiniCalendar
+                  locale={locale}
+                  value={new Date(dateRange.end)}
+                  onSelect={(d) => {
+                    setDateRange((r) => ({ ...r, end: startOfDay(d.getTime()) }));
+                    setPickingEnd(false);
+                  }}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+
           {/* Pulse */}
           <section>
             <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-3 ms-0.5">

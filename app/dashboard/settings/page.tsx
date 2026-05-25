@@ -246,7 +246,7 @@ export default function SettingsPage() {
         workingHoursEnd: isAlwaysOpen ? 24 : Number(workingHoursEnd),
         slotDurationMinutes: slotMin ? Number(slotMin) : 30,
         bio: bio || undefined,
-        publicProfile: false,
+        publicProfile: publicProfile,
         feePerVisit: consultationFee ? Number(consultationFee) : undefined,
         workingDays: workingDays,
       });
@@ -333,7 +333,36 @@ export default function SettingsPage() {
         {/* ═══════════════════════════════════════════════════════════ */}
         {/* PROFILE                                                   */}
         {/* ═══════════════════════════════════════════════════════════ */}
-        {/* Profile Settings Hidden for Now */}
+        <section>
+          <h3 className={sectionTitleClass}>{t("settings.profileSection") || "Profile"}</h3>
+          <div className={blockClass}>
+            <div className={rowClass}>
+              <label htmlFor="settings-public-profile" className={labelClass}>
+                <Globe className="w-4 h-4 text-muted-foreground" /> {t("settings.publicProfile") || "Public Profile"}
+              </label>
+              <div className="flex-1 flex justify-end">
+                <Switch
+                  id="settings-public-profile"
+                  name="publicProfile"
+                  checked={publicProfile}
+                  onCheckedChange={(c) => {
+                    setPublicProfile(c);
+                    updateProfile({
+                      clerkId,
+                      name: name || currentUser?.name || "",
+                      phone: normalisePhone(phone || currentUser?.phone || ""),
+                      clinicName: clinicName || currentUser?.clinicName || "",
+                      publicProfile: c,
+                    });
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+          <p className="text-[12px] text-muted-foreground ms-4 -mt-5 mb-8">
+            {t("settings.publicProfileHint") || "If enabled, your profile will be listed in the public directory."}
+          </p>
+        </section>
 
         {/* ═══════════════════════════════════════════════════════════ */}
         {/* CLINIC & LOCATION                                         */}
