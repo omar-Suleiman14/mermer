@@ -246,7 +246,7 @@ export function ImportExportSection({ clerkId }: ImportExportSectionProps) {
                     <select
                       value={importType}
                       onChange={(e) => { setImportType(e.target.value as any); setColumnMap({}); setCsvData([]); setCsvHeaders([]); }}
-                      className="p-2.5 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 w-full sm:w-auto min-w-[150px]"
+                      className="p-2.5 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 w-full sm:w-auto min-w-37.5"
                     >
                       <option value="patients">{t("settings.csvTypePatients") || "Patients"}</option>
                       <option value="medications">{t("settings.csvTypeMedications") || "Medications"}</option>

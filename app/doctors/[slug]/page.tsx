@@ -4,8 +4,9 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useI18n } from "@/lib/i18n/client";
 import { PublicNav } from "@/components/public/public-nav";
-import { Loader2, MapPin, Building2, Languages } from "lucide-react";
+import { Loader2, MapPin, Building2, Languages, MessageSquarePlus } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { formatDoctorTitle, translateSpecialty } from "@/lib/doctor-display";
 import { BookingForm } from "@/components/public/booking-form";
@@ -51,7 +52,7 @@ export default function DoctorProfilePage() {
     <div className="min-h-dvh flex flex-col bg-slate-50 dark:bg-zinc-950 text-foreground" dir={dir}>
       <PublicNav />
       
-      <main className="flex-1 max-w-5xl mx-auto px-4 sm:px-6 py-8 w-full">
+      <main className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 py-8 w-full">
         <div className="grid lg:grid-cols-3 gap-8">
           
           {/* Main Info Column */}
@@ -151,12 +152,12 @@ export default function DoctorProfilePage() {
                    <h2 className="text-xl font-bold text-foreground">
                      {dir === "rtl" ? "تقييمات المرضى" : "Patient Reviews"}
                    </h2>
-                   <a 
+                   <Link
                      href={`/feedback/${slug}`}
                      className="text-sm font-medium text-primary hover:underline"
                    >
                      {dir === "rtl" ? "أضف تقييمك" : "Leave a Review"}
-                   </a>
+                   </Link>
                  </div>
                  <div className="space-y-6">
                    {doctor.reviews.map(review => (
@@ -178,7 +179,22 @@ export default function DoctorProfilePage() {
 
           {/* Sidebar Booking Column */}
           <div className="lg:col-span-1 space-y-6">
-             <div className="sticky top-24">
+             <div className="sticky top-24 space-y-4">
+               <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+                 <h3 className="text-sm font-bold text-foreground">
+                   {dir === "rtl" ? "اترك تقييما بعد زيارتك" : "Leave feedback after your visit"}
+                 </h3>
+                 <p className="mt-1 text-xs text-muted-foreground">
+                   {dir === "rtl" ? "يساعد هذا المرضى الآخرين على الاختيار بثقة." : "Help other patients choose with confidence."}
+                 </p>
+                 <Link
+                   href={`/feedback/${slug}`}
+                   className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-primary/30 bg-background px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/10 transition-colors"
+                 >
+                   <MessageSquarePlus className="w-4 h-4" />
+                   {dir === "rtl" ? "أضف تقييمك" : "Leave Feedback"}
+                 </Link>
+               </div>
                <BookingForm doctor={doctor} />
              </div>
           </div>
