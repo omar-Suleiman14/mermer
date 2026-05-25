@@ -571,3 +571,4 @@ export const removeInvitation = mutation({
     await ctx.db.delete(args.invitationId);
   },
 });
+

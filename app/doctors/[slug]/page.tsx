@@ -147,9 +147,17 @@ export default function DoctorProfilePage() {
             {/* Reviews Section */}
             {doctor.reviews && doctor.reviews.length > 0 && (
               <div className="bg-card border border-border p-6 sm:p-8 rounded-3xl shadow-sm">
-                 <h2 className="text-xl font-bold text-foreground mb-6">
-                   {dir === "rtl" ? "تقييمات المرضى" : "Patient Reviews"}
-                 </h2>
+                 <div className="flex items-center justify-between mb-6">
+                   <h2 className="text-xl font-bold text-foreground">
+                     {dir === "rtl" ? "تقييمات المرضى" : "Patient Reviews"}
+                   </h2>
+                   <a 
+                     href={`/feedback/${slug}`}
+                     className="text-sm font-medium text-primary hover:underline"
+                   >
+                     {dir === "rtl" ? "أضف تقييمك" : "Leave a Review"}
+                   </a>
+                 </div>
                  <div className="space-y-6">
                    {doctor.reviews.map(review => (
                      <div key={review._id} className="pb-6 border-b border-border last:border-0 last:pb-0">
@@ -171,7 +179,7 @@ export default function DoctorProfilePage() {
           {/* Sidebar Booking Column */}
           <div className="lg:col-span-1 space-y-6">
              <div className="sticky top-24">
-               <BookingForm doctorSlug={slug} />
+               <BookingForm doctor={doctor} />
              </div>
           </div>
           

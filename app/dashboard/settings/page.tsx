@@ -40,9 +40,18 @@ const ALL_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 export default function SettingsPage() {
   const { user } = useUser();
   const clerkId = user?.id ?? "";
-  const { t, lang } = useI18n();
+  const { t, lang, dir } = useI18n();
+  // ── Appearance & Notifications ──
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [notifPerm, setNotifPerm] = useState<string>("default");
+
+  useEffect(() => {
+    setMounted(true);
+    if ("Notification" in window) {
+      setNotifPerm(Notification.permission);
+    }
+  }, []);
 
   const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
   const profilePhotoUrl = currentUser?.profilePhotoUrl;
@@ -327,6 +336,50 @@ export default function SettingsPage() {
           </div>
           <p className="text-[12px] text-muted-foreground ms-4 -mt-5 mb-8">
             {t("settings.appearanceHint")}
+          </p>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════════ */}
+        {/* NOTIFICATIONS                                               */}
+        {/* ═══════════════════════════════════════════════════════════ */}
+        <section>
+          <h3 className={sectionTitleClass}>{dir === "rtl" ? "الإشعارات" : "Notifications"}</h3>
+          <div className={blockClass}>
+            <div className={rowClass}>
+              <label className={labelClass}>
+                <Bell className="w-4 h-4 text-muted-foreground" /> {dir === "rtl" ? "إشعارات المتصفح" : "Browser Notifications"}
+              </label>
+              <div className="flex-1 flex justify-end">
+                <button
+                  onClick={() => {
+                    if ("Notification" in window) {
+                      if (Notification.permission === "granted") {
+                        toast.success(dir === "rtl" ? "الإشعارات مفعلة مسبقاً" : "Notifications already enabled");
+                      } else {
+                        Notification.requestPermission().then((permission) => {
+                          setNotifPerm(permission);
+                          if (permission === "granted") {
+                            toast.success(dir === "rtl" ? "تم تفعيل الإشعارات بنجاح" : "Notifications enabled successfully");
+                          } else {
+                            toast.error(dir === "rtl" ? "تم رفض الإشعارات" : "Notifications were denied");
+                          }
+                        });
+                      }
+                    } else {
+                      toast.error(dir === "rtl" ? "متصفحك لا يدعم الإشعارات" : "Your browser does not support notifications");
+                    }
+                  }}
+                  className="bg-primary/10 text-primary px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-primary/20 transition-colors"
+                >
+                  {notifPerm === "granted"
+                    ? (dir === "rtl" ? "مفعلة ✓" : "Enabled ✓")
+                    : (dir === "rtl" ? "تفعيل" : "Enable")}
+                </button>
+              </div>
+            </div>
+          </div>
+          <p className="text-[12px] text-muted-foreground ms-4 -mt-5 mb-8">
+            {dir === "rtl" ? "احصل على إشعارات فورية عند حجز موعد جديد أو لوجود تحديثات." : "Get instant notifications for new bookings and updates."}
           </p>
         </section>
 

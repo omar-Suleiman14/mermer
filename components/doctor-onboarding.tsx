@@ -75,7 +75,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
   const updatePrescriptionTemplate = useMutation(api.users.updatePrescriptionTemplate);
 
   const [step, setStep] = useState(0);
-  const TOTAL_STEPS = 3;
+  const TOTAL_STEPS = 4;
 
   // Step 0 — Basic info
   const [name, setName] = useState(defaultName);
@@ -365,7 +365,43 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
             </motion.div>
           )}
 
-          {/* ── Step 3: Photo, Bio & Privacy (Hidden) ── */}
+          {/* ── Step 3: Notifications ── */}
+          {step === 3 && (
+            <motion.div key="step3" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.22 }} className="space-y-6">
+              <div className="flex items-center gap-2 mb-2">
+                <Bell className="w-5 h-5 text-[#007AFF]" />
+                <span className="font-semibold text-lg">{dir === "rtl" ? "تفعيل الإشعارات" : "Enable Notifications"}</span>
+              </div>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                {dir === "rtl" 
+                  ? "احصل على إشعارات فورية عند حجز موعد جديد أو عند وجود أي تحديثات هامة." 
+                  : "Get instant notifications when a new appointment is booked or for important updates."}
+              </p>
+              
+              <div className="bg-muted/30 border border-border p-5 rounded-2xl flex flex-col items-center justify-center space-y-4">
+                <div className="w-16 h-16 bg-[#007AFF]/10 rounded-full flex items-center justify-center">
+                  <Bell className="w-8 h-8 text-[#007AFF]" />
+                </div>
+                <button
+                  onClick={() => {
+                    if ("Notification" in window) {
+                      Notification.requestPermission().then((permission) => {
+                        setNotificationsEnabled(permission === "granted");
+                        if (permission === "granted") {
+                          toast.success(dir === "rtl" ? "تم تفعيل الإشعارات بنجاح" : "Notifications enabled successfully");
+                        }
+                      });
+                    }
+                  }}
+                  className="bg-[#007AFF] text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#007AFF]/90 transition-colors"
+                >
+                  {notificationsEnabled 
+                    ? (dir === "rtl" ? "الإشعارات مفعلة ✓" : "Notifications Enabled ✓")
+                    : (dir === "rtl" ? "اسمح بالإشعارات" : "Allow Notifications")}
+                </button>
+              </div>
+            </motion.div>
+          )}
 
         </AnimatePresence>
       </div>
