@@ -27,6 +27,7 @@ import {
   AlertCircle,
   CalendarIcon,
   Users,
+  Printer,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import Link from "next/link";
@@ -349,6 +350,14 @@ export default function PatientProfilePage() {
                       )}
                     </div>
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => window.open(`/print/${visit._id}`, '_blank')}
+                        className="flex items-center gap-1.5 text-[11px] font-semibold text-[#007AFF] border border-[#007AFF]/30 px-2.5 py-1 rounded-lg hover:bg-[#007AFF]/10 transition-colors"
+                      >
+                        <Printer className="w-3 h-3" />
+                        {t("visit.printPrescription")}
+                      </button>
+                      
                       {visit.prescriptionPdfUrl && (
                         <a
                           href={visit.prescriptionPdfUrl}
@@ -387,14 +396,34 @@ export default function PatientProfilePage() {
 
                   {visit.prescribedMedications && visit.prescribedMedications.length > 0 && (
                     <div>
-                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">
+                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                         <Pill className="w-3 h-3" />
                         {t("patient.medications")}
                       </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {visit.prescribedMedications.map((m: string) => (
-                          <span key={m} className="text-xs bg-muted/60 px-2 py-0.5 rounded-full">{m}</span>
-                        ))}
+                      <div className="space-y-1.5">
+                        {visit.prescribedMedications.map((m: any, idx: number) => {
+                          // Support both legacy string and new object format
+                          if (typeof m === "string") {
+                            return (
+                              <span key={idx} className="inline-block text-xs bg-[#34c759]/10 text-[#34c759] px-2.5 py-1 rounded-full font-medium">
+                                {m}
+                              </span>
+                            );
+                          }
+                          return (
+                            <div key={idx} className="flex items-start gap-2 bg-[#34c759]/5 border border-[#34c759]/20 rounded-xl px-3 py-2">
+                              <Pill className="w-3.5 h-3.5 text-[#34c759] shrink-0 mt-0.5" />
+                              <div className="min-w-0">
+                                <p className="text-xs font-semibold text-foreground">{m.name}</p>
+                                {(m.frequency || m.notes) && (
+                                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                                    {[m.frequency, m.notes].filter(Boolean).join(" · ")}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}

@@ -330,6 +330,18 @@ export const completeinstallmentVisit = mutation({
     notes: v.optional(v.string()),
     prescriptionImageId: v.optional(v.id("_storage")),
     documentIds: v.optional(v.array(v.id("_storage"))),
+    prescribedMedications: v.optional(
+      v.array(
+        v.union(
+          v.string(),
+          v.object({
+            name: v.string(),
+            frequency: v.optional(v.string()),
+            notes: v.optional(v.string()),
+          })
+        )
+      )
+    ),
     // Next visit scheduling (client computes full timestamp)
     nextVisitDate: v.optional(v.number()),
   },
@@ -349,6 +361,7 @@ export const completeinstallmentVisit = mutation({
       notes: args.notes,
       prescriptionImageId: args.prescriptionImageId,
       documentIds: args.documentIds,
+      prescribedMedications: args.prescribedMedications,
     });
 
     // Update installment payment counters

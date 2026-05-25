@@ -143,7 +143,18 @@ export default defineSchema({
 
     // Clinical data
     reasonForVisit: v.optional(v.string()),
-    prescribedMedications: v.optional(v.array(v.string())),
+    prescribedMedications: v.optional(
+      v.array(
+        v.union(
+          v.string(),
+          v.object({
+            name: v.string(),
+            frequency: v.optional(v.string()),
+            notes: v.optional(v.string()),
+          })
+        )
+      )
+    ),
     analysisRequested: v.optional(v.array(v.string())),
     notes: v.optional(v.string()),
 
@@ -282,5 +293,21 @@ export default defineSchema({
     name: v.string(),
   })
     .index("by_doctor", ["doctorId"]),
+
+  // ── CLINICAL OPTIONS (MEDICATIONS, FREQUENCIES, NOTES) ───────────────────
+  medicationOptions: defineTable({
+    doctorId: v.id("users"),
+    name: v.string(),
+  }).index("by_doctor", ["doctorId"]),
+
+  medicationFrequencyOptions: defineTable({
+    doctorId: v.id("users"),
+    name: v.string(),
+  }).index("by_doctor", ["doctorId"]),
+
+  medicationNoteOptions: defineTable({
+    doctorId: v.id("users"),
+    name: v.string(),
+  }).index("by_doctor", ["doctorId"]),
 
 });

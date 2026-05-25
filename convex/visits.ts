@@ -158,6 +158,20 @@ export const addVisitFiles = mutation({
     prescriptionImageId: v.optional(v.id("_storage")),
     prescriptionPdfId: v.optional(v.id("_storage")),
     documentIds: v.optional(v.array(v.id("_storage"))),
+    notes: v.optional(v.string()),
+    status: v.optional(v.union(v.literal("confirmed"), v.literal("completed"), v.literal("cancelled"))),
+    prescribedMedications: v.optional(
+      v.array(
+        v.union(
+          v.string(),
+          v.object({
+            name: v.string(),
+            frequency: v.optional(v.string()),
+            notes: v.optional(v.string()),
+          })
+        )
+      )
+    ),
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
@@ -172,6 +186,9 @@ export const addVisitFiles = mutation({
       ...(args.prescriptionImageId ? { prescriptionImageId: args.prescriptionImageId } : {}),
       ...(args.prescriptionPdfId ? { prescriptionPdfId: args.prescriptionPdfId } : {}),
       documentIds: [...existingDocIds, ...newDocIds],
+      ...(args.notes !== undefined ? { notes: args.notes } : {}),
+      ...(args.status !== undefined ? { status: args.status } : {}),
+      ...(args.prescribedMedications !== undefined ? { prescribedMedications: args.prescribedMedications } : {}),
     });
   },
 });
@@ -294,6 +311,34 @@ export const updateVisit = mutation({
 });
 
 // FIX #20: bulkRescheduleVisits — add conflict detection + use Promise.all
+export const getActivityLog = query({
+  args: {
+    clerkId: v.string(),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx, args.clerkId);
+    if (!user) return [];
+
+    const visits = await ctx.db
+      .query("visits")
+      .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+      .order("desc")
+      .take(args.limit ?? 500);
+
+    return visits.map((v) => ({
+      _id: v._id,
+      date: v.date,
+      createdAt: v.createdAt,
+      patientId: v.patientId,
+      patientName: v.patientName ?? "Unknown",
+      source: v.source ?? "manual",
+      status: v.status ?? "confirmed",
+      reasonForVisit: v.reasonForVisit,
+    }));
+  },
+});
+
 export const bulkRescheduleVisits = mutation({
   args: {
     clerkId: v.string(),
@@ -303,6 +348,7 @@ export const bulkRescheduleVisits = mutation({
         newDate: v.number(),
       })
     ),
+    skipHoursValidation: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
@@ -313,15 +359,17 @@ export const bulkRescheduleVisits = mutation({
         const visit = await ctx.db.get(update.visitId);
         if (!visit || visit.doctorId !== user._id) return;
 
-        // Working hours validation
-        const doctorOffsetMinutes = user.timezoneOffset ?? -180;
-        const localTimeMs = update.newDate - (doctorOffsetMinutes * 60 * 1000);
-        const localDate = new Date(localTimeMs);
-        const bookingHour = localDate.getUTCHours();
-        const startHour = user.workingHoursStart ?? 9;
-        const endHour = user.workingHoursEnd ?? 17;
-        if (bookingHour < startHour || bookingHour >= endHour) {
-          throw new Error(`Rescheduled time must be within working hours: ${startHour}:00 - ${endHour}:00`);
+        // Working hours validation (skip when called from settings change)
+        if (!args.skipHoursValidation) {
+          const doctorOffsetMinutes = user.timezoneOffset ?? -180;
+          const localTimeMs = update.newDate - (doctorOffsetMinutes * 60 * 1000);
+          const localDate = new Date(localTimeMs);
+          const bookingHour = localDate.getUTCHours();
+          const startHour = user.workingHoursStart ?? 9;
+          const endHour = user.workingHoursEnd ?? 17;
+          if (bookingHour < startHour || bookingHour >= endHour) {
+            throw new Error(`Rescheduled time must be within working hours: ${startHour}:00 - ${endHour}:00`);
+          }
         }
 
         // Conflict check — same pattern as updateAppointment
@@ -339,5 +387,41 @@ export const bulkRescheduleVisits = mutation({
         await ctx.db.patch(update.visitId, { date: update.newDate });
       })
     );
+  },
+});
+
+export const getVisit = query({
+  args: { clerkId: v.string(), visitId: v.id("visits") },
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx, args.clerkId);
+    if (!user) return null;
+
+    const visit = await ctx.db.get(args.visitId);
+    if (!visit || visit.doctorId !== user._id) return null;
+
+    const doctor = await ctx.db.get(user._id);
+    const patient = await ctx.db.get(visit.patientId);
+
+    // Get follow-up if exists
+    const followUps = await ctx.db
+      .query("followUps")
+      .withIndex("by_visit", (q) => q.eq("visitId", visit._id))
+      .collect();
+
+    return {
+      visit,
+      doctor: {
+        name: doctor?.name,
+        specialty: doctor?.specialty,
+        clinicName: doctor?.clinicName,
+        phone: doctor?.phone,
+        clinicAddress: doctor?.clinicAddress,
+      },
+      patient: {
+        name: patient?.name,
+        age: patient?.age,
+      },
+      followUp: followUps.length > 0 ? followUps[0] : null,
+    };
   },
 });

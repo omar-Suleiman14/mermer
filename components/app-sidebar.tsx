@@ -19,7 +19,9 @@ import {
   BarChart3,
   FileText,
   Monitor,
+  History,
 } from "lucide-react";
+
 
 import { useTheme } from "next-themes";
 import { useI18n } from "@/lib/i18n/client";
@@ -57,6 +59,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     { title: t("nav.installments") || "installments", href: "/dashboard/installments", icon: FileText },
     { title: t("nav.feedback") || "Feedback", href: "/dashboard/feedback", icon: Star },
     { title: t("nav.analytics") || "Analytics", href: "/dashboard/stats", icon: BarChart3 },
+    { title: t("nav.history") || "History", href: "/dashboard/history", icon: History },
     { title: t("nav.clinicScreen") === "nav.clinicScreen" ? (lang === "ar" ? "شاشة العيادة" : "Clinic Screen") : (t("nav.clinicScreen") || "Clinic Screen"), href: "/clinic-screen", icon: Monitor, target: "_blank" },
     { title: t("nav.settings") || "Settings", href: "/dashboard/settings", icon: Settings },
   ];

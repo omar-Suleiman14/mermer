@@ -11,6 +11,7 @@
 import type * as appointments from "../appointments.js";
 import type * as authHelper from "../authHelper.js";
 import type * as chronicConditions from "../chronicConditions.js";
+import type * as clinicalOptions from "../clinicalOptions.js";
 import type * as doctors from "../doctors.js";
 import type * as feedback from "../feedback.js";
 import type * as feedbackActions from "../feedbackActions.js";
@@ -33,6 +34,7 @@ declare const fullApi: ApiFromModules<{
   appointments: typeof appointments;
   authHelper: typeof authHelper;
   chronicConditions: typeof chronicConditions;
+  clinicalOptions: typeof clinicalOptions;
   doctors: typeof doctors;
   feedback: typeof feedback;
   feedbackActions: typeof feedbackActions;

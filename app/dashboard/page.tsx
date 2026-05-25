@@ -228,7 +228,7 @@ const SortableApptItem = memo(function SortableApptItem({
             <button
               onClick={onReschedule}
               className={`p-2 rounded-full transition-colors ${isinstallmentVisit ? "hover:bg-[#AF52DE]/10 text-muted-foreground hover:text-[#AF52DE]" : "hover:bg-[#007AFF]/10 text-muted-foreground hover:text-[#007AFF]"}`}
-              title="Reschedule appointment"
+              title={t("schedule.reschedule") || "Reschedule"}
             >
               <RefreshCw className="w-5 h-5" />
             </button>
@@ -263,7 +263,7 @@ const SortableApptItem = memo(function SortableApptItem({
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={onReschedule} className={`gap-2 cursor-pointer font-medium ${isinstallmentVisit ? "text-[#AF52DE] focus:text-[#AF52DE] focus:bg-[#AF52DE]/10" : "text-[#007AFF] focus:text-[#007AFF] focus:bg-[#007AFF]/10"}`}>
                   <RefreshCw className="w-4 h-4" />
-                  <span>Reschedule</span>
+                  <span>{t("schedule.reschedule")}</span>
                 </DropdownMenuItem>
                 {!isinstallmentVisit && (
                   <DropdownMenuItem onClick={onCancel} className="gap-2 cursor-pointer font-medium text-red-500 focus:text-red-500 focus:bg-red-500/10">
@@ -678,7 +678,7 @@ export default function DashboardPage() {
                         <button className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border rounded-2xl transition-colors text-left ${rescheduleModal.isinstallment ? "hover:border-[#AF52DE]/50" : "hover:border-[#007AFF]/50"} ${!rescheduleDate ? "border-red-400/60" : "border-border"}`}>
                           <CalendarIcon className="w-4 h-4 text-muted-foreground shrink-0" />
                           <span className={rescheduleDate ? "" : "text-muted-foreground"}>
-                            {rescheduleDate ? rescheduleDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Pick date"}
+                            {rescheduleDate ? rescheduleDate.toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { month: "short", day: "numeric" }) : (t("visit.pickDate") || "Pick date")}
                           </span>
                         </button>
                       </PopoverTrigger>
@@ -713,7 +713,7 @@ export default function DashboardPage() {
                     className={`flex-1 text-white text-sm font-semibold py-2.5 rounded-2xl transition-colors disabled:opacity-60 flex items-center justify-center gap-2 ${rescheduleModal.isinstallment ? "bg-[#AF52DE] hover:bg-[#9B3DC8]" : "bg-[#007AFF] hover:bg-[#005bb5]"}`}
                   >
                     {rescheduling ? <IOSSpinner size={16} className="text-white" /> : <RefreshCw className="w-4 h-4" />}
-                    Reschedule
+                    {t("schedule.reschedule")}
                   </button>
                 </div>
               </div>

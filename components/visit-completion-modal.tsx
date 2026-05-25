@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useCallback, useMemo, useEffect } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect, CSSProperties } from "react";
+import { createPortal } from "react-dom";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -19,6 +20,11 @@ import {
   StickyNote,
   ImageIcon,
   AlertTriangle,
+  Pill,
+  Plus,
+  Trash2,
+  ChevronDown,
+  Printer,
 } from "lucide-react";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
@@ -34,6 +40,202 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+// ── Types ──────────────────────────────────────────────────────────────────────
+interface MedicationEntry {
+  name: string;
+  frequency: string;
+  notes: string;
+}
+
+// ── Creatable Combobox ─────────────────────────────────────────────────────────
+interface CreatableComboboxProps {
+  options: string[];
+  value: string;
+  onChange: (val: string) => void;
+  onCreateOption: (val: string) => void;
+  placeholder: string;
+  accentColor?: string;
+}
+
+function CreatableCombobox({
+  options,
+  value,
+  onChange,
+  onCreateOption,
+  placeholder,
+  accentColor = "#007AFF",
+}: CreatableComboboxProps) {
+  const [open, setOpen] = useState(false);
+  const [inputVal, setInputVal] = useState(value);
+  const [dropdownStyle, setDropdownStyle] = useState<CSSProperties>({});
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => { setMounted(true); }, []);
+
+  // Sync external value changes
+  useEffect(() => {
+    setInputVal(value);
+  }, [value]);
+
+  // Position dropdown via portal using trigger's bounding rect
+  const updatePosition = useCallback(() => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    setDropdownStyle({
+      position: "fixed",
+      top: rect.bottom + 4,
+      left: rect.left,
+      width: rect.width,
+      zIndex: 9999,
+    });
+  }, []);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    updatePosition();
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        !triggerRef.current?.contains(target) &&
+        !dropdownRef.current?.contains(target)
+      ) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [open, updatePosition]);
+
+  const filtered = useMemo(() => {
+    const q = inputVal.toLowerCase().trim();
+    return options.filter((o) => o.toLowerCase().includes(q));
+  }, [options, inputVal]);
+
+  const showCreate =
+    inputVal.trim().length > 0 &&
+    !options.some((o) => o.toLowerCase() === inputVal.toLowerCase().trim());
+
+  const handleSelect = (opt: string) => {
+    onChange(opt);
+    setInputVal(opt);
+    setOpen(false);
+  };
+
+  const handleCreate = () => {
+    const trimmed = inputVal.trim();
+    if (!trimmed) return;
+    onCreateOption(trimmed);
+    onChange(trimmed);
+    setOpen(false);
+  };
+
+  const dropdown = (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          ref={dropdownRef}
+          initial={{ opacity: 0, y: -4, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: -4, scale: 0.98 }}
+          transition={{ duration: 0.12 }}
+          style={dropdownStyle}
+          className="bg-background border border-border rounded-xl shadow-2xl overflow-hidden"
+        >
+          <div className="max-h-44 overflow-y-auto">
+            {filtered.length === 0 && !showCreate && (
+              <p className="px-3 py-2.5 text-xs text-muted-foreground">No options</p>
+            )}
+            {filtered.map((opt) => (
+              <button
+                key={opt}
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); handleSelect(opt); }}
+                className={`w-full text-left px-3 py-2 text-sm hover:bg-muted/60 transition-colors ${
+                  value === opt ? "font-semibold text-[#007AFF]" : ""
+                }`}
+              >
+                {opt}
+              </button>
+            ))}
+            {showCreate && (
+              <button
+                type="button"
+                onMouseDown={(e) => { e.preventDefault(); handleCreate(); }}
+                className="w-full text-left px-3 py-2 text-sm text-[#34c759] hover:bg-[#34c759]/5 transition-colors flex items-center gap-2 border-t border-border"
+              >
+                <Plus className="w-3.5 h-3.5 shrink-0" />
+                <span>
+                  Add <strong>&quot;{inputVal.trim()}&quot;</strong>
+                </span>
+              </button>
+            )}
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+
+  return (
+    <div ref={triggerRef}>
+      <div
+        className={`flex items-center gap-1.5 w-full px-3 py-2 text-sm bg-background border rounded-xl transition-colors ${
+          open ? "border-[#007AFF]/60 ring-1 ring-[#007AFF]/20" : "border-border"
+        }`}
+      >
+        <input
+          type="text"
+          value={inputVal}
+          onChange={(e) => {
+            setInputVal(e.target.value);
+            onChange(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => { updatePosition(); setOpen(true); }}
+          placeholder={placeholder}
+          className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground/60 min-w-0 text-sm"
+        />
+        <ChevronDown
+          className={`w-3.5 h-3.5 text-muted-foreground shrink-0 transition-transform cursor-pointer ${open ? "rotate-180" : ""}`}
+          onMouseDown={(e) => { e.preventDefault(); updatePosition(); setOpen((p) => !p); }}
+        />
+      </div>
+      {mounted && createPortal(dropdown, document.body)}
+    </div>
+  );
+}
+
+// ── Default options ────────────────────────────────────────────────────────────
+const DEFAULT_FREQUENCIES = [
+  "med.freq.onceDaily",
+  "med.freq.twiceDaily",
+  "med.freq.threeTimesDaily",
+  "med.freq.every6Hours",
+  "med.freq.every8Hours",
+  "med.freq.every12Hours",
+  "med.freq.onceWeekly",
+  "med.freq.asNeeded",
+];
+
+const DEFAULT_NOTES = [
+  "med.note.beforeMeals",
+  "med.note.afterMeals",
+  "med.note.withFood",
+  "med.note.onEmptyStomach",
+  "med.note.atBedtime",
+  "med.note.inMorning",
+  "med.note.withWater",
+];
+
+// ── Modal Props ────────────────────────────────────────────────────────────────
 interface VisitCompletionModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -46,6 +248,7 @@ interface VisitCompletionModalProps {
   onComplete?: () => void;
 }
 
+// ── Main Component ─────────────────────────────────────────────────────────────
 export function VisitCompletionModal({
   open,
   onOpenChange,
@@ -62,6 +265,17 @@ export function VisitCompletionModal({
   const createFollowUp = useMutation(api.followUps.createFollowUp);
   const completeinstallmentVisit = useMutation(api.installments.completeinstallmentVisit);
   const waiveUnpaidBalance = useMutation(api.installments.waiveUnpaidBalance);
+
+  // Clinical options mutations
+  const addMedicationOption = useMutation(api.clinicalOptions.addMedicationOption);
+  const addFrequencyOption = useMutation(api.clinicalOptions.addFrequencyOption);
+  const addNoteOption = useMutation(api.clinicalOptions.addNoteOption);
+
+  // Clinical options queries
+  const medOptions = useQuery(api.clinicalOptions.getMedicationOptions, clerkId ? { clerkId } : "skip");
+  const freqOptions = useQuery(api.clinicalOptions.getFrequencyOptions, clerkId ? { clerkId } : "skip");
+  const noteOptions = useQuery(api.clinicalOptions.getNoteOptions, clerkId ? { clerkId } : "skip");
+
   const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
   const isinstallmentVisit = !!installmentId;
   const { t, lang, dir } = useI18n();
@@ -144,6 +358,38 @@ export function VisitCompletionModal({
   const [notes, setNotes] = useState("");
   const [waiveConfirm, setWaiveConfirm] = useState(false);
 
+  // ── Medications state — pre-populated with one empty row ────────────────────
+  const [medications, setMedications] = useState<MedicationEntry[]>([{ name: "", frequency: "", notes: "" }]);
+
+  const addMedRow = () =>
+    setMedications((prev) => [...prev, { name: "", frequency: "", notes: "" }]);
+
+  const removeMedRow = (idx: number) =>
+    setMedications((prev) => prev.filter((_, i) => i !== idx));
+
+  const updateMed = (idx: number, field: keyof MedicationEntry, val: string) =>
+    setMedications((prev) =>
+      prev.map((m, i) => (i === idx ? { ...m, [field]: val } : m))
+    );
+
+  // Merged options: doctor-saved + defaults (deduped)
+  const allMedNames = useMemo(() => {
+    const saved = (medOptions ?? []).map((o: any) => o.name);
+    return Array.from(new Set([...saved]));
+  }, [medOptions]);
+
+  const allFreqNames = useMemo(() => {
+    const saved = (freqOptions ?? []).map((o: any) => o.name);
+    const defaults = DEFAULT_FREQUENCIES.map((key) => t(key as any) || key);
+    return Array.from(new Set([...defaults, ...saved]));
+  }, [freqOptions, t]);
+
+  const allNoteNames = useMemo(() => {
+    const saved = (noteOptions ?? []).map((o: any) => o.name);
+    const defaults = DEFAULT_NOTES.map((key) => t(key as any) || key);
+    return Array.from(new Set([...defaults, ...saved]));
+  }, [noteOptions, t]);
+
   // installment visit state
   const [isPaid, setIsPaid] = useState(true);
   const [nextinstallmentTime, setNextinstallmentTime] = useState("10:00");
@@ -195,6 +441,40 @@ export function VisitCompletionModal({
 
     setIsSaving(true);
     try {
+      // ── Save any new medication/frequency/note options to DB ──
+      for (const med of medications) {
+        if (med.name.trim()) {
+          // Only save if it's not already in the saved options
+          const savedNames = (medOptions ?? []).map((o: any) => o.name);
+          if (!savedNames.includes(med.name.trim())) {
+            await addMedicationOption({ clerkId, name: med.name.trim() });
+          }
+        }
+        if (med.frequency.trim()) {
+          const savedFreqs = (freqOptions ?? []).map((o: any) => o.name);
+          const translatedFreqs = DEFAULT_FREQUENCIES.map((k) => t(k as any) || k);
+          if (!savedFreqs.includes(med.frequency.trim()) && !translatedFreqs.includes(med.frequency.trim())) {
+            await addFrequencyOption({ clerkId, name: med.frequency.trim() });
+          }
+        }
+        if (med.notes.trim()) {
+          const savedNotes = (noteOptions ?? []).map((o: any) => o.name);
+          const translatedNotes = DEFAULT_NOTES.map((k) => t(k as any) || k);
+          if (!savedNotes.includes(med.notes.trim()) && !translatedNotes.includes(med.notes.trim())) {
+            await addNoteOption({ clerkId, name: med.notes.trim() });
+          }
+        }
+      }
+
+      // Build structured medication payload (only include rows that have at least a name)
+      const prescribedMedications = medications
+        .filter((m) => m.name.trim())
+        .map((m) => ({
+          name: m.name.trim(),
+          frequency: m.frequency.trim() || undefined,
+          notes: m.notes.trim() || undefined,
+        }));
+
       let prescriptionImageId: Id<"_storage"> | undefined;
       const documentIds: Id<"_storage">[] = [];
 
@@ -229,14 +509,21 @@ export function VisitCompletionModal({
           prescriptionImageId,
           documentIds: documentIds.length > 0 ? documentIds : undefined,
           nextVisitDate: nextTs,
+          prescribedMedications: prescribedMedications.length > 0 ? prescribedMedications : undefined,
         });
         setDone(true);
         toast.success(isPaid ? "Visit complete — payment recorded ✓" : "Visit complete — balance added to installment");
       } else {
-        // Regular visit path
-        if (!skip && (prescriptionImageId || documentIds.length > 0)) {
-          await addVisitFiles({ clerkId, visitId, prescriptionImageId, documentIds: documentIds.length > 0 ? documentIds : undefined });
-        }
+        // Regular visit path — always update notes, status, and medications
+        await addVisitFiles({
+          clerkId,
+          visitId,
+          prescriptionImageId: !skip ? prescriptionImageId : undefined,
+          documentIds: documentIds.length > 0 ? documentIds : undefined,
+          notes: notes || undefined,
+          status: "completed",
+          prescribedMedications: prescribedMedications.length > 0 ? prescribedMedications : undefined,
+        });
         if (scheduleFollowUp && fuDate && patientId) {
           const [hh, mm] = fuTime.split(":").map(Number);
           const exactDate = new Date(fuDate);
@@ -246,8 +533,6 @@ export function VisitCompletionModal({
         setDone(true);
         toast.success(scheduleFollowUp ? "Visit complete — follow-up scheduled!" : "Visit recorded");
       }
-
-      setTimeout(() => { onComplete?.(); handleClose(); }, 1200);
     } catch (e: any) {
       toast.error(e.message ?? "Failed to complete visit");
     } finally {
@@ -261,6 +546,7 @@ export function VisitCompletionModal({
     setFuTime(timeSlots.find(s => s.isWorkingHour && !s.isReserved)?.timeStr || "10:00");
     setFuNote(""); setIsPaid(true); setScheduleNextinstallment(true);
     setNextinstallmentDate(undefined); setNextinstallmentTime("10:00"); setDone(false);
+    setMedications([{ name: "", frequency: "", notes: "" }]);
     onOpenChange(false);
   };
 
@@ -354,58 +640,135 @@ export function VisitCompletionModal({
                     <CheckCircle2 className="w-8 h-8 text-[#34c759]" />
                   </div>
                   <p className="font-semibold text-base">{t("visit.visitComplete")}</p>
-                  <p className="text-sm text-muted-foreground mt-1">
+                  <p className="text-sm text-muted-foreground mt-1 text-center">
                     {scheduleFollowUp ? t("visit.followUpScheduled") : t("visit.savedTimeline")}
                   </p>
+                  
+                  <div className="mt-6 flex flex-col gap-2 w-full max-w-xs">
+                    <button
+                      onClick={() => window.open(`/print/${visitId}`, '_blank')}
+                      className="flex items-center justify-center gap-2 px-4 py-3 bg-[#007AFF] hover:bg-[#0062cc] text-white rounded-xl transition-colors font-semibold text-sm w-full"
+                    >
+                      <Printer className="w-4 h-4" />
+                      {t("visit.printPrescription")}
+                    </button>
+                    
+                    <button
+                      onClick={() => { onComplete?.(); handleClose(); }}
+                      className="flex items-center justify-center px-4 py-3 bg-muted hover:bg-muted/80 rounded-xl transition-colors font-semibold text-sm w-full"
+                    >
+                      {t("common.close")}
+                    </button>
+                  </div>
                 </motion.div>
               )}
 
               {!done && (
                 <div className="space-y-5">
-                  {/* Prescription photo */}
-                  {!rxPreviewUrl ? (
-                    <div>
-                      <p className="text-sm font-medium mb-2">
-                        {t("visit.prescriptionPhoto")} <span className="text-muted-foreground font-normal">({t("onboarding.optional")})</span>
-                      </p>
-                      <button
-                        onClick={() => rxInputRef.current?.click()}
-                        className="w-full border-2 border-dashed border-border rounded-2xl p-6 flex flex-col items-center gap-2.5 hover:border-[#007AFF]/40 hover:bg-[#007AFF]/4 transition-all group"
-                      >
-                        <div className="w-11 h-11 rounded-2xl bg-muted/60 flex items-center justify-center group-hover:bg-[#007AFF]/10 transition-colors">
-                          <Camera className="w-5 h-5 text-muted-foreground group-hover:text-[#007AFF]" />
+
+                  {/* ── Medications Section ─────────────────────────────────── */}
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-xl bg-[#34c759]/10 flex items-center justify-center">
+                          <Pill className="w-3.5 h-3.5 text-[#34c759]" />
                         </div>
-                        <div className="text-center">
-                          <p className="text-sm font-medium">{t("visit.takeOrUpload")}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{t("visit.savedToTimeline")}</p>
-                        </div>
-                      </button>
-                      <input
-                        ref={rxInputRef}
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        className="hidden"
-                        onChange={(e) => { const f = e.target.files?.[0]; if (f) handleRxFile(f); }}
-                      />
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <p className="text-sm font-medium">{t("visit.prescriptionPhoto")}</p>
-                      <div className="flex items-center justify-between p-3 rounded-2xl border border-border bg-muted/30">
-                        <div className="flex items-center gap-3 overflow-hidden">
-                          <FileText className="w-5 h-5 text-[#007AFF] shrink-0" />
-                          <span className="text-sm font-medium truncate">{rxFile?.name || "Prescription file"}</span>
-                        </div>
-                        <button
-                          onClick={() => { setRxFile(null); setRxPreviewUrl(null); }}
-                          className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted/60 hover:text-red-500 transition-colors"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
+                        <p className="text-sm font-semibold">Prescribed Medications</p>
+                        <span className="text-xs text-muted-foreground font-normal">({t("onboarding.optional")})</span>
                       </div>
+                      <button
+                        type="button"
+                        onClick={addMedRow}
+                        className="flex items-center gap-1.5 text-xs font-semibold text-[#007AFF] hover:text-[#0062cc] transition-colors px-2.5 py-1.5 rounded-lg hover:bg-[#007AFF]/8"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Add
+                      </button>
                     </div>
-                  )}
+
+                    <AnimatePresence initial={false}>
+                      {medications.map((med, idx) => (
+                        <motion.div
+                          key={idx}
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.18 }}
+                          className="overflow-visible"
+                        >
+                          <div className="border border-border rounded-2xl p-3 mb-2 space-y-2 bg-muted/20">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                Med #{idx + 1}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => removeMedRow(idx)}
+                                className="p-1 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+
+                            {/* Medication name */}
+                            <div>
+                              <p className="text-xs font-medium text-muted-foreground mb-1">Medication name *</p>
+                              <CreatableCombobox
+                                options={allMedNames}
+                                value={med.name}
+                                onChange={(val) => updateMed(idx, "name", val)}
+                                onCreateOption={(val) => {
+                                  updateMed(idx, "name", val);
+                                }}
+                                placeholder="e.g. Paracetamol, Amoxicillin…"
+                              />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              {/* Frequency */}
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground mb-1">How often</p>
+                                <CreatableCombobox
+                                  options={allFreqNames}
+                                  value={med.frequency}
+                                  onChange={(val) => updateMed(idx, "frequency", val)}
+                                  onCreateOption={(val) => {
+                                    updateMed(idx, "frequency", val);
+                                  }}
+                                  placeholder="e.g. Twice daily…"
+                                  accentColor="#AF52DE"
+                                />
+                              </div>
+
+                              {/* Notes */}
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground mb-1">Notes</p>
+                                <CreatableCombobox
+                                  options={allNoteNames}
+                                  value={med.notes}
+                                  onChange={(val) => updateMed(idx, "notes", val)}
+                                  onCreateOption={(val) => {
+                                    updateMed(idx, "notes", val);
+                                  }}
+                                  placeholder="e.g. After meals…"
+                                  accentColor="#FF9500"
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+
+                    <button
+                      type="button"
+                      onClick={addMedRow}
+                      className="mt-1 w-full border border-dashed border-[#34c759]/40 text-[#34c759] rounded-xl py-2 text-xs font-medium flex items-center justify-center gap-1.5 hover:bg-[#34c759]/5 transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Add another medication
+                    </button>
+                  </div>
 
                   {/* Notes */}
                   <div>
@@ -416,44 +779,6 @@ export function VisitCompletionModal({
                       rows={2}
                       placeholder="Diagnosis, treatment plan, observations…"
                       className="w-full px-4 py-2.5 text-sm bg-background border border-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] resize-none"
-                    />
-                  </div>
-
-                  {/* Extra docs */}
-                  <div>
-                    <button
-                      onClick={() => extrasInputRef.current?.click()}
-                      className="flex items-center gap-2 text-sm text-[#007AFF] hover:underline"
-                    >
-                      <Upload className="w-3.5 h-3.5" />
-                      {t("visit.attachDocs")}
-                    </button>
-                    {extraFiles.length > 0 && (
-                      <div className="mt-2 space-y-1">
-                        {extraFiles.map((f, i) => (
-                          <div key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <FileText className="w-3 h-3" />
-                            {f.name}
-                            <button
-                              onClick={() => setExtraFiles((prev) => prev.filter((_, j) => j !== i))}
-                              className="ml-auto text-red-400 hover:text-red-600"
-                            >
-                              ×
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    <input
-                      ref={extrasInputRef}
-                      type="file"
-                      accept="image/*,application/pdf"
-                      multiple
-                      className="hidden"
-                      onChange={(e) => {
-                        const files = Array.from(e.target.files ?? []);
-                        setExtraFiles((prev) => [...prev, ...files]);
-                      }}
                     />
                   </div>
 

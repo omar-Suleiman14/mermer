@@ -45,10 +45,16 @@ function normaliseForStorage(raw: string): string {
 
 /** Strip 20 prefix for display in input field */
 function stripPrefix(raw: string): string {
-  const digits = raw.replace(/\D/g, "");
-  if (digits.startsWith("20")) return digits.slice(2);
-  if (digits.startsWith("0")) return digits.slice(1);
-  return digits;
+  let digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("20")) {
+    digits = digits.slice(2);
+  }
+  return digits.replace(/^0+/, "");
+}
+
+/** Sanitise phone input: strip non-digits, strip leading zeros, cap at 10 */
+function sanitisePhoneInput(raw: string): string {
+  return raw.replace(/\D/g, "").replace(/^0+/, "").slice(0, 10);
 }
 
 const defaultForm = {
@@ -62,6 +68,22 @@ const defaultForm = {
 
 const inputClass = "w-full px-3 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] transition-shadow";
 
+// Detect if we're on a sm+ screen (>= 640px) — reads synchronously to avoid flicker
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(min-width: 640px)").matches;
+  });
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 640px)");
+    setIsDesktop(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return isDesktop;
+}
+
 export function PatientIntakeDrawer({
   open,
   onOpenChange,
@@ -69,7 +91,8 @@ export function PatientIntakeDrawer({
   editPatient,
 }: PatientIntakeDrawerProps) {
   const isEdit = !!editPatient;
-  const { t, lang } = useI18n();
+  const { t, lang, dir } = useI18n();
+  const isDesktop = useIsDesktop();
 
   const [form, setForm] = useState(() =>
     isEdit
@@ -89,11 +112,7 @@ export function PatientIntakeDrawer({
   // Doctor profile for slot generation
   const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
 
-  const workingDayAbbrs: string[] = (currentUser as any)?.availableDays ?? [];
-  const DOW_ABBR: Record<number, string> = { 0: "Sun", 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat" };
-  const WEEKEND_DAYS = new Set([0, 6]);
-
-  function isNonWorkingDay(d: Date): boolean {
+  function isNonWorkingDay(_d: Date): boolean {
     return false;
   }
 
@@ -140,7 +159,7 @@ export function PatientIntakeDrawer({
       }
     }
     return slots;
-  }, [currentUser, existingVisitsOnDate]);
+  }, [currentUser, existingVisitsOnDate, lang]);
 
   // Auto-select first available working slot
   useEffect(() => {
@@ -308,8 +327,323 @@ export function PatientIntakeDrawer({
     }
   }
 
-  if (!open) return null;
+  const formContent = (
+    <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-2 space-y-4">
+      {/* Name */}
+      <div>
+        <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("drawer.fullName")} *</label>
+        <input
+          value={form.name}
+          onChange={(e) => set("name", e.target.value)}
+          placeholder="Patient full name"
+          className={inputClass}
+          required
+        />
+      </div>
 
+      {/* Age + Phone */}
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("drawer.age")} *</label>
+          <input
+            type="number"
+            value={form.age}
+            onChange={(e) => set("age", e.target.value)}
+            placeholder="45"
+            className={inputClass}
+            min={0}
+            max={150}
+            required
+          />
+        </div>
+        <div>
+          <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("drawer.phone")} *</label>
+          <div className="flex" dir="ltr">
+            <span className="flex items-center px-3 bg-muted/60 border border-border border-r-0 rounded-l-xl text-sm text-muted-foreground font-mono shrink-0">+20</span>
+            <input
+              type="tel"
+              value={form.phone}
+              onChange={(e) => set("phone", sanitisePhoneInput(e.target.value))}
+              placeholder="1023456789"
+              className={`flex-1 ${inputClass} rounded-l-none`}
+              maxLength={10}
+              required
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Chronic Conditions */}
+      <div ref={conditionRef}>
+        <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("drawer.chronicConditions")}</label>
+        {form.chronicConditions.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {form.chronicConditions.map((c) => (
+              <span key={c} className="flex items-center gap-1 bg-[#007AFF]/10 text-[#007AFF] text-xs font-medium px-2 py-0.5 rounded-full">
+                {c}
+                <button type="button" onClick={() => toggleCondition(c)} className="hover:text-[#007AFF]/70">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="relative">
+          <div className="flex items-center border border-border rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-[#007AFF] bg-background">
+            <Search className="w-3.5 h-3.5 text-muted-foreground ml-3 shrink-0" />
+            <input
+              value={conditionSearch}
+              onChange={(e) => { setConditionSearch(e.target.value); setConditionDropdownOpen(true); }}
+              onFocus={() => setConditionDropdownOpen(true)}
+              placeholder={t("drawer.searchConditions")}
+              className="flex-1 px-2 py-2.5 text-sm bg-transparent outline-none"
+            />
+          </div>
+          <AnimatePresence>
+            {conditionDropdownOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.12 }}
+                className="absolute left-0 right-0 mt-1 bg-background border border-border rounded-xl shadow-lg max-h-40 overflow-y-auto z-30"
+              >
+                {filteredConditions.map((c) => {
+                  const selected = form.chronicConditions.includes(c);
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => { toggleCondition(c); }}
+                      className={`w-full flex items-center gap-2 px-3 py-2 text-start text-sm transition-colors hover:bg-muted/40 ${selected ? "text-[#007AFF] font-medium" : ""}`}
+                    >
+                      {selected && <Check className="w-3.5 h-3.5 text-[#007AFF] shrink-0" />}
+                      <span className={selected ? "" : "ml-5"}>{c}</span>
+                    </button>
+                  );
+                })}
+                {canAddCustom && (
+                  <button
+                    type="button"
+                    onClick={addCustomCondition}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-start text-sm text-[#007AFF] font-medium hover:bg-[#007AFF]/5 border-t border-border transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Add &quot;{conditionSearch.trim()}&quot;
+                  </button>
+                )}
+                {filteredConditions.length === 0 && !canAddCustom && (
+                  <p className="px-3 py-2 text-xs text-muted-foreground">No conditions found</p>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+        <p className="text-[11px] text-muted-foreground mt-1">{t("drawer.searchOrAdd")}</p>
+      </div>
+
+      {/* Visit section — hidden in edit mode */}
+      {!isEdit && (
+        <>
+          {/* Toggle */}
+          <div className="pt-2 border-t border-border">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold">{t("drawer.visitDateTime") || "Schedule a Visit"}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Optional — you can add a visit later</p>
+              </div>
+              <Switch checked={addVisit} onCheckedChange={setAddVisit} />
+            </div>
+          </div>
+
+          <AnimatePresence>
+            {addVisit && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="space-y-4">
+                  {/* Date + Time grid */}
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Calendar */}
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
+                        <CalendarIcon className="w-3 h-3" /> Date *
+                      </p>
+                      <Popover open={calOpen} onOpenChange={setCalOpen}>
+                        <PopoverTrigger asChild>
+                          <button type="button" className="w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border border-border rounded-xl hover:border-[#007AFF]/50 transition-colors text-start">
+                            <CalendarIcon className="w-4 h-4 text-muted-foreground shrink-0" />
+                            <span>
+                              {visitDate
+                                ? visitDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+                                : "Pick a date"}
+                            </span>
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={visitDate}
+                            onSelect={(d) => { if (d) { setVisitDate(d); setCalOpen(false); setVisitTime("10:00"); } }}
+                            disabled={(d) => {
+                              const today = new Date();
+                              today.setHours(0, 0, 0, 0);
+                              return d < today || isNonWorkingDay(d);
+                            }}
+                          />
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+
+                    {/* Time slots */}
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
+                        <Clock className="w-3 h-3" /> {t("visit.timeSlot")}
+                      </p>
+                      <div className="max-h-48 overflow-y-auto border border-border rounded-xl divide-y divide-border/50">
+                        {timeSlots.filter(s => s.isWorkingHour).map(slot => (
+                          <button
+                            key={slot.timeStr}
+                            type="button"
+                            onClick={() => !slot.isReserved && setVisitTime(slot.timeStr)}
+                            disabled={slot.isReserved}
+                            className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${
+                              slot.isReserved
+                                ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed line-through"
+                                : visitTime === slot.timeStr
+                                  ? "bg-[#007AFF]/10 text-[#007AFF] font-semibold"
+                                  : "hover:bg-muted/30"
+                            }`}
+                          >
+                            <span>{slot.label}</span>
+                            {slot.isReserved && <span className="text-[10px] font-medium text-red-400 uppercase tracking-wider">{t("visit.reserved") || "Reserved"}</span>}
+                            {!slot.isReserved && visitTime === slot.timeStr && <CheckCircle2 className="w-3.5 h-3.5" />}
+                          </button>
+                        ))}
+                        {timeSlots.filter(s => s.isWorkingHour).length === 0 && (
+                          <p className="px-3 py-4 text-xs text-muted-foreground text-center">No working hours configured</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Reason for visit */}
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("visit.reasonForVisit")}</label>
+                    <input
+                      type="text"
+                      value={form.reasonForVisit}
+                      onChange={(e) => set("reasonForVisit", e.target.value)}
+                      placeholder="e.g. Follow-up, checkup, acute complaint…"
+                      className={inputClass}
+                    />
+                  </div>
+
+                  {/* Notes */}
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("visit.notes")}</label>
+                    <textarea
+                      value={form.notes}
+                      onChange={(e) => set("notes", e.target.value)}
+                      placeholder="Optional notes..."
+                      rows={2}
+                      className={`${inputClass} resize-none`}
+                    />
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </>
+      )}
+    </form>
+  );
+
+  const footerContent = (
+    <div className="flex flex-row gap-3 px-6 py-4 border-t border-border">
+      <button
+        type="button"
+        onClick={() => onOpenChange(false)}
+        className="shrink-0 text-sm text-muted-foreground border border-border rounded-xl px-4 py-2.5 hover:bg-muted/40 transition-colors"
+      >
+        {t("common.cancel")}
+      </button>
+      <button
+        onClick={() => handleSubmit()}
+        disabled={loading}
+        className="flex-1 bg-[#007AFF] text-white text-sm font-semibold py-2.5 px-4 rounded-xl hover:bg-[#0062cc] transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+      >
+        {loading
+          ? <><IOSSpinner size={16} className="text-white" /> {t("onboarding.saving")}</>
+          : isEdit
+            ? t("drawer.saveChanges")
+            : addVisit
+              ? t("drawer.submit")
+              : "Save Patient Only"}
+      </button>
+    </div>
+  );
+
+  // When not open and on mobile, render nothing
+  if (!open && !isDesktop) return null;
+
+  // ── DESKTOP: centered modal popup ─────────────────────────────────────────
+  if (isDesktop) {
+    return (
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            dir={dir}
+          >
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => onOpenChange(false)}
+            />
+            {/* Panel */}
+            <motion.div
+              initial={{ y: 20, opacity: 0, scale: 0.97 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: 20, opacity: 0, scale: 0.97 }}
+              transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              className="relative z-10 w-full max-w-lg bg-background rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+                <div>
+                  <h2 className="text-base font-semibold">{isEdit ? t("drawer.editPatient") : t("drawer.patientIntake")}</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {isEdit ? t("drawer.updatePatient") : t("drawer.registerPatient")}
+                  </p>
+                </div>
+                <button
+                  onClick={() => onOpenChange(false)}
+                  className="p-2 rounded-xl hover:bg-muted/50 transition-colors text-muted-foreground"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              {formContent}
+              {footerContent}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    );
+  }
+
+  // ── MOBILE: bottom drawer ──────────────────────────────────────────────────
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="max-h-[90vh]">
@@ -319,262 +653,9 @@ export function PatientIntakeDrawer({
             {isEdit ? t("drawer.updatePatient") : t("drawer.registerPatient")}
           </DrawerDescription>
         </DrawerHeader>
-
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-6 py-2 space-y-4">
-          {/* Name */}
-          <div>
-            <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("drawer.fullName")} *</label>
-            <input
-              value={form.name}
-              onChange={(e) => set("name", e.target.value)}
-              placeholder="Patient full name"
-              className={inputClass}
-              required
-            />
-          </div>
-
-          {/* Age + Phone */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("drawer.age")} *</label>
-              <input
-                type="number"
-                value={form.age}
-                onChange={(e) => set("age", e.target.value)}
-                placeholder="45"
-                className={inputClass}
-                min={0}
-                max={150}
-                required
-              />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("drawer.phone")} *</label>
-              <div className="flex" dir="ltr">
-                <span className="flex items-center px-3 bg-muted/60 border border-border border-r-0 rounded-l-xl text-sm text-muted-foreground font-mono shrink-0">+20</span>
-                <input
-                  type="tel"
-                  value={form.phone}
-                  onChange={(e) => set("phone", e.target.value.replace(/\D/g, ""))}
-                  placeholder="1023456789"
-                  className={`flex-1 ${inputClass} rounded-l-none`}
-                  required
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Chronic Conditions */}
-          <div ref={conditionRef}>
-            <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("drawer.chronicConditions")}</label>
-            {form.chronicConditions.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mb-2">
-                {form.chronicConditions.map((c) => (
-                  <span key={c} className="flex items-center gap-1 bg-[#007AFF]/10 text-[#007AFF] text-xs font-medium px-2 py-0.5 rounded-full">
-                    {c}
-                    <button type="button" onClick={() => toggleCondition(c)} className="hover:text-[#007AFF]/70">
-                      <X className="w-3 h-3" />
-                    </button>
-                  </span>
-                ))}
-              </div>
-            )}
-            <div className="relative">
-              <div className="flex items-center border border-border rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-[#007AFF] bg-background">
-                <Search className="w-3.5 h-3.5 text-muted-foreground ml-3 shrink-0" />
-                <input
-                  value={conditionSearch}
-                  onChange={(e) => { setConditionSearch(e.target.value); setConditionDropdownOpen(true); }}
-                  onFocus={() => setConditionDropdownOpen(true)}
-                  placeholder={t("drawer.searchConditions")}
-                  className="flex-1 px-2 py-2.5 text-sm bg-transparent outline-none"
-                />
-              </div>
-              <AnimatePresence>
-                {conditionDropdownOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -4 }}
-                    transition={{ duration: 0.12 }}
-                    className="absolute left-0 right-0 mt-1 bg-background border border-border rounded-xl shadow-lg max-h-40 overflow-y-auto z-30"
-                  >
-                    {filteredConditions.map((c) => {
-                      const selected = form.chronicConditions.includes(c);
-                      return (
-                        <button
-                          key={c}
-                          type="button"
-                          onClick={() => { toggleCondition(c); }}
-                          className={`w-full flex items-center gap-2 px-3 py-2 text-start text-sm transition-colors hover:bg-muted/40 ${selected ? "text-[#007AFF] font-medium" : ""}`}
-                        >
-                          {selected && <Check className="w-3.5 h-3.5 text-[#007AFF] shrink-0" />}
-                          <span className={selected ? "" : "ml-5"}>{c}</span>
-                        </button>
-                      );
-                    })}
-                    {canAddCustom && (
-                      <button
-                        type="button"
-                        onClick={addCustomCondition}
-                        className="w-full flex items-center gap-2 px-3 py-2.5 text-start text-sm text-[#007AFF] font-medium hover:bg-[#007AFF]/5 border-t border-border transition-colors"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        Add &quot;{conditionSearch.trim()}&quot;
-                      </button>
-                    )}
-                    {filteredConditions.length === 0 && !canAddCustom && (
-                      <p className="px-3 py-2 text-xs text-muted-foreground">No conditions found</p>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-            <p className="text-[11px] text-muted-foreground mt-1">{t("drawer.searchOrAdd")}</p>
-          </div>
-
-          {/* Visit section — hidden in edit mode */}
-          {!isEdit && (
-            <>
-              {/* Toggle */}
-              <div className="pt-2 border-t border-border">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-semibold">{t("drawer.visitDateTime") || "Schedule a Visit"}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Optional — you can add a visit later</p>
-                  </div>
-                  <Switch checked={addVisit} onCheckedChange={setAddVisit} />
-                </div>
-              </div>
-
-              <AnimatePresence>
-                {addVisit && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: "auto" }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="space-y-4">
-                      {/* Date + Time grid — same layout as visit-drawer */}
-                      <div className="grid grid-cols-2 gap-3">
-                        {/* Calendar */}
-                        <div>
-                          <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
-                            <CalendarIcon className="w-3 h-3" /> Date *
-                          </p>
-                          <Popover open={calOpen} onOpenChange={setCalOpen}>
-                            <PopoverTrigger asChild>
-                              <button type="button" className="w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border border-border rounded-xl hover:border-[#007AFF]/50 transition-colors text-start">
-                                <CalendarIcon className="w-4 h-4 text-muted-foreground shrink-0" />
-                                <span>
-                                  {visitDate
-                                    ? visitDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-                                    : "Pick a date"}
-                                </span>
-                              </button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar
-                                mode="single"
-                                selected={visitDate}
-                                onSelect={(d) => { if (d) { setVisitDate(d); setCalOpen(false); setVisitTime("10:00"); } }}
-                                disabled={(d) => {
-                                  const today = new Date();
-                                  today.setHours(0, 0, 0, 0);
-                                  return d < today || isNonWorkingDay(d);
-                                }}
-                              />
-                            </PopoverContent>
-                          </Popover>
-                        </div>
-
-                        {/* Time slots */}
-                        <div>
-                          <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
-                            <Clock className="w-3 h-3" /> {t("visit.timeSlot")}
-                          </p>
-                          <div className="max-h-48 overflow-y-auto border border-border rounded-xl divide-y divide-border/50">
-                            {timeSlots.filter(s => s.isWorkingHour).map(slot => (
-                              <button
-                                key={slot.timeStr}
-                                type="button"
-                                onClick={() => !slot.isReserved && setVisitTime(slot.timeStr)}
-                                disabled={slot.isReserved}
-                                className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${
-                                  slot.isReserved
-                                    ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed line-through"
-                                    : visitTime === slot.timeStr
-                                      ? "bg-[#007AFF]/10 text-[#007AFF] font-semibold"
-                                      : "hover:bg-muted/30"
-                                }`}
-                              >
-                                <span>{slot.label}</span>
-                                {slot.isReserved && <span className="text-[10px] font-medium text-red-400 uppercase tracking-wider">{t("visit.reserved") || "Reserved"}</span>}
-                                {!slot.isReserved && visitTime === slot.timeStr && <CheckCircle2 className="w-3.5 h-3.5" />}
-                              </button>
-                            ))}
-                            {timeSlots.filter(s => s.isWorkingHour).length === 0 && (
-                              <p className="px-3 py-4 text-xs text-muted-foreground text-center">No working hours configured</p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Reason for visit */}
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("visit.reasonForVisit")}</label>
-                        <input
-                          type="text"
-                          value={form.reasonForVisit}
-                          onChange={(e) => set("reasonForVisit", e.target.value)}
-                          placeholder="e.g. Follow-up, checkup, acute complaint…"
-                          className={inputClass}
-                        />
-                      </div>
-
-                      {/* Notes */}
-                      <div>
-                        <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("visit.notes")}</label>
-                        <textarea
-                          value={form.notes}
-                          onChange={(e) => set("notes", e.target.value)}
-                          placeholder="Optional notes..."
-                          rows={2}
-                          className={`${inputClass} resize-none`}
-                        />
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </>
-          )}
-        </form>
-
-        <DrawerFooter className="flex flex-row gap-3 px-6 py-4 border-t border-border">
-          <DrawerClose asChild>
-            <button
-              type="button"
-              className="shrink-0 text-sm text-muted-foreground border border-border rounded-xl px-4 py-2.5 hover:bg-muted/40 transition-colors"
-            >
-              {t("common.cancel")}
-            </button>
-          </DrawerClose>
-          <button
-            onClick={() => handleSubmit()}
-            disabled={loading}
-            className="flex-1 bg-[#007AFF] text-white text-sm font-semibold py-2.5 px-4 rounded-xl hover:bg-[#0062cc] transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
-          >
-            {loading
-              ? <><IOSSpinner size={16} className="text-white" /> {t("onboarding.saving")}</>
-              : isEdit
-                ? t("drawer.saveChanges")
-                : addVisit
-                  ? t("drawer.submit")
-                  : "Save Patient Only"}
-          </button>
+        {formContent}
+        <DrawerFooter className="p-0">
+          {footerContent}
         </DrawerFooter>
       </DrawerContent>
     </Drawer>

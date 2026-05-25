@@ -23,12 +23,14 @@ import {
   CalendarRange,
   Sparkles,
   AlertCircle,
+  Info,
 } from "lucide-react";
 import { IOSSpinner } from "@/components/ui/spinner";
-import { useMemo, type ComponentType } from "react";
+import { useMemo, useState, type ComponentType } from "react";
 import { useI18n, type Lang } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
 import { useCurrentUser } from "@/components/providers/user-provider";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 const DAY_MS = 86400000;
 
@@ -63,6 +65,8 @@ function weekdayLabels(t: (k: string) => string): string[] {
     t("days.Sat"),
   ];
 }
+
+
 
 function RevenueBarChart({
   actual,
@@ -448,18 +452,20 @@ export default function StatisticsPage() {
                     value={fmt(analytics?.revenue30 ?? 0)}
                     icon={DollarSign}
                     tone="emerald"
+                    tooltip={t("stats.tooltip.revenue30d")}
                   />
                   <PulseCard
                     label={t("stats.projectedNext30")}
                     value={fmt(analytics?.projected30 ?? 0)}
                     icon={SunMedium}
                     tone="sky"
+                    tooltip={t("stats.tooltip.projectedNext30")}
                   />
                 </>
               ) : (
                 <>
-                  <PulseCard label={t("stats.thisMonth")} value={isLoading ? "—" : String(analytics?.thisMonth ?? 0)} icon={BarChart3} tone="amber" />
-                  <PulseCard label={t("stats.thisWeek")} value={isLoading ? "—" : String(analytics?.thisWeek ?? 0)} icon={Activity} tone="sky" />
+                  <PulseCard label={t("stats.thisMonth")} value={isLoading ? "—" : String(analytics?.thisMonth ?? 0)} icon={BarChart3} tone="amber" tooltip={t("stats.tooltip.thisMonth")} />
+                  <PulseCard label={t("stats.thisWeek")} value={isLoading ? "—" : String(analytics?.thisWeek ?? 0)} icon={Activity} tone="sky" tooltip={t("stats.tooltip.thisWeek")} />
                 </>
               )}
               <PulseCard
@@ -489,6 +495,7 @@ export default function StatisticsPage() {
                     : "—"
                 }
                 subtitle={t("stats.visitsCount").replace("{n}", String(analytics.bestVisitDay?.total ?? 0))}
+                tooltip={t("stats.tooltip.bestDay")}
               />
               <HighlightCard
                 icon={CalendarRange}
@@ -497,12 +504,14 @@ export default function StatisticsPage() {
                   .replace("{start}", formatMedium(analytics.bestWeekStart, locale))
                   .replace("{end}", formatMedium(analytics.weekEndTs, locale))}
                 subtitle={t("stats.visitsCount").replace("{n}", String(analytics.bestWeekCount))}
+                tooltip={t("stats.tooltip.bestWeek")}
               />
               <HighlightCard
                 icon={Sparkles}
                 kicker={t("stats.bestMonthCard")}
                 title={bestMonthLabel}
                 subtitle={revenueData ? fmt(analytics.bestMonth.total) : "—"}
+                tooltip={t("stats.tooltip.bestMonth")}
               />
             </section>
           )}
@@ -783,6 +792,7 @@ export default function StatisticsPage() {
                 <h2 className="font-semibold text-sm flex items-center gap-2 mb-4">
                   <Globe className="w-4 h-4 text-primary" />
                   {t("stats.bookingSource")}
+                  <StatTooltip content={t("stats.tooltip.bookingSource")} />
                 </h2>
                 <div className="space-y-3">
                   <div>
@@ -829,6 +839,7 @@ export default function StatisticsPage() {
                 <h2 className="font-semibold text-sm flex items-center gap-2 mb-4">
                   <Clock className="w-4 h-4 text-violet-500" />
                   {t("stats.busiestWeekday")}
+                  <StatTooltip content={t("stats.tooltip.busiestWeekday")} />
                 </h2>
                 <div className="space-y-2">
                   {[0, 1, 2, 3, 4, 5, 6].map((i) => (
@@ -847,7 +858,10 @@ export default function StatisticsPage() {
                 animate={{ opacity: 1, y: 0 }}
                 className={cn(cardClass(), "p-5")}
               >
-                <p className="text-[11px] font-semibold text-muted-foreground">{t("stats.cancellationRate")}</p>
+                <p className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                  {t("stats.cancellationRate")}
+                  <StatTooltip content={t("stats.tooltip.cancellationRate")} />
+                </p>
                 <p className="text-3xl font-bold text-red-500 tabular-nums mt-1">{analytics.cancellationRate}%</p>
                 <p className="text-xs text-muted-foreground mt-1">
                   {analytics.cancelled} {t("stats.cancelled")}
@@ -871,7 +885,10 @@ export default function StatisticsPage() {
                 transition={{ delay: 0.08 }}
                 className={cn(cardClass(), "p-5")}
               >
-                <p className="text-[11px] font-semibold text-muted-foreground">{t("stats.bestRevenueDay")}</p>
+                <p className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                  {t("stats.bestRevenueDay")}
+                  <StatTooltip content={t("stats.tooltip.bestDay")} />
+                </p>
                 <p className="text-base font-semibold mt-1 leading-snug">
                   {revenueData && analytics.bestRevenueDay.revenue > 0
                     ? formatDay(analytics.bestRevenueDay.date, locale)
@@ -1034,11 +1051,13 @@ function PulseCard({
   value,
   icon: Icon,
   tone,
+  tooltip,
 }: {
   label: string;
   value: string;
   icon: ComponentType<{ className?: string }>;
   tone: "emerald" | "sky" | "violet" | "amber";
+  tooltip?: string;
 }) {
   const ring =
     tone === "emerald"
@@ -1052,14 +1071,45 @@ function PulseCard({
     <motion.div
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      className={cn(cardClass(), "p-4 sm:p-5")}
+      className={cn(cardClass(), "p-4 sm:p-5 flex flex-col relative")}
     >
       <div className={cn("w-10 h-10 rounded-2xl flex items-center justify-center mb-3", ring)}>
         <Icon className="w-4 h-4" />
       </div>
       <p className="text-xl sm:text-2xl font-bold tracking-tight text-foreground tabular-nums leading-tight">{value}</p>
-      <p className="text-[11px] text-muted-foreground mt-1.5 leading-snug">{label}</p>
+      <p className="text-[11px] text-muted-foreground mt-1.5 leading-snug flex items-center gap-1.5">
+        {label}
+        {tooltip && <StatTooltip content={tooltip} />}
+      </p>
     </motion.div>
+  );
+}
+
+function StatTooltip({ content }: { content: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpen(!open);
+          }}
+          className="inline-flex items-center justify-center text-muted-foreground/50 hover:text-muted-foreground transition-colors shrink-0 outline-none"
+        >
+          <Info className="w-3 h-3" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        side="top"
+        align="center"
+        className="w-64 p-3 text-xs bg-popover border border-border/60 shadow-xl rounded-xl z-50 leading-relaxed text-popover-foreground pointer-events-auto"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        {content}
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -1069,21 +1119,31 @@ function HighlightCard({
   title,
   titleOverride,
   subtitle,
+  tooltip,
 }: {
   icon: ComponentType<{ className?: string }>;
   kicker: string;
   title?: string;
   titleOverride?: string;
   subtitle: string;
+  tooltip?: string;
 }) {
   return (
-    <div className={cn(cardClass(), "p-4 sm:p-5 flex flex-col gap-1")}>
-      <div className="flex items-center gap-2 text-muted-foreground mb-1">
-        <Icon className="w-3.5 h-3.5 shrink-0" />
-        <span className="text-[10px] font-semibold uppercase tracking-wider">{kicker}</span>
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={cn(cardClass(), "p-4 sm:p-5 flex flex-col gap-1 relative")}
+    >
+      <div className="flex items-center justify-between text-muted-foreground mb-1">
+        <div className="flex items-center gap-2">
+          <Icon className="w-3.5 h-3.5 shrink-0" />
+          <span className="text-[10px] font-semibold uppercase tracking-wider">{kicker}</span>
+        </div>
+        {tooltip && <StatTooltip content={tooltip} />}
       </div>
       <p className="text-base font-semibold text-foreground leading-snug">{titleOverride ?? title ?? "—"}</p>
       <p className="text-xs text-muted-foreground">{subtitle}</p>
-    </div>
+    </motion.div>
   );
 }
+

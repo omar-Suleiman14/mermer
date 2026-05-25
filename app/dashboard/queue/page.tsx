@@ -241,7 +241,7 @@ const DraggableApptItem = memo(function DraggableApptItem({
                 </button>
                 <button
                   onClick={onReschedule}
-                  title="Reschedule"
+                  title={t("schedule.reschedule") || "Reschedule"}
                   className={`p-1.5 rounded-lg transition-colors ${isinstallmentVisit ? "text-[#AF52DE] hover:bg-[#AF52DE]/10" : "text-[#007AFF] hover:bg-[#007AFF]/10"}`}
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
@@ -285,7 +285,7 @@ const DraggableApptItem = memo(function DraggableApptItem({
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={onReschedule} className={`gap-2 cursor-pointer font-medium ${isinstallmentVisit ? "text-[#AF52DE] focus:text-[#AF52DE] focus:bg-[#AF52DE]/10" : "text-[#007AFF] focus:text-[#007AFF] focus:bg-[#007AFF]/10"}`}>
                       <RefreshCw className="w-4 h-4" />
-                      <span>Reschedule</span>
+                      <span>{t("schedule.reschedule") || "Reschedule"}</span>
                     </DropdownMenuItem>
                     {!isinstallmentVisit && (
                       <DropdownMenuItem onClick={onCancel} className="gap-2 cursor-pointer font-medium text-red-500 focus:text-red-500 focus:bg-red-500/10">
@@ -531,7 +531,9 @@ export default function SchedulePage() {
   const rescheduleWorkingDays: string[] = (currentUser as any)?.availableDays ?? [];
   const DOW_ABBR_MAP: Record<number, string> = { 0: "Sun", 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat" };
   function isNonWorkingDay(d: Date): boolean {
-    return false;
+    if (rescheduleWorkingDays.length === 0) return false; // no restriction set
+    const abbr = DOW_ABBR_MAP[d.getDay()];
+    return !rescheduleWorkingDays.includes(abbr);
   }
 
   const rescheduleSlots = useMemo(() => {
@@ -626,8 +628,9 @@ export default function SchedulePage() {
   // Working days from doctor profile
   const workingDays: string[] = (currentUser as any)?.availableDays ?? [];
   const hasWorkingDays = workingDays.length > 0;
-
-  const isWorkingDay = true;
+  const DOW_ABBR: Record<number, string> = { 0: "Sun", 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat" };
+  // Only flag non-working if the doctor has configured specific days
+  const isWorkingDay = !hasWorkingDays || workingDays.includes(DOW_ABBR[new Date(selectedDay).getDay()]);
   const visibleWeekDays = weekDays;
 
   const WeekChevronPrev = dir === "rtl" ? ChevronRight : ChevronLeft;
@@ -746,20 +749,6 @@ export default function SchedulePage() {
                 Array.from({ length: 5 }).map((_, i) => (
                   <Skeleton key={i} className="h-14 w-full rounded-xl bg-black/5 dark:bg-white/5" />
                 ))
-              ) : !isWorkingDay ? (
-                <div className="text-center py-14">
-                  <div className="w-12 h-12 rounded-2xl bg-muted/40 flex items-center justify-center mx-auto mb-3">
-                    <Clock className="w-6 h-6 text-muted-foreground/40" />
-                  </div>
-                  <p className="text-sm font-semibold text-muted-foreground">{t("schedule.clinicClosed")}</p>
-                  <p className="text-xs text-muted-foreground/60 mt-1">{t("schedule.notWorkingDay")}</p>
-                  <button
-                    onClick={() => { setWeekOffset(0); setSelectedDay(todayTs); }}
-                    className="text-[#007AFF] hover:underline text-xs mt-3 inline-block font-semibold"
-                  >
-                    {t("schedule.today")}
-                  </button>
-                </div>
               ) : daySlots.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <Clock className="w-8 h-8 mx-auto mb-3 opacity-20" />
@@ -775,8 +764,18 @@ export default function SchedulePage() {
                 <DndContext
                   sensors={sensors}
                   onDragStart={handleDragStart}
-                  onDragEnd={handleDragEnd}
                 >
+                  {!isWorkingDay && (
+                    <div className="mb-4 bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 flex items-start gap-3">
+                      <div className="mt-0.5">
+                        <Clock className="w-4 h-4 text-amber-600 dark:text-amber-500" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-amber-800 dark:text-amber-500">{t("schedule.clinicClosed")}</p>
+                        <p className="text-xs text-amber-700/80 dark:text-amber-400/80 mt-0.5">{t("schedule.notWorkingDay")}</p>
+                      </div>
+                    </div>
+                  )}
                   {daySlots.map((ts) => {
                     const appts = appointmentsBySlot.get(ts);
 
@@ -963,7 +962,7 @@ export default function SchedulePage() {
                         <button className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border rounded-xl transition-colors text-left ${rescheduleModal.isinstallment ? "hover:border-[#AF52DE]/50" : "hover:border-[#007AFF]/50"} ${!rescheduleDate ? "border-red-400/60" : "border-border"}`}>
                           <CalendarIcon className="w-4 h-4 text-muted-foreground shrink-0" />
                           <span className={rescheduleDate ? "" : "text-muted-foreground"}>
-                            {rescheduleDate ? rescheduleDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "Pick date"}
+                            {rescheduleDate ? rescheduleDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : (t("schedule.pickDate") || "Pick date")}
                           </span>
                         </button>
                       </PopoverTrigger>
@@ -998,7 +997,7 @@ export default function SchedulePage() {
                     className={`flex-1 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors disabled:opacity-60 flex items-center justify-center gap-2 ${rescheduleModal.isinstallment ? "bg-[#AF52DE] hover:bg-[#9B3DC8]" : "bg-[#007AFF] hover:bg-[#005bb5]"}`}
                   >
                     {rescheduling ? <IOSSpinner size={16} className="text-white" /> : <RefreshCw className="w-4 h-4" />}
-                    Reschedule
+                    {t("schedule.reschedule") || "Reschedule"}
                   </button>
                 </div>
               </div>

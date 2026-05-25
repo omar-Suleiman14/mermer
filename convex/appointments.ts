@@ -298,6 +298,11 @@ export const updateAppointment = mutation({
       if (conflict.some((c) => c._id !== visit._id && c.status !== "cancelled")) {
         throw new Error("This time slot is already booked");
       }
+
+      // Sync the reschedule to the installment's nextVisitDate
+      if (visit.installmentId) {
+        await ctx.db.patch(visit.installmentId, { nextVisitDate: args.updates.date });
+      }
     }
 
     await ctx.db.patch(args.appointmentId, args.updates);

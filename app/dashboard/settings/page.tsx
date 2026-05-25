@@ -71,9 +71,10 @@ export default function SettingsPage() {
     workingHoursEnd?: number;
     isAlwaysOpen?: boolean;
     slotMin?: number;
+    workingDays?: string[];
   };
   const [pendingAvailability, setPendingAvailability] = useState<AvailabilityUpdates | null>(null);
-  const [conflictReason, setConflictReason] = useState<"hours">("hours");
+  const [conflictReason, setConflictReason] = useState<"hours" | "days">("hours");
 
   function requestAvailabilityChange(updates: AvailabilityUpdates) {
     if (upcomingVisits === undefined) {
@@ -82,24 +83,27 @@ export default function SettingsPage() {
     }
 
     const isHoursChange = updates.workingHoursStart !== undefined || updates.workingHoursEnd !== undefined || updates.isAlwaysOpen !== undefined;
+    const isDaysChange = updates.workingDays !== undefined;
 
     const newAlwaysOpen = updates.isAlwaysOpen ?? isAlwaysOpen;
     const newStart = newAlwaysOpen ? 0 : (updates.workingHoursStart ?? Number(workingHoursStart));
     const newEnd = newAlwaysOpen ? 24 : (updates.workingHoursEnd ?? Number(workingHoursEnd));
+    const newDays = updates.workingDays ?? workingDays;
 
     const conflicts = upcomingVisits.filter(v => {
       if (v.status !== "confirmed" || new Date(v.date).getTime() <= Date.now()) return false;
       const vDate = new Date(v.date);
       const timeInHours = vDate.getHours() + vDate.getMinutes() / 60;
+      const dayName = vDate.toLocaleDateString("en-US", { weekday: "short" });
 
-      // Hour conflict: visit falls outside new working hours window
+      if (isDaysChange && !newDays.includes(dayName)) return true;
       if (isHoursChange && !newAlwaysOpen && (timeInHours < newStart || timeInHours >= newEnd)) return true;
 
       return false;
     });
 
     if (conflicts.length > 0) {
-      setConflictReason("hours");
+      setConflictReason(isDaysChange ? "days" : "hours");
       setPendingAvailability(updates);
       setConflictingVisits(conflicts);
       setReschedulePromptOpen(true);
@@ -113,25 +117,38 @@ export default function SettingsPage() {
     if (updates.workingHoursEnd !== undefined) setWHE(String(updates.workingHoursEnd));
     if (updates.isAlwaysOpen !== undefined) setIsAlwaysOpen(updates.isAlwaysOpen);
     if (updates.slotMin !== undefined) setSlotMin(String(updates.slotMin));
+    if (updates.workingDays !== undefined) setWorkingDays(updates.workingDays);
   }
 
-  async function handleReschedule(direction: "before" | "after" | "futureDate") {
+  async function handleReschedule() {
     setRescheduling(true);
     try {
       const updates: { visitId: any; newDate: number }[] = [];
       const newAlwaysOpen = pendingAvailability?.isAlwaysOpen ?? isAlwaysOpen;
       const newStartH = newAlwaysOpen ? 0 : (pendingAvailability?.workingHoursStart ?? Number(workingHoursStart));
+      const newEndH = newAlwaysOpen ? 24 : (pendingAvailability?.workingHoursEnd ?? Number(workingHoursEnd));
+      const newDays = pendingAvailability?.workingDays ?? workingDays;
+      const now = Date.now();
 
       for (const v of conflictingVisits) {
-        const attempt = new Date(v.date);
         let foundMs: number | null = null;
-
-        // Search up to 60 days forward or backward
-        for (let i = 0; i < 60; i++) {
-          if (direction === "before") attempt.setDate(attempt.getDate() - 1);
-          else attempt.setDate(attempt.getDate() + 1);
-
+        // Search up to 90 days forward for a valid future slot
+        for (let i = 1; i <= 90; i++) {
+          const attempt = new Date(v.date);
+          attempt.setDate(attempt.getDate() + i);
           attempt.setHours(newStartH || 9, 0, 0, 0);
+
+          // Must be in the future
+          if (attempt.getTime() <= now) continue;
+
+          // Must be on a working day
+          const dayAbbr = attempt.toLocaleDateString("en-US", { weekday: "short" });
+          if (newDays.length > 0 && !newDays.includes(dayAbbr)) continue;
+
+          // Must be within working hours
+          const h = attempt.getHours() + attempt.getMinutes() / 60;
+          if (!newAlwaysOpen && (h < newStartH || h >= newEndH)) continue;
+
           foundMs = attempt.getTime();
           break;
         }
@@ -141,8 +158,13 @@ export default function SettingsPage() {
         }
       }
 
-      await bulkReschedule({ clerkId, updates });
-      toast.success(t("toast.rescheduledSuccessfully") || "Visits rescheduled automatically");
+      if (updates.length === 0) {
+        toast.error("Could not find a valid future slot for some visits. Please reschedule them manually.");
+        return;
+      }
+
+      await bulkReschedule({ clerkId, updates, skipHoursValidation: true });
+      toast.success(t("toast.rescheduledSuccessfully") || "Visits rescheduled to future dates");
 
       if (pendingAvailability) applyAvailabilityChange(pendingAvailability);
       setPendingAvailability(null);
@@ -225,10 +247,11 @@ export default function SettingsPage() {
         bio: bio || undefined,
         publicProfile: false,
         feePerVisit: consultationFee ? Number(consultationFee) : undefined,
+        workingDays: workingDays,
       });
       toast.success(t("toast.settingsSaved"), { id: "settings-save" });
     } catch { toast.error(t("toast.settingsSaveFailed"), { id: "settings-save-error" }); }
-  }, [clerkId, currentUser, name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, consultationFee, updateProfile, t]);
+  }, [clerkId, currentUser, name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, consultationFee, updateProfile, t, workingDays]);
 
   function triggerSave() {
     if (saveTimer.current) clearTimeout(saveTimer.current);
@@ -239,12 +262,12 @@ export default function SettingsPage() {
   const prevValues = useRef("");
   useEffect(() => {
     if (!initialised.current) return;
-    const key = JSON.stringify({ name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, consultationFee });
+    const key = JSON.stringify({ name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, consultationFee, workingDays });
     if (prevValues.current && key !== prevValues.current) {
       triggerSave();
     }
     prevValues.current = key;
-  }, [name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, consultationFee]);
+  }, [name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, consultationFee, workingDays]);
 
   async function handlePhotoUpload(file: File) {
     setUploadingPhoto(true);
@@ -364,34 +387,6 @@ export default function SettingsPage() {
 
 
             <div className={rowClass}>
-              <label htmlFor="settings-open-247" className={labelClass}>{t("settings.open247")}</label>
-              <div className="flex-1 flex justify-end">
-                <Switch id="settings-open-247" name="open247" checked={isAlwaysOpen} onCheckedChange={(c) => requestAvailabilityChange({ isAlwaysOpen: c })} />
-              </div>
-            </div>
-
-            {!isAlwaysOpen && (
-              <React.Fragment key={selectKey}>
-                <div className={rowClass}>
-                  <label htmlFor="settings-opens-at" className={labelClass}>{t("settings.opensAt")}</label>
-                  <select id="settings-opens-at" name="opensAt" value={workingHoursStart} onChange={(e) => requestAvailabilityChange({ workingHoursStart: Number(e.target.value) })} className={`${inputClass} appearance-none cursor-pointer`}>
-                    {Array.from({ length: 24 }, (_, h) => (
-                      <option key={h} value={h}>{h === 0 ? "12:00 AM" : h === 12 ? "12:00 PM" : h < 12 ? `${h}:00 AM` : `${h - 12}:00 PM`}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className={rowClass}>
-                  <label htmlFor="settings-closes-at" className={labelClass}>{t("settings.closesAt")}</label>
-                  <select id="settings-closes-at" name="closesAt" value={workingHoursEnd} onChange={(e) => requestAvailabilityChange({ workingHoursEnd: Number(e.target.value) })} className={`${inputClass} appearance-none cursor-pointer`}>
-                    {Array.from({ length: 24 }, (_, h) => (
-                      <option key={h} value={h}>{h === 0 ? "12:00 AM" : h === 12 ? "12:00 PM" : h < 12 ? `${h}:00 AM` : `${h - 12}:00 PM`}</option>
-                    ))}
-                  </select>
-                </div>
-              </React.Fragment>
-            )}
-
-            <div className={rowClass}>
               <label htmlFor="settings-slot-duration" className={labelClass}>{t("settings.slotDurationLabel")}</label>
               <div className="flex items-center justify-end gap-2 flex-1 min-w-0">
                 <input id="settings-slot-duration" name="slotDuration" type="number" value={slotMin} onChange={(e) => setSlotMin(e.target.value)} min={5} max={120} className={`${inputClass} max-w-15`} dir="ltr" />
@@ -440,16 +435,21 @@ export default function SettingsPage() {
                   <AlertTriangle className="w-5 h-5 text-amber-500" />
                 </div>
                 <div className="w-full">
-                  <h3 className="text-base font-semibold">Reschedule Required</h3>
+                  <h3 className="text-base font-semibold">
+                    {conflictReason === "hours" ? t("settings.conflictBlockTitle") || "Cannot Change Working Hours" : t("settings.conflictDaysBlockTitle") || "Cannot Change Working Days"}
+                  </h3>
                   <p className="text-sm text-muted-foreground mt-1 leading-relaxed mb-3">
-                    You have <strong className="text-foreground">{new Set(conflictingVisits.map(v => v.date)).size} upcoming appointment(s)</strong> scheduled outside your newly requested {conflictReason === "hours" ? "working hours" : "working days"}:
+                    {conflictReason === "hours"
+                      ? (t("settings.conflictBlockDesc") || "You have {n} visit(s) scheduled outside your new hours. Please reschedule them first.").replace("{n}", String(new Set(conflictingVisits.map(v => v.date)).size))
+                      : (t("settings.conflictDaysBlockDesc") || "You have {n} visit(s) on days you are removing. Please reschedule them first.").replace("{n}", String(new Set(conflictingVisits.map(v => v.date)).size))}
                   </p>
                   
+                  <p className="text-xs font-semibold mb-2">{t("settings.conflictVisitsHeader") || "Conflicting visits:"}</p>
                   <div className="max-h-32 overflow-y-auto bg-background/50 border border-border rounded-lg p-2 space-y-1 w-full text-left">
                     {Array.from(new Map(conflictingVisits.map(v => [v.date, v])).values()).map((v: any) => (
                       <div key={v._id} className="text-xs text-muted-foreground flex items-center justify-between p-1.5 hover:bg-muted/30 rounded">
                         <span className="font-medium text-foreground">
-                          {new Date(v.date).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                          {new Date(v.date).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                         </span>
                         <span className="truncate ml-2 max-w-30">{v.reasonForVisit || "Visit"}</span>
                       </div>
@@ -457,36 +457,22 @@ export default function SettingsPage() {
                   </div>
                 </div>
               </div>
-              <div className="bg-muted/30 p-5 border-t border-border space-y-2">
+              <div className="p-4 border-t border-border flex flex-col sm:flex-row justify-end gap-3 bg-muted/20">
                 <button
-                  onClick={() => handleReschedule("before")}
-                  disabled={rescheduling}
-                  className="w-full text-left px-4 py-3 bg-background border border-border rounded-xl hover:border-[#007AFF]/50 hover:bg-[#007AFF]/5 transition-colors disabled:opacity-60"
+                  onClick={() => setReschedulePromptOpen(false)}
+                  className="px-4 py-2 bg-background border border-border rounded-xl hover:bg-muted/50 transition-colors text-sm font-semibold order-2 sm:order-1"
                 >
-                  <p className="text-sm font-semibold text-foreground">Back Date</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Automatically moves visits to the closest previous available day.</p>
+                  {t("common.close")}
                 </button>
                 <button
-                  onClick={() => handleReschedule("after")}
+                  onClick={() => handleReschedule()}
                   disabled={rescheduling}
-                  className="w-full text-left px-4 py-3 bg-background border border-border rounded-xl hover:border-[#007AFF]/50 hover:bg-[#007AFF]/5 transition-colors disabled:opacity-60"
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl transition-colors text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60 order-1 sm:order-2"
                 >
-                  <p className="text-sm font-semibold text-foreground">Future Date</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Automatically moves visits to the closest next available day.</p>
-                </button>
-
-              </div>
-              <div className="p-4 border-t border-border flex justify-end">
-                <button
-                  onClick={() => {
-                    setReschedulePromptOpen(false);
-                    setPendingAvailability(null);
-                    setSelectKey(k => k + 1);
-                  }}
-                  disabled={rescheduling}
-                  className="px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted/40 rounded-lg transition-colors"
-                >
-                  Cancel
+                  {rescheduling ? (
+                    <IOSSpinner size={14} className="text-white" />
+                  ) : null}
+                  {t("settings.rescheduleToFuture") || "Reschedule to Future Dates"}
                 </button>
               </div>
             </motion.div>

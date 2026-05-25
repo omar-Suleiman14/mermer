@@ -16,9 +16,11 @@ import {
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n/client";
-import { Clock, CalendarIcon, CheckCircle2 } from "lucide-react";
+import { Clock, CalendarIcon, CheckCircle2, X } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { motion, AnimatePresence } from "framer-motion";
+import { IOSSpinner } from "@/components/ui/spinner";
 
 interface VisitDrawerProps {
   open: boolean;
@@ -28,8 +30,26 @@ interface VisitDrawerProps {
   patientName: string;
 }
 
+// Detect if we're on a sm+ screen (>= 640px) — reads synchronously to avoid flicker
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(min-width: 640px)").matches;
+  });
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 640px)");
+    setIsDesktop(mq.matches);
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener("change", handler);
+    return () => mq.removeEventListener("change", handler);
+  }, []);
+  return isDesktop;
+}
+
 export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientName }: VisitDrawerProps) {
-  const { t, lang } = useI18n();
+  const { t, lang, dir } = useI18n();
+  const isDesktop = useIsDesktop();
+  
   const [form, setForm] = useState({
     reasonForVisit: "",
     notes: "",
@@ -44,9 +64,6 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
 
   const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
   
-  const workingDayAbbrs: string[] = (currentUser as any)?.availableDays ?? [];
-  const DOW_ABBR: Record<number, string> = { 0: "Sun", 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat" };
-  const WEEKEND_DAYS = new Set([0, 6]); // Sun & Sat
   function isNonWorkingDay(d: Date): boolean {
     return false;
   }
@@ -91,7 +108,7 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
       }
     }
     return slots;
-  }, [currentUser, existingVisitsOnDate]);
+  }, [currentUser, existingVisitsOnDate, lang]);
 
   useEffect(() => {
     if (timeSlots.length > 0 && visitTime === "10:00") {
@@ -116,8 +133,8 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
     onOpenChange(v);
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSubmit(e?: React.FormEvent) {
+    e?.preventDefault();
     if (!visitDate) {
       toast.error("Please pick a visit date");
       return;
@@ -152,115 +169,177 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
     }
   }
 
+  const formContent = (
+    <form onSubmit={handleSubmit} className="overflow-y-auto flex-1">
+      <div className="px-6 space-y-4 py-4">
+        
+        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("visit.date")} *</p>
+            <Popover open={calOpen} onOpenChange={setCalOpen}>
+              <PopoverTrigger asChild>
+                <button type="button" className="w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border border-border rounded-xl hover:border-[#007AFF]/50 transition-colors text-start">
+                  <CalendarIcon className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <span className="text-sm">
+                    {visitDate ? visitDate.toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { weekday: "short", month: "short", day: "numeric" }) : t("visit.pickDate")}
+                  </span>
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar 
+                  mode="single" 
+                  selected={visitDate} 
+                  onSelect={(d) => { if (d) { setVisitDate(d); setCalOpen(false); } }} 
+                  disabled={(d) => {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    return d < today || isNonWorkingDay(d);
+                  }} 
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("visit.timeSlot")}</p>
+            <div className="max-h-48 overflow-y-auto border border-border rounded-xl divide-y divide-border/50">
+              {timeSlots.filter(s => s.isWorkingHour).map(slot => (
+                <button 
+                  key={slot.timeStr} 
+                  type="button"
+                  onClick={() => !slot.isReserved && setVisitTime(slot.timeStr)} 
+                  disabled={slot.isReserved}
+                  className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${
+                    slot.isReserved 
+                      ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed line-through" 
+                      : visitTime === slot.timeStr 
+                        ? "bg-[#007AFF]/10 text-[#007AFF] font-semibold" 
+                        : "hover:bg-muted/30"
+                  }`}
+                >
+                  <span>{slot.label}</span>
+                  {slot.isReserved && <span className="text-[10px] font-medium text-red-400 uppercase tracking-wider">{t("visit.reserved") || "Reserved"}</span>}
+                  {!slot.isReserved && visitTime === slot.timeStr && <CheckCircle2 className="w-3.5 h-3.5" />}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-1.5 pt-2 border-t border-border">
+          <Label htmlFor="visit-reason" className="text-xs font-medium text-muted-foreground mb-1.5 block">{t("visit.reasonForVisit")}</Label>
+          <input
+            id="visit-reason"
+            type="text"
+            value={form.reasonForVisit}
+            onChange={(e) => set("reasonForVisit", e.target.value)}
+            placeholder="e.g. Follow-up, checkup, acute complaint…"
+            className="w-full px-3 py-2 text-sm bg-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent transition-shadow"
+          />
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="visit-notes" className="text-xs font-medium text-muted-foreground mb-1.5 block">{t("visit.notes")}</Label>
+          <textarea
+            id="visit-notes"
+            value={form.notes}
+            onChange={(e) => set("notes", e.target.value)}
+            placeholder="Optional free-form notes..."
+            rows={3}
+            className="w-full px-3 py-2 text-sm bg-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent resize-none transition-shadow"
+          />
+        </div>
+      </div>
+    </form>
+  );
+
+  const footerContent = (
+    <div className="flex flex-row gap-2 border-t border-border px-6 py-4">
+      <button
+        type="button"
+        onClick={() => onOpenChange(false)}
+        className="shrink-0 text-sm text-muted-foreground border border-border rounded-xl px-4 py-2.5 hover:bg-muted/40 transition-colors"
+      >
+        {t("common.cancel")}
+      </button>
+      <button
+        onClick={() => handleSubmit()}
+        disabled={loading}
+        className="flex-1 bg-[#007AFF] text-white text-sm font-semibold py-2.5 px-4 rounded-xl hover:bg-[#0062cc] transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+      >
+        {loading ? <><IOSSpinner size={16} className="text-white" /> {t("onboarding.saving")}</> : t("visit.saveVisit")}
+      </button>
+    </div>
+  );
+
+  // When not open and on mobile, render nothing
+  if (!open && !isDesktop) return null;
+
+  // ── DESKTOP: centered modal popup ─────────────────────────────────────────
+  if (isDesktop) {
+    return (
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
+            dir={dir}
+          >
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => onOpenChange(false)}
+            />
+            {/* Panel */}
+            <motion.div
+              initial={{ y: 20, opacity: 0, scale: 0.97 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: 20, opacity: 0, scale: 0.97 }}
+              transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              className="relative z-10 w-full max-w-md bg-background rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+                <div>
+                  <h2 className="text-base font-semibold">{t("visit.newVisit")}</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {t("visit.recordingFor")} {patientName}
+                  </p>
+                </div>
+                <button
+                  onClick={() => onOpenChange(false)}
+                  className="p-2 rounded-xl hover:bg-muted/50 transition-colors text-muted-foreground"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              {formContent}
+              {footerContent}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    );
+  }
+
+  // ── MOBILE: bottom drawer ──────────────────────────────────────────────────
   return (
     <Drawer open={open} onOpenChange={handleOpen}>
       <DrawerContent className="max-h-[88vh]">
-        <DrawerHeader>
+        <DrawerHeader className="px-6 text-start">
           <DrawerTitle>{t("visit.newVisit")}</DrawerTitle>
           <DrawerDescription>{t("visit.recordingFor")} {patientName}</DrawerDescription>
         </DrawerHeader>
-
-        <form onSubmit={handleSubmit} className="overflow-y-auto flex-1">
-          <div className="px-4 space-y-4 pb-4">
-            
-            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("visit.date")} *</p>
-                <Popover open={calOpen} onOpenChange={setCalOpen}>
-                  <PopoverTrigger asChild>
-                    <button type="button" className="w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border border-border rounded-xl hover:border-[#007AFF]/50 transition-colors text-left">
-                      <CalendarIcon className="w-4 h-4 text-muted-foreground shrink-0" />
-                      <span className="text-sm">
-                        {visitDate ? visitDate.toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { weekday: "short", month: "short", day: "numeric" }) : t("visit.pickDate")}
-                      </span>
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar 
-                      mode="single" 
-                      selected={visitDate} 
-                      onSelect={(d) => { if (d) { setVisitDate(d); setCalOpen(false); } }} 
-                      disabled={(d) => {
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        return d < today || isNonWorkingDay(d);
-                      }} 
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("visit.timeSlot")}</p>
-                <div className="max-h-48 overflow-y-auto border border-border rounded-xl divide-y divide-border/50">
-                  {timeSlots.filter(s => s.isWorkingHour).map(slot => (
-                    <button 
-                      key={slot.timeStr} 
-                      type="button"
-                      onClick={() => !slot.isReserved && setVisitTime(slot.timeStr)} 
-                      disabled={slot.isReserved}
-                      className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${
-                        slot.isReserved 
-                          ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed line-through" 
-                          : visitTime === slot.timeStr 
-                            ? "bg-[#007AFF]/10 text-[#007AFF] font-semibold" 
-                            : "hover:bg-muted/30"
-                      }`}
-                    >
-                      <span>{slot.label}</span>
-                      {slot.isReserved && <span className="text-[10px] font-medium text-red-400 uppercase tracking-wider">{t("visit.reserved") || "Reserved"}</span>}
-                      {!slot.isReserved && visitTime === slot.timeStr && <CheckCircle2 className="w-3.5 h-3.5" />}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-1.5 pt-2 border-t border-border">
-              <Label htmlFor="visit-reason" className="text-xs font-medium text-muted-foreground mb-1.5 block">{t("visit.reasonForVisit")}</Label>
-              <input
-                id="visit-reason"
-                type="text"
-                value={form.reasonForVisit}
-                onChange={(e) => set("reasonForVisit", e.target.value)}
-                placeholder="e.g. Follow-up, checkup, acute complaint…"
-                className="w-full px-3 py-2 text-sm bg-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent transition-shadow"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="visit-notes" className="text-xs font-medium text-muted-foreground mb-1.5 block">{t("visit.notes")}</Label>
-              <textarea
-                id="visit-notes"
-                value={form.notes}
-                onChange={(e) => set("notes", e.target.value)}
-                placeholder="Optional free-form notes..."
-                rows={3}
-                className="w-full px-3 py-2 text-sm bg-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent resize-none transition-shadow"
-              />
-            </div>
-          </div>
-        </form>
-
-        <DrawerFooter className="flex flex-row gap-2 border-t border-border px-4 py-4">
-          <DrawerClose asChild>
-            <button
-              type="button"
-              className="shrink-0 text-sm text-muted-foreground border border-border rounded-xl px-4 py-2.5 hover:bg-muted/40 transition-colors"
-            >
-              {t("common.cancel")}
-            </button>
-          </DrawerClose>
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="flex-1 bg-[#007AFF] text-white text-sm font-semibold py-2.5 px-4 rounded-xl hover:bg-[#0062cc] transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
-          >
-            {loading ? t("onboarding.saving") : t("visit.saveVisit")}
-          </button>
+        {formContent}
+        <DrawerFooter className="p-0">
+          {footerContent}
         </DrawerFooter>
       </DrawerContent>
     </Drawer>
   );
 }
-
