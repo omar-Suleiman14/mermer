@@ -170,7 +170,8 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
         slotDurationMinutes: Number(slotDuration),
         bio: bio || undefined,
         feePerVisit: feePerVisit ? Number(feePerVisit) : undefined,
-        publicProfile: false,
+        publicProfile: true,
+        workingDays: selectedDays,
       });
 
       if (profileStorageId) {
@@ -314,7 +315,6 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
                 <span className="font-semibold text-sm">{t("onboarding.availability")}</span>
               </div>
 
-
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("onboarding.opensAt")} *</label>
@@ -365,39 +365,97 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
             </motion.div>
           )}
 
-          {/* ── Step 3: Notifications ── */}
+          {/* ── Step 3: Photo, Bio & Notifications ── */}
           {step === 3 && (
-            <motion.div key="step3" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.22 }} className="space-y-6">
+            <motion.div key="step3" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.22 }} className="space-y-5">
               <div className="flex items-center gap-2 mb-2">
-                <Bell className="w-5 h-5 text-[#007AFF]" />
-                <span className="font-semibold text-lg">{dir === "rtl" ? "تفعيل الإشعارات" : "Enable Notifications"}</span>
+                <Camera className="w-5 h-5 text-[#007AFF]" />
+                <span className="font-semibold text-lg">{dir === "rtl" ? "الملف الشخصي والإشعارات" : "Profile & Notifications"}</span>
               </div>
-              <p className="text-muted-foreground text-sm leading-relaxed">
-                {dir === "rtl" 
-                  ? "احصل على إشعارات فورية عند حجز موعد جديد أو عند وجود أي تحديثات هامة." 
-                  : "Get instant notifications when a new appointment is booked or for important updates."}
-              </p>
-              
-              <div className="bg-muted/30 border border-border p-5 rounded-2xl flex flex-col items-center justify-center space-y-4">
-                <div className="w-16 h-16 bg-[#007AFF]/10 rounded-full flex items-center justify-center">
-                  <Bell className="w-8 h-8 text-[#007AFF]" />
+
+              {/* Photo Upload */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-2">
+                  {dir === "rtl" ? "الصورة الشخصية" : "Profile Photo"} <span className="font-normal opacity-60">({t("onboarding.optional")})</span>
+                </label>
+                <div className="flex items-center gap-4">
+                  <div
+                    className="w-20 h-20 rounded-2xl bg-muted/50 border-2 border-dashed border-border flex items-center justify-center overflow-hidden shrink-0 cursor-pointer hover:border-[#007AFF]/60 transition-colors"
+                    onClick={() => photoRef.current?.click()}
+                  >
+                    {avatarPreview ? (
+                      <img src={avatarPreview} alt="preview" className="w-full h-full object-cover" />
+                    ) : uploadingPhoto ? (
+                      <IOSSpinner size={20} />
+                    ) : (
+                      <Camera className="w-7 h-7 text-muted-foreground/50" />
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-foreground">
+                      {dir === "rtl" ? "ارفع صورتك الشخصية" : "Upload your photo"}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {dir === "rtl" ? "تساعد المرضى على التعرف عليك" : "Helps patients recognize you"}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => photoRef.current?.click()}
+                      className="mt-2 text-xs font-semibold text-[#007AFF] hover:underline"
+                    >
+                      {dir === "rtl" ? "اختر صورة" : "Choose photo"}
+                    </button>
+                    <input
+                      ref={photoRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePhotoUpload(f); }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Bio */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground block mb-1.5">
+                  {dir === "rtl" ? "نبذة عنك" : "Short Bio"} <span className="font-normal opacity-60">({t("onboarding.optional")})</span>
+                </label>
+                <textarea
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  rows={3}
+                  placeholder={dir === "rtl" ? "اكتب نبذة مختصرة عن تخصصك وخبرتك..." : "A brief intro about your specialty and experience..."}
+                  className={`${inputClass} resize-none`}
+                />
+              </div>
+
+              {/* Notifications */}
+              <div className="bg-muted/30 border border-border p-4 rounded-2xl flex items-center gap-4">
+                <div className="w-10 h-10 bg-[#007AFF]/10 rounded-full flex items-center justify-center shrink-0">
+                  <Bell className="w-5 h-5 text-[#007AFF]" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold">{dir === "rtl" ? "إشعارات المواعيد" : "Appointment Notifications"}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{dir === "rtl" ? "اعرف فور حجز موعد جديد" : "Get notified instantly when a new booking arrives"}</p>
                 </div>
                 <button
+                  type="button"
                   onClick={() => {
                     if ("Notification" in window) {
                       Notification.requestPermission().then((permission) => {
                         setNotificationsEnabled(permission === "granted");
-                        if (permission === "granted") {
-                          toast.success(dir === "rtl" ? "تم تفعيل الإشعارات بنجاح" : "Notifications enabled successfully");
-                        }
+                        if (permission === "granted") toast.success(dir === "rtl" ? "تم تفعيل الإشعارات" : "Notifications enabled");
                       });
                     }
                   }}
-                  className="bg-[#007AFF] text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#007AFF]/90 transition-colors"
+                  className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${
+                    notificationsEnabled
+                      ? "bg-emerald-500/10 text-emerald-600"
+                      : "bg-[#007AFF] text-white hover:bg-[#007AFF]/90"
+                  }`}
                 >
-                  {notificationsEnabled 
-                    ? (dir === "rtl" ? "الإشعارات مفعلة ✓" : "Notifications Enabled ✓")
-                    : (dir === "rtl" ? "اسمح بالإشعارات" : "Allow Notifications")}
+                  {notificationsEnabled ? "✓ " + (dir === "rtl" ? "مفعلة" : "On") : (dir === "rtl" ? "تفعيل" : "Enable")}
                 </button>
               </div>
             </motion.div>

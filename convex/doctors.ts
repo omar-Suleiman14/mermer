@@ -287,6 +287,7 @@ export const getPublicDoctorProfile = query({
       specialty: doctor.specialty ?? null,
       clinicName: doctor.clinicName,
       clinicAddress: doctor.clinicAddress ?? null,
+      clinicAddressLink: (doctor as any).clinicAddressLink ?? null,
       city: (doctor as any).city ?? null,
       consultationFee: (doctor as any).consultationFee ?? null,
       languages: (doctor as any).languages ?? [],

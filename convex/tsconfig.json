@@ -18,8 +18,11 @@
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
     "isolatedModules": true,
-    "noEmit": true
+    "noEmit": true,
+
+    /* Prevent stray @types from sub-dependencies being auto-included */
+    "types": ["node", "web-push"]
   },
   "include": ["./**/*"],
-  "exclude": ["./_generated"]
+  "exclude": ["./_generated", "../node_modules"]
 }

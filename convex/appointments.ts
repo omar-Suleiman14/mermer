@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUser, requireAuthUser, logAction } from "./authHelper";
+import { api } from "./_generated/api";
 
 // ─── Public booking (online) ─────────────────────────────────────────────────
 
@@ -74,6 +75,19 @@ export const createAppointment = mutation({
       status: "confirmed",
       source: "online",
       createdAt: Date.now(),
+    });
+
+    // Fire push notification to doctor
+    const apptTime = new Date(args.date).toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+    await ctx.scheduler.runAfter(0, api.pushActions.sendPushNotification, {
+      userId: doctor._id,
+      title: "حجز إلكتروني جديد",
+      body: `${args.patientName} حجز موعداً الساعة ${apptTime}`,
+      url: "/dashboard",
     });
 
     return visitId;

@@ -21,6 +21,8 @@ import type * as followUps from "../followUps.js";
 import type * as installments from "../installments.js";
 import type * as messageTemplates from "../messageTemplates.js";
 import type * as patients from "../patients.js";
+import type * as push from "../push.js";
+import type * as pushActions from "../pushActions.js";
 import type * as queue from "../queue.js";
 import type * as users from "../users.js";
 import type * as visits from "../visits.js";
@@ -45,6 +47,8 @@ declare const fullApi: ApiFromModules<{
   installments: typeof installments;
   messageTemplates: typeof messageTemplates;
   patients: typeof patients;
+  push: typeof push;
+  pushActions: typeof pushActions;
   queue: typeof queue;
   users: typeof users;
   visits: typeof visits;

@@ -286,6 +286,7 @@ export default defineSchema({
     doctorId: v.id("users"),
     patientId: v.id("patients"),
     visitId: v.optional(v.id("visits")),
+    parentVisitId: v.optional(v.id("visits")),
     patientName: v.string(),
 
     followUpDate: v.number(),
@@ -303,7 +304,17 @@ export default defineSchema({
     .index("by_doctor", ["doctorId"])
     .index("by_patient", ["patientId"])
     .index("by_visit", ["visitId"])
+    .index("by_parent_visit", ["parentVisitId"])
     .index("by_doctor_date", ["doctorId", "followUpDate"]),
+
+  // ── PUSH SUBSCRIPTIONS ───────────────────────────────────────────────────
+  pushSubscriptions: defineTable({
+    userId: v.id("users"), // The doctor's user ID
+    endpoint: v.string(),
+    p256dh: v.string(),
+    auth: v.string(),
+    createdAt: v.number(),
+  }).index("by_user", ["userId"]),
 
   // ── MESSAGE TEMPLATES ─────────────────────────────────────────────────────
   messageTemplates: defineTable({

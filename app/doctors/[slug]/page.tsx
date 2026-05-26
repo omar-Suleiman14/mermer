@@ -4,7 +4,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useI18n } from "@/lib/i18n/client";
 import { PublicNav } from "@/components/public/public-nav";
-import { Loader2, MapPin, Building2, Languages, MessageSquarePlus } from "lucide-react";
+import { Loader2, MapPin, Building2, Languages, MessageSquarePlus, ExternalLink, Clock } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -107,6 +107,17 @@ export default function DoctorProfilePage() {
                         {doctor.clinicAddress || doctor.city}
                       </span>
                     )}
+                    {doctor.clinicAddressLink && (
+                      <a
+                        href={doctor.clinicAddressLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 justify-center sm:justify-start text-primary hover:underline"
+                      >
+                        <ExternalLink className="w-4 h-4 shrink-0" />
+                        {dir === "rtl" ? "فتح الموقع على الخريطة" : "Open on Maps"}
+                      </a>
+                    )}
                     {doctor.languages.length > 0 && (
                       <span className="flex items-center gap-2 justify-center sm:justify-start">
                         <Languages className="w-4 h-4 shrink-0 text-primary/70" />
@@ -145,35 +156,7 @@ export default function DoctorProfilePage() {
               </div>
             )}
             
-            {/* Reviews Section */}
-            {doctor.reviews && doctor.reviews.length > 0 && (
-              <div className="bg-card border border-border p-6 sm:p-8 rounded-3xl shadow-sm">
-                 <div className="flex items-center justify-between mb-6">
-                   <h2 className="text-xl font-bold text-foreground">
-                     {dir === "rtl" ? "تقييمات المرضى" : "Patient Reviews"}
-                   </h2>
-                   <Link
-                     href={`/feedback/${slug}`}
-                     className="text-sm font-medium text-primary hover:underline"
-                   >
-                     {dir === "rtl" ? "أضف تقييمك" : "Leave a Review"}
-                   </Link>
-                 </div>
-                 <div className="space-y-6">
-                   {doctor.reviews.map(review => (
-                     <div key={review._id} className="pb-6 border-b border-border last:border-0 last:pb-0">
-                       <div className="flex items-center justify-between mb-2">
-                         <span className="font-semibold">{review.patientName || (dir === "rtl" ? "مريض" : "Patient")}</span>
-                         <StarRating rating={review.rating} count={0} />
-                       </div>
-                       {review.comment && (
-                         <p className="text-sm text-slate-600 dark:text-zinc-400">{review.comment}</p>
-                       )}
-                     </div>
-                   ))}
-                 </div>
-              </div>
-            )}
+            <BookingForm doctor={doctor} />
             
           </div>
 
@@ -195,7 +178,7 @@ export default function DoctorProfilePage() {
                    {dir === "rtl" ? "أضف تقييمك" : "Leave Feedback"}
                  </Link>
                </div>
-               <BookingForm doctor={doctor} />
+
              </div>
           </div>
           

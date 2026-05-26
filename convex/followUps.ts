@@ -47,6 +47,7 @@ export const createFollowUp = mutation({
       v.literal("whatsapp")
     ),
     note: v.optional(v.string()),
+    parentVisitId: v.optional(v.id("visits")),
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
@@ -76,6 +77,7 @@ export const createFollowUp = mutation({
       doctorId: user._id,
       patientId: args.patientId,
       visitId,
+      parentVisitId: args.parentVisitId,
       patientName: patient.name,
       followUpDate: args.followUpDate,
       followUpTime: args.followUpTime,

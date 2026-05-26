@@ -43,7 +43,7 @@ export default async function PatientLandingPage() {
               className="inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl border border-slate-300 dark:border-zinc-700 bg-white/90 dark:bg-zinc-900/90 hover:bg-white dark:hover:bg-zinc-900 text-slate-800 dark:text-zinc-200 font-semibold text-lg transition-colors"
             >
               <Stethoscope className="w-5 h-5 text-primary" />
-              For Doctors
+              {dir === "rtl" ? "للأطباء" : "For Doctors"}
             </Link>
           </div>
           

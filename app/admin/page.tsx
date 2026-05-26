@@ -210,7 +210,7 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
     setLoadingId(targetUserId);
     try {
       await toggleBlock({ clerkId, targetUserId, isBlocked });
-      toast.success(isBlocked ? "User blocked entirely" : "User unblocked");
+      toast.success(isBlocked ? "Doctor set to pending approval" : "Doctor approved — access granted");
     } catch {
       toast.error("Failed to update block status");
     } finally {
@@ -313,7 +313,7 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
             <option value="all">All Status</option>
             <option value="active">Active</option>
             <option value="installment">installment</option>
-            <option value="blocked">Blocked</option>
+            <option value="blocked">Pending Approval</option>
           </select>
           <select
             value={sortOrder}
@@ -373,7 +373,7 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
                           ? "bg-amber-50 dark:bg-amber-900/20 text-amber-500 border-amber-200 dark:border-amber-800"
                           : "bg-[#34c759]/8 text-[#34c759] border-[#34c759]/20"
                       }`}>
-                        {isBlocked ? "Blocked" : isBanned ? "installment" : "Active"}
+                        {isBlocked ? "Pending" : isBanned ? "installment" : "Active"}
                       </span>
                     </div>
 
@@ -403,7 +403,7 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
                                 : "border-border text-muted-foreground hover:bg-muted/50"
                             }`}
                           >
-                            {isBlocked ? "Unblock" : "Block"}
+                            {isBlocked ? "Approve" : "Set Pending"}
                           </button>
                           <button
                             onClick={() => handleBan(doc._id, !isBanned)}

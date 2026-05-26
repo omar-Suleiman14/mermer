@@ -1,8 +1,9 @@
-﻿"use client";
+"use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { useMutation, useQuery } from "convex/react";
-import { Loader2, CheckCircle2 } from "lucide-react";
+import { Loader2, CheckCircle2, CalendarDays, X } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { useI18n } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
@@ -13,6 +14,8 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from "@/components/ui/drawer";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface BookingFormProps {
   doctor?: {
@@ -25,7 +28,8 @@ interface BookingFormProps {
 }
 
 export function BookingForm({ doctor }: BookingFormProps) {
-  const { dir } = useI18n();
+  const { dir, lang } = useI18n();
+  const isMobile = useIsMobile();
   const createAppointment = useMutation(api.appointments.createAppointment);
   const safeDoctor = doctor ?? null;
 
@@ -37,16 +41,49 @@ export function BookingForm({ doctor }: BookingFormProps) {
   const [error, setError] = useState("");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedSlotMs, setSelectedSlotMs] = useState<number | null>(null);
-
-  const startOfToday = useMemo(() => {
+  
+  // Date selection
+  const [selectedDateMs, setSelectedDateMs] = useState<number>(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
     return d.getTime();
-  }, []);
+  });
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const next7Days = useMemo(() => {
+    const days = [];
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() + i);
+      const dayName = d.toLocaleDateString("en-US", { weekday: "short" });
+      const isAvailable = !safeDoctor?.availableDays?.length || safeDoctor.availableDays.includes(dayName);
+      days.push({
+        ts: d.getTime(),
+        date: d,
+        isAvailable,
+      });
+    }
+    return days;
+  }, [safeDoctor]);
+
+  // If today is not available, default to the first available day
+  useEffect(() => {
+    if (next7Days.length > 0) {
+      const currentIsAvailable = next7Days.find(d => d.ts === selectedDateMs)?.isAvailable;
+      if (!currentIsAvailable) {
+        const firstAvail = next7Days.find(d => d.isAvailable);
+        if (firstAvail) setSelectedDateMs(firstAvail.ts);
+      }
+    }
+  }, [next7Days, selectedDateMs]);
 
   const bookedSlots = useQuery(
     api.appointments.getAvailableSlots,
-    safeDoctor?.qrSlug ? { slug: safeDoctor.qrSlug, date: startOfToday } : "skip"
+    safeDoctor?.qrSlug ? { slug: safeDoctor.qrSlug, date: selectedDateMs } : "skip"
   );
 
   const slots = useMemo(() => {
@@ -57,10 +94,10 @@ export function BookingForm({ doctor }: BookingFormProps) {
     const endHour = safeDoctor.workingHoursStart === 0 && safeDoctor.workingHoursEnd === 24 ? 21 : safeDoctor.workingHoursEnd;
     const duration = safeDoctor.slotDurationMinutes || 30;
 
-    let current = new Date(startOfToday);
+    let current = new Date(selectedDateMs);
     current.setHours(Math.floor(startHour), (startHour % 1) * 60, 0, 0);
 
-    const end = new Date(startOfToday);
+    const end = new Date(selectedDateMs);
     end.setHours(Math.floor(endHour), (endHour % 1) * 60, 0, 0);
 
     while (current < end) {
@@ -68,7 +105,7 @@ export function BookingForm({ doctor }: BookingFormProps) {
       current.setMinutes(current.getMinutes() + duration);
     }
     return generated;
-  }, [safeDoctor, startOfToday]);
+  }, [safeDoctor, selectedDateMs]);
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value.replace(/\D/g, "");
@@ -139,126 +176,239 @@ export function BookingForm({ doctor }: BookingFormProps) {
     );
   }
 
+  const renderFormContent = () => (
+    <form onSubmit={handleSubmit} className="px-4 pb-4 space-y-4 sm:p-6 sm:pb-6">
+      {error && (
+        <div className="p-3 bg-red-50 text-red-600 dark:bg-red-950/50 dark:text-red-400 rounded-xl text-sm font-medium">
+          {error}
+        </div>
+      )}
+
+      <div>
+        <label className="block text-sm font-medium text-foreground mb-1.5">
+          {dir === "rtl" ? "الاسم الكامل" : "Full Name"}
+        </label>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="w-full h-12 px-4 rounded-xl border border-border bg-background outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm"
+          placeholder={dir === "rtl" ? "أدخل اسمك" : "Enter your name"}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1.5">
+            {dir === "rtl" ? "العمر" : "Age"}
+          </label>
+          <input
+            type="number"
+            value={age}
+            onChange={(e) => setAge(e.target.value)}
+            className="w-full h-12 px-4 rounded-xl border border-border bg-background outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm text-left"
+            placeholder="30"
+            dir="ltr"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-foreground mb-1.5">
+            {dir === "rtl" ? "رقم الواتساب" : "WhatsApp Number"}
+          </label>
+          <div className="relative flex items-center" dir="ltr">
+            <span className="absolute left-4 text-muted-foreground text-sm font-medium">+20</span>
+            <input
+              type="tel"
+              value={phone}
+              onChange={handlePhoneChange}
+              className="w-full h-12 pl-12 pr-4 rounded-xl border border-border bg-background outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm text-left"
+              placeholder="1012345678"
+            />
+          </div>
+        </div>
+      </div>
+
+      <button
+        type="submit"
+        disabled={loading || phone.length !== 10 || !name.trim() || !selectedSlotMs || !safeDoctor?.qrSlug}
+        className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4"
+      >
+        {loading && <Loader2 className="w-5 h-5 animate-spin" />}
+        {dir === "rtl" ? "تأكيد الطلب" : "Confirm Request"}
+      </button>
+    </form>
+  );
+
   return (
     <>
-      <div className="space-y-3 bg-card border border-border p-6 sm:p-8 rounded-3xl shadow-sm">
-        <label className="block text-sm font-semibold text-foreground">
-          {dir === "rtl" ? "الأوقات المتاحة" : "Available Times"}
-        </label>
-
-        {slots.length === 0 ? (
-          <div className="p-4 rounded-xl border border-dashed border-border bg-muted/30 text-center text-sm text-muted-foreground">
-            {dir === "rtl" ? "لا توجد أوقات متاحة" : "No times available"}
+      <div className="space-y-6 bg-card border border-border p-6 sm:p-8 rounded-3xl shadow-sm">
+        
+        {/* Days Selector */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <CalendarDays className="w-4 h-4 text-primary" />
+              {dir === "rtl" ? "اختر اليوم" : "Select Day"}
+            </label>
+            <span className="text-xs text-muted-foreground font-medium">
+              {next7Days[0]?.date.toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { month: "long", year: "numeric" })}
+            </span>
           </div>
-        ) : (
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-            {slots.map((ts) => {
-              const isReserved = bookedSlots?.includes(ts);
-              const isPast = ts < Date.now();
-              const disabled = isReserved || isPast;
-
+          <div className="grid grid-cols-7 gap-2">
+            {next7Days.map((dayObj) => {
+              const isSelected = selectedDateMs === dayObj.ts;
+              const d = new Date(); d.setHours(0,0,0,0);
+              const isToday = dayObj.ts === d.getTime();
               return (
                 <button
-                  key={ts}
+                  key={dayObj.ts}
                   type="button"
-                  disabled={disabled}
-                  onClick={() => openDrawerForSlot(ts)}
+                  onClick={() => setSelectedDateMs(dayObj.ts)}
+                  disabled={!dayObj.isAvailable}
                   className={cn(
-                    "h-10 rounded-xl text-sm font-medium transition-all border",
-                    disabled
-                      ? "bg-muted/50 border-transparent text-muted-foreground/40 cursor-not-allowed"
-                      : "bg-background border-border text-foreground hover:border-primary/40 hover:bg-muted/50"
+                    "flex flex-col items-center justify-center py-3 rounded-2xl border-2 transition-all duration-200 gap-1 relative",
+                    !dayObj.isAvailable && "opacity-30 cursor-not-allowed border-transparent bg-muted/20",
+                    isSelected
+                      ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/25 scale-105"
+                      : dayObj.isAvailable && "bg-background text-foreground border-border hover:border-primary/60 hover:bg-primary/5"
                   )}
-                  dir="ltr"
                 >
-                  {new Date(ts).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}
+                  <span className={cn(
+                    "text-[9px] font-bold tracking-wider uppercase",
+                    isSelected ? "opacity-70" : "text-muted-foreground"
+                  )}>
+                    {dayObj.date.toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { weekday: "short" })}
+                  </span>
+                  <span className="text-base font-bold leading-none">
+                    {dayObj.date.getDate()}
+                  </span>
+                  {isToday && (
+                    <span className={cn(
+                      "absolute bottom-2 w-1.5 h-1.5 rounded-full",
+                      isSelected ? "bg-primary-foreground/70" : "bg-primary"
+                    )} />
+                  )}
                 </button>
               );
             })}
           </div>
-        )}
+        </div>
+
+        <hr className="border-border" />
+
+        {/* Slots */}
+        <div className="space-y-3">
+          <label className="block text-sm font-semibold text-foreground">
+            {dir === "rtl" ? "الأوقات المتاحة" : "Available Times"}
+          </label>
+
+          {slots.length === 0 ? (
+            <div className="p-4 rounded-xl border border-dashed border-border bg-muted/30 text-center text-sm text-muted-foreground">
+              {dir === "rtl" ? "لا توجد أوقات متاحة" : "No times available"}
+            </div>
+          ) : (
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+              {slots.map((ts) => {
+                const isReserved = bookedSlots?.includes(ts);
+                const isPast = ts < Date.now();
+                const disabled = isReserved || isPast;
+
+                return (
+                  <button
+                    key={ts}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => openDrawerForSlot(ts)}
+                    className={cn(
+                      "h-10 rounded-xl text-sm font-medium transition-all border",
+                      disabled
+                        ? "bg-muted/50 border-transparent text-muted-foreground/40 cursor-not-allowed"
+                        : "bg-background border-border text-foreground hover:border-primary/40 hover:bg-muted/50"
+                    )}
+                    dir="ltr"
+                  >
+                    {new Date(ts).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
 
-      <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <DrawerContent>
-          <DrawerHeader>
-            <DrawerTitle>{dir === "rtl" ? "تأكيد الحجز" : "Confirm Booking"}</DrawerTitle>
-            <DrawerDescription>
-              {selectedSlotMs
-                ? new Date(selectedSlotMs).toLocaleString("en-US", {
-                    weekday: "short",
-                    month: "short",
-                    day: "numeric",
-                    hour: "numeric",
-                    minute: "2-digit",
-                    hour12: true,
-                  })
-                : ""}
-            </DrawerDescription>
-          </DrawerHeader>
-
-          <form onSubmit={handleSubmit} className="px-4 pb-4 space-y-4">
-            {error && (
-              <div className="p-3 bg-red-50 text-red-600 dark:bg-red-950/50 dark:text-red-400 rounded-xl text-sm font-medium">
-                {error}
-              </div>
+      {/* Confirmation Modal/Drawer */}
+      {mounted && isMobile ? (
+        <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle>{dir === "rtl" ? "تأكيد الحجز" : "Confirm Booking"}</DrawerTitle>
+              <DrawerDescription>
+                {selectedSlotMs
+                  ? new Date(selectedSlotMs).toLocaleString(lang === "ar" ? "ar-EG" : "en-US", {
+                      weekday: "short",
+                      month: "short",
+                      day: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit",
+                      hour12: true,
+                    })
+                  : ""}
+              </DrawerDescription>
+            </DrawerHeader>
+            {renderFormContent()}
+          </DrawerContent>
+        </Drawer>
+      ) : mounted && !isMobile ? (
+        typeof document !== "undefined" && createPortal(
+          <AnimatePresence>
+            {drawerOpen && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+              >
+                <motion.div
+                  initial={{ y: 20, opacity: 0, scale: 0.95 }}
+                  animate={{ y: 0, opacity: 1, scale: 1 }}
+                  exit={{ y: 20, opacity: 0, scale: 0.95 }}
+                  transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                  className="w-full max-w-md bg-card rounded-3xl shadow-xl overflow-hidden"
+                  dir={dir}
+                >
+                  <div className="flex items-center justify-between p-6 pb-2">
+                    <div>
+                      <h2 className="text-xl font-bold text-foreground">
+                        {dir === "rtl" ? "تأكيد الحجز" : "Confirm Booking"}
+                      </h2>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {selectedSlotMs
+                          ? new Date(selectedSlotMs).toLocaleString(lang === "ar" ? "ar-EG" : "en-US", {
+                              weekday: "short",
+                              month: "short",
+                              day: "numeric",
+                              hour: "numeric",
+                              minute: "2-digit",
+                              hour12: true,
+                            })
+                          : ""}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setDrawerOpen(false)}
+                      className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  {renderFormContent()}
+                </motion.div>
+              </motion.div>
             )}
-
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">
-                {dir === "rtl" ? "الاسم الكامل" : "Full Name"}
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full h-12 px-4 rounded-xl border border-border bg-background outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm"
-                placeholder={dir === "rtl" ? "أدخل اسمك" : "Enter your name"}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">
-                  {dir === "rtl" ? "العمر" : "Age"}
-                </label>
-                <input
-                  type="number"
-                  value={age}
-                  onChange={(e) => setAge(e.target.value)}
-                  className="w-full h-12 px-4 rounded-xl border border-border bg-background outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm text-left"
-                  placeholder="30"
-                  dir="ltr"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">
-                  {dir === "rtl" ? "رقم الواتساب" : "WhatsApp Number"}
-                </label>
-                <div className="relative flex items-center" dir="ltr">
-                  <span className="absolute left-4 text-muted-foreground text-sm font-medium">+20</span>
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={handlePhoneChange}
-                    className="w-full h-12 pl-12 pr-4 rounded-xl border border-border bg-background outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm text-left"
-                    placeholder="1012345678"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading || phone.length !== 10 || !name.trim() || !selectedSlotMs || !safeDoctor?.qrSlug}
-              className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {loading && <Loader2 className="w-5 h-5 animate-spin" />}
-              {dir === "rtl" ? "تأكيد الطلب" : "Confirm Request"}
-            </button>
-          </form>
-        </DrawerContent>
-      </Drawer>
+          </AnimatePresence>,
+          document.body
+        )
+      ) : null}
     </>
   );
 }

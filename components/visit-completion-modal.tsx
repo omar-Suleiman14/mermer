@@ -568,7 +568,7 @@ export function VisitCompletionModal({
           const [hh, mm] = fuTime.split(":").map(Number);
           const exactDate = new Date(fuDate);
           exactDate.setHours(hh ?? 10, mm ?? 0, 0, 0);
-          await createFollowUp({ clerkId, patientId, followUpDate: exactDate.getTime(), followUpTime: fuTime, type: "in-person", note: fuNote || undefined });
+          await createFollowUp({ clerkId, patientId, followUpDate: exactDate.getTime(), followUpTime: fuTime, type: "in-person", note: fuNote || undefined, parentVisitId: visitId });
         }
         setDone(true);
         toast.success(scheduleFollowUp ? "Visit complete — follow-up scheduled!" : "Visit recorded");

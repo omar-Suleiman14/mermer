@@ -381,7 +381,7 @@ export default function PatientProfilePage() {
                           }
                           className="flex items-center gap-1.5 text-[11px] text-muted-foreground border border-border px-2.5 py-1 rounded-lg hover:border-[#007AFF]/40 hover:text-[#007AFF] transition-colors"
                         >
-                          <ImageIcon className="w-3 h-3" />
+                          <FileText className="w-3 h-3" />
                           {t("patient.addRx")}
                         </button>
                       )}

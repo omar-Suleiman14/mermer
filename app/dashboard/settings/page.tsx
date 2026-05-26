@@ -340,47 +340,52 @@ export default function SettingsPage() {
         </section>
 
         {/* ═══════════════════════════════════════════════════════════ */}
-        {/* NOTIFICATIONS                                               */}
+        {/* NOTIFICATIONS                                             */}
         {/* ═══════════════════════════════════════════════════════════ */}
         <section>
-          <h3 className={sectionTitleClass}>{dir === "rtl" ? "الإشعارات" : "Notifications"}</h3>
-          <div className={blockClass}>
-            <div className={rowClass}>
-              <label className={labelClass}>
-                <Bell className="w-4 h-4 text-muted-foreground" /> {dir === "rtl" ? "إشعارات المتصفح" : "Browser Notifications"}
-              </label>
-              <div className="flex-1 flex justify-end">
-                <button
-                  onClick={() => {
-                    if ("Notification" in window) {
-                      if (Notification.permission === "granted") {
-                        toast.success(dir === "rtl" ? "الإشعارات مفعلة مسبقاً" : "Notifications already enabled");
-                      } else {
-                        Notification.requestPermission().then((permission) => {
-                          setNotifPerm(permission);
-                          if (permission === "granted") {
-                            toast.success(dir === "rtl" ? "تم تفعيل الإشعارات بنجاح" : "Notifications enabled successfully");
-                          } else {
-                            toast.error(dir === "rtl" ? "تم رفض الإشعارات" : "Notifications were denied");
-                          }
-                        });
-                      }
-                    } else {
-                      toast.error(dir === "rtl" ? "متصفحك لا يدعم الإشعارات" : "Your browser does not support notifications");
-                    }
-                  }}
-                  className="bg-primary/10 text-primary px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-primary/20 transition-colors"
-                >
-                  {notifPerm === "granted"
-                    ? (dir === "rtl" ? "مفعلة ✓" : "Enabled ✓")
-                    : (dir === "rtl" ? "تفعيل" : "Enable")}
-                </button>
-              </div>
+          <h3 className={sectionTitleClass}>{t("settings.notificationsSection") || "Notifications"}</h3>
+          
+          <div className="bg-muted/30 border border-border p-4 rounded-2xl flex items-center gap-4 mb-8">
+            <div className="w-10 h-10 bg-[#007AFF]/10 rounded-full flex items-center justify-center shrink-0">
+              <Bell className="w-5 h-5 text-[#007AFF]" />
             </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold">{dir === "rtl" ? "إشعارات المتصفح" : "Browser Notifications"}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {dir === "rtl" ? "احصل على إشعارات فورية عند حجز موعد جديد أو لوجود تحديثات." : "Get instant notifications for new bookings and updates."}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if ("Notification" in window) {
+                  if (Notification.permission === "granted") {
+                    toast.success(dir === "rtl" ? "الإشعارات مفعلة مسبقاً" : "Notifications already enabled");
+                  } else {
+                    Notification.requestPermission().then((permission) => {
+                      setNotifPerm(permission);
+                      if (permission === "granted") {
+                        toast.success(dir === "rtl" ? "تم تفعيل الإشعارات بنجاح" : "Notifications enabled successfully");
+                      } else {
+                        toast.error(dir === "rtl" ? "تم رفض الإشعارات" : "Notifications were denied");
+                      }
+                    });
+                  }
+                } else {
+                  toast.error(dir === "rtl" ? "متصفحك لا يدعم الإشعارات" : "Your browser does not support notifications");
+                }
+              }}
+              className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${
+                notifPerm === "granted"
+                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                  : "bg-[#007AFF] text-white hover:bg-[#007AFF]/90"
+              }`}
+            >
+              {notifPerm === "granted"
+                ? "✓ " + (dir === "rtl" ? "مفعلة" : "Enabled")
+                : (dir === "rtl" ? "تفعيل" : "Enable")}
+            </button>
           </div>
-          <p className="text-[12px] text-muted-foreground ms-4 -mt-5 mb-8">
-            {dir === "rtl" ? "احصل على إشعارات فورية عند حجز موعد جديد أو لوجود تحديثات." : "Get instant notifications for new bookings and updates."}
-          </p>
         </section>
 
         {/* ═══════════════════════════════════════════════════════════ */}
@@ -389,6 +394,46 @@ export default function SettingsPage() {
         <section>
           <h3 className={sectionTitleClass}>{t("settings.profileSection") || "Profile"}</h3>
           <div className={blockClass}>
+
+            {/* Photo */}
+            <div className={rowClass}>
+              <label className={labelClass}>
+                <Camera className="w-4 h-4 text-muted-foreground" /> {dir === "rtl" ? "الصورة الشخصية" : "Profile Photo"}
+              </label>
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-10 h-10 rounded-full bg-muted border border-border overflow-hidden flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity shrink-0"
+                  onClick={() => photoRef.current?.click()}
+                >
+                  {uploadingPhoto ? (
+                    <IOSSpinner size={16} />
+                  ) : profilePhotoUrl ? (
+                    <img src={profilePhotoUrl} alt="photo" className="w-full h-full object-cover" />
+                  ) : (
+                    <Camera className="w-4 h-4 text-muted-foreground/50" />
+                  )}
+                </div>
+                <button
+                  onClick={() => photoRef.current?.click()}
+                  disabled={uploadingPhoto}
+                  className="text-sm font-semibold text-primary hover:underline disabled:opacity-50"
+                >
+                  {dir === "rtl" ? "تغيير الصورة" : "Change Photo"}
+                </button>
+                <input
+                  ref={photoRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handlePhotoUpload(file);
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Public Profile */}
             <div className={rowClass}>
               <label htmlFor="settings-public-profile" className={labelClass}>
                 <Globe className="w-4 h-4 text-muted-foreground" /> {t("settings.publicProfile") || "Public Profile"}
@@ -412,7 +457,24 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
-          <p className="text-[12px] text-muted-foreground ms-4 -mt-5 mb-8">
+
+          {/* Bio */}
+          <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden mt-2 mb-2">
+            <div className="p-4">
+              <label className="text-sm font-medium text-foreground block mb-2">
+                {dir === "rtl" ? "نبذة شخصية" : "Short Bio"}
+              </label>
+              <textarea
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                rows={3}
+                placeholder={dir === "rtl" ? "اكتب نبذة مختصرة عن تخصصك وخبرتك..." : "A brief intro about your specialty and experience..."}
+                className="w-full bg-transparent text-sm focus:outline-none placeholder:text-muted-foreground/50 resize-none"
+              />
+            </div>
+          </div>
+
+          <p className="text-[12px] text-muted-foreground ms-4 mb-8">
             {t("settings.publicProfileHint") || "If enabled, your profile will be listed in the public directory."}
           </p>
         </section>
@@ -467,7 +529,6 @@ export default function SettingsPage() {
         <section>
           <h3 className={sectionTitleClass}>{t("settings.availabilitySection")}</h3>
           <div className={blockClass}>
-
 
             <div className={rowClass}>
               <label htmlFor="settings-slot-duration" className={labelClass}>{t("settings.slotDurationLabel")}</label>

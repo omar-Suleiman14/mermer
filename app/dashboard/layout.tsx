@@ -11,7 +11,7 @@ import { DoctorOnboarding } from "@/components/doctor-onboarding";
 import { useState, useEffect } from "react";
 import { useI18n } from "@/lib/i18n/client";
 import { OnlineBookingNotifier } from "@/components/online-booking-notifier";
-import { AlertTriangle, X, Building2, UserCheck, UserX } from "lucide-react";
+import { AlertTriangle, X, Building2, UserCheck, UserX, Clock } from "lucide-react";
 import { UserProvider, useCurrentUser } from "@/components/providers/user-provider";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
@@ -73,16 +73,28 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
     return (
       <div className="fixed inset-0 z-9999 flex items-center justify-center p-4 bg-background" dir={dir}>
         <div className="w-full max-w-sm bg-card border border-border/50 rounded-2xl shadow-2xl overflow-hidden p-6 text-center space-y-4">
-          <div className="w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto text-red-500 mb-2">
-            <AlertTriangle className="w-8 h-8" />
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto text-amber-500 mb-2">
+            <Clock className="w-8 h-8" />
           </div>
-          <h3 className="text-xl font-bold text-red-500">blocked until unblocked</h3>
+          <h3 className="text-xl font-bold text-foreground">
+            {dir === "rtl" ? "في انتظار الموافقة" : "Pending Approval"}
+          </h3>
           <p className="text-sm text-muted-foreground leading-relaxed">
-            Please contact <span className="font-semibold text-foreground" dir="ltr">+201012756994</span> to gain access.
+            {dir === "rtl"
+              ? "تم إنشاء حسابك بنجاح. سيتم مراجعته وتفعيله قريباً. للتواصل:"
+              : "Your account has been created and is under review. You'll have access shortly. To reach us:"}
           </p>
+          <a
+            href="https://wa.me/201012756994"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-sm font-semibold rounded-xl hover:bg-emerald-500/20 transition-colors"
+          >
+            <span dir="ltr">WhatsApp: +201012756994</span>
+          </a>
           <SignOutButton>
-            <button className="w-full py-2.5 bg-secondary text-secondary-foreground text-sm font-semibold rounded-xl hover:bg-secondary/80 transition-colors mt-2">
-              Sign Out
+            <button className="w-full py-2.5 bg-secondary text-secondary-foreground text-sm font-semibold rounded-xl hover:bg-secondary/80 transition-colors">
+              {dir === "rtl" ? "تسجيل خروج" : "Sign Out"}
             </button>
           </SignOutButton>
         </div>

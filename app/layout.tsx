@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { I18nProvider } from "@/lib/i18n/client";
 import { getServerI18n } from "@/lib/i18n/server";
 import { HtmlDirSync } from "@/components/html-dir-sync";
+import { SwRegistry } from "@/components/sw-registry";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -30,6 +31,7 @@ export const metadata: Metadata = {
   title: "mermer",
   description:
     "the best clinic management system ever",
+  manifest: "/manifest.json",
   icons: {
     icon: "/icon.svg",
   },
@@ -61,6 +63,7 @@ export default async function RootLayout({
             <ConvexClientProvider>
               <I18nProvider initialLang={lang}>
                 <HtmlDirSync />
+                <SwRegistry />
                 {children}
                 <Toaster richColors />
               </I18nProvider>

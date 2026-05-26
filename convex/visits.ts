@@ -1,4 +1,5 @@
 import { mutation, query } from "./_generated/server";
+import { api } from "./_generated/api";
 import { v } from "convex/values";
 import { getAuthUser, requireAuthUser, logAction } from "./authHelper";
 
@@ -151,6 +152,17 @@ export const createVisit = mutation({
     });
 
     await logAction(ctx, user, "Created Visit", `Scheduled visit for patient ID: ${args.patientId}`);
+    
+    if (args.source === "online") {
+      const dateStr = new Date(args.date ?? Date.now()).toLocaleString();
+      await ctx.scheduler.runAfter(0, api.pushActions.sendPushNotification, {
+        userId: user._id,
+        title: "New Online Appointment",
+        body: `${patient.name} has booked an appointment for ${dateStr}`,
+        url: "/dashboard/queue",
+      });
+    }
+    
     return visitId;
   },
 });
@@ -423,7 +435,7 @@ export const getVisit = query({
     // Get follow-up if exists
     const followUps = await ctx.db
       .query("followUps")
-      .withIndex("by_visit", (q) => q.eq("visitId", visit._id))
+      .withIndex("by_parent_visit", (q) => q.eq("parentVisitId", visit._id))
       .collect();
 
     return {
