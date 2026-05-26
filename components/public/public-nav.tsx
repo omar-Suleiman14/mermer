@@ -9,6 +9,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { LanguageToggle } from "@/components/language-toggle";
 import { cn } from "@/lib/utils";
 import { useIsMounted } from "@/hooks/use-is-mounted";
+import Image from "next/image";
 
 interface PublicNavProps {
   className?: string;
@@ -40,7 +41,7 @@ export function PublicNav({ className, backHref, backLabel }: PublicNavProps) {
           ) : (
             <Link href="/" prefetch={true} className="flex items-center shrink-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/icon.svg" alt="mermer" className="h-6 w-auto" />
+              <Image src="/icon.svg" alt="mermer" width={24} height={24} className="h-6 w-auto" />
             </Link>
           )}
         </div>

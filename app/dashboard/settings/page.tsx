@@ -13,6 +13,7 @@ import dynamic from "next/dynamic";
 import { useI18n } from "@/lib/i18n/client";
 import { useTheme } from "next-themes";
 import { LanguageToggle } from "@/components/language-toggle";
+import Image from "next/image";
 
 const MessageTemplatesSection = dynamic(
   () => import("@/components/message-templates-section").then((m) => m.MessageTemplatesSection),
@@ -443,7 +444,7 @@ export default function SettingsPage() {
                   {uploadingPhoto ? (
                     <IOSSpinner size={16} />
                   ) : profilePhotoUrl ? (
-                    <img src={profilePhotoUrl} alt="photo" className="w-full h-full object-cover" />
+                    <Image src={profilePhotoUrl} alt="photo" width={100} height={100} className="w-full h-full object-cover" />
                   ) : (
                     <Camera className="w-4 h-4 text-muted-foreground/50" />
                   )}

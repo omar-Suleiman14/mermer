@@ -188,6 +188,7 @@ import QRCode from "qrcode";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { motion } from "framer-motion";
 import { useI18n } from "@/lib/i18n/client";
+import Image from "next/image";
 
 export default function ClinicScreen() {
   const { user, isLoaded } = useUser();
@@ -370,9 +371,11 @@ export default function ClinicScreen() {
 
               <div className="bg-white p-6 md:p-8 rounded-[2rem] border border-slate-200 dark:border-zinc-800">
                 {qrSrc ? (
-                  <img
+                  <Image
                     src={qrSrc}
                     alt="Clinic QR Code"
+                    width={320}
+                    height={320}
                     className="w-50 h-50 md:w-62.5 md:h-62.5 lg:w-80 lg:h-80 object-contain"
                   />
                 ) : (

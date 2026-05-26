@@ -22,6 +22,7 @@ import { IOSSpinner } from "@/components/ui/spinner";
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useI18n } from "@/lib/i18n/client";
+import Image from "next/image";
 
 function normalisePhone(raw: string): string {
   const digits = raw.replace(/\D/g, "");
@@ -408,7 +409,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
                   >
                     {avatarPreview ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={avatarPreview} alt="preview" className="w-full h-full object-cover" />
+                      <Image src={avatarPreview} alt="preview" width={80} height={80} className="w-full h-full object-cover" />
                     ) : uploadingPhoto ? (
                       <IOSSpinner size={20} />
                     ) : (

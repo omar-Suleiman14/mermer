@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
+import Image from "next/image";
 
 const SPECIALTIES = [
   "General Practitioner", "Cardiologist", "Dermatologist", "Dentist",
@@ -79,7 +80,7 @@ function DoctorCardPreview({
         <div className="w-16 h-16 rounded-2xl bg-[#007AFF]/10 border-2 border-white dark:border-[#1c1c1a] overflow-hidden flex items-center justify-center shrink-0 shadow-md">
           {photoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={photoUrl} alt={name} className="w-full h-full object-cover" />
+            <Image src={photoUrl} alt={name} width={64} height={64} className="w-full h-full object-cover" />
           ) : (
             <span className="text-2xl font-bold text-[#007AFF]">{(name || "D").charAt(0)}</span>
           )}
@@ -304,7 +305,7 @@ export function PublishProfileSection({ clerkId, currentUser, profilePhotoUrl }:
               <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-[#007AFF]/10 flex items-center justify-center shrink-0">
                 {profilePhotoUrl
                   // eslint-disable-next-line @next/next/no-img-element
-                  ? <img src={profilePhotoUrl} alt="Photo" className="w-full h-full object-cover" />
+                  ? <Image src={profilePhotoUrl} alt="Photo" width={56} height={56} className="w-full h-full object-cover" />
                   : <span className="text-xl font-bold text-[#007AFF]">{(currentUser.name || "D").charAt(0)}</span>}
                 <button
                   onClick={() => photoRef.current?.click()}

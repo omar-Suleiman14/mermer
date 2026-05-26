@@ -24,6 +24,13 @@ import {
 } from "lucide-react";
 import { getServerI18n } from "@/lib/i18n/server";
 import { PublicNav } from "@/components/public/public-nav";
+import Image from "next/image";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "For Doctors | mermer",
+  description: "mermer empowers medical professionals with verified public profiles, authentic review tracking, and tools to elevate their online clinical reputation.",
+};
 
 export default async function LandingPage() {
   const { t, dir, lang } = await getServerI18n();
@@ -315,7 +322,7 @@ export default async function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-4 gap-8">
             <div className="space-y-4">
-              <img src="/icon.svg" alt="mermer" className="h-8 w-auto mb-4" />
+              <Image src="/icon.svg" alt="mermer" width={100} height={32} className="h-8 w-auto mb-4" />
               <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
                 {dir === "rtl" 
                   ? "منصة متكاملة لجمع وإدارة مراجعات المرضى للأطباء والعيادات بكفاءة وأمان كامل."
