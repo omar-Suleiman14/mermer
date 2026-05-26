@@ -23,6 +23,8 @@ export default defineConfig([
     rules: {
       "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/no-require-imports": "warn",
+      "react-hooks/preserve-manual-memoization": "warn",
+      "react-hooks/purity": "warn",
       "react-hooks/set-state-in-effect": "warn",
       "react/no-unescaped-entities": "warn",
     },

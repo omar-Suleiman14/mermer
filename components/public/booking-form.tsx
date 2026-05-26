@@ -94,7 +94,7 @@ export function BookingForm({ doctor }: BookingFormProps) {
     const endHour = safeDoctor.workingHoursStart === 0 && safeDoctor.workingHoursEnd === 24 ? 21 : safeDoctor.workingHoursEnd;
     const duration = safeDoctor.slotDurationMinutes || 30;
 
-    let current = new Date(selectedDateMs);
+    const current = new Date(selectedDateMs);
     current.setHours(Math.floor(startHour), (startHour % 1) * 60, 0, 0);
 
     const end = new Date(selectedDateMs);
