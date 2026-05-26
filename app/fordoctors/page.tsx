@@ -464,7 +464,7 @@ export default async function LandingPage() {
 
           <div className="pt-8 mt-8 border-t border-slate-100 dark:border-zinc-900/60 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-muted-foreground">
             <span>
-              © {new Date().getFullYear()} {dir === "rtl" ? "مرمر" : "mermer"}. All rights reserved.
+              © {new Date().getFullYear()} {dir === "rtl" ? "مرمر. جميع الحقوق محفوظة." : "mermer. All rights reserved."}
             </span>
           </div>
         </div>

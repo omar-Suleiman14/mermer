@@ -31,10 +31,10 @@ export default async function TermsPage() {
           <div className="prose prose-sm md:prose-base dark:prose-invert max-w-none text-[#6b6a63] dark:text-[#8e8d86]">
             {lang === "ar" ? (
               <>
-                <p>مرحباً بك في مرمر كير. من خلال الوصول إلى أو استخدام خدماتنا، فإنك توافق على الالتزام بهذه الشروط والأحكام.</p>
+                <p>مرحباً بك في مرمر. من خلال الوصول إلى أو استخدام خدماتنا، فإنك توافق على الالتزام بهذه الشروط والأحكام.</p>
 
                 <h2 className="text-[#1a1916] dark:text-[#f0efea] font-semibold mt-8 mb-2">1. الخدمات المقدمة</h2>
-                <p>يوفر مرمر كير منصة لإدارة العيادات ونظام حجز عبر الإنترنت للأطباء والمرضى. نحن نسهل جدولة وإدارة المواعيد الطبية ولكن لا نقدم مشورة أو خدمات طبية بشكل مباشر.</p>
+                <p>يوفر مرمر منصة لإدارة العيادات ونظام حجز عبر الإنترنت للأطباء والمرضى. نحن نسهل جدولة وإدارة المواعيد الطبية ولكن لا نقدم مشورة أو خدمات طبية بشكل مباشر.</p>
 
                 <h2 className="text-[#1a1916] dark:text-[#f0efea] font-semibold mt-8 mb-2">2. حسابات المستخدمين</h2>
                 <p>لاستخدام بعض الميزات، يجب عليك التسجيل للحصول على حساب. أنت مسؤول عن الحفاظ على سرية معلومات حسابك وعن جميع الأنشطة التي تحدث تحت حسابك.</p>
@@ -46,20 +46,20 @@ export default async function TermsPage() {
                 <p>يجوز للمرضى إلغاء أو إعادة جدولة المواعيد وفقاً لسياسات العيادة الفردية. الأطباء مسؤولون عن وضع هذه السياسات وإبلاغها.</p>
 
                 <h2 className="text-[#1a1916] dark:text-[#f0efea] font-semibold mt-8 mb-2">5. حدود المسؤولية</h2>
-                <p>مرمر كير غير مسؤول عن أي أضرار مباشرة، غير مباشرة، عرضية، أو تبعية ناتجة عن استخدام أو عدم القدرة على استخدام خدماتنا، أو عن أي قرارات طبية تتخذ بناءً على المنصة.</p>
+                <p>مرمر غير مسؤول عن أي أضرار مباشرة، غير مباشرة، عرضية، أو تبعية ناتجة عن استخدام أو عدم القدرة على استخدام خدماتنا، أو عن أي قرارات طبية تتخذ بناءً على المنصة.</p>
 
                 <h2 className="text-[#1a1916] dark:text-[#f0efea] font-semibold mt-8 mb-2">6. التغييرات على الشروط</h2>
                 <p>يجوز لنا تعديل هذه الشروط في أي وقت. استمرار استخدام المنصة بعد التغييرات يعتبر قبولاً للشروط الجديدة.</p>
 
                 <h2 className="text-[#1a1916] dark:text-[#f0efea] font-semibold mt-8 mb-2">7. اتصل بنا</h2>
-                <p>إذا كان لديك أي أسئلة حول هذه الشروط، يرجى الاتصال بنا على support@mermercare.com.</p>
+                <p>إذا كان لديك أي أسئلة حول هذه الشروط، يرجى الاتصال بنا على support@mermereg.com.</p>
               </>
             ) : (
               <>
-                <p>Welcome to mermer Care. By accessing or using our services, you agree to be bound by these Terms and Conditions.</p>
+                <p>Welcome to mermer. By accessing or using our services, you agree to be bound by these Terms and Conditions.</p>
 
                 <h2 className="text-[#1a1916] dark:text-[#f0efea] font-semibold mt-8 mb-2">1. Services Provided</h2>
-                <p>mermer Care provides a clinic management platform and online booking system for doctors and patients. We facilitate the scheduling and management of medical appointments but do not provide medical advice or services directly.</p>
+                <p>mermer provides a clinic management platform and online booking system for doctors and patients. We facilitate the scheduling and management of medical appointments but do not provide medical advice or services directly.</p>
 
                 <h2 className="text-[#1a1916] dark:text-[#f0efea] font-semibold mt-8 mb-2">2. User Accounts</h2>
                 <p>To use certain features, you must register for an account. You are responsible for maintaining the confidentiality of your account information and for all activities that occur under your account.</p>
@@ -71,13 +71,13 @@ export default async function TermsPage() {
                 <p>Patients may cancel or reschedule appointments subject to the individual clinic&apos;s policies. Doctors are responsible for setting and communicating these policies.</p>
 
                 <h2 className="text-[#1a1916] dark:text-[#f0efea] font-semibold mt-8 mb-2">5. Limitation of Liability</h2>
-                <p>mermer Care is not liable for any direct, indirect, incidental, or consequential damages resulting from the use or inability to use our services, or for any medical decisions made based on the platform.</p>
+                <p>mermer is not liable for any direct, indirect, incidental, or consequential damages resulting from the use or inability to use our services, or for any medical decisions made based on the platform.</p>
 
                 <h2 className="text-[#1a1916] dark:text-[#f0efea] font-semibold mt-8 mb-2">6. Changes to Terms</h2>
                 <p>We may modify these Terms at any time. Continued use of the platform after changes constitutes acceptance of the new Terms.</p>
 
                 <h2 className="text-[#1a1916] dark:text-[#f0efea] font-semibold mt-8 mb-2">7. Contact Us</h2>
-                <p>If you have any questions about these Terms, please contact us at support@mermercare.com.</p>
+                <p>If you have any questions about these Terms, please contact us at support@mermereg.com.</p>
               </>
             )}
           </div>
