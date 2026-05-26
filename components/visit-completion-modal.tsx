@@ -640,12 +640,12 @@ export function VisitCompletionModal({
                     <h2 className="text-base font-semibold">{t("visit.completeVisit")}</h2>
                     {tag === "current" && (
                       <span className="text-[10px] font-bold uppercase tracking-wider bg-[#34c759]/15 text-[#34c759] border border-[#34c759]/30 px-2 py-0.5 rounded-full">
-                        Current
+                        {dir === "rtl" ? "الحالية" : "Current"}
                       </span>
                     )}
                     {tag === "next" && (
                       <span className="text-[10px] font-bold uppercase tracking-wider bg-[#007AFF]/15 text-[#007AFF] border border-[#007AFF]/30 px-2 py-0.5 rounded-full">
-                        Next
+                        {dir === "rtl" ? "التالية" : "Next"}
                       </span>
                     )}
                   </div>
@@ -743,7 +743,7 @@ export function VisitCompletionModal({
                         <div className="w-7 h-7 rounded-xl bg-[#34c759]/10 flex items-center justify-center">
                           <Pill className="w-3.5 h-3.5 text-[#34c759]" />
                         </div>
-                        <p className="text-sm font-semibold">Prescribed Medications</p>
+                        <p className="text-sm font-semibold">{dir === "rtl" ? "الأدوية الموصوفة" : "Prescribed Medications"}</p>
                         <span className="text-xs text-muted-foreground font-normal">({t("onboarding.optional")})</span>
                       </div>
                       <button
@@ -752,7 +752,7 @@ export function VisitCompletionModal({
                         className="flex items-center gap-1.5 text-xs font-semibold text-[#007AFF] hover:text-[#0062cc] transition-colors px-2.5 py-1.5 rounded-lg hover:bg-[#007AFF]/8"
                       >
                         <Plus className="w-3.5 h-3.5" />
-                        Add
+                        {dir === "rtl" ? "إضافة" : "Add"}
                       </button>
                     </div>
 
@@ -769,7 +769,7 @@ export function VisitCompletionModal({
                           <div className="border border-border rounded-2xl p-3 mb-2 space-y-2 bg-muted/20">
                             <div className="flex items-center justify-between mb-1">
                               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                Med #{idx + 1}
+                                {dir === "rtl" ? "دواء" : "Med"} #{idx + 1}
                               </span>
                               <button
                                 type="button"
@@ -782,7 +782,7 @@ export function VisitCompletionModal({
 
                             {/* Medication name */}
                             <div>
-                              <p className="text-xs font-medium text-muted-foreground mb-1">Medication name *</p>
+                              <p className="text-xs font-medium text-muted-foreground mb-1">{dir === "rtl" ? "اسم الدواء *" : "Medication name *"}</p>
                               <CreatableCombobox
                                 options={allMedNames}
                                 value={med.name}
@@ -790,14 +790,14 @@ export function VisitCompletionModal({
                                 onCreateOption={(val) => {
                                   updateMed(idx, "name", val);
                                 }}
-                                placeholder="e.g. Paracetamol, Amoxicillin…"
+                                placeholder={dir === "rtl" ? "مثل: باراسيتامول، أموكسيسيلين..." : "e.g. Paracetamol, Amoxicillin…"}
                               />
                             </div>
 
                             <div className="grid grid-cols-2 gap-2">
                               {/* Frequency */}
                               <div>
-                                <p className="text-xs font-medium text-muted-foreground mb-1">How often</p>
+                                <p className="text-xs font-medium text-muted-foreground mb-1">{dir === "rtl" ? "كم مرة" : "How often"}</p>
                                 <CreatableCombobox
                                   options={allFreqNames}
                                   value={med.frequency}
@@ -805,14 +805,14 @@ export function VisitCompletionModal({
                                   onCreateOption={(val) => {
                                     updateMed(idx, "frequency", val);
                                   }}
-                                  placeholder="e.g. Twice daily…"
+                                  placeholder={dir === "rtl" ? "مثل: مرتين يومياً..." : "e.g. Twice daily…"}
                                   accentColor="#AF52DE"
                                 />
                               </div>
 
                               {/* Notes */}
                               <div>
-                                <p className="text-xs font-medium text-muted-foreground mb-1">Notes</p>
+                                <p className="text-xs font-medium text-muted-foreground mb-1">{dir === "rtl" ? "ملاحظات" : "Notes"}</p>
                                 <CreatableCombobox
                                   options={allNoteNames}
                                   value={med.notes}
@@ -820,7 +820,7 @@ export function VisitCompletionModal({
                                   onCreateOption={(val) => {
                                     updateMed(idx, "notes", val);
                                   }}
-                                  placeholder="e.g. After meals…"
+                                  placeholder={dir === "rtl" ? "مثل: بعد الأكل..." : "e.g. After meals…"}
                                   accentColor="#FF9500"
                                 />
                               </div>
@@ -836,7 +836,7 @@ export function VisitCompletionModal({
                       className="mt-1 w-full border border-dashed border-[#34c759]/40 text-[#34c759] rounded-xl py-2 text-xs font-medium flex items-center justify-center gap-1.5 hover:bg-[#34c759]/5 transition-colors"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      Add another medication
+                      {dir === "rtl" ? "إضافة دواء آخر" : "Add another medication"}
                     </button>
                   </div>
 
@@ -847,7 +847,7 @@ export function VisitCompletionModal({
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
                       rows={2}
-                      placeholder="Diagnosis, treatment plan, observations…"
+                      placeholder={dir === "rtl" ? "التشخيص، خطة العلاج، الملاحظات..." : "Diagnosis, treatment plan, observations…"}
                       className="w-full px-4 py-2.5 text-sm bg-background border border-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] resize-none"
                     />
                   </div>

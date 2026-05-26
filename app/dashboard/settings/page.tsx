@@ -27,15 +27,15 @@ function normalisePhone(raw: string): string {
   return digits;
 }
 
+const ALL_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
 const SPECIALTIES = [
   "General Practitioner", "Cardiologist", "Dermatologist", "Dentist",
   "ENT Specialist", "Endocrinologist", "Gastroenterologist", "Neurologist",
   "Obstetrician / Gynecologist", "Ophthalmologist", "Orthopedic Surgeon",
-  "Pediatrician", "Psychiatrist", "Pulmonologist", "Radiologist",
-  "Rheumatologist", "Surgeon", "Urologist", "Other",
+  "Otolaryngologist (ENT)", "Pediatrician", "Psychiatrist", "Pulmonologist",
+  "Radiologist", "Rheumatologist", "Surgeon", "Urologist", "Other",
 ];
-
-const ALL_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export default function SettingsPage() {
   const { user } = useUser();
@@ -192,6 +192,7 @@ export default function SettingsPage() {
   const [phone, setPhone] = useState("");
   const [clinicName, setClinicName] = useState("");
   const [specialty, setSpecialty] = useState("");
+  const [customSpecialty, setCustomSpecialty] = useState("");
   const [credentials, setCredentials] = useState("");
   const [clinicAddress, setClinicAddress] = useState("");
   const [clinicAddressLink, setClinicAddressLink] = useState("");
@@ -224,7 +225,16 @@ export default function SettingsPage() {
     setName(currentUser.name ?? "");
     setPhone(currentUser.phone ?? "");
     setClinicName(currentUser.clinicName ?? "");
-    setSpecialty(currentUser.specialty ?? "");
+    
+    const dbSpec = currentUser.specialty ?? "";
+    if (SPECIALTIES.includes(dbSpec) || dbSpec === "") {
+      setSpecialty(dbSpec);
+      setCustomSpecialty("");
+    } else {
+      setSpecialty("Other");
+      setCustomSpecialty(dbSpec);
+    }
+
     setCredentials(currentUser.credentials ?? "");
     setClinicAddress((currentUser as any).clinicAddress ?? "");
     setClinicAddressLink((currentUser as any).clinicAddressLink ?? "");
@@ -247,7 +257,7 @@ export default function SettingsPage() {
         name: name || currentUser.name,
         phone: normalisePhone(phone || currentUser.phone),
         clinicName: clinicName || currentUser.clinicName,
-        specialty: specialty || undefined,
+        specialty: specialty === "Other" ? (customSpecialty || "Other") : (specialty || undefined),
         credentials: credentials || undefined,
         clinicAddress: clinicAddress || undefined,
         clinicAddressLink: clinicAddressLink || undefined,
@@ -394,6 +404,25 @@ export default function SettingsPage() {
         <section>
           <h3 className={sectionTitleClass}>{t("settings.profileSection") || "Profile"}</h3>
           <div className={blockClass}>
+
+            {/* Specialty */}
+            <div className={rowClass}>
+              <label className={labelClass}>{t("onboarding.specialty")}</label>
+              <div className="flex-1 flex flex-col gap-2 min-w-0">
+                <select value={specialty} onChange={(e) => setSpecialty(e.target.value)} className={inputClass}>
+                  <option value="" disabled>{t("settings.placeholderSpecialty") || "Select specialty"}</option>
+                  {SPECIALTIES.map((s) => <option key={s} value={s}>{t("specialty." + s) || s}</option>)}
+                </select>
+                {specialty === "Other" && (
+                  <input
+                    value={customSpecialty}
+                    onChange={(e) => setCustomSpecialty(e.target.value)}
+                    placeholder={dir === "rtl" ? "اكتب تخصصك..." : "Type your specialty..."}
+                    className={inputClass}
+                  />
+                )}
+              </div>
+            </div>
 
             {/* Photo */}
             <div className={rowClass}>
