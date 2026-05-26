@@ -19,7 +19,19 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title: `Dr. ${doctor.name} - ${doctor.specialty ?? "Doctor"} | mermer`,
     description: doctor.bio ?? `Book an appointment with Dr. ${doctor.name} on mermer.`,
-    openGraph: { images: [doctor.profilePhotoUrl ?? "/icon.svg"] },
+    openGraph: {
+      title: `Dr. ${doctor.name} | mermer`,
+      description: doctor.bio ?? `Book an appointment with Dr. ${doctor.name} on mermer.`,
+      url: `https://mermereg.com/doctors/${slug}`,
+      siteName: "mermer",
+      locale: "ar_EG",
+      type: "profile",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `Dr. ${doctor.name} | mermer`,
+      description: doctor.bio ?? `Book an appointment with Dr. ${doctor.name} on mermer.`,
+    },
   };
 }
 
