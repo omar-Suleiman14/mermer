@@ -33,12 +33,14 @@ interface VisitDrawerProps {
 // Detect if we're on a sm+ screen (>= 640px) — reads synchronously to avoid flicker
 function useIsDesktop() {
   const [isDesktop, setIsDesktop] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return window.matchMedia("(min-width: 640px)").matches;
+    if (typeof window !== "undefined") {
+      return window.matchMedia("(min-width: 640px)").matches;
+    }
+    return false;
   });
+
   useEffect(() => {
     const mq = window.matchMedia("(min-width: 640px)");
-    setIsDesktop(mq.matches);
     const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
     mq.addEventListener("change", handler);
     return () => mq.removeEventListener("change", handler);
@@ -113,7 +115,10 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
   useEffect(() => {
     if (timeSlots.length > 0 && visitTime === "10:00") {
       const firstAvailable = timeSlots.find(s => s.isWorkingHour && !s.isReserved);
-      if (firstAvailable) setVisitTime(firstAvailable.timeStr);
+      if (firstAvailable && firstAvailable.timeStr !== visitTime) {
+        // use setTimeout to push to next tick and avoid synchronous setState warning
+        setTimeout(() => setVisitTime(firstAvailable.timeStr), 0);
+      }
     }
   }, [timeSlots, visitTime]);
 

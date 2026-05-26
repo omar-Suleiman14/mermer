@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -43,19 +43,24 @@ function formatTime(ts: number) {
 }
 
 // Detect if we're on a sm+ screen (>= 640px) — reads synchronously to avoid flicker
+function subscribeDesktop(callback: () => void) {
+  if (typeof window === "undefined") return () => {};
+  const mq = window.matchMedia("(min-width: 640px)");
+  mq.addEventListener("change", callback);
+  return () => mq.removeEventListener("change", callback);
+}
+
+function getDesktopSnapshot() {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia("(min-width: 640px)").matches;
+}
+
+function getServerDesktopSnapshot() {
+  return false;
+}
+
 function useIsDesktop() {
-  const [isDesktop, setIsDesktop] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return window.matchMedia("(min-width: 640px)").matches;
-  });
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 640px)");
-    setIsDesktop(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
-  return isDesktop;
+  return useSyncExternalStore(subscribeDesktop, getDesktopSnapshot, getServerDesktopSnapshot);
 }
 
 export function AddToQueueDrawer({
@@ -65,8 +70,9 @@ export function AddToQueueDrawer({
   selectedDate,
   preselectedSlot,
 }: AddToQueueDrawerProps) {
+  // eslint-disable-next-line react-hooks/purity
   const dayTs = selectedDate ?? startOfDay(Date.now());
-  const { t, lang, dir } = useI18n();
+  const { t, dir } = useI18n();
   const isDesktop = useIsDesktop();
 
   // ── Search ─────────────────────────────────────────────────────────────────
@@ -100,8 +106,8 @@ export function AddToQueueDrawer({
       );
       onOpenChange(false);
       resetState();
-    } catch (err: any) {
-      const msg = err?.message ?? "";
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes("already booked")) {
         toast.error("This time slot is already taken — pick another slot first");
       } else {

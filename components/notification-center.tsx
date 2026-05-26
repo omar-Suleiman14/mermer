@@ -21,9 +21,9 @@ function TemplatePicker({
   t,
   onClose,
 }: {
-  noti: any;
-  currentUser: any;
-  messageTemplates: any[] | undefined;
+  noti: { patientName?: string; date: number; patientPhone?: string };
+  currentUser: { clinicAddressLink?: string } | undefined | null;
+  messageTemplates: { _id: string; name: string; body: string }[] | undefined;
   lang: string;
   t: (k: string) => string;
   onClose: () => void;
@@ -41,10 +41,10 @@ function TemplatePicker({
     const firstName = noti.patientName?.split(" ")[0] || "";
     const apptDate = new Date(noti.date);
     const message = body
-      .replace(/\{patient_name\}/g, noti.patientName)
+      .replace(/\{patient_name\}/g, noti.patientName || "")
       .replace(/\{date\}/g, apptDate.toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { month: "short", day: "numeric" }))
       .replace(/\{time\}/g, formatTime(noti.date))
-      .replace(/\{clinic_address\}/g, (currentUser as any)?.clinicAddressLink || "")
+      .replace(/\{clinic_address\}/g, currentUser?.clinicAddressLink || "")
       .replace(/\{\{name\}\}/g, firstName)
       .replace(/\{name\}/g, firstName);
 
@@ -137,20 +137,22 @@ export function NotificationCenter() {
   const [lastViewedAt, setLastViewedAt] = useState<number | null>(null);
   const [lastClearedAt, setLastClearedAt] = useState<number>(0);
   const [open, setOpen] = useState(false);
-  const [reminderFor, setReminderFor] = useState<any | null>(null);
+  const [reminderFor, setReminderFor] = useState<{ patientName?: string; date: number; patientPhone?: string; _id?: string } | null>(null);
 
   // Load persisted state once on mount
   useEffect(() => {
-    try {
-      const storedLastViewed = localStorage.getItem("notificationsLastViewedAt");
-      setLastViewedAt(storedLastViewed ? Number(storedLastViewed) : 0);
+    setTimeout(() => {
+      try {
+        const storedLastViewed = localStorage.getItem("notificationsLastViewedAt");
+        setLastViewedAt(storedLastViewed ? Number(storedLastViewed) : 0);
 
-      const storedCleared = localStorage.getItem("notificationsLastClearedAt");
-      if (storedCleared) setLastClearedAt(Number(storedCleared));
-    } catch {
-      // localStorage may be unavailable or full — graceful fallback
-      setLastViewedAt(0);
-    }
+        const storedCleared = localStorage.getItem("notificationsLastClearedAt");
+        if (storedCleared) setLastClearedAt(Number(storedCleared));
+      } catch {
+        // localStorage may be unavailable or full — graceful fallback
+        setLastViewedAt(0);
+      }
+    }, 0);
   }, []);
 
   // ── Derived lists ─────────────────────────────────────────────────────────
@@ -375,8 +377,8 @@ export function NotificationCenter() {
         {reminderFor && (
           <TemplatePicker
             noti={reminderFor}
-            currentUser={currentUser}
-            messageTemplates={messageTemplates as any[]}
+            currentUser={currentUser as { clinicAddressLink?: string }}
+            messageTemplates={messageTemplates as { _id: string; name: string; body: string }[]}
             lang={lang}
             t={t}
             onClose={() => setReminderFor(null)}

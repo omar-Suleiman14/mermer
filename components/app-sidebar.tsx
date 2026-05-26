@@ -8,7 +8,7 @@ import { UserButton } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useState, useEffect } from "react";
+
 import {
   LayoutDashboard,
   Users,
@@ -43,8 +43,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useUser();
   const { theme } = useTheme();
   const { t, lang } = useI18n();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
   const clerkId = user?.id ?? "";
   const currentUser = useQuery(
     api.users.getCurrentUser,
@@ -72,7 +70,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     // Doctor always sees everything
     if (!isAssistant) return true;
     // Items marked doctorOnly are hidden for assistants by default unless they have the perm
-    if ((item as any).doctorOnly) {
+    if ("doctorOnly" in item && item.doctorOnly) {
       return item.perm ? userPerms.includes(item.perm) : false;
     }
     // If item requires a perm, check it
@@ -127,7 +125,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             return (
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
-                  <Link href={item.href} prefetch={true} target={(item as any).target} className="flex items-center gap-2 relative">
+                  <Link href={item.href} prefetch={true} target={"target" in item ? item.target as string : undefined} className="flex items-center gap-2 relative">
                     <item.icon className="w-4 h-4 shrink-0" aria-hidden="true" />
                     <span className="flex-1">{item.title}</span>
                   </Link>

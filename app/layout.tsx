@@ -43,6 +43,10 @@ export default async function RootLayout({
 
   return (
     <html lang={lang} dir={dir} suppressHydrationWarning style={{ fontSize: "106%" }}>
+      <head>
+        <link rel="preconnect" href={process.env.NEXT_PUBLIC_CONVEX_URL} crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_CONVEX_URL} />
+      </head>
       <body className={`antialiased ${cairo.variable}`} suppressHydrationWarning>
         <ThemeProvider
           attribute="class"

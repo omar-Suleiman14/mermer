@@ -571,6 +571,35 @@ export default function SettingsPage() {
                 <span className="text-sm text-muted-foreground shrink-0">{t("settings.mins")}</span>
               </div>
             </div>
+
+            <div className={`${rowClass} flex-col items-start gap-3`}>
+              <div className="w-full">
+                <label className="text-sm font-medium text-foreground block mb-2">{t("onboarding.workingDays") || "Working Days"}</label>
+                <div className="flex flex-wrap gap-2">
+                  {ALL_DAYS.map((d) => {
+                    const isSelected = workingDays.includes(d);
+                    return (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => {
+                          const newDays = isSelected ? workingDays.filter(x => x !== d) : [...workingDays, d];
+                          setWorkingDays(newDays);
+                        }}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors border ${
+                          isSelected 
+                            ? "bg-[#007AFF] text-white border-[#007AFF]" 
+                            : "bg-muted text-muted-foreground border-transparent hover:bg-muted/80"
+                        }`}
+                      >
+                        {t(`days.${d.toLowerCase()}`) || d}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-[12px] text-muted-foreground mt-2">{dir === "rtl" ? "هذا الخيار يؤثر فقط على الحجوزات الإلكترونية" : "This option only affects online booking."}</p>
+              </div>
+            </div>
           </div>
         </section>
 

@@ -15,7 +15,7 @@ interface DoctorCardProps {
 }
 
 export function DoctorCard({ doctor, className }: DoctorCardProps) {
-  const { t, dir, lang } = useI18n();
+  const { t, lang } = useI18n();
   const availableToday = isAvailableToday(doctor.availableDays);
   const slug = doctor.qrSlug;
   if (!slug) return null;

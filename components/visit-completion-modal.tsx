@@ -299,10 +299,10 @@ export function VisitCompletionModal({
   );
 
   /** Working days from doctor profile — falls back to blocking Sat+Sun */
-  const workingDayAbbrs: string[] = (currentUser as any)?.availableDays ?? [];
+  const workingDayAbbrs: string[] = (currentUser as { availableDays?: string[] })?.availableDays ?? [];
   const DOW_ABBR: Record<number, string> = { 0: "Sun", 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat" };
   const WEEKEND_DAYS = new Set([0, 6]); // Sun & Sat
-  function isNonWorkingDay(d: Date): boolean {
+  function isNonWorkingDay(): boolean {
     return false;
   }
 
@@ -385,19 +385,19 @@ export function VisitCompletionModal({
 
   // Merged options: doctor-saved + defaults (deduped)
   const allMedNames = useMemo(() => {
-    const saved = (medOptions ?? []).map((o: any) => o.name);
+    const saved = (medOptions ?? []).map((o: { name: string }) => o.name);
     return Array.from(new Set([...saved]));
   }, [medOptions]);
 
   const allFreqNames = useMemo(() => {
-    const saved = (freqOptions ?? []).map((o: any) => o.name);
-    const defaults = DEFAULT_FREQUENCIES.map((key) => t(key as any) || key);
+    const saved = (freqOptions ?? []).map((o: { name: string }) => o.name);
+    const defaults = DEFAULT_FREQUENCIES.map((key) => t(key as string) || key);
     return Array.from(new Set([...defaults, ...saved]));
   }, [freqOptions, t]);
 
   const allNoteNames = useMemo(() => {
-    const saved = (noteOptions ?? []).map((o: any) => o.name);
-    const defaults = DEFAULT_NOTES.map((key) => t(key as any) || key);
+    const saved = (noteOptions ?? []).map((o: { name: string }) => o.name);
+    const defaults = DEFAULT_NOTES.map((key) => t(key as string) || key);
     return Array.from(new Set([...defaults, ...saved]));
   }, [noteOptions, t]);
 
@@ -485,21 +485,21 @@ export function VisitCompletionModal({
       for (const med of medications) {
         if (med.name.trim()) {
           // Only save if it's not already in the saved options
-          const savedNames = (medOptions ?? []).map((o: any) => o.name);
+          const savedNames = (medOptions ?? []).map((o: { name: string }) => o.name);
           if (!savedNames.includes(med.name.trim())) {
             await addMedicationOption({ clerkId, name: med.name.trim() });
           }
         }
         if (med.frequency.trim()) {
-          const savedFreqs = (freqOptions ?? []).map((o: any) => o.name);
-          const translatedFreqs = DEFAULT_FREQUENCIES.map((k) => t(k as any) || k);
+          const savedFreqs = (freqOptions ?? []).map((o: { name: string }) => o.name);
+          const translatedFreqs = DEFAULT_FREQUENCIES.map((k) => t(k as string) || k);
           if (!savedFreqs.includes(med.frequency.trim()) && !translatedFreqs.includes(med.frequency.trim())) {
             await addFrequencyOption({ clerkId, name: med.frequency.trim() });
           }
         }
         if (med.notes.trim()) {
-          const savedNotes = (noteOptions ?? []).map((o: any) => o.name);
-          const translatedNotes = DEFAULT_NOTES.map((k) => t(k as any) || k);
+          const savedNotes = (noteOptions ?? []).map((o: { name: string }) => o.name);
+          const translatedNotes = DEFAULT_NOTES.map((k) => t(k as string) || k);
           if (!savedNotes.includes(med.notes.trim()) && !translatedNotes.includes(med.notes.trim())) {
             await addNoteOption({ clerkId, name: med.notes.trim() });
           }
@@ -573,8 +573,9 @@ export function VisitCompletionModal({
         setDone(true);
         toast.success(scheduleFollowUp ? "Visit complete — follow-up scheduled!" : "Visit recorded");
       }
-    } catch (e: any) {
-      toast.error(e.message ?? "Failed to complete visit");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(msg || "Failed to complete visit");
     } finally {
       setIsSaving(false);
     }
@@ -640,12 +641,12 @@ export function VisitCompletionModal({
                     <h2 className="text-base font-semibold">{t("visit.completeVisit")}</h2>
                     {tag === "current" && (
                       <span className="text-[10px] font-bold uppercase tracking-wider bg-[#34c759]/15 text-[#34c759] border border-[#34c759]/30 px-2 py-0.5 rounded-full">
-                        {dir === "rtl" ? "الحالية" : "Current"}
+                        {dir === "rtl" ? "الحالي" : "Current"}
                       </span>
                     )}
                     {tag === "next" && (
                       <span className="text-[10px] font-bold uppercase tracking-wider bg-[#007AFF]/15 text-[#007AFF] border border-[#007AFF]/30 px-2 py-0.5 rounded-full">
-                        {dir === "rtl" ? "التالية" : "Next"}
+                        {dir === "rtl" ? "التالي" : "Next"}
                       </span>
                     )}
                   </div>
@@ -903,7 +904,7 @@ export function VisitCompletionModal({
                                   </button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-0" align="start">
-                                  <Calendar mode="single" selected={nextinstallmentDate} onSelect={(d) => { if (d) { setNextinstallmentDate(d); setNextinstallmentCalOpen(false); } }} disabled={(d) => d < new Date() || isNonWorkingDay(d)} />
+                                  <Calendar mode="single" selected={nextinstallmentDate} onSelect={(d) => { if (d) { setNextinstallmentDate(d); setNextinstallmentCalOpen(false); } }} disabled={(d) => d < new Date() || isNonWorkingDay()} />
                                 </PopoverContent>
                               </Popover>
                             </div>
@@ -960,7 +961,7 @@ export function VisitCompletionModal({
                                     </button>
                                   </PopoverTrigger>
                                   <PopoverContent className="w-auto p-0" align="start">
-                                    <Calendar mode="single" selected={fuDate} onSelect={(d) => { if (d) { setFuDate(d); setFuCalOpen(false); } }} disabled={(d) => d < new Date() || isNonWorkingDay(d)} />
+                                    <Calendar mode="single" selected={fuDate} onSelect={(d) => { if (d) { setFuDate(d); setFuCalOpen(false); } }} disabled={(d) => d < new Date() || isNonWorkingDay()} />
                                   </PopoverContent>
                                 </Popover>
                               </div>

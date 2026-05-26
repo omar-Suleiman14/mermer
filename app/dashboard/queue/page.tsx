@@ -1002,7 +1002,7 @@ export default function SchedulePage() {
                         <button className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border rounded-xl transition-colors text-left ${rescheduleModal.isinstallment ? "hover:border-[#AF52DE]/50" : "hover:border-[#007AFF]/50"} ${!rescheduleDate ? "border-red-400/60" : "border-border"}`}>
                           <CalendarIcon className="w-4 h-4 text-muted-foreground shrink-0" />
                           <span className={rescheduleDate ? "" : "text-muted-foreground"}>
-                            {rescheduleDate ? rescheduleDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : (t("schedule.pickDate") || "Pick date")}
+                            {rescheduleDate ? rescheduleDate.toLocaleDateString("en-US", { month: "short", day: "numeric" }) : (t("visit.pickDate") || "Pick date")}
                           </span>
                         </button>
                       </PopoverTrigger>

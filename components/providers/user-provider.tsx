@@ -5,6 +5,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useUser } from "@clerk/nextjs";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type CurrentUser = any; // You can import the Doc<"users"> type from convex later
 
 interface UserContextType {

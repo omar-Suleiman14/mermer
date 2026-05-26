@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { Doc } from "./_generated/dataModel";
 import { requireAuthUser, requireAdmin } from "./authHelper";
 
 // ─── Publish Profile ──────────────────────────────────────────────────────────
@@ -22,7 +23,7 @@ export const updatePublicProfile = mutation({
     const user = await requireAuthUser(ctx, args.clerkId);
     
     // Explicitly pick fields to prevent schema bypass via ...args
-    const patch: any = {};
+    const patch: Record<string, unknown> = {};
     if (args.specialty !== undefined) patch.specialty = args.specialty;
     if (args.bio !== undefined) patch.bio = args.bio;
     if (args.consultationFee !== undefined) patch.consultationFee = args.consultationFee;
@@ -63,7 +64,7 @@ export const listPublishedDoctors = query({
       .take(500);
 
     // Filter banned in JS (small fraction of published)
-    const visible = published.filter((u) => !(u as any).isBanned);
+    const visible = published.filter((u) => !u.isBanned);
 
     return await Promise.all(
       visible.map(async (u) => {
@@ -77,17 +78,17 @@ export const listPublishedDoctors = query({
           specialty: u.specialty ?? null,
           clinicName: u.clinicName,
           clinicAddress: u.clinicAddress ?? null,
-          city: (u as any).city ?? null,
-          consultationFee: (u as any).consultationFee ?? null,
-          languages: (u as any).languages ?? [],
-          availableDays: (u as any).availableDays ?? [],
-          availableFrom: (u as any).availableFrom ?? null,
-          availableTo: (u as any).availableTo ?? null,
+          city: u.city ?? null,
+          consultationFee: u.consultationFee ?? null,
+          languages: u.languages ?? [],
+          availableDays: u.availableDays ?? [],
+          availableFrom: u.availableFrom ?? null,
+          availableTo: u.availableTo ?? null,
           bio: u.bio ?? null,
           qrSlug: u.qrSlug ?? null,
           profilePhotoUrl,
-          avgRating: (u as any).avgRating ?? null,
-          reviewCount: (u as any).reviewCount ?? 0,
+          avgRating: u.avgRating ?? null,
+          reviewCount: u.reviewCount ?? 0,
           workingHoursStart: u.workingHoursStart ?? null,
           workingHoursEnd: u.workingHoursEnd ?? null,
         };
@@ -127,13 +128,13 @@ function doctorSearchBlob(d: {
   credentials?: string | null;
   languages?: string[];
 }): string {
-  const langs = ((d as any).languages ?? []).join(" ");
+  const langs = (d.languages ?? []).join(" ");
   return [
     d.name,
     d.specialty ?? "",
     d.clinicName ?? "",
     d.clinicAddress ?? "",
-    (d as any).city ?? "",
+    d.city ?? "",
     d.bio ?? "",
     d.credentials ?? "",
     langs,
@@ -161,11 +162,11 @@ export const searchDoctors = query({
       .withIndex("by_public_profile", (q) => q.eq("publicProfile", true))
       .take(1000);
 
-    let list = published.filter((u) => !(u as any).isBanned);
+    let list = published.filter((u) => !u.isBanned);
 
     const q = args.searchQuery?.toLowerCase().trim();
     if (q) {
-      list = list.filter((d) => doctorSearchBlob(d as any).includes(q));
+      list = list.filter((d) => doctorSearchBlob(d).includes(q));
     }
 
     if (args.specialty) {
@@ -175,52 +176,52 @@ export const searchDoctors = query({
     if (args.city) {
       const city = args.city.toLowerCase();
       list = list.filter(
-        (d) => ((d as any).city ?? "").toLowerCase() === city
+        (d) => (d.city ?? "").toLowerCase() === city
       );
     }
 
     if (args.language) {
-      list = list.filter((d) => ((d as any).languages ?? []).includes(args.language!));
+      list = list.filter((d) => (d.languages ?? []).includes(args.language!));
     }
 
     if (args.feeMin !== undefined) {
       list = list.filter(
         (d) =>
-          (d as any).consultationFee !== null &&
-          (d as any).consultationFee !== undefined &&
-          (d as any).consultationFee >= args.feeMin!
+          d.consultationFee !== null &&
+          d.consultationFee !== undefined &&
+          d.consultationFee >= args.feeMin!
       );
     }
 
     if (args.feeMax !== undefined) {
       list = list.filter(
         (d) =>
-          (d as any).consultationFee !== null &&
-          (d as any).consultationFee !== undefined &&
-          (d as any).consultationFee <= args.feeMax!
+          d.consultationFee !== null &&
+          d.consultationFee !== undefined &&
+          d.consultationFee <= args.feeMax!
       );
     }
 
     if (args.minRating !== undefined && args.minRating > 0) {
       list = list.filter(
-        (d) => ((d as any).avgRating ?? 0) >= args.minRating!
+        (d) => (d.avgRating ?? 0) >= args.minRating!
       );
     }
 
     if (args.availToday) {
       list = list.filter((d) =>
-        matchesAvailableToday(((d as any).availableDays ?? []) as string[])
+        matchesAvailableToday((d.availableDays ?? []) as string[])
       );
     }
 
     // Sort
     const sort = args.sortBy ?? "relevance";
     if (sort === "fee_asc") {
-      list.sort((a, b) => ((a as any).consultationFee ?? 999999) - ((b as any).consultationFee ?? 999999));
+      list.sort((a, b) => (a.consultationFee ?? 999999) - (b.consultationFee ?? 999999));
     } else if (sort === "fee_desc") {
-      list.sort((a, b) => ((b as any).consultationFee ?? 0) - ((a as any).consultationFee ?? 0));
+      list.sort((a, b) => (b.consultationFee ?? 0) - (a.consultationFee ?? 0));
     } else if (sort === "rating") {
-      list.sort((a, b) => ((b as any).avgRating ?? 0) - ((a as any).avgRating ?? 0));
+      list.sort((a, b) => (b.avgRating ?? 0) - (a.avgRating ?? 0));
     }
 
     // Apply limit for pagination
@@ -239,18 +240,18 @@ export const searchDoctors = query({
           specialty: u.specialty ?? null,
           clinicName: u.clinicName,
           clinicAddress: u.clinicAddress ?? null,
-          city: (u as any).city ?? null,
-          consultationFee: (u as any).consultationFee ?? null,
-          languages: (u as any).languages ?? [],
-          availableDays: (u as any).availableDays ?? [],
-          availableFrom: (u as any).availableFrom ?? null,
-          availableTo: (u as any).availableTo ?? null,
+          city: u.city ?? null,
+          consultationFee: u.consultationFee ?? null,
+          languages: u.languages ?? [],
+          availableDays: u.availableDays ?? [],
+          availableFrom: u.availableFrom ?? null,
+          availableTo: u.availableTo ?? null,
           bio: u.bio ?? null,
           credentials: u.credentials ?? null,
           qrSlug: u.qrSlug ?? null,
           profilePhotoUrl,
-          avgRating: (u as any).avgRating ?? null,
-          reviewCount: (u as any).reviewCount ?? 0,
+          avgRating: u.avgRating ?? null,
+          reviewCount: u.reviewCount ?? 0,
           workingHoursStart: u.workingHoursStart ?? null,
           workingHoursEnd: u.workingHoursEnd ?? null,
         };
@@ -268,7 +269,7 @@ export const getPublicDoctorProfile = query({
       .query("users")
       .withIndex("by_qr_slug", (q) => q.eq("qrSlug", args.slug))
       .unique();
-    if (!doctor || !doctor.publicProfile || (doctor as any).isBanned)
+    if (!doctor || !doctor.publicProfile || doctor.isBanned)
       return null;
 
     const feedbackItems = await ctx.db
@@ -287,19 +288,19 @@ export const getPublicDoctorProfile = query({
       specialty: doctor.specialty ?? null,
       clinicName: doctor.clinicName,
       clinicAddress: doctor.clinicAddress ?? null,
-      clinicAddressLink: (doctor as any).clinicAddressLink ?? null,
-      city: (doctor as any).city ?? null,
-      consultationFee: (doctor as any).consultationFee ?? null,
-      languages: (doctor as any).languages ?? [],
-      availableDays: (doctor as any).availableDays ?? [],
-      availableFrom: (doctor as any).availableFrom ?? null,
-      availableTo: (doctor as any).availableTo ?? null,
+      clinicAddressLink: doctor.clinicAddressLink ?? null,
+      city: doctor.city ?? null,
+      consultationFee: doctor.consultationFee ?? null,
+      languages: doctor.languages ?? [],
+      availableDays: doctor.availableDays ?? [],
+      availableFrom: doctor.availableFrom ?? null,
+      availableTo: doctor.availableTo ?? null,
       bio: doctor.bio ?? null,
       qrSlug: doctor.qrSlug ?? null,
       credentials: doctor.credentials ?? null,
       profilePhotoUrl,
-      avgRating: (doctor as any).avgRating ?? null,
-      reviewCount: (doctor as any).reviewCount ?? 0,
+      avgRating: doctor.avgRating ?? null,
+      reviewCount: doctor.reviewCount ?? 0,
       reviews: feedbackItems.slice(0, 10).map((f) => ({
         _id: f._id,
         rating: f.rating,
@@ -328,7 +329,7 @@ export const banDoctor = mutation({
       isBanned: args.banned,
       // Hide from feed if banned
       publicProfile: args.banned ? false : (await ctx.db.get(args.targetUserId))?.publicProfile ?? false,
-    } as any);
+    });
   },
 });
 
@@ -372,11 +373,11 @@ export const getDoctorAnalytics = query({
       .query("installments")
       .withIndex("by_doctor", (q) => q.eq("doctorId", args.targetUserId))
       .take(1000);
-    const installmentMap = new Map<string, any>(allinstallments.map(c => [c._id.toString(), c]));
+    const installmentMap = new Map<string, Doc<"installments">>(allinstallments.map(c => [c._id.toString(), c]));
 
     const fee = doctor.consultationFee ?? 0;
     
-    function getVisitRevenue(a: any) {
+    function getVisitRevenue(a: Doc<"visits">): number {
       if (a.status !== "completed") return 0;
       if (a.source === "follow-up") return 0;
       if (a.source === "installment") {
@@ -437,7 +438,7 @@ export const getPlatformOverview = query({
     // Use indexed queries for specific counts instead of loading all 20,000 users
     const allUsers = await ctx.db.query("users").take(500);
     const allDoctors = allUsers.filter((u) => !u.isAdmin);
-    const bannedCount = allDoctors.filter((u) => (u as any).isBanned).length;
+    const bannedCount = allDoctors.filter((u) => u.isBanned).length;
 
     // Use index for published count
     const publishedDoctors = await ctx.db
@@ -451,12 +452,9 @@ export const getPlatformOverview = query({
     const monthStart = now - 30 * 86400000;
 
     // Scan recent visits with a reasonable cap
-    const recentVisits = await ctx.db
-      .query("visits")
-      .order("desc")
-      .take(5000);
+    /* recentVisits unused */
 
-    const completedAll = recentVisits.filter((a) => a.status === "completed");
+    const completedAll = (await ctx.db.query("visits").order("desc").take(5000)).filter((a) => a.status === "completed");
     const completedThisMonth = completedAll.filter((a) => a.date >= monthStart);
 
     return {
@@ -483,7 +481,7 @@ export const getRevenueData = query({
     const user = await requireAuthUser(ctx, args.clerkId);
     if (!user) return null;
 
-    const fee = (user as any).consultationFee ?? 0;
+    const fee = user.consultationFee ?? 0;
     const now = args.now ?? Date.now();
     const DAY_MS = 86400000;
     
@@ -511,9 +509,9 @@ export const getRevenueData = query({
       .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
       .take(1000);
 
-    const installmentMap = new Map<string, any>(allinstallments.map(c => [c._id.toString(), c]));
+    const installmentMap = new Map<string, Doc<"installments">>(allinstallments.map(c => [c._id.toString(), c]));
 
-    function getVisitRevenue(a: any) {
+    function getVisitRevenue(a: Doc<"visits">): number {
       if (a.status !== "completed") return 0;
       if (a.source === "follow-up") return 0;
       if (a.source === "installment") {
@@ -677,10 +675,10 @@ export const getStatsAggregated = query({
       .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
       .take(1000);
 
-    const installmentMap = new Map<string, any>(allinstallments.map(c => [c._id.toString(), c]));
+    const installmentMap = new Map<string, Doc<"installments">>(allinstallments.map(c => [c._id.toString(), c]));
     const fee = user.consultationFee ?? 0;
 
-    function getVisitRevenue(a: any) {
+    function getVisitRevenue(a: Doc<"visits">): number {
       if (a.status !== "completed") return 0;
       if (a.source === "follow-up") return 0;
       if (a.source === "installment") {

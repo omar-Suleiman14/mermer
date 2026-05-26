@@ -29,12 +29,17 @@ export function I18nProvider({
   children: React.ReactNode, 
   initialLang?: Lang 
 }) {
-  const [lang, setLangState] = useState<Lang>(initialLang);
+  const [lang, setLangState] = useState<Lang>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("mermer_lang") as Lang | null;
+      if (stored === "ar" || stored === "en") return stored;
+    }
+    return initialLang;
+  });
 
   useEffect(() => {
     const stored = localStorage.getItem("mermer_lang") as Lang | null;
     if (stored === "ar" || stored === "en") {
-      setLangState(stored);
       // Sync cookie so server components see it
       document.cookie = `mermer_lang=${stored}; path=/; max-age=31536000`;
     }

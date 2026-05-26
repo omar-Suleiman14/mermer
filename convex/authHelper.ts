@@ -31,7 +31,7 @@ export async function getAuthUser(
 
   if (!user) return null;
 
-  let resultUser: any = { ...user };
+  let resultUser: WrappedUser = { ...user };
 
   if (user.role === "assistant" && user.clinicId) {
     const doctor = await ctx.db.get(user.clinicId);
@@ -71,12 +71,12 @@ export async function requireAuthUser(
 /**
  * Validates if the user has a specific permission.
  */
-export function hasPermission(user: any, permission: string): boolean {
+export function hasPermission(user: WrappedUser, permission: string): boolean {
   if (user.role !== "assistant") return true;
   return user.permissions?.includes(permission) ?? false;
 }
 
-export function requirePermission(user: any, permission: string) {
+export function requirePermission(user: WrappedUser, permission: string) {
   if (!hasPermission(user, permission)) {
     throw new Error(`Permission denied: requires ${permission}`);
   }
@@ -87,15 +87,15 @@ export function requirePermission(user: any, permission: string) {
  */
 export async function logAction(
   ctx: MutationCtx,
-  user: any, // The wrapped user from requireAuthUser
+  user: WrappedUser, // The wrapped user from requireAuthUser
   action: string,
   details: string,
   entityId?: string
 ) {
   await ctx.db.insert("auditLogs", {
     clinicId: user._id, // Since it's the wrapped doctor object, _id is the clinicId
-    userId: user.actualUserId,
-    userName: user.actualUserName,
+    userId: user.actualUserId ?? user._id,
+    userName: user.actualUserName ?? user.name,
     action,
     details,
     entityId,

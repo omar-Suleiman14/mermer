@@ -4,40 +4,7 @@ import { getAuthUser, requireAuthUser } from "./authHelper";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function nextVisitDate(
-  startDate: number,
-  frequency: string,
-  customIntervalDays?: number
-): number {
-  const now = Date.now();
-  let interval: number;
 
-  switch (frequency) {
-    case "daily":
-      interval = 86400000;
-      break;
-    case "weekly":
-      interval = 7 * 86400000;
-      break;
-    case "bi-weekly":
-      interval = 14 * 86400000;
-      break;
-    case "monthly":
-      interval = 30 * 86400000;
-      break;
-    case "custom":
-      interval = (customIntervalDays ?? 7) * 86400000;
-      break;
-    default:
-      interval = 7 * 86400000;
-  }
-
-  let next = startDate;
-  while (next <= now) {
-    next += interval;
-  }
-  return next;
-}
 
 // ─── Queries ─────────────────────────────────────────────────────────────────
 
@@ -306,7 +273,7 @@ export const updateinstallmentDefaults = mutation({
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
     // Explicitly pick allowed fields to prevent schema bypass
-    const patch: any = {};
+    const patch: Record<string, unknown> = {};
     if (args.installmentDefaultDownPayment !== undefined) patch.installmentDefaultDownPayment = args.installmentDefaultDownPayment;
     if (args.installmentDefaultDownPaymentType !== undefined) patch.installmentDefaultDownPaymentType = args.installmentDefaultDownPaymentType;
     if (args.installmentDefaultCostPerVisit !== undefined) patch.installmentDefaultCostPerVisit = args.installmentDefaultCostPerVisit;

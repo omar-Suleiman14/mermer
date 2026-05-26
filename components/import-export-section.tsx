@@ -34,7 +34,7 @@ export function ImportExportSection({ clerkId }: ImportExportSectionProps) {
   const batchAddMedicationOptions = useMutation(api.clinicalOptions.batchAddMedicationOptions);
 
   // Import State
-  const [csvData, setCsvData] = useState<any[]>([]);
+  const [csvData, setCsvData] = useState<Record<string, string>[]>([]);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
   const [columnMap, setColumnMap] = useState<Record<string, string>>({});
   const [importing, setImporting] = useState(false);
@@ -98,7 +98,7 @@ export function ImportExportSection({ clerkId }: ImportExportSectionProps) {
       complete: (results) => {
         if (results.meta.fields) {
           setCsvHeaders(results.meta.fields);
-          setCsvData(results.data);
+          setCsvData(results.data as Record<string, string>[]);
           const autoMap: Record<string, string> = {};
           const fields = importType === "patients" ? patientFields : medicationFields;
           fields.forEach(f => {
@@ -116,7 +116,7 @@ export function ImportExportSection({ clerkId }: ImportExportSectionProps) {
     e.target.value = "";
   };
 
-  const mapRowToEntity = (row: any) => {
+  const mapRowToEntity = (row: Record<string, string>) => {
     if (importType === "patients") {
       return {
         name: row[columnMap["name"]] || "Unknown",
@@ -132,7 +132,7 @@ export function ImportExportSection({ clerkId }: ImportExportSectionProps) {
     }
   };
 
-  const handleImportSingle = async (row: any, index: number) => {
+  const handleImportSingle = async (row: Record<string, string>, index: number) => {
     const entity = mapRowToEntity(row);
     if (!entity.name || entity.name === "Unknown") {
       toast.error(t("settings.csvNameRequired") || "Name is required");
@@ -140,6 +140,7 @@ export function ImportExportSection({ clerkId }: ImportExportSectionProps) {
     }
     try {
       if (importType === "patients") {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await batchCreatePatients({ clerkId, patients: [entity] as any });
       } else {
         await batchAddMedicationOptions({ clerkId, medications: [entity.name] });
@@ -160,6 +161,7 @@ export function ImportExportSection({ clerkId }: ImportExportSectionProps) {
     try {
       const entities = csvData.map(mapRowToEntity).filter(e => e.name && e.name !== "Unknown");
       if (importType === "patients") {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await batchCreatePatients({ clerkId, patients: entities as any });
       } else {
         await batchAddMedicationOptions({ clerkId, medications: entities.map(e => e.name) });
@@ -245,7 +247,7 @@ export function ImportExportSection({ clerkId }: ImportExportSectionProps) {
                   <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
                     <select
                       value={importType}
-                      onChange={(e) => { setImportType(e.target.value as any); setColumnMap({}); setCsvData([]); setCsvHeaders([]); }}
+                      onChange={(e) => { setImportType(e.target.value as "patients" | "medications"); setColumnMap({}); setCsvData([]); setCsvHeaders([]); }}
                       className="p-2.5 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 w-full sm:w-auto min-w-37.5"
                     >
                       <option value="patients">{t("settings.csvTypePatients") || "Patients"}</option>

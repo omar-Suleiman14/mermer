@@ -1,5 +1,4 @@
 import fs from "fs";
-import path from "path";
 
 const bad = "m" + "otion";
 const good = "d" + "iv";

@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUser, requireAuthUser, logAction } from "./authHelper";
+import { Doc } from "./_generated/dataModel";
 
 // FIX #5: Batch-fetch installments for all patients in one query instead of N+1
 export const listPatients = query({
@@ -83,7 +84,7 @@ export const searchPatients = query({
     }
 
     // Helper to enrich patients with hasPastDue using pre-fetched data
-    const enrichPatients = (patientsArray: any[]) => {
+    const enrichPatients = (patientsArray: Doc<"patients">[]) => {
       return patientsArray.map((p) => ({
         ...p,
         hasPastDue: pastDuePatientIds.has(p._id.toString()),

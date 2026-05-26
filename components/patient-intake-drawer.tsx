@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, useSyncExternalStore } from "react";
 import { useMutation, useConvex, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -15,7 +15,6 @@ import {
   DrawerTitle,
   DrawerDescription,
   DrawerFooter,
-  DrawerClose,
 } from "@/components/ui/drawer";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -69,19 +68,24 @@ const defaultForm = {
 const inputClass = "w-full px-3 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] transition-shadow";
 
 // Detect if we're on a sm+ screen (>= 640px) — reads synchronously to avoid flicker
+function subscribeDesktop(callback: () => void) {
+  if (typeof window === "undefined") return () => {};
+  const mq = window.matchMedia("(min-width: 640px)");
+  mq.addEventListener("change", callback);
+  return () => mq.removeEventListener("change", callback);
+}
+
+function getDesktopSnapshot() {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia("(min-width: 640px)").matches;
+}
+
+function getServerDesktopSnapshot() {
+  return false;
+}
+
 function useIsDesktop() {
-  const [isDesktop, setIsDesktop] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return window.matchMedia("(min-width: 640px)").matches;
-  });
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 640px)");
-    setIsDesktop(mq.matches);
-    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
-  return isDesktop;
+  return useSyncExternalStore(subscribeDesktop, getDesktopSnapshot, getServerDesktopSnapshot);
 }
 
 export function PatientIntakeDrawer({
@@ -112,7 +116,7 @@ export function PatientIntakeDrawer({
   // Doctor profile for slot generation
   const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
 
-  function isNonWorkingDay(_d: Date): boolean {
+  function isNonWorkingDay(): boolean {
     return false;
   }
 
@@ -165,9 +169,11 @@ export function PatientIntakeDrawer({
   useEffect(() => {
     if (timeSlots.length > 0 && visitTime === "10:00") {
       const firstAvailable = timeSlots.find(s => s.isWorkingHour && !s.isReserved);
-      if (firstAvailable) setVisitTime(firstAvailable.timeStr);
+      if (firstAvailable) {
+        setTimeout(() => setVisitTime(firstAvailable.timeStr), 0);
+      }
     }
-  }, [timeSlots]);
+  }, [timeSlots, visitTime]);
 
   // Chronic conditions options
   const conditionOptions = useQuery(api.chronicConditions.listOptions, clerkId ? { clerkId } : "skip");
@@ -206,22 +212,24 @@ export function PatientIntakeDrawer({
 
   // Sync form when editPatient changes
   useEffect(() => {
-    if (open && isEdit && editPatient) {
-      setForm({
-        ...defaultForm,
-        name: editPatient.name,
-        age: String(editPatient.age),
-        phone: stripPrefix(editPatient.phone),
-        chronicConditions: editPatient.chronicConditions,
-        notes: "",
-        reasonForVisit: "",
-      });
-    } else if (open && !isEdit) {
-      setForm(defaultForm);
-      setAddVisit(true);
-      setVisitDate(new Date());
-      setVisitTime("10:00");
-    }
+    setTimeout(() => {
+      if (open && isEdit && editPatient) {
+        setForm({
+          ...defaultForm,
+          name: editPatient.name,
+          age: String(editPatient.age),
+          phone: stripPrefix(editPatient.phone),
+          chronicConditions: editPatient.chronicConditions,
+          notes: "",
+          reasonForVisit: "",
+        });
+      } else if (open && !isEdit) {
+        setForm(defaultForm);
+        setAddVisit(true);
+        setVisitDate(new Date());
+        setVisitTime("10:00");
+      }
+    }, 0);
   }, [open, isEdit, editPatient]);
 
   function set(field: string, value: unknown) {
@@ -314,8 +322,8 @@ export function PatientIntakeDrawer({
         }
       }
       onOpenChange(false);
-    } catch (err: any) {
-      const msg = err?.message ?? "";
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes("already booked")) {
         toast.error("This time slot is already taken — pick another");
       } else {
@@ -492,7 +500,7 @@ export function PatientIntakeDrawer({
                             disabled={(d) => {
                               const today = new Date();
                               today.setHours(0, 0, 0, 0);
-                              return d < today || isNonWorkingDay(d);
+                              return d < today || isNonWorkingDay();
                             }}
                           />
                         </PopoverContent>

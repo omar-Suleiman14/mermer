@@ -10,6 +10,48 @@ import { useState, useMemo } from "react";
 import { format } from "date-fns";
 import { CalendarIcon, Filter, Search, Activity, History, Globe, CheckCircle2, Clock, XCircle, AlertCircle, Users, ShieldCheck } from "lucide-react";
 
+function translateAuditLog(action: string, details: string, lang: string) {
+  if (lang !== "ar") return { action, details };
+
+  let tAction = action;
+  let tDetails = details;
+
+  const actionMap: Record<string, string> = {
+    "Updated Appointment": "تحديث موعد",
+    "Completed Visit": "إتمام زيارة",
+    "Created Visit": "إنشاء زيارة",
+    "Deleted Visit": "حذف زيارة",
+    "Updated Visit": "تحديث زيارة",
+    "Updated Visit Files/Notes": "تحديث ملفات/ملاحظات الزيارة",
+    "Added Patient": "إضافة مريض",
+    "Updated Patient": "تحديث مريض",
+    "Batch Added Patients": "إضافة مرضى دفعة واحدة",
+  };
+  if (actionMap[action]) tAction = actionMap[action];
+
+  if (details.startsWith("Updated visit status to ")) {
+    const status = details.replace("Updated visit status to ", "");
+    const statusMap: Record<string, string> = { completed: "مكتمل", changed: "تم تغييره", cancelled: "ملغى" };
+    tDetails = `تم تحديث حالة الزيارة إلى ${statusMap[status] || status}`;
+  } else if (details === "Completed visit for patient") {
+    tDetails = "تم إتمام الزيارة للمريض";
+  } else if (details.startsWith("Registered new patient: ")) {
+    tDetails = `تم تسجيل مريض جديد: ${details.replace("Registered new patient: ", "")}`;
+  } else if (details.startsWith("Updated details for ")) {
+    tDetails = `تم تحديث بيانات: ${details.replace("Updated details for ", "")}`;
+  } else if (details.startsWith("Scheduled visit for patient ID: ")) {
+    tDetails = `تم جدولة زيارة للمريض: ${details.replace("Scheduled visit for patient ID: ", "")}`;
+  } else if (details === "Added files or notes to visit") {
+    tDetails = "تم إضافة ملفات أو ملاحظات للزيارة";
+  } else if (details === "Deleted visit record") {
+    tDetails = "تم حذف سجل الزيارة";
+  } else if (details === "Updated visit timeline/status") {
+    tDetails = "تم تحديث الجدول الزمني/الحالة للزيارة";
+  }
+
+  return { action: tAction, details: tDetails };
+}
+
 export default function HistoryPage() {
   const { user } = useUser();
   const clerkId = user?.id ?? "";
@@ -190,7 +232,9 @@ export default function HistoryPage() {
           </h2>
           <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
             <div className="divide-y divide-border">
-              {auditLogs.map((log) => (
+              {auditLogs.map((log) => {
+                const { action: tAction, details: tDetails } = translateAuditLog(log.action, log.details, lang);
+                return (
                 <div key={log._id} className="p-4 flex items-start gap-4 hover:bg-muted/5 transition-colors">
                   <div className="w-9 h-9 rounded-full bg-[#5AC8FA]/10 border border-[#5AC8FA]/20 flex items-center justify-center shrink-0">
                     <Users className="w-4 h-4 text-[#5AC8FA]" />
@@ -198,8 +242,8 @@ export default function HistoryPage() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-sm font-semibold">{log.action}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{log.details}</p>
+                        <p className="text-sm font-semibold">{tAction}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{tDetails}</p>
                       </div>
                       <div className="text-right shrink-0">
                         <p className="text-xs text-muted-foreground">
@@ -214,7 +258,7 @@ export default function HistoryPage() {
                     </div>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
           </div>
         </div>

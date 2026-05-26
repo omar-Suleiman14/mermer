@@ -248,7 +248,7 @@ export const updatePrescriptionTemplate = mutation({
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
     // Explicitly pick allowed prescription fields to prevent schema bypass
-    const patch: any = {};
+    const patch: Record<string, unknown> = {};
     if (args.logoStorageId !== undefined) patch.logoStorageId = args.logoStorageId;
     if (args.prescriptionDoctorName !== undefined) patch.prescriptionDoctorName = args.prescriptionDoctorName;
     if (args.prescriptionSpecialty !== undefined) patch.prescriptionSpecialty = args.prescriptionSpecialty;
@@ -284,8 +284,8 @@ export const listAllDoctors = query({
       specialty: u.specialty,
       isAdmin: u.isAdmin,
       publicProfile: u.publicProfile,
-      isBanned: (u as any).isBanned,
-      isBlocked: (u as any).isBlocked,
+      isBanned: (u as { isBanned?: boolean }).isBanned,
+      isBlocked: (u as { isBlocked?: boolean }).isBlocked,
       createdAt: u.createdAt,
       qrSlug: u.qrSlug,
     }));
@@ -330,7 +330,7 @@ export const searchDoctors = query({
       .withIndex("by_public_profile", (q) => q.eq("publicProfile", true))
       .take(500);
 
-    const visible = published.filter((u) => !(u as any).isBanned);
+    const visible = published.filter((u) => !(u as { isBanned?: boolean }).isBanned);
 
     const filtered = args.search.trim()
       ? (() => {
@@ -367,7 +367,7 @@ export const getDoctorBySlug = query({
       .query("users")
       .withIndex("by_qr_slug", (q) => q.eq("qrSlug", args.slug))
       .unique();
-    if (!doctor || !doctor.publicProfile || (doctor as any).isBanned) return null;
+    if (!doctor || !doctor.publicProfile || (doctor as { isBanned?: boolean }).isBanned) return null;
     const profilePhotoUrl = doctor.profilePhotoId
       ? await ctx.storage.getUrl(doctor.profilePhotoId)
       : null;

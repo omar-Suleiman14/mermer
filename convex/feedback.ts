@@ -64,7 +64,7 @@ export const submitFeedback = mutation({
       ? allFeedback.reduce((a, b) => a + b.rating, 0) / reviewCount 
       : undefined;
 
-    const patchData: any = { reviewCount };
+    const patchData: Record<string, unknown> = { reviewCount };
     if (avgRating !== undefined) patchData.avgRating = avgRating;
 
     await ctx.db.patch(doctor._id, patchData);

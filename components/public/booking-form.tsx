@@ -15,6 +15,7 @@ import {
   DrawerTitle,
 } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMounted } from "@/hooks/use-is-mounted";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface BookingFormProps {
@@ -49,8 +50,8 @@ export function BookingForm({ doctor }: BookingFormProps) {
     return d.getTime();
   });
 
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useIsMounted();
+  const [now] = useState(() => Date.now());
 
   const next7Days = useMemo(() => {
     const days = [];
@@ -76,7 +77,7 @@ export function BookingForm({ doctor }: BookingFormProps) {
       const currentIsAvailable = next7Days.find(d => d.ts === selectedDateMs)?.isAvailable;
       if (!currentIsAvailable) {
         const firstAvail = next7Days.find(d => d.isAvailable);
-        if (firstAvail) setSelectedDateMs(firstAvail.ts);
+        if (firstAvail) setTimeout(() => setSelectedDateMs(firstAvail.ts), 0);
       }
     }
   }, [next7Days, selectedDateMs]);
@@ -153,8 +154,9 @@ export function BookingForm({ doctor }: BookingFormProps) {
       });
       setSuccess(true);
       setDrawerOpen(false);
-    } catch (err: any) {
-      setError(err?.message || (dir === "rtl" ? "حدث خطأ أثناء الحجز" : "Failed to book appointment"));
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg || (dir === "rtl" ? "حدث خطأ أثناء الحجز" : "Failed to book appointment"));
     } finally {
       setLoading(false);
     }
@@ -310,7 +312,7 @@ export function BookingForm({ doctor }: BookingFormProps) {
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
               {slots.map((ts) => {
                 const isReserved = bookedSlots?.includes(ts);
-                const isPast = ts < Date.now();
+                const isPast = ts < now;
                 const disabled = isReserved || isPast;
 
                 return (

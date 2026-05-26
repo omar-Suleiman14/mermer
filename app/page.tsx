@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { ArrowRight, Search, Stethoscope } from "lucide-react";
 import { getServerI18n } from "@/lib/i18n/server";
-import { PublicNav } from "@/components/public/public-nav";
+import dynamic from "next/dynamic";
+
+// Lazily load PublicNav to reduce initial blocking JS on landing page
+const PublicNav = dynamic(() => import("@/components/public/public-nav").then((m) => m.PublicNav));
 
 export default async function PatientLandingPage() {
   const { dir } = await getServerI18n();

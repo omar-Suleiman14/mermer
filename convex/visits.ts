@@ -298,7 +298,7 @@ export const updateVisit = mutation({
     const visit = await ctx.db.get(args.visitId);
     if (!visit || visit.doctorId !== user._id) throw new Error("Not authorized");
 
-    const patch: Record<string, any> = {};
+    const patch: Record<string, unknown> = {};
     if (args.updates.status) patch.status = args.updates.status;
     if (args.updates.notes) patch.notes = args.updates.notes;
     if (args.updates.prescriptionImageId) patch.prescriptionImageId = args.updates.prescriptionImageId;

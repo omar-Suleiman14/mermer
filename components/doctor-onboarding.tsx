@@ -21,7 +21,6 @@ import {
 import { IOSSpinner } from "@/components/ui/spinner";
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Switch } from "@/components/ui/switch";
 import { useI18n } from "@/lib/i18n/client";
 
 function normalisePhone(raw: string): string {
@@ -90,7 +89,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
   const [clinicAddress, setClinicAddress] = useState("");
 
   // Step 2 — Availability
-  const [selectedDays, setSelectedDays] = useState<string[]>([]);
+  const [selectedDays, setSelectedDays] = useState<string[]>(DAYS);
   const [openFrom, setOpenFrom] = useState("09:00");
   const [openTo, setOpenTo] = useState("17:00");
   const [slotDuration, setSlotDuration] = useState("30");
@@ -98,7 +97,6 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
 
   // Step 3 — Bio & photo & privacy
   const [bio, setBio] = useState("");
-  const [publicProfile, setPublicProfile] = useState(true);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [profileStorageId, setProfileStorageId] = useState<Id<"_storage"> | undefined>();
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -194,9 +192,10 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
 
       toast.success(t("onboarding.welcomeSuccess"));
       onComplete();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Onboarding error:", err);
-      toast.error(err?.message ?? (t("onboarding.saveFail") || "Failed to save profile. Try again."));
+      const msg = err instanceof Error ? err.message : undefined;
+      toast.error(msg ?? (t("onboarding.saveFail") || "Failed to save profile. Try again."));
     } finally {
       setSaving(false);
     }
@@ -315,6 +314,30 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
                 <span className="font-semibold text-sm">{t("onboarding.availability")}</span>
               </div>
 
+              <div>
+                <label className="text-xs font-medium text-foreground block mb-2">{t("onboarding.workingDays") || "Working Days"} *</label>
+                <div className="flex flex-wrap gap-2">
+                  {DAYS.map((d) => {
+                    const isSelected = selectedDays.includes(d);
+                    return (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => toggleDay(d)}
+                        className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors border ${
+                          isSelected 
+                            ? "bg-[#007AFF] text-white border-[#007AFF]" 
+                            : "bg-muted text-muted-foreground border-transparent hover:bg-muted/80"
+                        }`}
+                      >
+                        {t(`days.${d.toLowerCase()}`) || d}
+                      </button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground mt-2">{dir === "rtl" ? "هذا الخيار يؤثر فقط على الحجوزات الإلكترونية" : "This option only affects online booking."}</p>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("onboarding.opensAt")} *</label>
@@ -384,6 +407,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
                     onClick={() => photoRef.current?.click()}
                   >
                     {avatarPreview ? (
+                      // eslint-disable-next-line @next/next/no-img-element
                       <img src={avatarPreview} alt="preview" className="w-full h-full object-cover" />
                     ) : uploadingPhoto ? (
                       <IOSSpinner size={20} />

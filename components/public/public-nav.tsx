@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { useI18n } from "@/lib/i18n/client";
 import { LanguageToggle } from "@/components/language-toggle";
 import { cn } from "@/lib/utils";
+import { useIsMounted } from "@/hooks/use-is-mounted";
 
 interface PublicNavProps {
   className?: string;
@@ -17,10 +18,8 @@ interface PublicNavProps {
 
 export function PublicNav({ className, backHref, backLabel }: PublicNavProps) {
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsMounted();
   const { t, dir } = useI18n();
-
-  useEffect(() => setMounted(true), []);
 
   return (
     <header
@@ -40,6 +39,7 @@ export function PublicNav({ className, backHref, backLabel }: PublicNavProps) {
             </Link>
           ) : (
             <Link href="/" prefetch={true} className="flex items-center shrink-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/icon.svg" alt="mermer" className="h-6 w-auto" />
             </Link>
           )}

@@ -78,6 +78,7 @@ function DoctorCardPreview({
       <div className="relative h-24 bg-linear-to-br from-[#007AFF]/20 to-[#5856D6]/20 flex items-center justify-start px-5 gap-4">
         <div className="w-16 h-16 rounded-2xl bg-[#007AFF]/10 border-2 border-white dark:border-[#1c1c1a] overflow-hidden flex items-center justify-center shrink-0 shadow-md">
           {photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img src={photoUrl} alt={name} className="w-full h-full object-cover" />
           ) : (
             <span className="text-2xl font-bold text-[#007AFF]">{(name || "D").charAt(0)}</span>
@@ -153,7 +154,7 @@ export function PublishProfileSection({ clerkId, currentUser, profilePhotoUrl }:
   const [fee, setFee] = useState(currentUser.consultationFee ? String(currentUser.consultationFee) : "");
   const [languages, setLanguages] = useState<string[]>(currentUser.languages ?? []);
   const [address, setAddress] = useState(currentUser.clinicAddress ?? "");
-  const [city, setCity] = useState((currentUser as any).city ?? "");
+  const [city, setCity] = useState(currentUser.city ?? "");
   const [days, setDays] = useState<string[]>(currentUser.availableDays ?? []);
   const [availFrom, setAvailFrom] = useState(currentUser.availableFrom ?? "09:00");
   const [availTo, setAvailTo] = useState(currentUser.availableTo ?? "17:00");
@@ -302,6 +303,7 @@ export function PublishProfileSection({ clerkId, currentUser, profilePhotoUrl }:
             <div className="flex items-center gap-3">
               <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-[#007AFF]/10 flex items-center justify-center shrink-0">
                 {profilePhotoUrl
+                  // eslint-disable-next-line @next/next/no-img-element
                   ? <img src={profilePhotoUrl} alt="Photo" className="w-full h-full object-cover" />
                   : <span className="text-xl font-bold text-[#007AFF]">{(currentUser.name || "D").charAt(0)}</span>}
                 <button
@@ -425,7 +427,10 @@ export function PublishProfileSection({ clerkId, currentUser, profilePhotoUrl }:
 
           {/* Available hours */}
           <div className="grid grid-cols-2 gap-3">
-            {[["From", availFrom, setAvailFrom], ["To", availTo, setAvailTo]].map(([label, val, setter]: any) => (
+            {[
+              ["From", availFrom, setAvailFrom] as const,
+              ["To", availTo, setAvailTo] as const,
+            ].map(([label, val, setter]) => (
               <div key={label}>
                 <label className="text-xs font-medium text-muted-foreground block mb-1.5">{label}</label>
                 <select
