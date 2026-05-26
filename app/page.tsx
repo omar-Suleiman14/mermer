@@ -31,6 +31,7 @@ export default async function PatientLandingPage() {
 
           <div className="pt-4 flex flex-wrap gap-3 justify-center">
             <Link
+              prefetch={true}
               href="/doctors"
               className="group inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl bg-primary hover:bg-primary/90 text-white font-bold text-lg shadow-lg shadow-primary/25 transition-all hover:scale-[1.02] active:scale-95"
             >
@@ -39,6 +40,7 @@ export default async function PatientLandingPage() {
               <ArrowRight className={`w-5 h-5 transition-transform group-hover:translate-x-1 ${dir === "rtl" ? "rotate-180 group-hover:-translate-x-1" : ""}`} />
             </Link>
             <Link
+              prefetch={true}
               href="/fordoctors"
               className="inline-flex items-center justify-center gap-3 px-8 py-4 rounded-2xl border border-slate-300 dark:border-zinc-700 bg-white/90 dark:bg-zinc-900/90 hover:bg-white dark:hover:bg-zinc-900 text-slate-800 dark:text-zinc-200 font-semibold text-lg transition-colors"
             >

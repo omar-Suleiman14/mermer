@@ -66,7 +66,7 @@ const nextConfig: NextConfig = {
           },
           {
             key: "X-XSS-Protection",
-            value: "0",
+            value: "1; mode=block",
           },
           {
             key: "Referrer-Policy",
@@ -134,6 +134,9 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+
+  // React Compiler optimization
+  reactCompiler: true,
 
   // Experimental performance features
   experimental: {

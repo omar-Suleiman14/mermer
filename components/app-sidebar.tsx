@@ -147,7 +147,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   isActive={pathname.startsWith("/admin")}
                   tooltip={t("nav.admin")}
                 >
-                  <Link href="/admin">
+                  <Link href="/admin" prefetch={true}>
                     <Shield className="w-4 h-4" aria-hidden="true" />
                     <span>{t("nav.admin")}</span>
                   </Link>

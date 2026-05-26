@@ -39,7 +39,7 @@ export function PublicNav({ className, backHref, backLabel }: PublicNavProps) {
               {backLabel}
             </Link>
           ) : (
-            <Link href="/" className="flex items-center shrink-0">
+            <Link href="/" prefetch={true} className="flex items-center shrink-0">
               <img src="/icon.svg" alt="mermer" className="h-6 w-auto" />
             </Link>
           )}
