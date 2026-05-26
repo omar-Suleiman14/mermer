@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUser, requireAuthUser } from "./authHelper";
+import { TOP_EGYPTIAN_MEDS } from "./topEgyptianMeds";
 
 // ── MEDICATIONS ──
 export const getMedicationOptions = query({
@@ -8,10 +9,19 @@ export const getMedicationOptions = query({
   handler: async (ctx, args) => {
     const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return [];
-    return await ctx.db
+    const dbMeds = await ctx.db
       .query("medicationOptions")
       .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
       .collect();
+      
+    const customNames = new Set(dbMeds.map(m => m.name.toLowerCase()));
+    const defaults = TOP_EGYPTIAN_MEDS.filter(n => !customNames.has(n.toLowerCase())).map(name => ({
+      _id: `default_${name}` as any,
+      _creationTime: 0,
+      doctorId: user._id,
+      name
+    }));
+    return [...defaults, ...dbMeds];
   },
 });
 
@@ -33,12 +43,15 @@ export const addMedicationOption = mutation({
 });
 
 export const deleteMedicationOption = mutation({
-  args: { clerkId: v.string(), id: v.id("medicationOptions") },
+  args: { clerkId: v.string(), id: v.string() },
   handler: async (ctx, args) => {
+    if (args.id.startsWith("default_")) return;
+    const normId = ctx.db.normalizeId("medicationOptions", args.id);
+    if (!normId) return;
     const user = await requireAuthUser(ctx, args.clerkId);
-    const existing = await ctx.db.get(args.id);
+    const existing = await ctx.db.get(normId);
     if (!existing || existing.doctorId !== user._id) return;
-    await ctx.db.delete(args.id);
+    await ctx.db.delete(normId);
   },
 });
 
@@ -245,10 +258,18 @@ export const getAllClinicalOptions = query({
     const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return { medications: [], frequencies: [], notes: [] };
 
-    const medications = await ctx.db
+    const dbMeds = await ctx.db
       .query("medicationOptions")
       .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
       .collect();
+      
+    const customNames = new Set(dbMeds.map(m => m.name.toLowerCase()));
+    const defaultMeds = TOP_EGYPTIAN_MEDS.filter(n => !customNames.has(n.toLowerCase())).map(name => ({
+      _id: `default_${name}` as any,
+      _creationTime: 0,
+      doctorId: user._id,
+      name
+    }));
 
     const frequencies = await ctx.db
       .query("medicationFrequencyOptions")
@@ -260,6 +281,6 @@ export const getAllClinicalOptions = query({
       .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
       .collect();
 
-    return { medications, frequencies, notes };
+    return { medications: [...defaultMeds, ...dbMeds], frequencies, notes };
   },
 });

@@ -82,21 +82,6 @@ export default async function LandingPage() {
                   </Link>
                 </div>
 
-                {/* Micro Stats Row */}
-                <div className="pt-6 border-t border-slate-100 dark:border-zinc-800 grid grid-cols-3 gap-6 max-w-md">
-                  <div>
-                    <h4 className="text-2xl font-black text-slate-900 dark:text-white">10k+</h4>
-                    <p className="text-xs text-muted-foreground">{dir === "rtl" ? "طبيب مسجل" : "Registered Doctors"}</p>
-                  </div>
-                  <div>
-                    <h4 className="text-2xl font-black text-slate-900 dark:text-white">50k+</h4>
-                    <p className="text-xs text-muted-foreground">{dir === "rtl" ? "تقييم حقيقي" : "Verified Reviews"}</p>
-                  </div>
-                  <div>
-                    <h4 className="text-2xl font-black text-slate-900 dark:text-white">100%</h4>
-                    <p className="text-xs text-muted-foreground">{dir === "rtl" ? "آمن وموثوق" : "Safe & Secure"}</p>
-                  </div>
-                </div>
               </div>
 
               {/* Right Column: Dashboard UI Skeleton Mockup */}
@@ -159,213 +144,126 @@ export default async function LandingPage() {
           </div>
         </section>
 
-        {/* ── STATS / CARD SECTION (Inspired by 'Explore Top-Rated Courses') ── */}
-        <section className="py-20 bg-slate-50 dark:bg-zinc-950">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-12">
-            <div className="space-y-3">
-              <span className="text-primary text-xs font-extrabold uppercase tracking-widest">{dir === "rtl" ? "الخدمات والمزايا" : "Features"}</span>
-              <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 dark:text-white">
-                {dir === "rtl" ? "كل ما يلزم لسمعتك الطبية الرقمية" : "Everything Needed to Elevate Your Clinic"}
+        {/* ── COMBINED FEATURES & VALUE PROPOSITION SECTION ── */}
+        <section className="py-24 bg-slate-50 dark:bg-zinc-950 border-t border-slate-200/50 dark:border-zinc-900">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-16">
+            <div className="text-center space-y-4 max-w-3xl mx-auto">
+              <span className="text-primary text-xs font-extrabold uppercase tracking-widest px-3 py-1 bg-primary/10 rounded-full">
+                {dir === "rtl" ? "لماذا تختار مرمر؟" : "Why Choose mermer?"}
+              </span>
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-slate-900 dark:text-white leading-tight">
+                {dir === "rtl" ? "صممنا المنصة لتوفير وقتك، مالك، ومضاعفة نجاح عيادتك" : "Built to Save You Time, Money, and Grow Your Clinic"}
               </h2>
-              <p className="text-slate-600 dark:text-zinc-400 text-sm sm:text-base max-w-xl mx-auto">
-                {dir === "rtl" ? "تتبع تقييماتك، طور أسلوب رعايتك، وتواصل مع مرضاك بكل سهولة وسرعة." : "Grow patient outreach, review critical statistics, and keep clinical interactions professional."}
+              <p className="text-slate-600 dark:text-zinc-400 text-sm sm:text-base leading-relaxed">
+                {dir === "rtl" 
+                  ? "تتجاوز مرمر فكرة الحجوزات البسيطة لتركز بالكامل على تعزيز جودة الخدمة، توفير التكاليف، وتقديم منصة احترافية لعرض إنجازات الطبيب."
+                  : "mermer shifts focus from pure booking engines to robust healthcare reputation tools that save resources and build trust."}
               </p>
             </div>
 
-            {/* Feature Cards Grid */}
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[
-                {
-                  icon: Clock,
-                  title: dir === "rtl" ? "تذكير المواعيد الذكي" : "Smart Appointment Reminders",
-                  desc: dir === "rtl" ? "قم بتذكير المرضى بمواعيدهم عبر الواتساب وتقليل التخلف عن المواعيد." : "Remind patients of their appointments via WhatsApp and reduce no-shows.",
-                  tag: dir === "rtl" ? "رئيسي" : "Core"
-                },
-                {
-                  icon: Award,
-                  title: dir === "rtl" ? "نظام تقييمات موثق" : "Verified Rating System",
-                  desc: dir === "rtl" ? "اجمع تقييمات مرضاك مباشرة بطريقة آمنة لمنع التقييمات المزيفة." : "Collect authentic ratings directly to prevent fake reviews and spam.",
-                  tag: dir === "rtl" ? "أمان" : "Security"
-                },
-                {
-                  icon: QrCode,
-                  title: dir === "rtl" ? "رمز QR مخصص للعيادة" : "Clinic QR Codes",
-                  desc: dir === "rtl" ? "اطبع رمز QR مخصص لعيادتك لتمكين المرضى من التقييم السريع بلمسة." : "Print dedicated QR codes for your checkout counter to ease reviews.",
-                  tag: dir === "rtl" ? "ذكي" : "Smart"
-                },
-                {
-                  icon: TrendingUp,
-                  title: dir === "rtl" ? "تحليلات وإحصاءات متقدمة" : "Advanced Analytics",
-                  desc: dir === "rtl" ? "شاهد نمو سمعتك الطبية وتتبع مستوى رضا المرضى بأدوات ذكية." : "Analyze clinic reputation trends and patient satisfaction metrics with ease.",
-                  tag: dir === "rtl" ? "إحصاءات" : "Analytics"
-                }
-              ].map((feat, idx) => (
-                <div 
-                  key={idx}
-                  className="bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-lg p-6 shadow-sm text-start flex flex-col justify-between hover:shadow-md transition-all"
-                >
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center">
-                      <div className="w-10 h-10 rounded bg-primary/10 flex items-center justify-center">
-                        <feat.icon className="w-5 h-5 text-primary" />
-                      </div>
-                      <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400">
-                        {feat.tag}
-                      </span>
-                    </div>
-                    <h3 className="font-bold text-slate-900 dark:text-white text-base leading-snug">
-                      {feat.title}
-                    </h3>
-                    <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
-                      {feat.desc}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── VALUE PROPOSITION SECTION (Inspired by 'Everything You Need to Succeed') ── */}
-        <section className="py-20 border-t border-b border-slate-200/50 dark:border-zinc-900 bg-white dark:bg-zinc-900/40">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
               
-              {/* Features List */}
-              <div className="text-start space-y-6">
-                <span className="text-xs font-bold bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/30 text-primary px-3 py-1 rounded">
-                  {dir === "rtl" ? "لماذا تختار مرمر؟" : "Why Choose mermer?"}
-                </span>
-                <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 dark:text-white leading-tight">
-                  {dir === "rtl" ? "صممنا المنصة خصيصاً لتناسب احتياجات الأطباء والعيادات" : "Tailored Solutions Built for Clinic & Doctor Reputation"}
-                </h2>
-                <p className="text-slate-600 dark:text-zinc-400 text-sm leading-relaxed">
-                  {dir === "rtl" ? (
-                    "تتجاوز مرمر فكرة الحجوزات البسيطة لتركز بالكامل على تعزيز جودة الخدمة وتقديم منصة احترافية لعرض إنجازات الطبيب وإعطاء المرضى صوتاً صادقاً وموثوقاً."
-                  ) : (
-                    "mermer shifts focus from pure booking engines to robust healthcare reputation tools. Build a trustworthy connection between doctors and patients using transparent reviews."
-                  )}
-                </p>
-
-                <div className="grid sm:grid-cols-2 gap-4 pt-2">
-                  {[
-                    dir === "rtl" ? "دعم كامل للغة العربية والإنجليزية" : "Full Arabic & English support",
-                    dir === "rtl" ? "لوحة تحكم ذكية وشاملة للأطباء" : "Comprehensive doctor dashboard",
-                    dir === "rtl" ? "حماية خصوصية بيانات المرضى" : "Highly secured data privacy",
-                    dir === "rtl" ? "تتبع نمو رضا المراجعين" : "Follow patient satisfaction rates",
-                  ].map((item, idx) => (
-                    <div key={idx} className="flex items-center gap-2.5 text-xs font-semibold text-slate-800 dark:text-zinc-300">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-                      <span>{item}</span>
-                    </div>
-                  ))}
+              {/* 1. Save Time */}
+              <div className="bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-2xl p-8 shadow-sm hover:shadow-md transition-all group">
+                <div className="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                  <Clock className="w-6 h-6 text-blue-600 dark:text-blue-400" />
                 </div>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">
+                  {dir === "rtl" ? "سنوفر وقتك الثمين من خلال..." : "We Will Save You Time By..."}
+                </h3>
+                <ul className="space-y-3">
+                  <li className="flex items-start gap-3 text-sm text-slate-600 dark:text-zinc-400">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                    <span><strong className="text-slate-900 dark:text-zinc-200">{dir === "rtl" ? "بيانات جاهزة:" : "Pre-loaded Data:"}</strong> {dir === "rtl" ? "قاعدة بيانات تضم أكثر الأدوية شيوعاً في مصر جاهزة للاستخدام الفوري." : "Access top Egyptian medications instantly without manual entry."}</span>
+                  </li>
+                  <li className="flex items-start gap-3 text-sm text-slate-600 dark:text-zinc-400">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                    <span><strong className="text-slate-900 dark:text-zinc-200">{dir === "rtl" ? "الاستقبال الذكي (QR):" : "Smart QR Reception:"}</strong> {dir === "rtl" ? "تسجيل وصول المرضى وتقييمهم بسرعة عبر مسح رمز QR." : "Fast patient check-ins and reviews via simple QR scans."}</span>
+                  </li>
+                  <li className="flex items-start gap-3 text-sm text-slate-600 dark:text-zinc-400">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                    <span><strong className="text-slate-900 dark:text-zinc-200">{dir === "rtl" ? "إدارة مرنة للبيانات:" : "CSV Management:"}</strong> {dir === "rtl" ? "استيراد وتصدير بيانات المرضى والأدوية بسهولة عبر ملفات CSV." : "Import and export patient records easily via CSV files."}</span>
+                  </li>
+                </ul>
               </div>
 
-              {/* Graphic/Stat Widget block */}
-              <div className="bg-slate-50 dark:bg-zinc-950 border border-slate-200/80 dark:border-zinc-800 rounded-lg p-6 sm:p-8 space-y-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded bg-blue-500/10 flex items-center justify-center shrink-0">
-                    <Users className="w-5 h-5 text-primary" />
-                  </div>
-                  <div className="text-start">
-                    <h4 className="font-bold text-slate-900 dark:text-white text-sm">{dir === "rtl" ? "مجتمع طبي متكامل" : "Comprehensive Medical Network"}</h4>
-                    <p className="text-[10px] text-muted-foreground">{dir === "rtl" ? "موثق بنسبة 100٪" : "100% verified doctor accounts"}</p>
-                  </div>
+              {/* 2. Save Money & Reduce No-Shows */}
+              <div className="bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-2xl p-8 shadow-sm hover:shadow-md transition-all group">
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                  <TrendingUp className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
                 </div>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">
+                  {dir === "rtl" ? "سنوفر أموالك ونقلل الغياب من خلال..." : "We Will Save You Money By..."}
+                </h3>
+                <ul className="space-y-3">
+                  <li className="flex items-start gap-3 text-sm text-slate-600 dark:text-zinc-400">
+                    <MessageSquare className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                    <span><strong className="text-slate-900 dark:text-zinc-200">{dir === "rtl" ? "تذكيرات الواتساب التلقائية:" : "Automated WhatsApp Reminders:"}</strong> {dir === "rtl" ? "تذكير مرضاك تلقائياً بمواعيدهم لتقليل نسبة التخلف عن الحضور بنسبة هائلة وحماية دخل العيادة." : "Automatically remind patients of their appointments to slash no-show rates and protect your revenue."}</span>
+                  </li>
+                  <li className="flex items-start gap-3 text-sm text-slate-600 dark:text-zinc-400">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                    <span><strong className="text-slate-900 dark:text-zinc-200">{dir === "rtl" ? "حضور رقمي متكامل:" : "All-in-One Digital Presence:"}</strong> {dir === "rtl" ? "احصل على ملف تعريفي احترافي يغنيك عن تكاليف إنشاء موقع إلكتروني خاص." : "Get a premium profile without the high cost of a custom website."}</span>
+                  </li>
+                  <li className="flex items-start gap-3 text-sm text-slate-600 dark:text-zinc-400">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                    <span><strong className="text-slate-900 dark:text-zinc-200">{dir === "rtl" ? "بدون رسوم خفية:" : "No Hidden Fees:"}</strong> {dir === "rtl" ? "تسعير واضح وشفاف لجميع الميزات الأساسية دون مفاجآت." : "Transparent pricing with no surprise charges."}</span>
+                  </li>
+                </ul>
+              </div>
 
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="font-medium text-slate-600 dark:text-zinc-400">{dir === "rtl" ? "الأطباء الاستشاريين" : "Consultant Doctors"}</span>
-                    <span className="font-bold text-slate-800 dark:text-zinc-200">74%</span>
-                  </div>
-                  <div className="h-1.5 w-full bg-slate-200 dark:bg-zinc-800 rounded">
-                    <div className="h-full bg-primary w-[74%] rounded" />
-                  </div>
-
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="font-medium text-slate-600 dark:text-zinc-400">{dir === "rtl" ? "نسبة الردود والتفاعل" : "Clinic Reply Rate"}</span>
-                    <span className="font-bold text-slate-800 dark:text-zinc-200">92%</span>
-                  </div>
-                  <div className="h-1.5 w-full bg-slate-200 dark:bg-zinc-800 rounded">
-                    <div className="h-full bg-primary w-[92%] rounded" />
-                  </div>
+              {/* 3. SEO & Reputation */}
+              <div className="bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-2xl p-8 shadow-sm hover:shadow-md transition-all group">
+                <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                  <Star className="w-6 h-6 text-purple-600 dark:text-purple-400" />
                 </div>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">
+                  {dir === "rtl" ? "سنعزز سمعتك الطبية وتصدرك للبحث من خلال..." : "We Will Boost Your SEO & Reputation By..."}
+                </h3>
+                <ul className="space-y-3">
+                  <li className="flex items-start gap-3 text-sm text-slate-600 dark:text-zinc-400">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                    <span><strong className="text-slate-900 dark:text-zinc-200">{dir === "rtl" ? "ملفات محسنة لمحركات البحث (SEO):" : "SEO-Optimized Profiles:"}</strong> {dir === "rtl" ? "الظهور في النتائج الأولى على جوجل عندما يبحث المرضى عن اسمك أو تخصصك." : "Rank higher on Google when patients search for your name."}</span>
+                  </li>
+                  <li className="flex items-start gap-3 text-sm text-slate-600 dark:text-zinc-400">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                    <span><strong className="text-slate-900 dark:text-zinc-200">{dir === "rtl" ? "تقييمات موثقة وحقيقية:" : "Verified Authentic Reviews:"}</strong> {dir === "rtl" ? "بناء الثقة مع المرضى الجدد من خلال عرض تقييمات موثوقة ومنع المراجعات الوهمية." : "Build trust with verified feedback, eliminating fake reviews."}</span>
+                  </li>
+                  <li className="flex items-start gap-3 text-sm text-slate-600 dark:text-zinc-400">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                    <span><strong className="text-slate-900 dark:text-zinc-200">{dir === "rtl" ? "خرائط مواقع ديناميكية:" : "Dynamic Sitemaps:"}</strong> {dir === "rtl" ? "أرشفة تلقائية وفورية لصفحتك لضمان وصول روبوتات البحث إليها بسرعة." : "Automated sitemap generation ensures bots crawl your profile instantly."}</span>
+                  </li>
+                </ul>
+              </div>
 
-                <div className="p-4 bg-white dark:bg-zinc-900 border border-slate-200/50 dark:border-zinc-800/80 rounded flex items-center gap-4">
-                  <Shield className="w-8 h-8 text-primary shrink-0" />
-                  <div className="text-start">
-                    <h5 className="text-xs font-bold text-slate-900 dark:text-white">{dir === "rtl" ? "حماية خصوصية صارمة" : "Top Tier Privacy"}</h5>
-                    <p className="text-[10px] text-muted-foreground leading-relaxed">
-                      {dir === "rtl" ? "تلتزم مرمر بحماية كامل بيانات الطبيب وبيانات مراجعي العيادة." : "Complying with advanced security rules to secure identities."}
-                    </p>
-                  </div>
+              {/* 4. Security & Performance */}
+              <div className="bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-2xl p-8 shadow-sm hover:shadow-md transition-all group">
+                <div className="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                  <Shield className="w-6 h-6 text-orange-600 dark:text-orange-400" />
                 </div>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">
+                  {dir === "rtl" ? "سنحمي بياناتك ونقدم أداء فائقاً من خلال..." : "We Will Secure Data & Provide Blazing Speed By..."}
+                </h3>
+                <ul className="space-y-3">
+                  <li className="flex items-start gap-3 text-sm text-slate-600 dark:text-zinc-400">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                    <span><strong className="text-slate-900 dark:text-zinc-200">{dir === "rtl" ? "توافق صارم مع الخصوصية:" : "Top-Tier Privacy:"}</strong> {dir === "rtl" ? "الامتثال الكامل لقانون حماية البيانات المصري لحماية سجلاتك ومرضاك." : "Full compliance with Data Protection Laws to secure medical records."}</span>
+                  </li>
+                  <li className="flex items-start gap-3 text-sm text-slate-600 dark:text-zinc-400">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                    <span><strong className="text-slate-900 dark:text-zinc-200">{dir === "rtl" ? "بنية تحتية متطورة وسريعة:" : "Edge-Optimized Infrastructure:"}</strong> {dir === "rtl" ? "مبنية على أحدث تقنيات (Next.js & Convex) لضمان سرعة فائقة ومزامنة فورية للبيانات." : "Built on Next.js & Convex for instant page loads and real-time sync."}</span>
+                  </li>
+                  <li className="flex items-start gap-3 text-sm text-slate-600 dark:text-zinc-400">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                    <span><strong className="text-slate-900 dark:text-zinc-200">{dir === "rtl" ? "دعم ثنائي اللغة:" : "Native Bilingual Support:"}</strong> {dir === "rtl" ? "تجربة سلسة باللغتين العربية والإنجليزية دون تأخير أو إعادة تحميل للصلفحة." : "Zero-lag switching between Arabic and English with full RTL support."}</span>
+                  </li>
+                </ul>
               </div>
 
             </div>
           </div>
         </section>
 
-        {/* ── TESTIMONIALS SECTION (Inspired by 'What Our Students Say') ── */}
-        <section className="py-20 bg-slate-50 dark:bg-zinc-950">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-12">
-            <div className="space-y-3">
-              <span className="text-primary text-xs font-extrabold uppercase tracking-widest">{dir === "rtl" ? "قصص نجاح الأطباء" : "Doctor Stories"}</span>
-              <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-slate-900 dark:text-white">
-                {dir === "rtl" ? "ماذا يقول الأطباء عن عيادات مرمر؟" : "What Our Doctors Say"}
-              </h2>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-6">
-              {[
-                {
-                  stars: 5,
-                  quote: dir === "rtl" ? "ساعدتني المنصة كثيراً في إظهار تقييمات مرضاي الحقيقية بعيداً عن التشويش والمراجعات الوهمية." : "mermer has solved one of the biggest clinical issues: collecting verified feedback from patients in an organized way.",
-                  author: dir === "rtl" ? "د. أحمد جمال" : "Dr. Ahmed Gamal",
-                  role: dir === "rtl" ? "استشاري العظام" : "Orthopedics Consultant"
-                },
-                {
-                  stars: 5,
-                  quote: dir === "rtl" ? "بفضل لوحة تحكم مرمر، أصبح بإمكاننا تحسين جودة رعاية المرضى وتعديل الخدمات بالعيادة فوراً." : "The insights and ratings gathered directly improved our workflow and built our local clinical profile beautifully.",
-                  author: dir === "rtl" ? "د. ليلى خليل" : "Dr. Layla Khalil",
-                  role: dir === "rtl" ? "أخصائية الجلدية" : "Dermatology Specialist"
-                },
-                {
-                  stars: 5,
-                  quote: dir === "rtl" ? "رمز الاستجابة السريع QR المخصص سهل جداً عملية التقييم للمرضى قبل خروجهم من المركز الطبي." : "The printable QR codes transformed how our clients share reviews. It's fast, neat, and highly professional.",
-                  author: dir === "rtl" ? "د. يوسف شاهين" : "Dr. Youssef Shahin",
-                  role: dir === "rtl" ? "طبيب أسنان" : "Dentist Practitioner"
-                }
-              ].map((testi, idx) => (
-                <div 
-                  key={idx}
-                  className="bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 rounded-lg p-6 shadow-sm text-start flex flex-col justify-between"
-                >
-                  <div className="space-y-4">
-                    <div className="flex gap-1">
-                      {Array.from({ length: testi.stars }).map((_, sIdx) => (
-                        <Star key={sIdx} className="w-4 h-4 text-amber-400 fill-amber-400" />
-                      ))}
-                    </div>
-                    <p className="text-xs text-slate-600 dark:text-zinc-400 italic leading-relaxed">
-                      "{testi.quote}"
-                    </p>
-                  </div>
-                  <div className="pt-4 border-t border-slate-100 dark:border-zinc-800/80 mt-6 flex items-center gap-3">
-                    <div className="w-8 h-8 rounded bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
-                      {testi.author[0] || "D"}
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-slate-900 dark:text-white text-xs">{testi.author}</h4>
-                      <p className="text-[10px] text-muted-foreground">{testi.role}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
+        {/* ── TESTIMONIALS SECTION HIDDEN ── */}
 
         {/* ── CALL TO ACTION BANNER (Inspired by LearnHub ready to start block) ── */}
         <section className="py-16 bg-slate-50 dark:bg-zinc-950">

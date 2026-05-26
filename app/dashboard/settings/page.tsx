@@ -381,6 +381,7 @@ export default function SettingsPage() {
                       setNotifPerm(permission);
                       if (permission === "granted") {
                         toast.success(dir === "rtl" ? "تم تفعيل الإشعارات بنجاح" : "Notifications enabled successfully");
+                        window.dispatchEvent(new Event("subscribe-push"));
                       } else {
                         toast.error(dir === "rtl" ? "تم رفض الإشعارات" : "Notifications were denied");
                       }

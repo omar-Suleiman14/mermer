@@ -60,6 +60,13 @@ export function OnlineBookingNotifier() {
           if (needsSubscribe && Notification.permission === "granted") {
             subscribeUser(registration);
           }
+
+          // Listen for manual trigger from Settings page
+          window.addEventListener("subscribe-push", () => {
+            if (Notification.permission === "granted") {
+              subscribeUser(registration);
+            }
+          });
         });
       });
     }

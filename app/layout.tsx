@@ -29,7 +29,13 @@ export const metadata: Metadata = {
   description: "mermer empowers medical professionals with verified public profiles, authentic review tracking, and tools to elevate their online clinical reputation.",
   manifest: "/manifest.json",
   icons: {
-    icon: "/icon.svg",
+    icon: "/icon-512.png",
+    apple: "/icon-512.png",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "mermer",
   },
 };
 export default async function RootLayout({

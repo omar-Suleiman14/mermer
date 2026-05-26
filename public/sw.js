@@ -34,8 +34,8 @@ self.addEventListener("push", function (event) {
 
   const options = {
     body: cleanText(data.body, "", 240),
-    icon: "/icon.svg",
-    badge: "/icon.svg",
+    icon: "/icon-512.png",
+    badge: "/icon-512.png",
     vibrate: [100, 50, 100],
     data: {
       dateOfArrival: Date.now(),

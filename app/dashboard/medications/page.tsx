@@ -5,7 +5,7 @@ import { useUser } from "@clerk/nextjs";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { PageHeader } from "@/components/page-header";
-import { Trash2, Plus, Upload, Download, FileText, Loader2, X, AlertTriangle } from "lucide-react";
+import { Trash2, Plus, Upload, Download, FileText, Loader2, X, AlertTriangle, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { useI18n } from "@/lib/i18n/client";
@@ -199,40 +199,49 @@ export default function MedicationsPage() {
         </div>
 
         {/* Header with actions */}
-        <div className="flex items-center justify-between mb-4 flex-col sm:flex-row gap-4">
-          <form onSubmit={handleAdd} className="flex gap-2 w-full sm:w-auto flex-1">
-            <input
-              type="text"
-              value={newItemName}
-              onChange={(e) => setNewItemName(e.target.value)}
-              placeholder={isAr ? `إضافة ${activeTab === 'medications' ? 'دواء' : activeTab === 'frequencies' ? 'تكرار' : 'ملاحظة'} جديد...` : `Add new ${activeTab.slice(0, -1)}...`}
-              className="flex-1 p-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-            />
-            <button
-              type="submit"
-              disabled={!newItemName.trim()}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg transition-colors text-sm font-semibold disabled:opacity-50 flex items-center justify-center"
-            >
-              <Plus className="w-4 h-4 mr-1" />
-              {isAr ? "إضافة" : "Add"}
-            </button>
-          </form>
+        <div className="flex flex-col sm:flex-row gap-6 mb-8 w-full items-start sm:items-center justify-between">
           
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <button
-              onClick={() => { setCsvData([]); setColumnMap({}); setCsvHeaders([]); setImportModalOpen(true); }}
-              className="flex-1 sm:flex-none px-4 py-2 bg-background border border-border hover:bg-muted rounded-lg transition-colors text-sm font-semibold flex items-center justify-center gap-2"
-            >
-              <Upload className="w-4 h-4" />
-              {isAr ? "استيراد CSV" : "Import CSV"}
-            </button>
-            <button
-              onClick={handleExport}
-              className="flex-1 sm:flex-none px-4 py-2 bg-background border border-border hover:bg-muted rounded-lg transition-colors text-sm font-semibold flex items-center justify-center gap-2"
-            >
-              <Download className="w-4 h-4" />
-              {isAr ? "تصدير CSV" : "Export CSV"}
-            </button>
+          {/* Add Item Section */}
+          <div className="bg-card p-4 rounded-xl shadow-sm border border-border w-full sm:w-1/2 flex flex-col gap-3">
+            <h3 className="text-sm font-semibold">{isAr ? `إضافة ${getTabName(activeTab)} جديد` : `Add new ${getTabName(activeTab)}`}</h3>
+            <form onSubmit={handleAdd} className="flex gap-2 w-full">
+              <input
+                type="text"
+                value={newItemName}
+                onChange={(e) => setNewItemName(e.target.value)}
+                placeholder={isAr ? `اسم ${getTabName(activeTab)}...` : `Name of ${getTabName(activeTab)}...`}
+                className="flex-1 p-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+              />
+              <button
+                type="submit"
+                disabled={!newItemName.trim()}
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg transition-colors text-sm font-semibold disabled:opacity-50 flex items-center justify-center whitespace-nowrap"
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                {isAr ? "إضافة" : "Add"}
+              </button>
+            </form>
+          </div>
+          
+          {/* Import/Export Section */}
+          <div className="bg-card p-4 rounded-xl shadow-sm border border-border w-full sm:w-1/2 flex flex-col gap-3">
+             <h3 className="text-sm font-semibold">{isAr ? "إدارة البيانات" : "Manage Data"}</h3>
+             <div className="flex items-center gap-2 w-full flex-wrap">
+              <button
+                onClick={() => { setCsvData([]); setColumnMap({}); setCsvHeaders([]); setImportModalOpen(true); }}
+                className="flex-1 px-4 py-2 bg-background border border-border hover:bg-muted rounded-lg transition-colors text-sm font-semibold flex items-center justify-center gap-2 whitespace-nowrap"
+              >
+                <Upload className="w-4 h-4" />
+                {isAr ? "استيراد CSV" : "Import CSV"}
+              </button>
+              <button
+                onClick={handleExport}
+                className="flex-1 px-4 py-2 bg-background border border-border hover:bg-muted rounded-lg transition-colors text-sm font-semibold flex items-center justify-center gap-2 whitespace-nowrap"
+              >
+                <Download className="w-4 h-4" />
+                {isAr ? "تصدير CSV" : "Export CSV"}
+              </button>
+            </div>
           </div>
         </div>
 
