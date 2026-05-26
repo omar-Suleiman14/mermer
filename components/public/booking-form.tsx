@@ -156,7 +156,11 @@ export function BookingForm({ doctor }: BookingFormProps) {
       setDrawerOpen(false);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      setError(msg || (dir === "rtl" ? "حدث خطأ أثناء الحجز" : "Failed to book appointment"));
+      if (msg.includes("Rate limit exceeded")) {
+        setError(dir === "rtl" ? "لديك بالفعل 3 مواعيد قادمة. يرجى إلغاء أحدها قبل الحجز مرة أخرى." : "You already have 3 upcoming appointments. Please cancel one before booking again.");
+      } else {
+        setError(msg || (dir === "rtl" ? "حدث خطأ أثناء الحجز" : "Failed to book appointment"));
+      }
     } finally {
       setLoading(false);
     }

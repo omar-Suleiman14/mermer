@@ -23,15 +23,13 @@ interface ImportExportSectionProps {
 export function ImportExportSection({ clerkId }: ImportExportSectionProps) {
   const { t } = useI18n();
   const [importModalOpen, setImportModalOpen] = useState(false);
-  const [importType, setImportType] = useState<"patients" | "medications">("patients");
+  const [importType, setImportType] = useState<"patients">("patients");
 
   // Queries for export
   const allPatients = useQuery(api.patients.exportAllPatients, { clerkId });
-  const allMedications = useQuery(api.clinicalOptions.exportAllMedications, { clerkId });
 
   // Mutations for import
   const batchCreatePatients = useMutation(api.patients.batchCreatePatients);
-  const batchAddMedicationOptions = useMutation(api.clinicalOptions.batchAddMedicationOptions);
 
   // Import State
   const [csvData, setCsvData] = useState<Record<string, string>[]>([]);
@@ -48,10 +46,6 @@ export function ImportExportSection({ clerkId }: ImportExportSectionProps) {
     { key: "notes", label: t("settings.csvFieldNotes") || "Notes" },
   ];
 
-  const medicationFields = [
-    { key: "name", label: t("settings.csvFieldMedName") || "Medication Name (Required)" },
-  ];
-
   const handleExport = () => {
     try {
       if (allPatients && allPatients.length > 0) {
@@ -64,11 +58,6 @@ export function ImportExportSection({ clerkId }: ImportExportSectionProps) {
           "Created At": new Date(p.createdAt).toISOString()
         })));
         downloadCsv(patientsCsv, "patients_export.csv");
-      }
-
-      if (allMedications && allMedications.length > 0) {
-        const medsCsv = Papa.unparse(allMedications.map(m => ({ Name: m.name })));
-        downloadCsv(medsCsv, "medications_export.csv");
       }
 
       toast.success(t("settings.exportSuccess") || "Data exported successfully");
@@ -100,7 +89,7 @@ export function ImportExportSection({ clerkId }: ImportExportSectionProps) {
           setCsvHeaders(results.meta.fields);
           setCsvData(results.data as Record<string, string>[]);
           const autoMap: Record<string, string> = {};
-          const fields = importType === "patients" ? patientFields : medicationFields;
+          const fields = patientFields;
           fields.forEach(f => {
             const match = results.meta.fields?.find(
               h => h.toLowerCase().includes(f.key.toLowerCase()) || f.key.toLowerCase().includes(h.toLowerCase())
@@ -117,19 +106,15 @@ export function ImportExportSection({ clerkId }: ImportExportSectionProps) {
   };
 
   const mapRowToEntity = (row: Record<string, string>) => {
-    if (importType === "patients") {
-      return {
-        name: row[columnMap["name"]] || "Unknown",
-        age: parseInt(row[columnMap["age"]]) || 0,
-        phone: row[columnMap["phone"]] || "",
-        chronicConditions: row[columnMap["chronicConditions"]]
-          ? row[columnMap["chronicConditions"]].split(",").map((s: string) => s.trim()).filter(Boolean)
-          : [],
-        notes: row[columnMap["notes"]] || undefined,
-      };
-    } else {
-      return { name: row[columnMap["name"]] || "Unknown" };
-    }
+    return {
+      name: row[columnMap["name"]] || "Unknown",
+      age: parseInt(row[columnMap["age"]]) || 0,
+      phone: row[columnMap["phone"]] || "",
+      chronicConditions: row[columnMap["chronicConditions"]]
+        ? row[columnMap["chronicConditions"]].split(",").map((s: string) => s.trim()).filter(Boolean)
+        : [],
+      notes: row[columnMap["notes"]] || undefined,
+    };
   };
 
   const handleImportSingle = async (row: Record<string, string>, index: number) => {
@@ -139,12 +124,8 @@ export function ImportExportSection({ clerkId }: ImportExportSectionProps) {
       return;
     }
     try {
-      if (importType === "patients") {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await batchCreatePatients({ clerkId, patients: [entity] as any });
-      } else {
-        await batchAddMedicationOptions({ clerkId, medications: [entity.name] });
-      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await batchCreatePatients({ clerkId, patients: [entity] as any });
       toast.success(t("settings.csvImportedOne") || "Imported 1 record");
       setCsvData(prev => prev.filter((_, i) => i !== index));
     } catch {
@@ -160,12 +141,8 @@ export function ImportExportSection({ clerkId }: ImportExportSectionProps) {
     setImporting(true);
     try {
       const entities = csvData.map(mapRowToEntity).filter(e => e.name && e.name !== "Unknown");
-      if (importType === "patients") {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await batchCreatePatients({ clerkId, patients: entities as any });
-      } else {
-        await batchAddMedicationOptions({ clerkId, medications: entities.map(e => e.name) });
-      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await batchCreatePatients({ clerkId, patients: entities as any });
       toast.success(`${t("settings.csvImportedAll") || "Imported"} ${entities.length} ${t("settings.csvRecords") || "records"}`);
       setImportModalOpen(false);
       setCsvData([]);
@@ -179,7 +156,7 @@ export function ImportExportSection({ clerkId }: ImportExportSectionProps) {
 
   const blockClass = "bg-card border border-border rounded-xl shadow-sm overflow-hidden mb-8";
   const rowClass = "flex items-center justify-between p-4 gap-4 transition-colors";
-  const currentFields = importType === "patients" ? patientFields : medicationFields;
+  const currentFields = patientFields;
 
   return (
     <>
@@ -191,7 +168,7 @@ export function ImportExportSection({ clerkId }: ImportExportSectionProps) {
           <div className={rowClass + " border-b border-border"}>
             <div>
               <h4 className="text-sm font-medium">{t("settings.importData") || "Import Data"}</h4>
-              <p className="text-xs text-muted-foreground mt-0.5">{t("settings.importDataDesc") || "Import patients or medications from a CSV file"}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("settings.importDataDesc") || "Import patients from a CSV file"}</p>
             </div>
             <button
               onClick={() => setImportModalOpen(true)}
@@ -205,11 +182,11 @@ export function ImportExportSection({ clerkId }: ImportExportSectionProps) {
           <div className={rowClass + " bg-red-500/5"}>
             <div>
               <h4 className="text-sm font-medium text-red-600 dark:text-red-400">{t("settings.exportData") || "Export Data"}</h4>
-              <p className="text-xs text-red-600/70 dark:text-red-400/70 mt-0.5">{t("settings.exportDataDesc") || "Download all your patients and medications. Keep this file secure."}</p>
+              <p className="text-xs text-red-600/70 dark:text-red-400/70 mt-0.5">{t("settings.exportDataDesc") || "Download all your patients. Keep this file secure."}</p>
             </div>
             <button
               onClick={handleExport}
-              disabled={!allPatients || !allMedications}
+              disabled={!allPatients}
               className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors text-sm font-semibold flex items-center gap-2 disabled:opacity-50 shrink-0"
             >
               <Download className="w-4 h-4" />
@@ -243,16 +220,8 @@ export function ImportExportSection({ clerkId }: ImportExportSectionProps) {
               <div className="space-y-6">
                 {/* Step 1 */}
                 <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
-                  <h3 className="text-sm font-semibold mb-4">{t("settings.csvStep1") || "1. Select Data Type & Upload CSV"}</h3>
+                  <h3 className="text-sm font-semibold mb-4">{t("settings.csvStep1") || "1. Upload CSV"}</h3>
                   <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                    <select
-                      value={importType}
-                      onChange={(e) => { setImportType(e.target.value as "patients" | "medications"); setColumnMap({}); setCsvData([]); setCsvHeaders([]); }}
-                      className="p-2.5 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 w-full sm:w-auto min-w-37.5"
-                    >
-                      <option value="patients">{t("settings.csvTypePatients") || "Patients"}</option>
-                      <option value="medications">{t("settings.csvTypeMedications") || "Medications"}</option>
-                    </select>
                     <div className="flex-1 w-full">
                       <input type="file" accept=".csv" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
                       <button

@@ -44,6 +44,31 @@ export default async function RootLayout({
       <head>
         <link rel="preconnect" href={process.env.NEXT_PUBLIC_CONVEX_URL} crossOrigin="anonymous" />
         <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_CONVEX_URL} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@graph": [
+                {
+                  "@type": "MedicalBusiness",
+                  "@id": "https://mermereg.com/#organization",
+                  "name": "mermer",
+                  "url": "https://mermereg.com",
+                  "logo": "https://mermereg.com/icon.svg",
+                  "description": "Find & Book Doctors in Egypt",
+                },
+                {
+                  "@type": "MedicalClinic",
+                  "@id": "https://mermereg.com/#clinic",
+                  "name": "mermer Clinic Platform",
+                  "url": "https://mermereg.com",
+                  "description": "Clinic management and booking platform for Egypt",
+                }
+              ]
+            })
+          }}
+        />
       </head>
       <body className={`antialiased ${cairo.variable}`} suppressHydrationWarning>
         <ThemeProvider

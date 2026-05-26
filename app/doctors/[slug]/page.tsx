@@ -77,11 +77,20 @@ export default async function DoctorProfilePage({ params }: { params: Promise<{ 
       <main className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 py-8 w-full">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
           "@context": "https://schema.org",
-          "@type": "Physician",
-          "name": doctor.name,
-          "medicalSpecialty": doctor.specialty,
-          "address": { "@type": "PostalAddress", "addressLocality": doctor.city ?? doctor.clinicAddress },
-          "aggregateRating": doctor.avgRating !== null && doctor.reviewCount > 0 ? { "@type": "AggregateRating", "ratingValue": doctor.avgRating, "reviewCount": doctor.reviewCount } : undefined
+          "@graph": [
+            {
+              "@type": "Physician",
+              "name": doctor.name,
+              "medicalSpecialty": doctor.specialty,
+              "address": { "@type": "PostalAddress", "addressLocality": doctor.city ?? doctor.clinicAddress },
+              "aggregateRating": doctor.avgRating !== null && doctor.reviewCount > 0 ? { "@type": "AggregateRating", "ratingValue": doctor.avgRating, "reviewCount": doctor.reviewCount } : undefined
+            },
+            {
+              "@type": "MedicalClinic",
+              "name": doctor.clinicName ?? `${doctor.name} Clinic`,
+              "address": { "@type": "PostalAddress", "addressLocality": doctor.city ?? doctor.clinicAddress },
+            }
+          ]
         })}} />
         <div className="grid lg:grid-cols-3 gap-8">
           

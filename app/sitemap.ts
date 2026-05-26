@@ -1,9 +1,14 @@
 import { MetadataRoute } from 'next'
+import { fetchQuery } from 'convex/nextjs'
+import { api } from '@/convex/_generated/api'
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export const dynamic = 'force-dynamic'
+export const revalidate = 3600 // regenerate every hour
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://mermereg.com'
-  
-  return [
+
+  const staticRoutes: MetadataRoute.Sitemap = [
     {
       url: baseUrl,
       lastModified: new Date(),
@@ -33,6 +38,23 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: new Date(),
       changeFrequency: 'yearly',
       priority: 0.5,
-    }
+    },
   ]
+
+  let doctorRoutes: MetadataRoute.Sitemap = []
+  try {
+    const doctors = await fetchQuery(api.doctors.listPublishedDoctors)
+    doctorRoutes = doctors
+      .filter((d) => d.qrSlug)
+      .map((d) => ({
+        url: `${baseUrl}/doctors/${d.qrSlug}`,
+        lastModified: new Date(),
+        changeFrequency: 'weekly' as const,
+        priority: 0.8,
+      }))
+  } catch {
+    // If Convex is unavailable, return static routes only
+  }
+
+  return [...staticRoutes, ...doctorRoutes]
 }

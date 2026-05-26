@@ -21,6 +21,7 @@ import {
   Monitor,
   History,
   UserCheck,
+  Pill,
 } from "lucide-react";
 
 
@@ -57,6 +58,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     { title: t("nav.dashboard") || "Dashboard", href: "/dashboard", icon: LayoutDashboard, perm: null },
     { title: t("nav.schedule") || "Schedule", href: "/dashboard/queue", icon: CalendarDays, perm: "manage_queue" },
     { title: t("nav.patients") || "Patients", href: "/dashboard/patients", icon: Users, perm: "manage_patients" },
+    { title: t("nav.medications") || "Medications", href: "/dashboard/medications", icon: Pill, perm: "manage_settings", doctorOnly: true },
     { title: t("nav.installments") || "Installments", href: "/dashboard/installments", icon: FileText, perm: "manage_installments" },
     { title: t("nav.feedback") || "Feedback", href: "/dashboard/feedback", icon: Star, perm: null },
     { title: t("nav.analytics") || "Analytics", href: "/dashboard/stats", icon: BarChart3, perm: "manage_analytics", doctorOnly: true },

@@ -32,6 +32,16 @@ export const addMedicationOption = mutation({
   },
 });
 
+export const deleteMedicationOption = mutation({
+  args: { clerkId: v.string(), id: v.id("medicationOptions") },
+  handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx, args.clerkId);
+    const existing = await ctx.db.get(args.id);
+    if (!existing || existing.doctorId !== user._id) return;
+    await ctx.db.delete(args.id);
+  },
+});
+
 export const exportAllMedications = query({
   args: { clerkId: v.string() },
   handler: async (ctx, args) => {
@@ -101,6 +111,55 @@ export const addFrequencyOption = mutation({
   },
 });
 
+export const deleteFrequencyOption = mutation({
+  args: { clerkId: v.string(), id: v.id("medicationFrequencyOptions") },
+  handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx, args.clerkId);
+    const existing = await ctx.db.get(args.id);
+    if (!existing || existing.doctorId !== user._id) return;
+    await ctx.db.delete(args.id);
+  },
+});
+
+export const exportAllFrequencies = query({
+  args: { clerkId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx, args.clerkId);
+    if (!user) return [];
+    return await ctx.db
+      .query("medicationFrequencyOptions")
+      .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+      .collect();
+  },
+});
+
+export const batchAddFrequencyOptions = mutation({
+  args: { clerkId: v.string(), frequencies: v.array(v.string()) },
+  handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx, args.clerkId);
+    const addedIds = [];
+    
+    for (const name of args.frequencies) {
+      const existing = await ctx.db
+        .query("medicationFrequencyOptions")
+        .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+        .filter((q) => q.eq(q.field("name"), name))
+        .first();
+        
+      if (!existing) {
+        const id = await ctx.db.insert("medicationFrequencyOptions", {
+          doctorId: user._id,
+          name: name,
+        });
+        addedIds.push(id);
+      } else {
+        addedIds.push(existing._id);
+      }
+    }
+    return addedIds;
+  },
+});
+
 // ── NOTES ──
 export const getNoteOptions = query({
   args: { clerkId: v.string() },
@@ -128,6 +187,55 @@ export const addNoteOption = mutation({
       doctorId: user._id,
       name: args.name,
     });
+  },
+});
+
+export const deleteNoteOption = mutation({
+  args: { clerkId: v.string(), id: v.id("medicationNoteOptions") },
+  handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx, args.clerkId);
+    const existing = await ctx.db.get(args.id);
+    if (!existing || existing.doctorId !== user._id) return;
+    await ctx.db.delete(args.id);
+  },
+});
+
+export const exportAllNotes = query({
+  args: { clerkId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx, args.clerkId);
+    if (!user) return [];
+    return await ctx.db
+      .query("medicationNoteOptions")
+      .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+      .collect();
+  },
+});
+
+export const batchAddNoteOptions = mutation({
+  args: { clerkId: v.string(), notes: v.array(v.string()) },
+  handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx, args.clerkId);
+    const addedIds = [];
+    
+    for (const name of args.notes) {
+      const existing = await ctx.db
+        .query("medicationNoteOptions")
+        .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+        .filter((q) => q.eq(q.field("name"), name))
+        .first();
+        
+      if (!existing) {
+        const id = await ctx.db.insert("medicationNoteOptions", {
+          doctorId: user._id,
+          name: name,
+        });
+        addedIds.push(id);
+      } else {
+        addedIds.push(existing._id);
+      }
+    }
+    return addedIds;
   },
 });
 

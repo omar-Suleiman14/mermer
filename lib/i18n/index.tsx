@@ -5,6 +5,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Nav
     "nav.dashboard": "Dashboard",
     "nav.patients": "Patients",
+    "nav.medications": "Medications",
     "nav.schedule": "Schedule",
     "nav.installments": "installments",
     "nav.feedback": "Feedback",
@@ -848,6 +849,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Nav
     "nav.dashboard": "لوحة التحكم",
     "nav.patients": "المرضى",
+    "nav.medications": "الأدوية",
     "nav.schedule": "الجدول",
     "nav.installments": "الاقساط",
     "nav.feedback": "التقييمات",
