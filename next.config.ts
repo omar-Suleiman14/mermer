@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const isProduction = process.env.NODE_ENV === "production";
+
 const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
@@ -11,7 +13,7 @@ const nextConfig: NextConfig = {
     ],
     // Image optimization settings for performance
     formats: ["image/avif", "image/webp"],
-    minimumCacheTTL: 60,
+    minimumCacheTTL: 86400,
   },
 
   // Enable compression for smaller payloads
@@ -22,6 +24,33 @@ const nextConfig: NextConfig = {
 
   // Security & performance headers
   async headers() {
+    const contentSecurityPolicy = [
+      "default-src 'self'",
+      [
+        "script-src",
+        "'self'",
+        "'unsafe-inline'",
+        !isProduction ? "'unsafe-eval'" : "",
+        "https://clerk.mermer.com",
+        "https://*.clerk.accounts.dev",
+        "https://*.clerk.com",
+        "https://challenges.cloudflare.com",
+      ].filter(Boolean).join(" "),
+      "style-src 'self' 'unsafe-inline'",
+      "font-src 'self'",
+      "img-src 'self' data: blob: https://*.convex.cloud https://img.clerk.com",
+      "connect-src 'self' https://*.convex.cloud wss://*.convex.cloud https://clerk.mermer.com https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com",
+      "frame-src 'self' https://clerk.mermer.com https://*.clerk.accounts.dev https://*.clerk.com https://challenges.cloudflare.com",
+      "worker-src 'self' blob:",
+      "manifest-src 'self'",
+      "media-src 'self' blob:",
+      "object-src 'none'",
+      "base-uri 'self'",
+      "form-action 'self' https://clerk.mermer.com https://*.clerk.accounts.dev https://*.clerk.com",
+      "frame-ancestors 'none'",
+      isProduction ? "upgrade-insecure-requests" : "",
+    ].filter(Boolean).join("; ");
+
     return [
       {
         source: "/(.*)",
@@ -37,11 +66,19 @@ const nextConfig: NextConfig = {
           },
           {
             key: "X-XSS-Protection",
-            value: "1; mode=block",
+            value: "0",
           },
           {
             key: "Referrer-Policy",
             value: "strict-origin-when-cross-origin",
+          },
+          {
+            key: "Cross-Origin-Opener-Policy",
+            value: "same-origin-allow-popups",
+          },
+          {
+            key: "Cross-Origin-Resource-Policy",
+            value: "same-origin",
           },
           {
             key: "Permissions-Policy",
@@ -54,16 +91,34 @@ const nextConfig: NextConfig = {
           // FIX #11: Content Security Policy for healthcare data protection
           {
             key: "Content-Security-Policy",
-            value: [
-              "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.mermer.com https://*.clerk.accounts.dev https://challenges.cloudflare.com",
-              "style-src 'self' 'unsafe-inline'",
-              "font-src 'self'",
-              "img-src 'self' data: blob: https://*.convex.cloud https://img.clerk.com",
-              "connect-src 'self' https://*.convex.cloud wss://*.convex.cloud https://clerk.mermer.com https://*.clerk.accounts.dev https://challenges.cloudflare.com",
-              "frame-src 'self' https://clerk.mermer.com https://*.clerk.accounts.dev https://challenges.cloudflare.com",
-              "worker-src 'self' blob:",
-            ].join("; "),
+            value: contentSecurityPolicy,
+          },
+        ],
+      },
+      {
+        source: "/_next/static/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+      {
+        source: "/sw.js",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=0, must-revalidate",
+          },
+        ],
+      },
+      {
+        source: "/manifest.json",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=3600",
           },
         ],
       },

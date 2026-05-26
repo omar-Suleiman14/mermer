@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { requireAuthUser } from "./authHelper";
 
 // You need to set these in your Convex dashboard environment variables:
@@ -16,6 +16,13 @@ export const saveSubscription = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
+
+    if (!args.endpoint.startsWith("https://") || args.endpoint.length > 2048) {
+      throw new Error("Invalid push endpoint");
+    }
+    if (args.p256dh.length > 256 || args.auth.length > 128) {
+      throw new Error("Invalid push subscription");
+    }
 
     // Check if subscription already exists
     const existing = await ctx.db
@@ -45,7 +52,7 @@ export const getVapidPublicKey = query({
 
 
 
-export const getSubscriptionsForUser = query({
+export const getSubscriptionsForUser = internalQuery({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
     return await ctx.db
@@ -55,7 +62,7 @@ export const getSubscriptionsForUser = query({
   },
 });
 
-export const removeSubscription = mutation({
+export const removeSubscription = internalMutation({
   args: { id: v.id("pushSubscriptions") },
   handler: async (ctx, args) => {
     await ctx.db.delete(args.id);

@@ -1,7 +1,13 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
-const isProtectedRoute = createRouteMatcher(["/dashboard(.*)"]);
+const isProtectedRoute = createRouteMatcher([
+  "/admin(.*)",
+  "/clinic-screen(.*)",
+  "/dashboard(.*)",
+  "/print(.*)",
+  "/api/whatsapp-confirm",
+]);
 
 export default clerkMiddleware(async (auth, req) => {
   const isLandingPage = req.nextUrl.pathname === "/";

@@ -1,11 +1,26 @@
 "use node";
 
 import { v } from "convex/values";
-import { action } from "./_generated/server";
-import { api } from "./_generated/api";
+import { internalAction } from "./_generated/server";
+import { internal } from "./_generated/api";
 import webpush from "web-push";
 
-export const sendPushNotification = action({
+function safeNotificationUrl(url: string | undefined) {
+  if (!url || !url.startsWith("/") || url.startsWith("//")) return "/";
+  return url.slice(0, 512);
+}
+
+function truncate(value: string, maxLength: number) {
+  return value.replace(/[\u0000-\u001F\u007F]/g, " ").trim().slice(0, maxLength);
+}
+
+function getStatusCode(error: unknown) {
+  return typeof error === "object" && error !== null && "statusCode" in error
+    ? (error as { statusCode?: unknown }).statusCode
+    : undefined;
+}
+
+export const sendPushNotification = internalAction({
   args: {
     userId: v.id("users"),
     title: v.string(),
@@ -26,14 +41,14 @@ export const sendPushNotification = action({
 
     // Run a query to get the subscriptions
     const subscriptions = await ctx.runQuery(
-      api.push.getSubscriptionsForUser,
+      internal.push.getSubscriptionsForUser,
       { userId: args.userId }
     );
 
     const payload = JSON.stringify({
-      title: args.title,
-      body: args.body,
-      url: args.url || "/",
+      title: truncate(args.title, 80) || "mermer",
+      body: truncate(args.body, 240),
+      url: safeNotificationUrl(args.url),
     });
 
     const removePromises = [];
@@ -49,11 +64,12 @@ export const sendPushNotification = action({
 
       try {
         await webpush.sendNotification(pushSubscription, payload);
-      } catch (error: any) {
-        if (error.statusCode === 404 || error.statusCode === 410) {
+      } catch (error: unknown) {
+        const statusCode = getStatusCode(error);
+        if (statusCode === 404 || statusCode === 410) {
           console.log("Subscription has expired or is no longer valid:", error);
           removePromises.push(
-            ctx.runMutation(api.push.removeSubscription, { id: sub._id })
+            ctx.runMutation(internal.push.removeSubscription, { id: sub._id })
           );
         } else {
           console.error("Error sending push notification:", error);

@@ -1,5 +1,5 @@
 import { mutation, query } from "./_generated/server";
-import { api } from "./_generated/api";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 import { getAuthUser, requireAuthUser, logAction } from "./authHelper";
 
@@ -155,7 +155,7 @@ export const createVisit = mutation({
     
     if (args.source === "online") {
       const dateStr = new Date(args.date ?? Date.now()).toLocaleString();
-      await ctx.scheduler.runAfter(0, api.pushActions.sendPushNotification, {
+      await ctx.scheduler.runAfter(0, internal.pushActions.sendPushNotification, {
         userId: user._id,
         title: "New Online Appointment",
         body: `${patient.name} has booked an appointment for ${dateStr}`,

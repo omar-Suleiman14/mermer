@@ -1,7 +1,62 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUser, requireAuthUser, logAction } from "./authHelper";
-import { api } from "./_generated/api";
+import { internal } from "./_generated/api";
+
+const DAY_ABBREVS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+const MAX_PUBLIC_BOOKING_WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
+const PAST_BOOKING_GRACE_MS = 5 * 60 * 1000;
+
+function normalizeEgyptMobile(raw: string) {
+  let digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("20")) digits = digits.slice(2);
+  if (digits.startsWith("0")) digits = digits.slice(1);
+  if (!/^1[0125]\d{8}$/.test(digits)) {
+    throw new Error("Invalid phone number");
+  }
+  return digits;
+}
+
+function assertPublicBookingSlot(
+  date: number,
+  doctor: {
+    availableDays?: string[];
+    slotDurationMinutes?: number;
+    timezoneOffset?: number;
+    workingHoursStart?: number;
+    workingHoursEnd?: number;
+  }
+) {
+  const now = Date.now();
+  if (!Number.isFinite(date) || date < now - PAST_BOOKING_GRACE_MS) {
+    throw new Error("Appointment time must be in the future");
+  }
+  if (date > now + MAX_PUBLIC_BOOKING_WINDOW_MS) {
+    throw new Error("Appointment time is too far in the future");
+  }
+
+  const doctorOffsetMinutes = doctor.timezoneOffset ?? -180;
+  const localDate = new Date(date - doctorOffsetMinutes * 60 * 1000);
+  const day = DAY_ABBREVS[localDate.getUTCDay()];
+  const availableDays = doctor.availableDays ?? [];
+  if (availableDays.length > 0 && !availableDays.includes(day)) {
+    throw new Error("Doctor is not available on this day");
+  }
+
+  const startHour = doctor.workingHoursStart ?? 9;
+  const endHour = doctor.workingHoursEnd ?? 17;
+  const slotDuration = doctor.slotDurationMinutes ?? 30;
+  const startMinutes = Math.round(startHour * 60);
+  const endMinutes = Math.round(endHour * 60);
+  const slotMinutes = localDate.getUTCHours() * 60 + localDate.getUTCMinutes();
+
+  if (slotMinutes < startMinutes || slotMinutes >= endMinutes) {
+    throw new Error("Appointment must be within working hours");
+  }
+  if ((slotMinutes - startMinutes) % slotDuration !== 0) {
+    throw new Error("Appointment must match an available slot");
+  }
+}
 
 // ─── Public booking (online) ─────────────────────────────────────────────────
 
@@ -18,14 +73,35 @@ export const createAppointment = mutation({
       .query("users")
       .withIndex("by_qr_slug", (q) => q.eq("qrSlug", args.doctorSlug))
       .unique();
-    if (!doctor) throw new Error("Doctor not found");
+    if (!doctor || !doctor.publicProfile || doctor.isBanned) {
+      throw new Error("Doctor not found");
+    }
+
+    const patientName = args.patientName.trim().replace(/\s+/g, " ");
+    if (patientName.length < 2 || patientName.length > 100) {
+      throw new Error("Invalid patient name");
+    }
+
+    const patientPhone = normalizeEgyptMobile(args.patientPhone);
+    if (
+      args.patientAge !== undefined &&
+      (!Number.isInteger(args.patientAge) || args.patientAge < 0 || args.patientAge > 120)
+    ) {
+      throw new Error("Invalid patient age");
+    }
+
+    assertPublicBookingSlot(args.date, doctor);
 
     // Rate Limiting: Max 3 upcoming appointments per phone number
     const upcoming = await ctx.db
       .query("visits")
-      .withIndex("by_doctor_date", (q) => q.eq("doctorId", doctor._id).gte("date", Date.now() - 86400000))
-      .collect();
-    const phoneUpcoming = upcoming.filter(v => v.patientPhone === args.patientPhone && v.status !== "cancelled");
+      .withIndex("by_doctor_phone", (q) =>
+        q.eq("doctorId", doctor._id).eq("patientPhone", patientPhone)
+      )
+      .take(10);
+    const phoneUpcoming = upcoming.filter(
+      (visit) => visit.date >= Date.now() - 86400000 && visit.status !== "cancelled"
+    );
     if (phoneUpcoming.length >= 3) {
       throw new Error("Rate limit exceeded: You already have 3 active appointments.");
     }
@@ -47,7 +123,7 @@ export const createAppointment = mutation({
     const existingPatient = await ctx.db
       .query("patients")
       .withIndex("by_doctor_phone", (q) =>
-        q.eq("doctorId", doctor._id).eq("phone", args.patientPhone)
+        q.eq("doctorId", doctor._id).eq("phone", patientPhone)
       )
       .first();
 
@@ -56,9 +132,9 @@ export const createAppointment = mutation({
     if (!patientId) {
       patientId = await ctx.db.insert("patients", {
         doctorId: doctor._id,
-        name: args.patientName,
+        name: patientName,
         age: args.patientAge ?? 0,
-        phone: args.patientPhone,
+        phone: patientPhone,
         chronicConditions: [],
         createdAt: Date.now(),
       });
@@ -68,8 +144,8 @@ export const createAppointment = mutation({
     const visitId = await ctx.db.insert("visits", {
       doctorId: doctor._id,
       patientId,
-      patientName: args.patientName,
-      patientPhone: args.patientPhone,
+      patientName,
+      patientPhone,
       patientAge: args.patientAge,
       date: args.date,
       status: "confirmed",
@@ -83,10 +159,10 @@ export const createAppointment = mutation({
       minute: "2-digit",
       hour12: true,
     });
-    await ctx.scheduler.runAfter(0, api.pushActions.sendPushNotification, {
+    await ctx.scheduler.runAfter(0, internal.pushActions.sendPushNotification, {
       userId: doctor._id,
       title: "حجز إلكتروني جديد",
-      body: `${args.patientName} حجز موعداً الساعة ${apptTime}`,
+      body: `${patientName} حجز موعداً الساعة ${apptTime}`,
       url: "/dashboard",
     });
 

@@ -4,16 +4,11 @@ import { useEffect } from "react";
 
 export function SwRegistry() {
   useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker
-        .register("/sw.js")
-        .then((registration) => {
-          console.log("SW registered:", registration);
-        })
-        .catch((error) => {
-          console.log("SW registration failed:", error);
-        });
-    }
+    if (!("serviceWorker" in navigator)) return;
+
+    void navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {
+      // Non-critical: push notifications simply stay unavailable.
+    });
   }, []);
 
   return null;

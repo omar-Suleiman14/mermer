@@ -196,6 +196,7 @@ export default defineSchema({
     .index("by_patient", ["patientId"])
     .index("by_doctor", ["doctorId"])
     .index("by_doctor_date", ["doctorId", "date"])
+    .index("by_doctor_phone", ["doctorId", "patientPhone"])
     .index("by_installment", ["installmentId"]),
 
   // ── QUEUE (waiting room) ──────────────────────────────────────────────────
