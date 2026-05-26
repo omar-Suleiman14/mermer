@@ -317,7 +317,7 @@ export function ImportExportSection({ clerkId }: ImportExportSectionProps) {
                           {csvData.slice(0, 100).map((row, i) => (
                             <tr key={i} className="hover:bg-muted/30 transition-colors">
                               {currentFields.map(f => (
-                                <td key={f.key} className="px-4 py-3 max-w-[200px] truncate">
+                                <td key={f.key} className="px-4 py-3 max-w-50 truncate">
                                   {row[columnMap[f.key]] || <span className="text-muted-foreground/50">—</span>}
                                 </td>
                               ))}

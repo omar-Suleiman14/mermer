@@ -57,8 +57,8 @@ const nextConfig: NextConfig = {
             value: [
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.mermer.com https://*.clerk.accounts.dev https://challenges.cloudflare.com",
-              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              "font-src 'self' https://fonts.gstatic.com",
+              "style-src 'self' 'unsafe-inline'",
+              "font-src 'self'",
               "img-src 'self' data: blob: https://*.convex.cloud https://img.clerk.com",
               "connect-src 'self' https://*.convex.cloud wss://*.convex.cloud https://clerk.mermer.com https://*.clerk.accounts.dev https://challenges.cloudflare.com",
               "frame-src 'self' https://clerk.mermer.com https://*.clerk.accounts.dev https://challenges.cloudflare.com",
@@ -70,16 +70,6 @@ const nextConfig: NextConfig = {
       {
         // Cache static assets aggressively
         source: "/(.*)\\.(ico|png|jpg|jpeg|gif|svg|webp|avif|woff|woff2|ttf|eot)",
-        headers: [
-          {
-            key: "Cache-Control",
-            value: "public, max-age=31536000, immutable",
-          },
-        ],
-      },
-      {
-        // Cache JS/CSS bundles
-        source: "/_next/static/(.*)",
         headers: [
           {
             key: "Cache-Control",

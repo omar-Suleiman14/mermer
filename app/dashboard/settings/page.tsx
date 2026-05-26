@@ -6,16 +6,29 @@ import { Id } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
-import { Camera, Link as LinkIcon, Globe, Palette, CalendarDays, AlertTriangle, X, Bell } from "lucide-react";
+import { Camera, Globe, Palette, AlertTriangle, Bell } from "lucide-react";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
-import { MessageTemplatesSection } from "@/components/message-templates-section";
-import { ImportExportSection } from "@/components/import-export-section";
+import dynamic from "next/dynamic";
 import { useI18n } from "@/lib/i18n/client";
 import { useTheme } from "next-themes";
-import React from "react";
 import { LanguageToggle } from "@/components/language-toggle";
-import { motion, AnimatePresence } from "framer-motion";
+
+const MessageTemplatesSection = dynamic(
+  () => import("@/components/message-templates-section").then((m) => m.MessageTemplatesSection),
+  {
+    ssr: false,
+    loading: () => <div className="h-20 rounded-xl bg-muted/40 animate-pulse" />,
+  }
+);
+
+const ImportExportSection = dynamic(
+  () => import("@/components/import-export-section").then((m) => m.ImportExportSection),
+  {
+    ssr: false,
+    loading: () => <div className="h-40 rounded-xl bg-muted/40 animate-pulse" />,
+  }
+);
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -204,19 +217,11 @@ export default function SettingsPage() {
   const [workingDays, setWorkingDays] = useState<string[]>([]);
   const [bio, setBio] = useState("");
   const [publicProfile, setPublicProfile] = useState(false);
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const photoRef = useRef<HTMLInputElement>(null);
   const initialised = useRef(false);
-
-  useEffect(() => {
-    setMounted(true);
-    if (typeof window !== "undefined" && "Notification" in window) {
-      setNotificationsEnabled(Notification.permission === "granted");
-    }
-  }, []);
 
   // Load user data
   useEffect(() => {
@@ -410,7 +415,7 @@ export default function SettingsPage() {
               <label className={labelClass}>{t("onboarding.specialty")}</label>
               <div className="flex-1 flex flex-col gap-2 min-w-0">
                 <select value={specialty} onChange={(e) => setSpecialty(e.target.value)} className={inputClass}>
-                  <option value="" disabled>{t("settings.placeholderSpecialty") || "Select specialty"}</option>
+                  <option value="" disabled>{t("onboarding.selectSpecialty")}</option>
                   {SPECIALTIES.map((s) => <option key={s} value={s}>{t("specialty." + s) || s}</option>)}
                 </select>
                 {specialty === "Other" && (
@@ -594,20 +599,9 @@ export default function SettingsPage() {
       </div>
 
       {/* Reschedule Prompt */}
-      <AnimatePresence>
-        {reschedulePromptOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-          >
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="w-full max-w-md bg-card rounded-2xl shadow-xl overflow-hidden"
-            >
+      {reschedulePromptOpen && (
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="w-full max-w-md bg-card rounded-2xl shadow-xl overflow-hidden animate-in zoom-in-95 duration-150">
               <div className="p-5 flex items-start gap-4">
                 <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
                   <AlertTriangle className="w-5 h-5 text-amber-500" />
@@ -653,10 +647,9 @@ export default function SettingsPage() {
                   {t("settings.rescheduleToFuture") || "Reschedule to Future Dates"}
                 </button>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </div>
+          </div>
+      )}
     </div>
   );
 }
