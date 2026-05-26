@@ -24,6 +24,13 @@ export const translations: Record<Lang, Record<string, string>> = {
     "days.Fri": "Fri",
     "days.Sat": "Sat",
     "days.Sun": "Sun",
+    "days.mon": "Mon",
+    "days.tue": "Tue",
+    "days.wed": "Wed",
+    "days.thu": "Thu",
+    "days.fri": "Fri",
+    "days.sat": "Sat",
+    "days.sun": "Sun",
 
     // Dashboard
     "dashboard.title": "Dashboard",
@@ -860,6 +867,13 @@ export const translations: Record<Lang, Record<string, string>> = {
     "days.Fri": "الجمعة",
     "days.Sat": "السبت",
     "days.Sun": "الأحد",
+    "days.mon": "الإثنين",
+    "days.tue": "الثلاثاء",
+    "days.wed": "الأربعاء",
+    "days.thu": "الخميس",
+    "days.fri": "الجمعة",
+    "days.sat": "السبت",
+    "days.sun": "الأحد",
 
     // Dashboard
     "dashboard.title": "لوحة التحكم",
