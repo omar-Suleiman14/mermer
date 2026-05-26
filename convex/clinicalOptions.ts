@@ -130,3 +130,28 @@ export const addNoteOption = mutation({
     });
   },
 });
+
+export const getAllClinicalOptions = query({
+  args: { clerkId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx, args.clerkId);
+    if (!user) return { medications: [], frequencies: [], notes: [] };
+
+    const medications = await ctx.db
+      .query("medicationOptions")
+      .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+      .collect();
+
+    const frequencies = await ctx.db
+      .query("medicationFrequencyOptions")
+      .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+      .collect();
+
+    const notes = await ctx.db
+      .query("medicationNoteOptions")
+      .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+      .collect();
+
+    return { medications, frequencies, notes };
+  },
+});

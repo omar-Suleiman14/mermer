@@ -85,12 +85,12 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
               : "Your account has been created and is under review. You'll have access shortly. To reach us:"}
           </p>
           <a
-            href="https://wa.me/201012756994"
+            href={`https://wa.me/${process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP?.replace('+', '') || '201012756994'}`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-sm font-semibold rounded-xl hover:bg-emerald-500/20 transition-colors"
           >
-            <span dir="ltr">WhatsApp: +201012756994</span>
+            <span dir="ltr">WhatsApp: {process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP || '+201012756994'}</span>
           </a>
           <SignOutButton>
             <button className="w-full py-2.5 bg-secondary text-secondary-foreground text-sm font-semibold rounded-xl hover:bg-secondary/80 transition-colors">
@@ -211,15 +211,19 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
               <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mx-auto text-amber-500 mb-2">
                 <AlertTriangle className="w-8 h-8" />
               </div>
-              <h3 className="text-lg font-bold">Subscription Required</h3>
+              <h3 className="text-lg font-bold">
+                {lang === "ar" ? "اشتراك مطلوب" : "Subscription Required"}
+              </h3>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Please subscribe to continue using all features. Contact <span className="font-semibold text-foreground" dir="ltr">+201012756994</span> to renew your subscription.
+                {lang === "ar" 
+                  ? "يرجى الاشتراك للاستمرار في استخدام جميع الميزات. للتجديد تواصل معنا على" 
+                  : "Please subscribe to continue using all features. To renew, contact us at"} <span className="font-semibold text-foreground" dir="ltr">{process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP || '+201012756994'}</span>
               </p>
               <button onClick={() => {
                 setShowBannedPopup(false);
                 localStorage.setItem("bannedPopupDismissedAt", Date.now().toString());
               }} className="w-full py-2.5 bg-primary text-primary-foreground text-sm font-semibold rounded-xl hover:bg-primary/90 transition-colors">
-                Remind Me Later
+                {lang === "ar" ? "ذكرني لاحقاً" : "Remind Me Later"}
               </button>
             </div>
           </div>

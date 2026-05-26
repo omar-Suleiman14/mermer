@@ -25,15 +25,13 @@ const cairo = Cairo({
 });
 
 export const metadata: Metadata = {
-  title: "mermer",
-  description:
-    "the best clinic management system ever",
+  title: "mermer — Find & Book Doctors in Egypt",
+  description: "mermer empowers medical professionals with verified public profiles, authentic review tracking, and tools to elevate their online clinical reputation.",
   manifest: "/manifest.json",
   icons: {
     icon: "/icon.svg",
   },
 };
-
 export default async function RootLayout({
   children,
 }: Readonly<{

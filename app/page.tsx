@@ -56,7 +56,7 @@ export default async function PatientLandingPage() {
       </main>
       
       {/* Footer */}
-      <footer className="hidden bg-white dark:bg-zinc-950 border-t border-slate-200/80 dark:border-zinc-900 py-8 text-center">
+      <footer className="bg-white dark:bg-zinc-950 border-t border-slate-200/80 dark:border-zinc-900 py-8 text-center">
          <div className="text-sm font-semibold text-slate-500">
            © {new Date().getFullYear()} {dir === "rtl" ? "مرمر" : "mermer"}. All rights reserved.
          </div>

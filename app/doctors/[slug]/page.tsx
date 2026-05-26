@@ -1,23 +1,33 @@
-"use client";
-
-import { useQuery } from "convex/react";
+import { fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
-import { useI18n } from "@/lib/i18n/client";
+import { getServerI18n } from "@/lib/i18n/server";
 import { PublicNav } from "@/components/public/public-nav";
 import { Loader2, MapPin, Building2, Languages, MessageSquarePlus, ExternalLink, Clock } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
-import { useParams } from "next/navigation";
 import { formatDoctorTitle, translateSpecialty } from "@/lib/doctor-display";
 import { BookingForm } from "@/components/public/booking-form";
 import { StarRating } from "@/components/public/star-rating";
+import { Metadata } from "next";
 
-export default function DoctorProfilePage() {
-  const params = useParams();
-  const slug = params.slug as string;
-  const { t, dir, lang } = useI18n();
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const doctor = await fetchQuery(api.doctors.getPublicDoctorProfile, { slug });
+  
+  if (!doctor) return { title: "Doctor Not Found" };
+  
+  return {
+    title: `Dr. ${doctor.name} - ${doctor.specialty ?? "Doctor"} | mermer`,
+    description: doctor.bio ?? `Book an appointment with Dr. ${doctor.name} on mermer.`,
+    openGraph: { images: [doctor.profilePhotoUrl ?? "/icon.svg"] },
+  };
+}
 
-  const doctor = useQuery(api.doctors.getPublicDoctorProfile, { slug });
+export default async function DoctorProfilePage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const { t, dir, lang } = await getServerI18n();
+
+  const doctor = await fetchQuery(api.doctors.getPublicDoctorProfile, { slug });
 
   if (doctor === undefined) {
     return (
@@ -53,6 +63,14 @@ export default function DoctorProfilePage() {
       <PublicNav />
       
       <main className="flex-1 max-w-6xl mx-auto px-4 sm:px-6 py-8 w-full">
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "Physician",
+          "name": doctor.name,
+          "medicalSpecialty": doctor.specialty,
+          "address": { "@type": "PostalAddress", "addressLocality": doctor.city ?? doctor.clinicAddress },
+          "aggregateRating": doctor.avgRating !== null && doctor.reviewCount > 0 ? { "@type": "AggregateRating", "ratingValue": doctor.avgRating, "reviewCount": doctor.reviewCount } : undefined
+        })}} />
         <div className="grid lg:grid-cols-3 gap-8">
           
           {/* Main Info Column */}

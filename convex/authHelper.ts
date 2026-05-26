@@ -63,7 +63,7 @@ export async function requireAuthUser(
   const user = await getAuthUser(ctx, clerkId);
   if (!user) throw new Error("User not found");
   if (user.isBlocked) throw new Error("Account is blocked");
-  if (user.isBanned) throw new Error("Account is under installment");
+  if (user.isBanned) throw new Error("Your account access has been restricted. Please contact support.");
 
   return user;
 }

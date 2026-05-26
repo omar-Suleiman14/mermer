@@ -259,7 +259,7 @@ export const exportAllPatients = query({
     return await ctx.db
       .query("patients")
       .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
-      .collect();
+      .take(5000); // Capped to prevent timeouts
   },
 });
 
@@ -276,6 +276,11 @@ export const batchCreatePatients = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
+    
+    if (args.patients.length > 500) {
+      throw new Error("Maximum 500 patients can be imported at once");
+    }
+
     const addedIds = [];
     for (const p of args.patients) {
       const patientId = await ctx.db.insert("patients", {

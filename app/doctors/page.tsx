@@ -1,15 +1,23 @@
-"use client";
-
-import { useQuery } from "convex/react";
+import { fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { DoctorCard } from "@/components/public/doctor-card";
 import { PublicNav } from "@/components/public/public-nav";
-import { useI18n } from "@/lib/i18n/client";
-import { Loader2 } from "lucide-react";
+import { getServerI18n } from "@/lib/i18n/server";
+import { Metadata } from "next";
 
-export default function DoctorsPage() {
-  const { dir } = useI18n();
-  const doctors = useQuery(api.doctors.listPublishedDoctors);
+export async function generateMetadata(): Promise<Metadata> {
+  const { dir } = await getServerI18n();
+  return {
+    title: dir === "rtl" ? "الأطباء | مرمر" : "Doctors | mermer",
+    description: dir === "rtl" 
+      ? "تصفح قائمة الأطباء الموثقين على منصتنا واختر الأنسب لك."
+      : "Browse our verified doctors and choose the best for you.",
+  };
+}
+
+export default async function DoctorsPage() {
+  const { dir } = await getServerI18n();
+  const doctors = await fetchQuery(api.doctors.listPublishedDoctors);
 
   return (
     <div className="min-h-dvh flex flex-col bg-slate-50 dark:bg-zinc-950 text-foreground" dir={dir}>
@@ -26,11 +34,7 @@ export default function DoctorsPage() {
            </p>
          </div>
          
-         {doctors === undefined ? (
-           <div className="flex justify-center py-20">
-             <Loader2 className="w-10 h-10 animate-spin text-primary/60" />
-           </div>
-         ) : doctors.length === 0 ? (
+         {!doctors || doctors.length === 0 ? (
            <div className="text-center py-20 text-slate-500 bg-white dark:bg-zinc-900 rounded-3xl border border-border">
              <p className="text-xl font-semibold">
                {dir === "rtl" ? "لا يوجد أطباء متاحين حالياً" : "No doctors available right now"}

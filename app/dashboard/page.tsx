@@ -201,12 +201,12 @@ const SortableApptItem = memo(function SortableApptItem({
           )}
           {tag === "current" && (
             <span className="text-[9px] font-bold uppercase tracking-wider bg-[#34c759]/15 text-[#34c759] border border-[#34c759]/30 px-1.5 py-0.5 rounded-full">
-              Current
+              {lang === "ar" ? "الحالي" : "Current"}
             </span>
           )}
           {tag === "next" && (
             <span className="text-[9px] font-bold uppercase tracking-wider bg-[#007AFF]/15 text-[#007AFF] border border-[#007AFF]/30 px-1.5 py-0.5 rounded-full">
-              Next
+              {lang === "ar" ? "التالي" : "Next"}
             </span>
           )}
         </div>
@@ -409,7 +409,9 @@ export default function DashboardPage() {
   const workingDayAbbrs: string[] = (currentUser as any)?.availableDays ?? [];
   const DOW_ABBR: Record<number, string> = { 0: "Sun", 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat" };
   function isNonWorkingDay(d: Date): boolean {
-    return false;
+    if (workingDayAbbrs.length === 0) return false;
+    const dayName = DOW_ABBR[d.getDay()];
+    return !workingDayAbbrs.includes(dayName);
   }
 
   // Time slots for reschedule

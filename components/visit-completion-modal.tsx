@@ -282,10 +282,11 @@ export function VisitCompletionModal({
   const addFrequencyOption = useMutation(api.clinicalOptions.addFrequencyOption);
   const addNoteOption = useMutation(api.clinicalOptions.addNoteOption);
 
-  // Clinical options queries
-  const medOptions = useQuery(api.clinicalOptions.getMedicationOptions, clerkId ? { clerkId } : "skip");
-  const freqOptions = useQuery(api.clinicalOptions.getFrequencyOptions, clerkId ? { clerkId } : "skip");
-  const noteOptions = useQuery(api.clinicalOptions.getNoteOptions, clerkId ? { clerkId } : "skip");
+  // Clinical options query
+  const allClinicalOptions = useQuery(api.clinicalOptions.getAllClinicalOptions, clerkId ? { clerkId } : "skip");
+  const medOptions = allClinicalOptions?.medications;
+  const freqOptions = allClinicalOptions?.frequencies;
+  const noteOptions = allClinicalOptions?.notes;
 
   const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
   const isinstallmentVisit = !!installmentId;
