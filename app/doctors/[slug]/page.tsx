@@ -172,6 +172,7 @@ export default function DoctorProfilePage() {
                  </p>
                  <Link
                    href={`/feedback/${slug}`}
+                   prefetch={true}
                    className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-primary/30 bg-background px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/10 transition-colors"
                  >
                    <MessageSquarePlus className="w-4 h-4" />

@@ -135,8 +135,9 @@ export default function HistoryPage() {
                              isInstallment ? t("history.actionInstallment") || "Installment Visit" : 
                              t("history.actionManual") || "Manual Visit"}
                           </p>
-                          <p className="text-[13px] text-foreground mt-0.5">
-                            {t("patient.patient") || "Patient"}: <span className="font-medium">{log.patientName}</span>
+                          <p className="text-[13px] text-foreground mt-0.5 flex items-center gap-1">
+                            <span className="text-muted-foreground">{t("installments.patient") || "Patient"}:</span>
+                            <span className="font-medium">{log.patientName}</span>
                           </p>
                         </div>
                         <div className="text-right shrink-0">

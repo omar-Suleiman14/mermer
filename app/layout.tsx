@@ -3,11 +3,26 @@ import "./globals.css";
 import ConvexClientProvider from "@/components/ConvexClientProvider";
 import { ClerkProvider } from "@clerk/nextjs";
 import { ThemeProvider } from "@/components/theme-provider";
-import { Toaster } from "@/components/ui/sonner";
 import { I18nProvider } from "@/lib/i18n/client";
 import { getServerI18n } from "@/lib/i18n/server";
 import { HtmlDirSync } from "@/components/html-dir-sync";
 import { SwRegistry } from "@/components/sw-registry";
+import { Cairo } from "next/font/google";
+import dynamic from "next/dynamic";
+
+// Lazy-load Toaster — not needed for initial render, reduces first-load JS
+const Toaster = dynamic(
+  () => import("@/components/ui/sonner").then((m) => ({ default: m.Toaster }))
+);
+
+// Cairo — optimized, self-hosted Arabic font via next/font
+const cairo = Cairo({
+  subsets: ["arabic", "latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
+  variable: "--font-cairo",
+  preload: true,
+});
 
 export const metadata: Metadata = {
   title: "mermer",
@@ -28,7 +43,7 @@ export default async function RootLayout({
 
   return (
     <html lang={lang} dir={dir} suppressHydrationWarning style={{ fontSize: "106%" }}>
-      <body className="antialiased" suppressHydrationWarning>
+      <body className={`antialiased ${cairo.variable}`} suppressHydrationWarning>
         <ThemeProvider
           attribute="class"
           defaultTheme="light"

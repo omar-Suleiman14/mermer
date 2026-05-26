@@ -23,6 +23,7 @@ export function DoctorCard({ doctor, className }: DoctorCardProps) {
   return (
     <Link
       href={`/doctors/${slug}`}
+      prefetch={true}
       className={cn(
         "group block rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-sm",
         "hover:border-primary/40 hover:shadow-lg hover:shadow-primary/10 transition-all duration-300",
