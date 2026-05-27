@@ -7,8 +7,29 @@ import { PageHeader } from "@/components/page-header";
 import { useI18n } from "@/lib/i18n/client";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { useState, useMemo } from "react";
-import { format } from "date-fns";
-import { CalendarIcon, Filter, Search, Activity, History, Globe, CheckCircle2, Clock, XCircle, AlertCircle, Users, ShieldCheck } from "lucide-react";
+import { 
+  CalendarIcon, Filter, Activity, History, Globe, 
+  CheckCircle2, Clock, XCircle, Users, 
+  Trash2, PlusCircle, Edit3, FileEdit, UserPlus, ArrowRightLeft
+} from "lucide-react";
+
+type UnifiedLog = {
+  _id: string;
+  type: "visit" | "audit";
+  timestamp: number;
+  actionBy: string;
+  
+  // Visit specific
+  patientName?: string;
+  source?: string;
+  status?: string;
+  date?: number;
+  reasonForVisit?: string;
+  
+  // Audit specific
+  action?: string;
+  details?: string;
+};
 
 function translateAuditLog(action: string, details: string, lang: string) {
   if (lang !== "ar") return { action, details };
@@ -52,37 +73,97 @@ function translateAuditLog(action: string, details: string, lang: string) {
   return { action: tAction, details: tDetails };
 }
 
+function getAuditIcon(action: string) {
+  if (action.includes("Delete")) return <Trash2 className="w-4 h-4 text-red-500" />;
+  if (action.includes("Create") || action === "Added Patient") return <PlusCircle className="w-4 h-4 text-emerald-500" />;
+  if (action === "Batch Added Patients") return <UserPlus className="w-4 h-4 text-emerald-500" />;
+  if (action === "Updated Appointment") return <ArrowRightLeft className="w-4 h-4 text-amber-500" />;
+  if (action === "Completed Visit") return <CheckCircle2 className="w-4 h-4 text-blue-500" />;
+  if (action === "Updated Visit Files/Notes") return <FileEdit className="w-4 h-4 text-indigo-500" />;
+  if (action.includes("Update")) return <Edit3 className="w-4 h-4 text-amber-500" />;
+  return <Activity className="w-4 h-4 text-muted-foreground" />;
+}
+
 export default function HistoryPage() {
   const { user } = useUser();
   const clerkId = user?.id ?? "";
   const { t, lang } = useI18n();
 
   const rawLogs = useQuery(api.visits.getActivityLog, clerkId ? { clerkId, limit: 500 } : "skip");
-  const auditLogs = useQuery(api.auditLogs.getAuditLogs, clerkId ? { clerkId, limit: 200 } : "skip");
+  const auditLogs = useQuery(api.auditLogs.getAuditLogs, clerkId ? { clerkId, limit: 500 } : "skip");
 
-  const [activeTab, setActiveTab] = useState<"activity" | "audit">("activity");
-  const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("");
+  const [staffFilter, setStaffFilter] = useState<string>("all");
 
-  const logs = useMemo(() => {
-    if (!rawLogs) return [];
-    let filtered = rawLogs;
+  const unifiedLogs: UnifiedLog[] = useMemo(() => {
+    if (!rawLogs || !auditLogs) return [];
 
-    if (sourceFilter !== "all") {
-      filtered = filtered.filter(l => l.source === sourceFilter);
+    const unified: UnifiedLog[] = [];
+
+    // Map visits
+    rawLogs.forEach(v => {
+      unified.push({
+        _id: v._id,
+        type: "visit",
+        timestamp: v.createdAt,
+        actionBy: (v.actionBy as string) || (v.source === "online" ? "Online Booking" : "Staff"),
+        patientName: v.patientName,
+        source: v.source,
+        status: v.status,
+        date: v.date,
+        reasonForVisit: v.reasonForVisit,
+      });
+    });
+
+    // Map audit logs
+    auditLogs.forEach(a => {
+      unified.push({
+        _id: a._id,
+        type: "audit",
+        timestamp: a.timestamp,
+        actionBy: a.userName || "System",
+        action: a.action,
+        details: a.details,
+      });
+    });
+
+    return unified.sort((a, b) => b.timestamp - a.timestamp);
+  }, [rawLogs, auditLogs]);
+
+  // Extract unique staff members
+  const staffMembers = useMemo(() => {
+    const staff = new Set<string>();
+    unifiedLogs.forEach(log => {
+      if (log.actionBy && log.actionBy !== "System" && log.actionBy !== "Online Booking") {
+        staff.add(log.actionBy);
+      }
+    });
+    return Array.from(staff).sort();
+  }, [unifiedLogs]);
+
+  const filteredLogs = useMemo(() => {
+    let filtered = unifiedLogs;
+
+    if (typeFilter !== "all") {
+      filtered = filtered.filter(l => l.type === typeFilter);
+    }
+
+    if (staffFilter !== "all") {
+      filtered = filtered.filter(l => l.actionBy === staffFilter);
     }
 
     if (dateFilter) {
       filtered = filtered.filter(l => {
-        const d = new Date(l.createdAt);
+        const d = new Date(l.timestamp);
         return d.toISOString().split("T")[0] === dateFilter;
       });
     }
 
     return filtered;
-  }, [rawLogs, sourceFilter, dateFilter]);
+  }, [unifiedLogs, typeFilter, staffFilter, dateFilter]);
 
-  if (rawLogs === undefined) {
+  if (rawLogs === undefined || auditLogs === undefined) {
     return (
       <div className="flex h-full items-center justify-center">
         <IOSSpinner />
@@ -98,43 +179,38 @@ export default function HistoryPage() {
       />
 
       <div className="flex-1 overflow-auto p-4 sm:p-6 max-w-5xl mx-auto w-full">
-        {/* Tabs */}
-        <div className="flex bg-card p-1 rounded-xl shadow-sm mb-6 w-full max-w-md mx-auto">
-          {(["activity", "audit"] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`flex-1 text-sm font-medium py-2 px-3 rounded-lg transition-colors capitalize ${
-                activeTab === tab
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:bg-muted"
-              }`}
-            >
-              {tab === "activity" ? (lang === "ar" ? "النشاط" : "Activity") : (lang === "ar" ? "سجل الإجراءات" : "Audit Log")}
-            </button>
-          ))}
-        </div>
-
-        {activeTab === "activity" && (
-          <>
-            {/* Filters */}
-            <div className="bg-card border border-border rounded-xl p-4 mb-6 flex flex-col sm:flex-row gap-4 items-center justify-between shadow-sm">
-              <div className="flex items-center gap-3 w-full sm:w-auto">
-                <Filter className="w-4 h-4 text-muted-foreground" />
+        {/* Unified Filter Bar */}
+        <div className="bg-card border border-border rounded-xl p-4 mb-6 flex flex-col sm:flex-row gap-4 items-center justify-between shadow-sm flex-wrap">
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
             <select
-              value={sourceFilter}
-              onChange={(e) => setSourceFilter(e.target.value)}
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
               className="bg-background border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#007AFF] transition-shadow w-full sm:w-auto"
             >
-              <option value="all">{t("history.allActions") || "All Actions"}</option>
-              <option value="manual">{t("history.actionManual") || "Manual Visit"}</option>
-              <option value="online">{t("history.actionOnline") || "Online Booking"}</option>
-              <option value="installment">{t("history.actionInstallment") || "Installment Visit"}</option>
+              <option value="all">{lang === "ar" ? "كل الأحداث" : "All Events"}</option>
+              <option value="visit">{lang === "ar" ? "الزيارات والحجوزات" : "Visits & Bookings"}</option>
+              <option value="audit">{lang === "ar" ? "إجراءات النظام" : "System Actions"}</option>
             </select>
           </div>
           
           <div className="flex items-center gap-3 w-full sm:w-auto">
-            <CalendarIcon className="w-4 h-4 text-muted-foreground" />
+            <Users className="w-4 h-4 text-muted-foreground shrink-0" />
+            <select
+              value={staffFilter}
+              onChange={(e) => setStaffFilter(e.target.value)}
+              className="bg-background border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#007AFF] transition-shadow w-full sm:w-auto"
+            >
+              <option value="all">{lang === "ar" ? "كل الموظفين" : "All Staff"}</option>
+              <option value="Online Booking">{lang === "ar" ? "حجز عبر الإنترنت" : "Online Bookings"}</option>
+              {staffMembers.map(staff => (
+                <option key={staff} value={staff}>{staff}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <CalendarIcon className="w-4 h-4 text-muted-foreground shrink-0" />
             <input
               type="date"
               value={dateFilter}
@@ -144,7 +220,7 @@ export default function HistoryPage() {
             {dateFilter && (
               <button 
                 onClick={() => setDateFilter("")}
-                className="text-xs text-[#007AFF] hover:underline"
+                className="text-xs text-[#007AFF] hover:underline whitespace-nowrap"
               >
                 {t("history.clearFilters") || "Clear"}
               </button>
@@ -152,9 +228,9 @@ export default function HistoryPage() {
           </div>
         </div>
 
-        {/* List */}
+        {/* Unified List */}
         <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
-          {logs.length === 0 ? (
+          {filteredLogs.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-12 text-center">
               <History className="w-12 h-12 text-muted-foreground/30 mb-4" />
               <h3 className="text-base font-semibold">{t("history.noActivity") || "No activity yet"}</h3>
@@ -164,126 +240,114 @@ export default function HistoryPage() {
             </div>
           ) : (
             <div className="divide-y divide-border">
-              {logs.map((log) => {
-                const isOnline = log.source === "online";
-                const isInstallment = log.source === "installment";
-                
-                const StatusIcon = log.status === "completed" ? CheckCircle2 :
-                                   log.status === "cancelled" ? XCircle : Clock;
-                
-                const statusColor = log.status === "completed" ? "text-emerald-500" :
-                                    log.status === "cancelled" ? "text-red-500" : "text-amber-500";
+              {filteredLogs.map((log) => {
+                if (log.type === "visit") {
+                  const isOnline = log.source === "online";
+                  const isInstallment = log.source === "installment";
+                  
+                  const StatusIcon = log.status === "completed" ? CheckCircle2 :
+                                     log.status === "cancelled" ? XCircle : Clock;
+                  
+                  const statusColor = log.status === "completed" ? "text-emerald-500" :
+                                      log.status === "cancelled" ? "text-red-500" : "text-amber-500";
 
-                const ActionIcon = isOnline ? Globe : 
-                                   isInstallment ? Activity : CalendarIcon;
+                  const ActionIcon = isOnline ? Globe : 
+                                     isInstallment ? Activity : CalendarIcon;
 
-                return (
-                  <div key={log._id} className="p-4 sm:p-5 flex items-start gap-4 hover:bg-muted/5 transition-colors">
-                    {/* Icon */}
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                      isOnline ? "bg-primary/10 text-primary" : 
-                      isInstallment ? "bg-[#AF52DE]/10 text-[#AF52DE]" : 
-                      "bg-emerald-500/10 text-emerald-600"
-                    }`}>
-                      <ActionIcon className="w-5 h-5" />
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-4 mb-1">
-                        <div>
-                          <p className="text-sm font-semibold truncate">
-                            {isOnline ? t("history.actionOnline") || "Online Booking" : 
-                             isInstallment ? t("history.actionInstallment") || "Installment Visit" : 
-                             t("history.actionManual") || "Manual Visit"}
-                          </p>
-                          <p className="text-[13px] text-foreground mt-0.5 flex items-center gap-1">
-                            <span className="text-muted-foreground">{t("installments.patient") || "Patient"}:</span>
-                            <span className="font-medium">{log.patientName}</span>
-                          </p>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <p className="text-xs text-muted-foreground flex items-center justify-end gap-1.5">
-                            <Clock className="w-3.5 h-3.5" />
-                            {new Date(log.createdAt).toLocaleString(lang === "ar" ? "ar-EG" : "en-US", { 
-                              month: "short", day: "numeric", hour: "numeric", minute: "2-digit" 
-                            })}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider mb-1">
-                             {isOnline ? t("history.actionOnline") || "Online" : ((log as any).actionBy || "Staff")}
-                           </p>
-                        </div>
+                  return (
+                    <div key={log._id} className="p-4 sm:p-5 flex items-start gap-4 hover:bg-muted/5 transition-colors">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                        isOnline ? "bg-primary/10 text-primary" : 
+                        isInstallment ? "bg-[#AF52DE]/10 text-[#AF52DE]" : 
+                        "bg-emerald-500/10 text-emerald-600"
+                      }`}>
+                        <ActionIcon className="w-5 h-5" />
                       </div>
 
-                      <div className="flex flex-wrap items-center gap-3 mt-2">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted/50 border border-border text-xs text-muted-foreground">
-                          <CalendarIcon className="w-3.5 h-3.5" />
-                          {t("history.visitOn") || "Visit on"} {new Date(log.date).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-                        </span>
-                        
-                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted/30 border border-border text-xs font-medium ${statusColor}`}>
-                          <StatusIcon className="w-3.5 h-3.5" />
-                          {log.status === "completed" ? t("history.statusCompleted") || "Completed" : 
-                           log.status === "cancelled" ? t("history.statusCancelled") || "Cancelled" : 
-                           t("history.statusConfirmed") || "Scheduled"}
-                        </span>
-                        
-                        {log.reasonForVisit && (
-                          <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-muted/30 border border-border text-xs text-muted-foreground max-w-[200px] truncate">
-                            {log.reasonForVisit}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-4 mb-1">
+                          <div>
+                            <p className="text-sm font-semibold truncate">
+                              {isOnline ? (t("history.actionOnline") || "Online Booking") : 
+                               isInstallment ? (t("history.actionInstallment") || "Installment Visit") : 
+                               (t("history.actionManual") || "Manual Visit")}
+                            </p>
+                            <p className="text-[13px] text-foreground mt-0.5 flex items-center gap-1">
+                              <span className="text-muted-foreground">{t("installments.patient") || "Patient"}:</span>
+                              <span className="font-medium">{log.patientName}</span>
+                            </p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-xs text-muted-foreground flex items-center justify-end gap-1.5">
+                              <Clock className="w-3.5 h-3.5" />
+                              {new Date(log.timestamp).toLocaleString(lang === "ar" ? "ar-EG" : "en-US", { 
+                                month: "short", day: "numeric", hour: "numeric", minute: "2-digit" 
+                              })}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider mb-1 mt-1">
+                               {log.actionBy}
+                             </p>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-3 mt-2">
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted/50 border border-border text-xs text-muted-foreground">
+                            <CalendarIcon className="w-3.5 h-3.5" />
+                            {t("history.visitOn") || "Visit on"} {new Date(log.date || 0).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
                           </span>
-                        )}
+                          
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted/30 border border-border text-xs font-medium ${statusColor}`}>
+                            <StatusIcon className="w-3.5 h-3.5" />
+                            {log.status === "completed" ? (t("history.statusCompleted") || "Completed") : 
+                             log.status === "cancelled" ? (t("history.statusCancelled") || "Cancelled") : 
+                             (t("history.statusConfirmed") || "Scheduled")}
+                          </span>
+                          
+                          {log.reasonForVisit && (
+                            <span className="inline-flex items-center px-2.5 py-1 rounded-md bg-muted/30 border border-border text-xs text-muted-foreground max-w-[200px] truncate">
+                              {log.reasonForVisit}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
+                  );
+                } else {
+                  // Audit Log Render
+                  const { action: tAction, details: tDetails } = translateAuditLog(log.action || "", log.details || "", lang);
+                  const Icon = getAuditIcon(log.action || "");
+                  
+                  return (
+                    <div key={log._id} className="p-4 sm:p-5 flex items-start gap-4 hover:bg-muted/5 transition-colors">
+                      <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 border border-border flex items-center justify-center shrink-0">
+                        {Icon}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold">{tAction}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{tDetails}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-xs text-muted-foreground flex items-center justify-end gap-1.5">
+                              <Clock className="w-3.5 h-3.5" />
+                              {new Date(log.timestamp).toLocaleString(lang === "ar" ? "ar-EG" : "en-US", {
+                                month: "short", day: "numeric", hour: "numeric", minute: "2-digit"
+                              })}
+                            </p>
+                            <p className="text-[10px] font-medium mt-1.5 text-foreground bg-muted/50 px-2 py-0.5 rounded-full inline-block">
+                              {log.actionBy}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
               })}
             </div>
           )}
         </div>
-          </>
-        )}
-
-        {/* Audit Logs Section */}
-        {activeTab === "audit" && auditLogs && auditLogs.length > 0 && (
-          <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
-            <div className="divide-y divide-border">
-              {auditLogs.map((log) => {
-                const { action: tAction, details: tDetails } = translateAuditLog(log.action, log.details, lang);
-                return (
-                <div key={log._id} className="p-4 flex items-start gap-4 hover:bg-muted/5 transition-colors">
-                  <div className="w-9 h-9 rounded-full bg-[#5AC8FA]/10 border border-[#5AC8FA]/20 flex items-center justify-center shrink-0">
-                    <Users className="w-4 h-4 text-[#5AC8FA]" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold">{tAction}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{tDetails}</p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(log.timestamp).toLocaleString(lang === "ar" ? "ar-EG" : "en-US", {
-                            month: "short", day: "numeric", hour: "numeric", minute: "2-digit"
-                          })}
-                        </p>
-                        <p className="text-[10px] text-[#5AC8FA] font-semibold mt-1">
-                          {log.userName || "Unknown"}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )})}
-            </div>
-          </div>
-        )}
-        {activeTab === "audit" && (!auditLogs || auditLogs.length === 0) && (
-          <div className="flex flex-col items-center justify-center p-12 text-center text-muted-foreground">
-            <ShieldCheck className="w-12 h-12 text-muted-foreground/30 mb-4" />
-            <h3 className="text-base font-semibold">{lang === "ar" ? "لا توجد سجلات إجراءات" : "No audit logs found"}</h3>
-          </div>
-        )}
       </div>
     </div>
   );

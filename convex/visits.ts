@@ -365,6 +365,7 @@ export const getActivityLog = query({
       source: v.source ?? "manual",
       status: v.status ?? "confirmed",
       reasonForVisit: v.reasonForVisit,
+      actionBy: v.actionBy,
     }));
   },
 });
