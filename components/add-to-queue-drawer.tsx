@@ -13,7 +13,8 @@ import {
   DrawerFooter,
   DrawerClose,
 } from "@/components/ui/drawer";
-import { PatientIntakeDrawer } from "@/components/patient-intake-drawer";
+import dynamic from "next/dynamic";
+const PatientIntakeDrawer = dynamic(() => import("@/components/patient-intake-drawer").then(m => m.PatientIntakeDrawer));
 import { toast } from "sonner";
 import { Search, UserPlus, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";

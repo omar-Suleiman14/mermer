@@ -1,5 +1,5 @@
 import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { getAuthUser, requireAuthUser, logAction } from "./authHelper";
 import { internal } from "./_generated/api";
 
@@ -12,7 +12,7 @@ function normalizeEgyptMobile(raw: string) {
   if (digits.startsWith("20")) digits = digits.slice(2);
   if (digits.startsWith("0")) digits = digits.slice(1);
   if (!/^1[0125]\d{8}$/.test(digits)) {
-    throw new Error("Invalid phone number");
+    throw new ConvexError("Invalid phone number");
   }
   return digits;
 }
@@ -29,10 +29,10 @@ function assertPublicBookingSlot(
 ) {
   const now = Date.now();
   if (!Number.isFinite(date) || date < now - PAST_BOOKING_GRACE_MS) {
-    throw new Error("Appointment time must be in the future");
+    throw new ConvexError("Appointment time must be in the future");
   }
   if (date > now + MAX_PUBLIC_BOOKING_WINDOW_MS) {
-    throw new Error("Appointment time is too far in the future");
+    throw new ConvexError("Appointment time is too far in the future");
   }
 
   const doctorOffsetMinutes = doctor.timezoneOffset ?? -180;
@@ -40,7 +40,7 @@ function assertPublicBookingSlot(
   const day = DAY_ABBREVS[localDate.getUTCDay()];
   const availableDays = doctor.availableDays ?? [];
   if (availableDays.length > 0 && !availableDays.includes(day)) {
-    throw new Error("Doctor is not available on this day");
+    throw new ConvexError("Doctor is not available on this day");
   }
 
   const startHour = doctor.workingHoursStart ?? 9;
@@ -51,10 +51,10 @@ function assertPublicBookingSlot(
   const slotMinutes = localDate.getUTCHours() * 60 + localDate.getUTCMinutes();
 
   if (slotMinutes < startMinutes || slotMinutes >= endMinutes) {
-    throw new Error("Appointment must be within working hours");
+    throw new ConvexError("Appointment must be within working hours");
   }
   if ((slotMinutes - startMinutes) % slotDuration !== 0) {
-    throw new Error("Appointment must match an available slot");
+    throw new ConvexError("Appointment must match an available slot");
   }
 }
 
@@ -74,12 +74,12 @@ export const createAppointment = mutation({
       .withIndex("by_qr_slug", (q) => q.eq("qrSlug", args.doctorSlug))
       .unique();
     if (!doctor || !doctor.publicProfile || doctor.isBanned) {
-      throw new Error("Doctor not found");
+      throw new ConvexError("Doctor not found");
     }
 
     const patientName = args.patientName.trim().replace(/\s+/g, " ");
     if (patientName.length < 2 || patientName.length > 100) {
-      throw new Error("Invalid patient name");
+      throw new ConvexError("Invalid patient name");
     }
 
     const patientPhone = normalizeEgyptMobile(args.patientPhone);
@@ -87,7 +87,7 @@ export const createAppointment = mutation({
       args.patientAge !== undefined &&
       (!Number.isInteger(args.patientAge) || args.patientAge < 0 || args.patientAge > 120)
     ) {
-      throw new Error("Invalid patient age");
+      throw new ConvexError("Invalid patient age");
     }
 
     assertPublicBookingSlot(args.date, doctor);
@@ -103,7 +103,7 @@ export const createAppointment = mutation({
       (visit) => visit.date >= Date.now() - 86400000 && visit.status !== "cancelled"
     );
     if (phoneUpcoming.length >= 3) {
-      throw new Error("Rate limit exceeded: You already have 3 active appointments.");
+      throw new ConvexError("Rate limit exceeded: You already have 3 active appointments.");
     }
 
     // Conflict check against visits table (Convex OCC makes this race-condition safe)
@@ -116,7 +116,7 @@ export const createAppointment = mutation({
       .first();
       
     if (existing) {
-      throw new Error("This time slot is already booked");
+      throw new ConvexError("This time slot is already booked");
     }
 
     // OPTIMIZED: Use by_doctor_phone index for O(1) lookup
@@ -183,8 +183,8 @@ export const addManualAppointment = mutation({
     const doctor = await requireAuthUser(ctx, args.clerkId);
 
     const patient = await ctx.db.get(args.patientId);
-    if (!patient) throw new Error("Patient not found");
-    if (patient.doctorId !== doctor._id) throw new Error("Access denied");
+    if (!patient) throw new ConvexError("Patient not found");
+    if (patient.doctorId !== doctor._id) throw new ConvexError("Access denied");
 
     // Working hours validation
     const doctorOffsetMinutes = doctor.timezoneOffset ?? -180;
@@ -194,7 +194,7 @@ export const addManualAppointment = mutation({
     const startHour = doctor.workingHoursStart ?? 9;
     const endHour = doctor.workingHoursEnd ?? 17;
     if (bookingHour < startHour || bookingHour >= endHour) {
-      throw new Error(`Appointment must be within working hours: ${startHour}:00 - ${endHour}:00`);
+      throw new ConvexError(`Appointment must be within working hours: ${startHour}:00 - ${endHour}:00`);
     }
 
     // Conflict check
@@ -206,7 +206,7 @@ export const addManualAppointment = mutation({
       .filter((q) => q.neq(q.field("status"), "cancelled"))
       .first();
     if (conflict) {
-      throw new Error("This time slot is already booked");
+      throw new ConvexError("This time slot is already booked");
     }
 
     return await ctx.db.insert("visits", {
@@ -231,6 +231,8 @@ export const swapAppointments = mutation({
     clerkId: v.string(),
     appointmentId1: v.id("visits"),
     appointmentId2: v.id("visits"),
+    expectedDate1: v.optional(v.number()),
+    expectedDate2: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
@@ -238,8 +240,15 @@ export const swapAppointments = mutation({
     const v1 = await ctx.db.get(args.appointmentId1);
     const v2 = await ctx.db.get(args.appointmentId2);
 
-    if (!v1 || v1.doctorId !== user._id) throw new Error("Not found 1");
-    if (!v2 || v2.doctorId !== user._id) throw new Error("Not found 2");
+    if (!v1 || v1.doctorId !== user._id) throw new ConvexError("Not found 1");
+    if (!v2 || v2.doctorId !== user._id) throw new ConvexError("Not found 2");
+
+    if (args.expectedDate1 && v1.date !== args.expectedDate1) {
+      throw new ConvexError("Appointment 1 was modified by another user. Please refresh.");
+    }
+    if (args.expectedDate2 && v2.date !== args.expectedDate2) {
+      throw new ConvexError("Appointment 2 was modified by another user. Please refresh.");
+    }
 
     await ctx.db.patch(v1._id, { date: v2.date });
     await ctx.db.patch(v2._id, { date: v1.date });
@@ -276,7 +285,7 @@ export const listOnlineAppointments = query({
       .take(200);
 
     return visits
-      .filter((v) => v.source === "online")
+      .filter((v) => v.source === "online" && v.status === "confirmed")
       .slice(0, 50);
   },
 });
@@ -366,7 +375,7 @@ export const updateAppointment = mutation({
     const user = await requireAuthUser(ctx, args.clerkId);
 
     const visit = await ctx.db.get(args.appointmentId);
-    if (!visit || visit.doctorId !== user._id) throw new Error("Not authorized");
+    if (!visit || visit.doctorId !== user._id) throw new ConvexError("Not authorized");
 
     if (args.updates.date) {
       const doctorOffsetMinutes = user.timezoneOffset ?? -180;
@@ -376,7 +385,7 @@ export const updateAppointment = mutation({
       const startHour = user.workingHoursStart ?? 9;
       const endHour = user.workingHoursEnd ?? 17;
       if (bookingHour < startHour || bookingHour >= endHour) {
-        throw new Error(`Appointment must be within working hours: ${startHour}:00 - ${endHour}:00`);
+        throw new ConvexError(`Appointment must be within working hours: ${startHour}:00 - ${endHour}:00`);
       }
 
       const conflict = await ctx.db
@@ -386,7 +395,7 @@ export const updateAppointment = mutation({
         )
         .collect();
       if (conflict.some((c) => c._id !== visit._id && c.status !== "cancelled")) {
-        throw new Error("This time slot is already booked");
+        throw new ConvexError("This time slot is already booked");
       }
 
       // Sync the reschedule to the installment's nextVisitDate
@@ -406,7 +415,7 @@ export const deleteAppointment = mutation({
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
     const visit = await ctx.db.get(args.appointmentId);
-    if (!visit || visit.doctorId !== user._id) throw new Error("Not authorized");
+    if (!visit || visit.doctorId !== user._id) throw new ConvexError("Not authorized");
     await ctx.db.delete(args.appointmentId);
   },
 });
@@ -424,25 +433,19 @@ export const cancelAppointmentByPhone = mutation({
     const user = await requireAuthUser(ctx, args.clerkId);
     const visit = await ctx.db.get(args.appointmentId);
     if (!visit || visit.doctorId !== user._id)
-      throw new Error("Not found or unauthorized");
+      throw new ConvexError("Not found or unauthorized");
 
     // Safety: only allow cancellation of visits created within the last 7 days
     const sevenDaysAgo = Date.now() - 7 * 86400000;
     if (visit.createdAt < sevenDaysAgo) {
-      throw new Error("This appointment can no longer be cancelled online");
+      throw new ConvexError("This appointment can no longer be cancelled online");
     }
 
     // Don't allow cancelling already-completed visits
     if (visit.status === "completed") {
-      throw new Error("Completed visits cannot be cancelled");
+      throw new ConvexError("Completed visits cannot be cancelled");
     }
 
     await ctx.db.patch(args.appointmentId, { status: "cancelled" });
   },
 });
-
-// ─── Visit history (per patient) ─────────────────────────────────────────────
-// FIX #19: REMOVED duplicate getVisitsByPatient — canonical version is in visits.ts
-
-// ─── Visit stats ─────────────────────────────────────────────────────────────
-// FIX #19: REMOVED duplicate getVisitStats — canonical version is in visits.ts

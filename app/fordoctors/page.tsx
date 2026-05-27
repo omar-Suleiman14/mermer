@@ -27,9 +27,36 @@ import { PublicNav } from "@/components/public/public-nav";
 import Image from "next/image";
 import { Metadata } from "next";
 
+const title = "For Doctors | mermer";
+const description = "mermer empowers medical professionals with verified public profiles, authentic review tracking, and tools to elevate their online clinical reputation.";
+
 export const metadata: Metadata = {
-  title: "For Doctors | mermer",
-  description: "mermer empowers medical professionals with verified public profiles, authentic review tracking, and tools to elevate their online clinical reputation.",
+  title,
+  description,
+  alternates: {
+    canonical: "https://mermereg.com/fordoctors",
+  },
+  openGraph: {
+    title,
+    description,
+    url: "https://mermereg.com/fordoctors",
+    siteName: "mermer",
+    images: [
+      {
+        url: "/icon.svg",
+        width: 1200,
+        height: 630,
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title,
+    description,
+    images: ["/icon.svg"],
+  },
 };
 
 export default async function LandingPage() {

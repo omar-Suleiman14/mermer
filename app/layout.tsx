@@ -37,6 +37,27 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: "mermer",
   },
+  openGraph: {
+    title: "mermer — Find & Book Doctors in Egypt",
+    description: "mermer empowers medical professionals with verified public profiles, authentic review tracking, and tools to elevate their online clinical reputation.",
+    url: "https://mermereg.com",
+    siteName: "mermer",
+    images: [
+      {
+        url: "/icon.svg",
+        width: 1200,
+        height: 630,
+      },
+    ],
+    locale: "en_US",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "mermer — Find & Book Doctors in Egypt",
+    description: "mermer empowers medical professionals with verified public profiles, authentic review tracking, and tools to elevate their online clinical reputation.",
+    images: ["/icon.svg"],
+  },
 };
 export default async function RootLayout({
   children,

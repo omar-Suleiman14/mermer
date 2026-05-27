@@ -60,6 +60,7 @@ export default function HistoryPage() {
   const rawLogs = useQuery(api.visits.getActivityLog, clerkId ? { clerkId, limit: 500 } : "skip");
   const auditLogs = useQuery(api.auditLogs.getAuditLogs, clerkId ? { clerkId, limit: 200 } : "skip");
 
+  const [activeTab, setActiveTab] = useState<"activity" | "audit">("activity");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("");
 
@@ -97,10 +98,29 @@ export default function HistoryPage() {
       />
 
       <div className="flex-1 overflow-auto p-4 sm:p-6 max-w-5xl mx-auto w-full">
-        {/* Filters */}
-        <div className="bg-card border border-border rounded-xl p-4 mb-6 flex flex-col sm:flex-row gap-4 items-center justify-between shadow-sm">
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <Filter className="w-4 h-4 text-muted-foreground" />
+        {/* Tabs */}
+        <div className="flex bg-card p-1 rounded-xl shadow-sm mb-6 w-full max-w-md mx-auto">
+          {(["activity", "audit"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex-1 text-sm font-medium py-2 px-3 rounded-lg transition-colors capitalize ${
+                activeTab === tab
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              {tab === "activity" ? (lang === "ar" ? "النشاط" : "Activity") : (lang === "ar" ? "سجل الإجراءات" : "Audit Log")}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === "activity" && (
+          <>
+            {/* Filters */}
+            <div className="bg-card border border-border rounded-xl p-4 mb-6 flex flex-col sm:flex-row gap-4 items-center justify-between shadow-sm">
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                <Filter className="w-4 h-4 text-muted-foreground" />
             <select
               value={sourceFilter}
               onChange={(e) => setSourceFilter(e.target.value)}
@@ -221,15 +241,11 @@ export default function HistoryPage() {
             </div>
           )}
         </div>
-      </div>
+          </>
+        )}
 
-      {/* Audit Logs Section */}
-      {auditLogs && auditLogs.length > 0 && (
-        <div className="flex-1 overflow-auto p-4 sm:p-6 max-w-5xl mx-auto w-full pt-0">
-          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4" />
-            {lang === "ar" ? "سجل الإجراءات" : "Action Audit Log"}
-          </h2>
+        {/* Audit Logs Section */}
+        {activeTab === "audit" && auditLogs && auditLogs.length > 0 && (
           <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
             <div className="divide-y divide-border">
               {auditLogs.map((log) => {
@@ -261,8 +277,14 @@ export default function HistoryPage() {
               )})}
             </div>
           </div>
-        </div>
-      )}
+        )}
+        {activeTab === "audit" && (!auditLogs || auditLogs.length === 0) && (
+          <div className="flex flex-col items-center justify-center p-12 text-center text-muted-foreground">
+            <ShieldCheck className="w-12 h-12 text-muted-foreground/30 mb-4" />
+            <h3 className="text-base font-semibold">{lang === "ar" ? "لا توجد سجلات إجراءات" : "No audit logs found"}</h3>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

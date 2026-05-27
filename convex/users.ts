@@ -1,5 +1,5 @@
 import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { getAuthUser, requireAuthUser, requireAdmin } from "./authHelper";
 
@@ -24,7 +24,7 @@ export const getOrCreateUser = mutation({
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity || identity.subject !== args.clerkId) {
-      throw new Error("Unauthenticated or identity mismatch");
+      throw new ConvexError("Unauthenticated or identity mismatch");
     }
 
     const existing = await ctx.db
@@ -147,16 +147,16 @@ export const acceptInvitation = mutation({
   args: { clerkId: v.string(), invitationId: v.id("invitations") },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity || identity.subject !== args.clerkId) throw new Error("Unauthenticated");
+    if (!identity || identity.subject !== args.clerkId) throw new ConvexError("Unauthenticated");
 
     const user = await ctx.db
       .query("users")
       .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
       .unique();
-    if (!user) throw new Error("User not found");
+    if (!user) throw new ConvexError("User not found");
 
     const invitation = await ctx.db.get(args.invitationId);
-    if (!invitation || invitation.email !== user.email) throw new Error("Invitation not found");
+    if (!invitation || invitation.email !== user.email) throw new ConvexError("Invitation not found");
 
     await ctx.db.patch(user._id, {
       role: "assistant",
@@ -172,7 +172,7 @@ export const declineInvitation = mutation({
   args: { clerkId: v.string(), invitationId: v.id("invitations") },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity || identity.subject !== args.clerkId) throw new Error("Unauthenticated");
+    if (!identity || identity.subject !== args.clerkId) throw new ConvexError("Unauthenticated");
 
     const invitation = await ctx.db.get(args.invitationId);
     if (!invitation) return;
@@ -396,8 +396,8 @@ export const claimAdmin = mutation({
   handler: async (ctx, args) => {
     // Require JWT identity to prevent unauthenticated admin claims
     const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
-    if (identity.subject !== args.clerkId) throw new Error("Identity mismatch");
+    if (!identity) throw new ConvexError("Unauthenticated");
+    if (identity.subject !== args.clerkId) throw new ConvexError("Identity mismatch");
 
     // OPTIMIZED: Use index to check if any admin exists (O(1) instead of O(N))
     const existingAdmin = await ctx.db
@@ -405,14 +405,14 @@ export const claimAdmin = mutation({
       .withIndex("by_isAdmin", (q) => q.eq("isAdmin", true))
       .first();
     if (existingAdmin) {
-      throw new Error("Admin already claimed");
+      throw new ConvexError("Admin already claimed");
     }
 
     const user = await ctx.db
       .query("users")
       .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
       .unique();
-    if (!user) throw new Error("User not found — sign in first");
+    if (!user) throw new ConvexError("User not found — sign in first");
 
     await ctx.db.patch(user._id, { isAdmin: true });
     return user._id;
@@ -493,7 +493,7 @@ export const inviteStaff = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
-    if (user.role === "assistant") throw new Error("Only doctors can invite staff");
+    if (user.role === "assistant") throw new ConvexError("Only doctors can invite staff");
 
     // Check if there's already a pending invite for this email
     const existing = await ctx.db
@@ -530,10 +530,10 @@ export const updateStaffPermissions = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
-    if (user.role === "assistant") throw new Error("Only doctors can update staff");
+    if (user.role === "assistant") throw new ConvexError("Only doctors can update staff");
 
     const staff = await ctx.db.get(args.staffId);
-    if (!staff || staff.clinicId !== user._id) throw new Error("Staff not found");
+    if (!staff || staff.clinicId !== user._id) throw new ConvexError("Staff not found");
 
     await ctx.db.patch(args.staffId, { permissions: args.permissions });
   },
@@ -546,10 +546,10 @@ export const removeStaff = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
-    if (user.role === "assistant") throw new Error("Only doctors can remove staff");
+    if (user.role === "assistant") throw new ConvexError("Only doctors can remove staff");
 
     const staff = await ctx.db.get(args.staffId);
-    if (!staff || staff.clinicId !== user._id) throw new Error("Staff not found");
+    if (!staff || staff.clinicId !== user._id) throw new ConvexError("Staff not found");
 
     // Remove them by unlinking them from the clinic
     await ctx.db.patch(args.staffId, { clinicId: undefined, role: "doctor" });
@@ -563,10 +563,10 @@ export const removeInvitation = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
-    if (user.role === "assistant") throw new Error("Only doctors can remove invitations");
+    if (user.role === "assistant") throw new ConvexError("Only doctors can remove invitations");
 
     const inv = await ctx.db.get(args.invitationId);
-    if (!inv || inv.doctorId !== user._id) throw new Error("Invitation not found");
+    if (!inv || inv.doctorId !== user._id) throw new ConvexError("Invitation not found");
 
     await ctx.db.delete(args.invitationId);
   },

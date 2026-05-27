@@ -1,5 +1,5 @@
 import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { getAuthUser, requireAuthUser } from "./authHelper";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -117,7 +117,7 @@ export const createinstallment = mutation({
 
     const patient = await ctx.db.get(args.patientId);
     if (!patient || patient.doctorId !== user._id)
-      throw new Error("Patient not found");
+      throw new ConvexError("Patient not found");
 
     // ── Compute number of visits from financials ───────────────────────────
     let numVisits: number | undefined;
@@ -233,7 +233,7 @@ export const updateinstallment = mutation({
 
     const installment = await ctx.db.get(args.installmentId);
     if (!installment || installment.doctorId !== user._id)
-      throw new Error("Not authorized");
+      throw new ConvexError("Not authorized");
 
     await ctx.db.patch(args.installmentId, args.updates);
   },
@@ -247,7 +247,7 @@ export const deleteinstallment = mutation({
 
     const installment = await ctx.db.get(args.installmentId);
     if (!installment || installment.doctorId !== user._id)
-      throw new Error("Not authorized");
+      throw new ConvexError("Not authorized");
 
     // Parallel deletion of all auto-generated visits for this installment
     const installmentVisits = await ctx.db
@@ -290,7 +290,7 @@ export const waiveUnpaidBalance = mutation({
     const user = await requireAuthUser(ctx, args.clerkId);
 
     const installment = await ctx.db.get(args.installmentId);
-    if (!installment || installment.doctorId !== user._id) throw new Error("installment not found");
+    if (!installment || installment.doctorId !== user._id) throw new ConvexError("installment not found");
 
     // Waive: zero out unpaid balance, treat all visits as paid
     const completedVisits = installment.completedVisits ?? 0;
@@ -333,10 +333,10 @@ export const completeinstallmentVisit = mutation({
     const user = await requireAuthUser(ctx, args.clerkId);
 
     const visit = await ctx.db.get(args.visitId);
-    if (!visit || visit.doctorId !== user._id) throw new Error("Visit not found");
+    if (!visit || visit.doctorId !== user._id) throw new ConvexError("Visit not found");
 
     const installment = await ctx.db.get(args.installmentId);
-    if (!installment || installment.doctorId !== user._id) throw new Error("installment not found");
+    if (!installment || installment.doctorId !== user._id) throw new ConvexError("installment not found");
 
     // Mark current visit completed
     await ctx.db.patch(args.visitId, {

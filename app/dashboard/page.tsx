@@ -5,7 +5,8 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
-import { VisitCompletionModal } from "@/components/visit-completion-modal";
+import dynamic from "next/dynamic";
+const VisitCompletionModal = dynamic(() => import("@/components/visit-completion-modal").then(m => m.VisitCompletionModal));
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
@@ -66,31 +67,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-
-
-
-function startOfDay(ts: number) {
-  const d = new Date(ts);
-  d.setHours(0, 0, 0, 0);
-  return d.getTime();
-}
-
-function formatTime(ts: number, locale = "en-US") {
-  return new Date(ts).toLocaleTimeString(locale, {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
-
-function formatFullDate(ts: number, locale = "en-US") {
-  return new Date(ts).toLocaleDateString(locale, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-}
+import { startOfDay, formatTime, formatFullDate, isNonWorkingDay, useWhatsAppTemplate } from "@/lib/scheduling";
 
 const SortableApptItem = memo(function SortableApptItem({
   appt,
@@ -156,7 +133,7 @@ const SortableApptItem = memo(function SortableApptItem({
       <div className="flex flex-col items-center w-12 sm:w-14 shrink-0">
         <Clock className="w-3 h-3 text-muted-foreground mb-0.5" />
         <span className="text-xs font-bold text-[#1a1916] dark:text-[#f0efea]">
-          {formatTime(appt.date, lang === "ar" ? "ar-EG" : "en-US")}
+          {formatTime(appt.date, lang)}
         </span>
       </div>
 
@@ -407,12 +384,6 @@ export default function DashboardPage() {
 
   // Working days from doctor profile for reschedule calendar
   const workingDayAbbrs: string[] = (currentUser as any)?.availableDays ?? [];
-  const DOW_ABBR: Record<number, string> = { 0: "Sun", 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat" };
-  function isNonWorkingDay(d: Date): boolean {
-    if (workingDayAbbrs.length === 0) return false;
-    const dayName = DOW_ABBR[d.getDay()];
-    return !workingDayAbbrs.includes(dayName);
-  }
 
   // Time slots for reschedule
   const rescheduleSlots = useMemo(() => {
@@ -479,6 +450,8 @@ export default function DashboardPage() {
     }
   }, [clerkId, swapAppointments]);
 
+  const sendWhatsAppTemplate = useWhatsAppTemplate(lang);
+
   function openTemplatePicker(patientName: string, patientPhone: string, appointmentDate: number, e: React.MouseEvent) {
     setTemplatePicker({ patientName, patientPhone, appointmentDate, anchorX: e.clientX, anchorY: e.clientY });
   }
@@ -486,23 +459,7 @@ export default function DashboardPage() {
   function sendWithTemplate(templateBody: string) {
     if (!templatePicker) return;
     const { patientName, patientPhone, appointmentDate } = templatePicker;
-    const firstName = patientName.split(" ")[0];
-    const now = new Date(appointmentDate);
-    const message = templateBody
-      .replace(/\{patient_name\}/g, patientName)
-      .replace(/\{date\}/g, now.toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { month: "short", day: "numeric" }))
-      .replace(/\{time\}/g, formatTime(appointmentDate, lang === "ar" ? "ar-EG" : "en-US"))
-      .replace(/\{clinic_address\}/g, (currentUser as any)?.clinicAddressLink || "")
-      .replace(/\{\{name\}\}/g, firstName);
-
-    let num = patientPhone.replace(/[\s\-\(\)]/g, "");
-    if (num.startsWith("+")) num = num.slice(1);
-    if (num.startsWith("0")) num = "20" + num.slice(1);
-    else if (!num.startsWith("20")) num = "20" + num;
-
-    const url = `https://wa.me/${num}?text=${encodeURIComponent(message)}`;
-    window.open(url, "_blank");
-    toast.success(`Opening WhatsApp for ${firstName}`);
+    sendWhatsAppTemplate(templateBody, patientName, patientPhone, appointmentDate, (currentUser as any)?.clinicAddressLink);
     setTemplatePicker(null);
   }
 
@@ -544,12 +501,12 @@ export default function DashboardPage() {
               <h2 className="font-bold text-base">{t("dashboard.todaysVisits")}</h2>
             </div>
             <p className="text-xs text-muted-foreground block sm:hidden">
-              {formatFullDate(todayTs, lang === "ar" ? "ar-EG" : "en-US")}
+              {formatFullDate(todayTs, lang)}
             </p>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
             <p className="text-xs text-muted-foreground hidden sm:block">
-              {formatFullDate(todayTs, lang === "ar" ? "ar-EG" : "en-US")}
+              {formatFullDate(todayTs, lang)}
             </p>
 
             <button
@@ -749,7 +706,7 @@ export default function DashboardPage() {
                         </button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={rescheduleDate} onSelect={(d) => { if (d) { setRescheduleDate(d); setRescheduleCalOpen(false); } }} disabled={(d) => d < new Date() || isNonWorkingDay(d)} />
+                        <Calendar mode="single" selected={rescheduleDate} onSelect={(d) => { if (d) { setRescheduleDate(d); setRescheduleCalOpen(false); } }} disabled={(d) => d < new Date() || isNonWorkingDay(d, workingDayAbbrs)} />
                       </PopoverContent>
                     </Popover>
                   </div>

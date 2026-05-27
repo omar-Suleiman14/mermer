@@ -1,5 +1,5 @@
 import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { getAuthUser, requireAuthUser } from "./authHelper";
 
 // ─── Queries ─────────────────────────────────────────────────────────────────
@@ -50,7 +50,7 @@ export const updateTemplate = mutation({
     const user = await requireAuthUser(ctx, args.clerkId);
 
     const tpl = await ctx.db.get(args.templateId);
-    if (!tpl || tpl.doctorId !== user._id) throw new Error("Not authorized");
+    if (!tpl || tpl.doctorId !== user._id) throw new ConvexError("Not authorized");
 
     await ctx.db.patch(args.templateId, {
       name: args.name,
@@ -66,7 +66,7 @@ export const deleteTemplate = mutation({
     const user = await requireAuthUser(ctx, args.clerkId);
 
     const tpl = await ctx.db.get(args.templateId);
-    if (!tpl || tpl.doctorId !== user._id) throw new Error("Not authorized");
+    if (!tpl || tpl.doctorId !== user._id) throw new ConvexError("Not authorized");
 
     await ctx.db.delete(args.templateId);
   },

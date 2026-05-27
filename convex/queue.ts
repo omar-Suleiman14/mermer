@@ -1,5 +1,5 @@
 import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { getAuthUser, requireAuthUser } from "./authHelper";
 
 /** Returns the start-of-day timestamp (midnight) for a given UTC timestamp. */
@@ -123,7 +123,7 @@ export const addToQueue = mutation({
       const slotConflict = active.find(
         (q) => q.scheduledTime === args.scheduledTime && q.patientId !== args.patientId
       );
-      if (slotConflict) throw new Error("This time slot is already booked");
+      if (slotConflict) throw new ConvexError("This time slot is already booked");
     }
 
     const maxPos = active.reduce((m, q) => Math.max(m, q.position), 0);
@@ -140,7 +140,7 @@ export const addToQueue = mutation({
     // Denormalize patient info to avoid N reads in query
     const patient = await ctx.db.get(args.patientId);
     if (!patient || patient.doctorId !== user._id) {
-      throw new Error("Patient not found or unauthorized");
+      throw new ConvexError("Patient not found or unauthorized");
     }
 
     return await ctx.db.insert("queue", {
@@ -170,7 +170,7 @@ export const markDone = mutation({
     const user = await requireAuthUser(ctx, args.clerkId);
 
     const item = await ctx.db.get(args.queueId);
-    if (!item || item.doctorId !== user._id) throw new Error("Not found");
+    if (!item || item.doctorId !== user._id) throw new ConvexError("Not found");
 
     await ctx.db.patch(args.queueId, {
       status: "done",
@@ -216,7 +216,7 @@ export const reorderQueue = mutation({
     // Verify all items belong to this doctor
     for (const item of items) {
       if (item && item.doctorId !== user._id) {
-        throw new Error("Unauthorized: queue item belongs to another doctor");
+        throw new ConvexError("Unauthorized: queue item belongs to another doctor");
       }
     }
 
@@ -240,7 +240,7 @@ export const markReminderSent = mutation({
     const user = await requireAuthUser(ctx, args.clerkId);
 
     const item = await ctx.db.get(args.queueId);
-    if (!item || item.doctorId !== user._id) throw new Error("Not found");
+    if (!item || item.doctorId !== user._id) throw new ConvexError("Not found");
     await ctx.db.patch(args.queueId, { reminderSent: true });
   },
 });
@@ -279,7 +279,7 @@ export const updateQueueStartTime = mutation({
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
     const item = await ctx.db.get(args.queueId);
-    if (!item || item.doctorId !== user._id) throw new Error("Not found");
+    if (!item || item.doctorId !== user._id) throw new ConvexError("Not found");
     await ctx.db.patch(args.queueId, { scheduledTime: args.scheduledTime });
   },
 });

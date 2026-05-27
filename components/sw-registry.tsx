@@ -6,8 +6,8 @@ export function SwRegistry() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) return;
 
-    void navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {
-      // Non-critical: push notifications simply stay unavailable.
+    void navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch((err) => {
+      console.warn("Service Worker registration failed:", err);
     });
   }, []);
 

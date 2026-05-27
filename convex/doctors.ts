@@ -1,5 +1,5 @@
 import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { Doc } from "./_generated/dataModel";
 import { requireAuthUser, requireAdmin } from "./authHelper";
 
@@ -346,7 +346,7 @@ export const getDoctorAnalytics = query({
     await requireAdmin(ctx, args.clerkId);
 
     const doctor = await ctx.db.get(args.targetUserId);
-    if (!doctor) throw new Error("Doctor not found");
+    if (!doctor) throw new ConvexError("Doctor not found");
 
     const now = args.now ?? Date.now();
     const monthStart = now - 30 * 86400000;

@@ -126,8 +126,8 @@ export function BookingForm({ doctor }: BookingFormProps) {
     e.preventDefault();
     setError("");
 
-    if (!name.trim()) {
-      setError(dir === "rtl" ? "يرجى إدخال الاسم الكامل" : "Please enter your full name");
+    if (!name.trim() || name.trim().length < 2) {
+      setError(dir === "rtl" ? "يجب أن يتكون الاسم من حرفين على الأقل" : "Please enter your full name (at least 2 characters)");
       return;
     }
     if (phone.length !== 10) {
@@ -156,10 +156,12 @@ export function BookingForm({ doctor }: BookingFormProps) {
       setDrawerOpen(false);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      if (msg.includes("Rate limit exceeded")) {
+      const cleanMsg = msg.replace(/\[.*?\]\s*/g, "").replace("ConvexError: ", "").replace("Uncaught Error: ", "").trim();
+      
+      if (cleanMsg.includes("Rate limit exceeded")) {
         setError(dir === "rtl" ? "لديك بالفعل 3 مواعيد قادمة. يرجى إلغاء أحدها قبل الحجز مرة أخرى." : "You already have 3 upcoming appointments. Please cancel one before booking again.");
       } else {
-        setError(msg || (dir === "rtl" ? "حدث خطأ أثناء الحجز" : "Failed to book appointment"));
+        setError(cleanMsg || (dir === "rtl" ? "حدث خطأ أثناء الحجز" : "Failed to book appointment"));
       }
     } finally {
       setLoading(false);

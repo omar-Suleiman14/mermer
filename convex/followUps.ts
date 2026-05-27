@@ -1,5 +1,5 @@
 import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { getAuthUser, requireAuthUser } from "./authHelper";
 
 // ─── Queries ─────────────────────────────────────────────────────────────────
@@ -54,7 +54,7 @@ export const createFollowUp = mutation({
 
     const patient = await ctx.db.get(args.patientId);
     if (!patient || patient.doctorId !== user._id)
-      throw new Error("Patient not found");
+      throw new ConvexError("Patient not found");
 
     // followUpDate is now a full timestamp (with correct time) computed by the client
     const followUpTimestamp = args.followUpDate;
@@ -119,7 +119,7 @@ export const updateFollowUp = mutation({
     const user = await requireAuthUser(ctx, args.clerkId);
 
     const fu = await ctx.db.get(args.followUpId);
-    if (!fu || fu.doctorId !== user._id) throw new Error("Not authorized");
+    if (!fu || fu.doctorId !== user._id) throw new ConvexError("Not authorized");
 
     await ctx.db.patch(args.followUpId, args.updates);
   },
@@ -131,7 +131,7 @@ export const deleteFollowUp = mutation({
     const user = await requireAuthUser(ctx, args.clerkId);
 
     const fu = await ctx.db.get(args.followUpId);
-    if (!fu || fu.doctorId !== user._id) throw new Error("Not authorized");
+    if (!fu || fu.doctorId !== user._id) throw new ConvexError("Not authorized");
 
     await ctx.db.delete(args.followUpId);
   },

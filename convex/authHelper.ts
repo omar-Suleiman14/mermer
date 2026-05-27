@@ -1,3 +1,4 @@
+import { ConvexError } from "convex/values";
 import { QueryCtx, MutationCtx } from "./_generated/server";
 import { Doc, Id } from "./_generated/dataModel";
 
@@ -19,9 +20,9 @@ export async function getAuthUser(
 ): Promise<WrappedUser | null> {
   // Server-side JWT identity check
   const identity = await ctx.auth.getUserIdentity();
-  if (!identity) throw new Error("Unauthenticated");
+  if (!identity) throw new ConvexError("Unauthenticated");
   if (identity.subject !== clerkId) {
-    throw new Error("Unauthorized: identity mismatch");
+    throw new ConvexError("Unauthorized: identity mismatch");
   }
 
   const user = await ctx.db
@@ -35,7 +36,7 @@ export async function getAuthUser(
 
   if (user.role === "assistant" && user.clinicId) {
     const doctor = await ctx.db.get(user.clinicId);
-    if (!doctor) throw new Error("Doctor not found");
+    if (!doctor) throw new ConvexError("Doctor not found");
     resultUser = { ...doctor };
   }
 
@@ -61,9 +62,9 @@ export async function requireAuthUser(
   clerkId: string
 ): Promise<WrappedUser> {
   const user = await getAuthUser(ctx, clerkId);
-  if (!user) throw new Error("User not found");
-  if (user.isBlocked) throw new Error("Account is blocked");
-  if (user.isBanned) throw new Error("Your account access has been restricted. Please contact support.");
+  if (!user) throw new ConvexError("User not found");
+  if (user.isBlocked) throw new ConvexError("Account is blocked");
+  if (user.isBanned) throw new ConvexError("Your account access has been restricted. Please contact support.");
 
   return user;
 }
@@ -78,7 +79,7 @@ export function hasPermission(user: WrappedUser, permission: string): boolean {
 
 export function requirePermission(user: WrappedUser, permission: string) {
   if (!hasPermission(user, permission)) {
-    throw new Error(`Permission denied: requires ${permission}`);
+    throw new ConvexError(`Permission denied: requires ${permission}`);
   }
 }
 
@@ -111,6 +112,6 @@ export async function requireAdmin(
   clerkId: string
 ): Promise<Doc<"users">> {
   const user = await requireAuthUser(ctx, clerkId);
-  if (!user.isAdmin) throw new Error("Unauthorized");
+  if (!user.isAdmin) throw new ConvexError("Unauthorized");
   return user;
 }

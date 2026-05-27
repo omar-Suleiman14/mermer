@@ -1,5 +1,5 @@
 import { mutation, query, internalMutation, internalQuery } from "./_generated/server";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { getAuthUser } from "./authHelper";
 
 // ─── Submit feedback (public, no auth) ──────────────────────────────────────
@@ -18,18 +18,18 @@ export const submitFeedback = mutation({
       .query("users")
       .withIndex("by_qr_slug", (q) => q.eq("qrSlug", args.slug))
       .unique();
-    if (!doctor) throw new Error("Doctor not found");
+    if (!doctor) throw new ConvexError("Doctor not found");
 
-    if (args.rating < 1 || args.rating > 5) throw new Error("Invalid rating");
+    if (args.rating < 1 || args.rating > 5) throw new ConvexError("Invalid rating");
 
     // Validate comment length (prevent spam payload)
     if (args.comment && args.comment.length > 1000) {
-      throw new Error("Comment too long (max 1000 characters)");
+      throw new ConvexError("Comment too long (max 1000 characters)");
     }
 
     // Validate patient name length
     if (args.patientName && args.patientName.length > 100) {
-      throw new Error("Name too long (max 100 characters)");
+      throw new ConvexError("Name too long (max 100 characters)");
     }
 
     // Rate limit: max 5 reviews per doctor in the last hour
@@ -42,7 +42,7 @@ export const submitFeedback = mutation({
 
     const recentCount = recentFeedback.filter((f) => f.createdAt > oneHourAgo).length;
     if (recentCount >= 5) {
-      throw new Error("Too many reviews submitted recently. Please try again later.");
+      throw new ConvexError("Too many reviews submitted recently. Please try again later.");
     }
 
     const feedbackId = await ctx.db.insert("feedback", {
@@ -168,7 +168,7 @@ export const _saveFeedbackQrStorageId = internalMutation({
       .query("users")
       .withIndex("by_clerk_id", (q) => q.eq("clerkId", args.clerkId))
       .unique();
-    if (!user) throw new Error("User not found");
+    if (!user) throw new ConvexError("User not found");
     await ctx.db.patch(user._id, { feedbackQrStorageId: args.storageId });
   },
 });

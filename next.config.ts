@@ -135,6 +135,16 @@ const nextConfig: NextConfig = {
     ];
   },
 
+  async redirects() {
+    return [
+      {
+        source: "/dashboard/appointments",
+        destination: "/dashboard",
+        permanent: true,
+      },
+    ];
+  },
+
   // React Compiler optimization
   reactCompiler: true,
 

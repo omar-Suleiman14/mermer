@@ -8,7 +8,8 @@ import { PageHeader } from "@/components/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Search, UserPlus, Phone, Clock, ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { PatientIntakeDrawer } from "@/components/patient-intake-drawer";
+import dynamic from "next/dynamic";
+const PatientIntakeDrawer = dynamic(() => import("@/components/patient-intake-drawer").then(m => m.PatientIntakeDrawer));
 import { useI18n } from "@/lib/i18n/client";
 
 export default function PatientsPage() {

@@ -1,5 +1,5 @@
 import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { getAuthUser, requireAuthUser, logAction } from "./authHelper";
 import { Doc } from "./_generated/dataModel";
 
@@ -10,11 +10,12 @@ export const listPatients = query({
     const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return [];
 
-    // Cap at 500 patients to prevent unbounded reads
+    // Cap at 50 patients to prevent unbounded reads on dashboard load
     const patients = await ctx.db
       .query("patients")
       .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
-      .take(500);
+      .order("desc")
+      .take(50);
 
     // BATCH: Fetch ALL installments for this doctor once, then group in JS
     const allinstallments = await ctx.db
@@ -111,7 +112,8 @@ export const searchPatients = query({
       const allPatients = await ctx.db
         .query("patients")
         .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
-        .take(500);
+        .order("desc")
+        .take(100);
       const filtered = allPatients
         .filter((p) => p.phone.includes(term))
         .slice(0, 20);
@@ -132,7 +134,8 @@ export const searchPatients = query({
       const allPatients = await ctx.db
         .query("patients")
         .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
-        .take(500);
+        .order("desc")
+        .take(100);
       const lowerTerm = term.toLowerCase();
       const filtered = allPatients
         .filter(
@@ -188,7 +191,7 @@ export const updatePatient = mutation({
     const user = await requireAuthUser(ctx, args.clerkId);
 
     const patient = await ctx.db.get(args.patientId);
-    if (!patient || patient.doctorId !== user._id) throw new Error("Not found");
+    if (!patient || patient.doctorId !== user._id) throw new ConvexError("Not found");
 
     await ctx.db.patch(args.patientId, {
       name: args.name,
@@ -207,7 +210,7 @@ export const deletePatient = mutation({
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
     const patient = await ctx.db.get(args.patientId);
-    if (!patient || patient.doctorId !== user._id) throw new Error("Not found");
+    if (!patient || patient.doctorId !== user._id) throw new ConvexError("Not found");
 
     // Fetch all related records in parallel
     const [visits, installments, followUps, queueItems] = await Promise.all([
@@ -278,7 +281,7 @@ export const batchCreatePatients = mutation({
     const user = await requireAuthUser(ctx, args.clerkId);
     
     if (args.patients.length > 500) {
-      throw new Error("Maximum 500 patients can be imported at once");
+      throw new ConvexError("Maximum 500 patients can be imported at once");
     }
 
     const addedIds = [];

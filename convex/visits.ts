@@ -1,6 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { getAuthUser, requireAuthUser, logAction } from "./authHelper";
 
 export const getVisitsByPatient = query({
@@ -120,7 +120,7 @@ export const createVisit = mutation({
 
     // Denormalize patient info for display
     const patient = await ctx.db.get(args.patientId);
-    if (!patient || patient.doctorId !== user._id) throw new Error("Patient not found");
+    if (!patient || patient.doctorId !== user._id) throw new ConvexError("Patient not found");
 
     if (args.date) {
       const doctorOffsetMinutes = user.timezoneOffset ?? -180;
@@ -130,7 +130,7 @@ export const createVisit = mutation({
       const startHour = user.workingHoursStart ?? 9;
       const endHour = user.workingHoursEnd ?? 17;
       if (bookingHour < startHour || bookingHour >= endHour) {
-        throw new Error(`Appointment must be within working hours: ${startHour}:00 - ${endHour}:00`);
+        throw new ConvexError(`Appointment must be within working hours: ${startHour}:00 - ${endHour}:00`);
       }
     }
 
@@ -193,7 +193,7 @@ export const addVisitFiles = mutation({
     const user = await requireAuthUser(ctx, args.clerkId);
 
     const visit = await ctx.db.get(args.visitId);
-    if (!visit || visit.doctorId !== user._id) throw new Error("Not found");
+    if (!visit || visit.doctorId !== user._id) throw new ConvexError("Not found");
 
     const existingDocIds = visit.documentIds ?? [];
     const newDocIds = args.documentIds ?? [];
@@ -255,7 +255,7 @@ export const deleteVisit = mutation({
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
     const visit = await ctx.db.get(args.visitId);
-    if (!visit || visit.doctorId !== user._id) throw new Error("Not found");
+    if (!visit || visit.doctorId !== user._id) throw new ConvexError("Not found");
     
     if (visit.installmentId) {
       const installment = await ctx.db.get(visit.installmentId);
@@ -296,7 +296,7 @@ export const updateVisit = mutation({
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
     const visit = await ctx.db.get(args.visitId);
-    if (!visit || visit.doctorId !== user._id) throw new Error("Not authorized");
+    if (!visit || visit.doctorId !== user._id) throw new ConvexError("Not authorized");
 
     const patch: Record<string, unknown> = {};
     if (args.updates.status) patch.status = args.updates.status;
@@ -310,7 +310,7 @@ export const updateVisit = mutation({
       const startHour = user.workingHoursStart ?? 9;
       const endHour = user.workingHoursEnd ?? 17;
       if (bookingHour < startHour || bookingHour >= endHour) {
-        throw new Error(`Appointment must be within working hours`);
+        throw new ConvexError(`Appointment must be within working hours`);
       }
       patch.date = args.updates.date;
     }
@@ -398,7 +398,7 @@ export const bulkRescheduleVisits = mutation({
           const startHour = user.workingHoursStart ?? 9;
           const endHour = user.workingHoursEnd ?? 17;
           if (bookingHour < startHour || bookingHour >= endHour) {
-            throw new Error(`Rescheduled time must be within working hours: ${startHour}:00 - ${endHour}:00`);
+            throw new ConvexError(`Rescheduled time must be within working hours: ${startHour}:00 - ${endHour}:00`);
           }
         }
 
@@ -411,7 +411,7 @@ export const bulkRescheduleVisits = mutation({
           .first();
 
         if (conflict && conflict._id !== visit._id && conflict.status !== "cancelled") {
-          throw new Error(`Slot conflict at ${new Date(update.newDate).toISOString()}`);
+          throw new ConvexError(`Slot conflict at ${new Date(update.newDate).toISOString()}`);
         }
 
         await ctx.db.patch(update.visitId, { date: update.newDate });

@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { requireAuthUser } from "./authHelper";
 
@@ -18,10 +18,10 @@ export const saveSubscription = mutation({
     const user = await requireAuthUser(ctx, args.clerkId);
 
     if (!args.endpoint.startsWith("https://") || args.endpoint.length > 2048) {
-      throw new Error("Invalid push endpoint");
+      throw new ConvexError("Invalid push endpoint");
     }
     if (args.p256dh.length > 256 || args.auth.length > 128) {
-      throw new Error("Invalid push subscription");
+      throw new ConvexError("Invalid push subscription");
     }
 
     // Check if subscription already exists

@@ -135,7 +135,7 @@ export function NotificationCenter() {
   // "lastClearedAt" replaces the old deletedIds set — any notification created
   // before this timestamp is considered cleared/dismissed.
   const [lastViewedAt, setLastViewedAt] = useState<number | null>(null);
-  const [lastClearedAt, setLastClearedAt] = useState<number>(0);
+  const [deletedIds, setDeletedIds] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
   const [reminderFor, setReminderFor] = useState<{ patientName?: string; date: number; patientPhone?: string; _id?: string } | null>(null);
 
@@ -147,7 +147,14 @@ export function NotificationCenter() {
         setLastViewedAt(storedLastViewed ? Number(storedLastViewed) : 0);
 
         const storedCleared = localStorage.getItem("notificationsLastClearedAt");
-        if (storedCleared) setLastClearedAt(Number(storedCleared));
+        if (storedCleared) {
+          // Legacy migration
+        }
+
+        const storedDeletedIds = localStorage.getItem("deletedNotificationIds");
+        if (storedDeletedIds) {
+          setDeletedIds(JSON.parse(storedDeletedIds));
+        }
       } catch {
         // localStorage may be unavailable or full — graceful fallback
         setLastViewedAt(0);
@@ -157,7 +164,7 @@ export function NotificationCenter() {
 
   // ── Derived lists ─────────────────────────────────────────────────────────
   const notifications = (onlineAppointments ?? [])
-    .filter((a) => a.createdAt > lastClearedAt) // timestamp-based filtering replaces deletedIds
+    .filter((a) => !deletedIds.includes(a._id))
     .sort((a, b) => b.createdAt - a.createdAt)
     .slice(0, 20);
 
@@ -182,28 +189,22 @@ export function NotificationCenter() {
     if (isOpen) markAllRead();
   };
 
-  // FIX #10: Individual "delete" now just updates the cleared timestamp to hide that notification
-  const handleDelete = (createdAt: number, e: React.MouseEvent) => {
+  // FIX #10: Individual "delete" now safely tracks exact IDs deleted
+  const handleDelete = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    // No-op for individual deletes — user can use "Clear all" for bulk.
-    // This just visually removes by setting cleared to this notification's timestamp
-    // (only hides this and older ones)
-    if (createdAt >= lastClearedAt) {
-      const newCleared = createdAt;
-      setLastClearedAt(newCleared);
-      try {
-        localStorage.setItem("notificationsLastClearedAt", String(newCleared));
-      } catch { /* QuotaExceededError guard */ }
-    }
+    const newDeleted = [...deletedIds, id];
+    setDeletedIds(newDeleted);
+    try {
+      localStorage.setItem("deletedNotificationIds", JSON.stringify(newDeleted));
+    } catch { /* QuotaExceededError guard */ }
   };
 
   const handleClearAll = () => {
-    const now = Date.now();
-    setLastClearedAt(now);
+    const allIds = (onlineAppointments ?? []).map(a => a._id);
+    const newDeleted = Array.from(new Set([...deletedIds, ...allIds]));
+    setDeletedIds(newDeleted);
     try {
-      localStorage.setItem("notificationsLastClearedAt", String(now));
-      // Clean up old deletedNotificationIds if it exists (migration)
-      localStorage.removeItem("deletedNotificationIds");
+      localStorage.setItem("deletedNotificationIds", JSON.stringify(newDeleted));
     } catch { /* QuotaExceededError guard */ }
   };
 
@@ -359,7 +360,7 @@ export function NotificationCenter() {
 
                     {/* Delete button */}
                     <button
-                      onClick={(e) => handleDelete(noti.createdAt, e)}
+                      onClick={(e) => handleDelete(noti._id, e)}
                       className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-muted/60 transition-all text-muted-foreground hover:text-red-500 absolute top-3 inset-e-3"
                     >
                       <X className="w-4 h-4" />

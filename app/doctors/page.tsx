@@ -7,11 +7,37 @@ import { Metadata } from "next";
 
 export async function generateMetadata(): Promise<Metadata> {
   const { dir } = await getServerI18n();
+  const title = dir === "rtl" ? "الأطباء | مرمر" : "Doctors | mermer";
+  const description = dir === "rtl" 
+    ? "تصفح قائمة الأطباء الموثقين على منصتنا واختر الأنسب لك."
+    : "Browse our verified doctors and choose the best for you.";
+
   return {
-    title: dir === "rtl" ? "الأطباء | مرمر" : "Doctors | mermer",
-    description: dir === "rtl" 
-      ? "تصفح قائمة الأطباء الموثقين على منصتنا واختر الأنسب لك."
-      : "Browse our verified doctors and choose the best for you.",
+    title,
+    description,
+    alternates: {
+      canonical: "https://mermereg.com/doctors",
+    },
+    openGraph: {
+      title,
+      description,
+      url: "https://mermereg.com/doctors",
+      siteName: "mermer",
+      images: [
+        {
+          url: "/icon.svg",
+          width: 1200,
+          height: 630,
+        },
+      ],
+      type: "website",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: ["/icon.svg"],
+    },
   };
 }
 

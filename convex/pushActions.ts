@@ -67,7 +67,7 @@ export const sendPushNotification = internalAction({
       } catch (error: unknown) {
         const statusCode = getStatusCode(error);
         if (statusCode === 404 || statusCode === 410) {
-          console.log("Subscription has expired or is no longer valid:", error);
+          console.log(`Subscription ${sub._id} has expired (410/404). Removing.`);
           removePromises.push(
             ctx.runMutation(internal.push.removeSubscription, { id: sub._id })
           );

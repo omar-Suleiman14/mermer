@@ -1,5 +1,5 @@
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
-import { v } from "convex/values";
+import { v, ConvexError } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 
 import { requireAuthUser } from "./authHelper";
@@ -44,7 +44,7 @@ async function assertStorageOwnership(
     return;
   }
 
-  throw new Error("File not found or unauthorized");
+  throw new ConvexError("File not found or unauthorized");
 }
 
 // Generate a pre-signed upload URL for Convex storage

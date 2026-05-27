@@ -21,6 +21,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { motion, AnimatePresence } from "framer-motion";
 import { IOSSpinner } from "@/components/ui/spinner";
+import { isNonWorkingDay } from "@/lib/scheduling";
 
 interface VisitDrawerProps {
   open: boolean;
@@ -66,9 +67,6 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
 
   const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
   
-  function isNonWorkingDay(d: Date): boolean {
-    return false;
-  }
 
   const activeDateStart = visitDate ? new Date(visitDate.getFullYear(), visitDate.getMonth(), visitDate.getDate(), 0, 0, 0, 0).getTime() : 0;
   const activeDateEnd = visitDate ? new Date(visitDate.getFullYear(), visitDate.getMonth(), visitDate.getDate(), 23, 59, 59, 999).getTime() : 0;
@@ -195,11 +193,7 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
                   mode="single" 
                   selected={visitDate} 
                   onSelect={(d) => { if (d) { setVisitDate(d); setCalOpen(false); } }} 
-                  disabled={(d) => {
-                    const today = new Date();
-                    today.setHours(0, 0, 0, 0);
-                    return d < today || isNonWorkingDay(d);
-                  }} 
+                  disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0)) || isNonWorkingDay(date, currentUser?.availableDays)}
                 />
               </PopoverContent>
             </Popover>

@@ -257,7 +257,13 @@ export function PatientIntakeDrawer({
   async function handleSubmit(e?: React.FormEvent) {
     e?.preventDefault();
     if (!form.name.trim() || !form.age || !form.phone.trim()) {
-      toast.error("Name, age, and phone are required");
+      toast.error(lang === "ar" ? "الاسم والعمر ورقم الهاتف مطلوبة" : "Name, age, and phone are required");
+      return;
+    }
+
+    const phoneRegex = /^1[0125][0-9]{8}$/;
+    if (!phoneRegex.test(form.phone)) {
+      toast.error(lang === "ar" ? "رقم الهاتف غير صالح." : "Invalid phone number.");
       return;
     }
 

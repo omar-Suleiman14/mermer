@@ -7,7 +7,8 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
 import { AddToQueueDrawer } from "@/components/add-to-queue-drawer";
-import { VisitCompletionModal } from "@/components/visit-completion-modal";
+import dynamic from "next/dynamic";
+const VisitCompletionModal = dynamic(() => import("@/components/visit-completion-modal").then(m => m.VisitCompletionModal));
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -61,45 +62,12 @@ import {
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { motion, AnimatePresence } from "framer-motion";
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function startOfDay(ts: number) {
-  const d = new Date(ts);
-  d.setHours(0, 0, 0, 0);
-  return d.getTime();
-}
-
-function dateLocale(lang: Lang) {
-  return lang === "ar" ? "ar-EG" : "en-US";
-}
-
-function formatTime(ts: number, lang: Lang) {
-  return new Date(ts).toLocaleTimeString(dateLocale(lang), {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
-}
-
-function formatFullDate(ts: number, lang: Lang) {
-  return new Date(ts).toLocaleDateString(dateLocale(lang), {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  });
-}
+import { startOfDay, formatTime, formatFullDate, isNonWorkingDay, useWhatsAppTemplate, dateLocale } from "@/lib/scheduling";
 
 /** Returns N day timestamps starting from anchorDay */
 function getWeekDays(anchorDay: number, count = 7): number[] {
   return Array.from({ length: count }, (_, i) => anchorDay + i * 86400000);
 }
-
-/** Map JS getDay() (0=Sun…6=Sat) to our day abbreviations */
-const DOW_MAP: Record<number, string> = {
-  0: "Sun", 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat",
-};
 
 function DroppableSlot({ id, children }: { id: number, children: React.ReactNode }) {
   const { setNodeRef, isOver } = useDroppable({ id });
@@ -561,12 +529,6 @@ export default function SchedulePage() {
 
   // Working days from doctor profile for reschedule calendar
   const rescheduleWorkingDays: string[] = (currentUser as any)?.availableDays ?? [];
-  const DOW_ABBR_MAP: Record<number, string> = { 0: "Sun", 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat" };
-  function isNonWorkingDay(d: Date): boolean {
-    if (rescheduleWorkingDays.length === 0) return false; // no restriction set
-    const abbr = DOW_ABBR_MAP[d.getDay()];
-    return !rescheduleWorkingDays.includes(abbr);
-  }
 
   const rescheduleSlots = useMemo(() => {
     const sh = currentUser?.workingHoursStart ?? 9;
@@ -627,6 +589,8 @@ export default function SchedulePage() {
     }
   }, [clerkId, appointmentsBySlot, swapAppointments, updateAppointment, t]);
 
+  const sendWhatsAppTemplate = useWhatsAppTemplate(lang);
+
   function openTemplatePicker(patientName: string, patientPhone: string, appointmentDate: number, e: React.MouseEvent) {
     setTemplatePicker({ patientName, patientPhone, appointmentDate, anchorX: e.clientX, anchorY: e.clientY });
   }
@@ -634,23 +598,7 @@ export default function SchedulePage() {
   function sendWithTemplate(templateBody: string) {
     if (!templatePicker) return;
     const { patientName, patientPhone, appointmentDate } = templatePicker;
-    const firstName = patientName.split(" ")[0];
-    const now = new Date(appointmentDate);
-    const message = templateBody
-      .replace(/\{patient_name\}/g, patientName)
-      .replace(/\{date\}/g, now.toLocaleDateString(dateLocale(lang), { month: "short", day: "numeric" }))
-      .replace(/\{time\}/g, formatTime(appointmentDate, lang))
-      .replace(/\{clinic_address\}/g, (currentUser as any)?.clinicAddressLink || "")
-      .replace(/\{\{name\}\}/g, firstName);
-
-    let num = patientPhone.replace(/[\s\-\(\)]/g, "");
-    if (num.startsWith("+")) num = num.slice(1);
-    if (num.startsWith("0")) num = "20" + num.slice(1);
-    else if (!num.startsWith("20")) num = "20" + num;
-
-    const url = `https://wa.me/${num}?text=${encodeURIComponent(message)}`;
-    window.open(url, "_blank");
-    toast.success(t("toast.openingWhatsapp").replace("{name}", firstName));
+    sendWhatsAppTemplate(templateBody, patientName, patientPhone, appointmentDate, (currentUser as any)?.clinicAddressLink);
     setTemplatePicker(null);
   }
 
@@ -1007,7 +955,7 @@ export default function SchedulePage() {
                         </button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={rescheduleDate} onSelect={(d) => { if (d) { setRescheduleDate(d); setRescheduleCalOpen(false); } }} disabled={(d) => d < new Date() || isNonWorkingDay(d)} />
+                        <Calendar mode="single" selected={rescheduleDate} onSelect={(d) => { if (d) { setRescheduleDate(d); setRescheduleCalOpen(false); } }} disabled={(d) => d < new Date() || isNonWorkingDay(d, rescheduleWorkingDays)} />
                       </PopoverContent>
                     </Popover>
                   </div>
