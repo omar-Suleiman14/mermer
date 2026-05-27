@@ -56,10 +56,20 @@ export function BookingForm({ doctor }: BookingFormProps) {
   const next7Days = useMemo(() => {
     const days = [];
     const today = new Date();
+    
+    let startOffset = 0;
+    if (safeDoctor && safeDoctor.workingHoursEnd !== null) {
+      const endHour = safeDoctor.workingHoursStart === 0 && safeDoctor.workingHoursEnd === 24 ? 21 : safeDoctor.workingHoursEnd;
+      const currentHour = today.getHours() + today.getMinutes() / 60;
+      if (currentHour >= endHour) {
+        startOffset = 1;
+      }
+    }
+
     today.setHours(0, 0, 0, 0);
     for (let i = 0; i < 7; i++) {
       const d = new Date(today);
-      d.setDate(d.getDate() + i);
+      d.setDate(d.getDate() + i + startOffset);
       const dayName = d.toLocaleDateString("en-US", { weekday: "short" });
       const isAvailable = !safeDoctor?.availableDays?.length || safeDoctor.availableDays.includes(dayName);
       days.push({

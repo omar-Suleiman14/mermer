@@ -23,13 +23,7 @@ const MessageTemplatesSection = dynamic(
   }
 );
 
-const ImportExportSection = dynamic(
-  () => import("@/components/import-export-section").then((m) => m.ImportExportSection),
-  {
-    ssr: false,
-    loading: () => <div className="h-40 rounded-xl bg-muted/40 animate-pulse" />,
-  }
-);
+
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
@@ -622,10 +616,6 @@ export default function SettingsPage() {
           </p>
         </section>
 
-        {/* ═══════════════════════════════════════════════════════════ */}
-        {/* DATA MANAGEMENT                                           */}
-        {/* ═══════════════════════════════════════════════════════════ */}
-        <ImportExportSection clerkId={clerkId} />
 
       </div>
 

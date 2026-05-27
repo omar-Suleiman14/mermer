@@ -3,10 +3,20 @@
 import React, { useState, useRef } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Upload, Download, FileText, Loader2, X } from "lucide-react";
+import { Upload, Download, FileText, Loader2, X, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import Papa from "papaparse";
 import { useI18n } from "@/lib/i18n/client";
+import { motion, AnimatePresence } from "framer-motion";
+import { createPortal } from "react-dom";
+import { useIsMounted } from "@/hooks/use-is-mounted";
+import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Drawer,
   DrawerContent,
@@ -23,9 +33,10 @@ interface ImportExportSectionProps {
 export function ImportExportSection({ clerkId }: ImportExportSectionProps) {
   const { t } = useI18n();
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [dataMenuOpen, setDataMenuOpen] = useState(false);
   const [importType, setImportType] = useState<"patients">("patients");
-
-  // Queries for export
+  const mounted = useIsMounted();
+  const isMobile = useIsMobile();
   const allPatients = useQuery(api.patients.exportAllPatients, { clerkId });
 
   // Mutations for import
@@ -158,165 +169,274 @@ export function ImportExportSection({ clerkId }: ImportExportSectionProps) {
   const rowClass = "flex items-center justify-between p-4 gap-4 transition-colors";
   const currentFields = patientFields;
 
-  return (
-    <>
-      <section>
-        <h3 className="text-[13px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 ms-4">
-          {t("settings.dataManagement") || "Data Management"}
-        </h3>
-        <div className={blockClass}>
-          <div className={rowClass + " border-b border-border"}>
-            <div>
-              <h4 className="text-sm font-medium">{t("settings.importData") || "Import Data"}</h4>
-              <p className="text-xs text-muted-foreground mt-0.5">{t("settings.importDataDesc") || "Import patients from a CSV file"}</p>
+  const renderFormContent = () => (
+    <div className="flex-1 overflow-auto p-4 sm:p-6 bg-muted/20">
+      <div className="space-y-6">
+        {/* Step 1 */}
+        <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
+          <h3 className="text-sm font-semibold mb-4">{t("settings.csvStep1") || "1. Upload CSV"}</h3>
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+            <div className="flex-1 w-full">
+              <input type="file" accept=".csv" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="px-4 py-2.5 bg-background border border-dashed border-primary/50 text-primary hover:bg-primary/5 rounded-lg transition-colors text-sm font-medium w-full flex items-center justify-center gap-2"
+              >
+                <Upload className="w-4 h-4" />
+                {csvHeaders.length > 0
+                  ? (t("settings.csvUploadAnother") || "Upload a different CSV")
+                  : (t("settings.csvUpload") || "Click to upload CSV")}
+              </button>
             </div>
-            <button
-              onClick={() => setImportModalOpen(true)}
-              className="px-4 py-2 bg-primary/10 text-primary hover:bg-primary/20 rounded-xl transition-colors text-sm font-semibold flex items-center gap-2 shrink-0"
-            >
-              <Upload className="w-4 h-4" />
-              {t("settings.importCsv") || "Import CSV"}
-            </button>
-          </div>
-
-          <div className={rowClass + " bg-red-500/5"}>
-            <div>
-              <h4 className="text-sm font-medium text-red-600 dark:text-red-400">{t("settings.exportData") || "Export Data"}</h4>
-              <p className="text-xs text-red-600/70 dark:text-red-400/70 mt-0.5">{t("settings.exportDataDesc") || "Download all your patients. Keep this file secure."}</p>
-            </div>
-            <button
-              onClick={handleExport}
-              disabled={!allPatients}
-              className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors text-sm font-semibold flex items-center gap-2 disabled:opacity-50 shrink-0"
-            >
-              <Download className="w-4 h-4" />
-              {t("settings.exportBtn") || "Export"}
-            </button>
           </div>
         </div>
-      </section>
 
-      <Drawer open={importModalOpen} onOpenChange={setImportModalOpen}>
-        <DrawerContent className="max-h-[90vh]">
-          <div className="mx-auto w-full max-w-5xl overflow-hidden flex flex-col h-full">
-            <DrawerHeader className="border-b border-border shrink-0 flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <FileText className="w-5 h-5 text-primary" />
+        {/* Step 2 */}
+        {csvHeaders.length > 0 && (
+          <div className="bg-card border border-border rounded-xl p-5 shadow-sm animate-in fade-in slide-in-from-bottom-4">
+            <h3 className="text-sm font-semibold mb-4">{t("settings.csvStep2") || "2. Map Columns"}</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {currentFields.map(field => (
+                <div key={field.key} className="space-y-1.5">
+                  <label className="text-xs font-medium text-muted-foreground">{field.label}</label>
+                  <select
+                    value={columnMap[field.key] || ""}
+                    onChange={(e) => setColumnMap({ ...columnMap, [field.key]: e.target.value })}
+                    className="w-full p-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  >
+                    <option value="">{t("settings.csvIgnore") || "-- Ignore --"}</option>
+                    {csvHeaders.map(h => <option key={h} value={h}>{h}</option>)}
+                  </select>
                 </div>
-                <div className="text-left">
-                  <DrawerTitle>{t("settings.importData") || "Import Data"}</DrawerTitle>
-                  <DrawerDescription className="mt-1">
-                    {t("settings.csvModalSubtitle") || "Map columns and preview your data before importing"}
-                  </DrawerDescription>
-                </div>
-              </div>
-              <DrawerClose className="p-2 rounded-full hover:bg-muted transition-colors">
-                <X className="w-5 h-5" />
-              </DrawerClose>
-            </DrawerHeader>
-
-            <div className="flex-1 overflow-auto p-4 sm:p-6 bg-muted/20">
-              <div className="space-y-6">
-                {/* Step 1 */}
-                <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
-                  <h3 className="text-sm font-semibold mb-4">{t("settings.csvStep1") || "1. Upload CSV"}</h3>
-                  <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                    <div className="flex-1 w-full">
-                      <input type="file" accept=".csv" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
-                      <button
-                        onClick={() => fileInputRef.current?.click()}
-                        className="px-4 py-2.5 bg-background border border-dashed border-primary/50 text-primary hover:bg-primary/5 rounded-lg transition-colors text-sm font-medium w-full flex items-center justify-center gap-2"
-                      >
-                        <Upload className="w-4 h-4" />
-                        {csvHeaders.length > 0
-                          ? (t("settings.csvUploadAnother") || "Upload a different CSV")
-                          : (t("settings.csvUpload") || "Click to upload CSV")}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Step 2 */}
-                {csvHeaders.length > 0 && (
-                  <div className="bg-card border border-border rounded-xl p-5 shadow-sm animate-in fade-in slide-in-from-bottom-4">
-                    <h3 className="text-sm font-semibold mb-4">{t("settings.csvStep2") || "2. Map Columns"}</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {currentFields.map(field => (
-                        <div key={field.key} className="space-y-1.5">
-                          <label className="text-xs font-medium text-muted-foreground">{field.label}</label>
-                          <select
-                            value={columnMap[field.key] || ""}
-                            onChange={(e) => setColumnMap({ ...columnMap, [field.key]: e.target.value })}
-                            className="w-full p-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                          >
-                            <option value="">{t("settings.csvIgnore") || "-- Ignore --"}</option>
-                            {csvHeaders.map(h => <option key={h} value={h}>{h}</option>)}
-                          </select>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Step 3 */}
-                {csvData.length > 0 && (
-                  <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm flex flex-col animate-in fade-in slide-in-from-bottom-4">
-                    <div className="p-4 sm:p-5 border-b border-border flex flex-col sm:flex-row items-start sm:items-center justify-between shrink-0 gap-4">
-                      <div>
-                        <h3 className="text-sm font-semibold">{t("settings.csvStep3") || "3. Preview & Import"}</h3>
-                        <p className="text-xs text-muted-foreground mt-0.5">{csvData.length} {t("settings.csvRows") || "rows"}</p>
-                      </div>
-                      <button
-                        onClick={handleImportAll}
-                        disabled={importing || !columnMap["name"]}
-                        className="w-full sm:w-auto px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl transition-colors text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
-                      >
-                        {importing && <Loader2 className="w-4 h-4 animate-spin" />}
-                        {t("settings.csvImportAll") || "Import All"} {csvData.length} {t("settings.csvRecords") || "Records"}
-                      </button>
-                    </div>
-                    <div className="overflow-auto w-full">
-                      <table className="w-full text-sm text-left">
-                        <thead className="text-xs text-muted-foreground uppercase bg-muted/50 whitespace-nowrap">
-                          <tr>
-                            {currentFields.map(f => <th key={f.key} className="px-4 py-3 font-medium">{f.label}</th>)}
-                            <th className="px-4 py-3 font-medium text-right">{t("settings.csvAction") || "Action"}</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border">
-                          {csvData.slice(0, 100).map((row, i) => (
-                            <tr key={i} className="hover:bg-muted/30 transition-colors">
-                              {currentFields.map(f => (
-                                <td key={f.key} className="px-4 py-3 max-w-50 truncate">
-                                  {row[columnMap[f.key]] || <span className="text-muted-foreground/50">—</span>}
-                                </td>
-                              ))}
-                              <td className="px-4 py-3 text-right">
-                                <button
-                                  onClick={() => handleImportSingle(row, i)}
-                                  className="px-3 py-1.5 bg-background border border-border hover:bg-muted rounded-lg text-xs font-medium transition-colors whitespace-nowrap"
-                                >
-                                  {t("settings.csvImportRow") || "Import Row"}
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      {csvData.length > 100 && (
-                        <div className="p-4 text-center text-sm text-muted-foreground border-t border-border">
-                          {t("settings.csvShowingFirst") || "Showing first 100 rows."} {t("settings.csvImportAll") || "Import All"} {t("settings.csvToImportAll") || "to import all"} {csvData.length} {t("settings.csvRows") || "rows"}.
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
+              ))}
             </div>
           </div>
-        </DrawerContent>
-      </Drawer>
+        )}
+
+        {/* Step 3 */}
+        {csvData.length > 0 && (
+          <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm flex flex-col animate-in fade-in slide-in-from-bottom-4">
+            <div className="p-4 sm:p-5 border-b border-border flex flex-col sm:flex-row items-start sm:items-center justify-between shrink-0 gap-4">
+              <div>
+                <h3 className="text-sm font-semibold">{t("settings.csvStep3") || "3. Preview & Import"}</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">{csvData.length} {t("settings.csvRows") || "rows"}</p>
+              </div>
+              <button
+                onClick={handleImportAll}
+                disabled={importing || !columnMap["name"]}
+                className="w-full sm:w-auto px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl transition-colors text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {importing && <Loader2 className="w-4 h-4 animate-spin" />}
+                {t("settings.csvImportAll") || "Import All"} {csvData.length} {t("settings.csvRecords") || "Records"}
+              </button>
+            </div>
+            <div className="overflow-auto w-full">
+              <table className="w-full text-sm text-left">
+                <thead className="text-xs text-muted-foreground uppercase bg-muted/50 whitespace-nowrap">
+                  <tr>
+                    {currentFields.map(f => <th key={f.key} className="px-4 py-3 font-medium">{f.label}</th>)}
+                    <th className="px-4 py-3 font-medium text-right">{t("settings.csvAction") || "Action"}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {csvData.slice(0, 100).map((row, i) => (
+                    <tr key={i} className="hover:bg-muted/30 transition-colors">
+                      {currentFields.map(f => (
+                        <td key={f.key} className="px-4 py-3 max-w-50 truncate">
+                          {row[columnMap[f.key]] || <span className="text-muted-foreground/50">—</span>}
+                        </td>
+                      ))}
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={() => handleImportSingle(row, i)}
+                          className="px-3 py-1.5 bg-background border border-border hover:bg-muted rounded-lg text-xs font-medium transition-colors whitespace-nowrap"
+                        >
+                          {t("settings.csvImportRow") || "Import Row"}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {csvData.length > 100 && (
+                <div className="p-4 text-center text-sm text-muted-foreground border-t border-border">
+                  {t("settings.csvShowingFirst") || "Showing first 100 rows."} {t("settings.csvImportAll") || "Import All"} {t("settings.csvToImportAll") || "to import all"} {csvData.length} {t("settings.csvRows") || "rows"}.
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderDataMenuContent = () => (
+    <div className="p-4 sm:p-6 space-y-4 bg-muted/20">
+      <div className="bg-card border border-border rounded-xl p-5 shadow-sm transition-colors hover:border-primary/30">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h4 className="text-sm font-semibold">{t("settings.importData") || "Import Data"}</h4>
+            <p className="text-xs text-muted-foreground mt-1 max-w-xs">{t("settings.importDataDesc") || "استيراد المرضى أو الأدوية من ملف CSV"}</p>
+          </div>
+          <button
+            onClick={() => {
+              setDataMenuOpen(false);
+              setTimeout(() => setImportModalOpen(true), 150);
+            }}
+            className="w-full sm:w-auto px-4 py-2 bg-primary/10 text-primary hover:bg-primary/20 rounded-xl transition-colors text-sm font-semibold flex items-center justify-center gap-2 shrink-0"
+          >
+            <Upload className="w-4 h-4" />
+            {t("settings.importCsv") || "Import CSV"}
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-card border border-red-500/20 rounded-xl p-5 shadow-sm transition-colors hover:border-red-500/40 bg-red-500/5">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h4 className="text-sm font-semibold text-red-600 dark:text-red-400">{t("settings.exportData") || "Export Data"}</h4>
+            <p className="text-xs text-red-600/70 dark:text-red-400/70 mt-1 max-w-xs">{t("settings.exportDataDesc") || "تنزيل جميع المرضى والأدوية. احتفظ بهذا الملف آمناً لأنه يحتوي على معلومات حساسة."}</p>
+          </div>
+          <button
+            onClick={() => {
+              handleExport();
+              setDataMenuOpen(false);
+            }}
+            disabled={!allPatients}
+            className="w-full sm:w-auto px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-xl transition-colors text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-50 shrink-0"
+          >
+            <Download className="w-4 h-4" />
+            {t("settings.exportBtn") || "Export"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      <div className="flex justify-end mb-2">
+        <button
+          onClick={() => setDataMenuOpen(true)}
+          className="flex items-center justify-center bg-background border border-border shadow-sm w-9 h-9 rounded-xl hover:bg-muted/50 transition-all text-foreground"
+        >
+          <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
+        </button>
+      </div>
+
+      {/* Data Management Menu Drawer/Popup */}
+      {mounted && isMobile ? (
+        <Drawer open={dataMenuOpen} onOpenChange={setDataMenuOpen}>
+          <DrawerContent className="max-h-[90vh]">
+            <div className="mx-auto w-full max-w-md overflow-hidden flex flex-col h-full">
+              <DrawerHeader className="border-b border-border shrink-0 text-left">
+                <DrawerTitle>{t("settings.dataManagement") || "Data Management"}</DrawerTitle>
+              </DrawerHeader>
+              <div className="overflow-auto">
+                {renderDataMenuContent()}
+              </div>
+            </div>
+          </DrawerContent>
+        </Drawer>
+      ) : mounted && !isMobile ? (
+        typeof document !== "undefined" && createPortal(
+          <AnimatePresence>
+            {dataMenuOpen && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+              >
+                <motion.div
+                  initial={{ y: 20, opacity: 0, scale: 0.95 }}
+                  animate={{ y: 0, opacity: 1, scale: 1 }}
+                  exit={{ y: 20, opacity: 0, scale: 0.95 }}
+                  transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                  className="w-full max-w-xl bg-card rounded-3xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]"
+                >
+                  <div className="border-b border-border shrink-0 flex items-center justify-between p-6">
+                    <h2 className="text-xl font-bold">{t("settings.dataManagement") || "Data Management"}</h2>
+                    <button onClick={() => setDataMenuOpen(false)} className="p-2 rounded-full hover:bg-muted transition-colors">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="overflow-auto">
+                    {renderDataMenuContent()}
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )
+      ) : null}
+
+      {mounted && isMobile ? (
+        <Drawer open={importModalOpen} onOpenChange={setImportModalOpen}>
+          <DrawerContent className="max-h-[90vh]">
+            <div className="mx-auto w-full max-w-5xl overflow-hidden flex flex-col h-full">
+              <DrawerHeader className="border-b border-border shrink-0 flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <FileText className="w-5 h-5 text-primary" />
+                  </div>
+                  <div className="text-left">
+                    <DrawerTitle>{t("settings.importData") || "Import Data"}</DrawerTitle>
+                    <DrawerDescription className="mt-1">
+                      {t("settings.csvModalSubtitle") || "Map columns and preview your data before importing"}
+                    </DrawerDescription>
+                  </div>
+                </div>
+                <DrawerClose className="p-2 rounded-full hover:bg-muted transition-colors">
+                  <X className="w-5 h-5" />
+                </DrawerClose>
+              </DrawerHeader>
+              {renderFormContent()}
+            </div>
+          </DrawerContent>
+        </Drawer>
+      ) : mounted && !isMobile ? (
+        typeof document !== "undefined" && createPortal(
+          <AnimatePresence>
+            {importModalOpen && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+              >
+                <motion.div
+                  initial={{ y: 20, opacity: 0, scale: 0.95 }}
+                  animate={{ y: 0, opacity: 1, scale: 1 }}
+                  exit={{ y: 20, opacity: 0, scale: 0.95 }}
+                  transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                  className="w-full max-w-5xl bg-card rounded-3xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]"
+                >
+                  <div className="border-b border-border shrink-0 flex items-start justify-between p-6">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <FileText className="w-5 h-5 text-primary" />
+                      </div>
+                      <div className="text-left">
+                        <h2 className="text-xl font-bold">{t("settings.importData") || "Import Data"}</h2>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {t("settings.csvModalSubtitle") || "Map columns and preview your data before importing"}
+                        </p>
+                      </div>
+                    </div>
+                    <button onClick={() => setImportModalOpen(false)} className="p-2 rounded-full hover:bg-muted transition-colors">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+                  {renderFormContent()}
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )
+      ) : null}
     </>
   );
 }

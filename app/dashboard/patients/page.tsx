@@ -11,6 +11,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 const PatientIntakeDrawer = dynamic(() => import("@/components/patient-intake-drawer").then(m => m.PatientIntakeDrawer));
 import { useI18n } from "@/lib/i18n/client";
+import { ImportExportSection } from "@/components/import-export-section";
 
 export default function PatientsPage() {
   const { user } = useUser();
@@ -45,6 +46,7 @@ export default function PatientsPage() {
 
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="max-w-4xl mx-auto space-y-4">
+          <ImportExportSection clerkId={clerkId} />
           <div className="relative">
             <Search className={`absolute ${dir === "rtl" ? "right-4" : "left-4"} top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground`} />
             <input
