@@ -48,12 +48,12 @@ export default async function DoctorsPage() {
   return (
     <div className="min-h-dvh flex flex-col bg-slate-50 dark:bg-zinc-950 text-foreground" dir={dir}>
       <PublicNav />
-      <main className="flex-1 max-w-5xl mx-auto px-4 sm:px-6 py-12 w-full">
-         <div className="mb-10 text-center space-y-3">
-           <h1 className="text-4xl font-black tracking-tight text-slate-900 dark:text-white">
+      <main className="flex-1 max-w-5xl mx-auto px-4 sm:px-6 py-16 w-full">
+         <div className="mb-16 text-center space-y-4">
+           <h1 className="text-4xl md:text-5xl font-medium tracking-tight text-slate-900 dark:text-white">
              {dir === "rtl" ? "الأطباء المتاحين" : "Available Doctors"}
            </h1>
-           <p className="text-lg text-slate-600 dark:text-zinc-400">
+           <p className="text-lg text-slate-500 dark:text-zinc-400 max-w-2xl mx-auto">
              {dir === "rtl" 
                ? "تصفح قائمة الأطباء الموثقين على منصتنا واختر الأنسب لك."
                : "Browse our verified doctors and choose the best for you."}

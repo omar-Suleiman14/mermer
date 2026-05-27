@@ -96,7 +96,7 @@ export default async function DoctorProfilePage({ params }: { params: Promise<{ 
           
           {/* Main Info Column */}
           <div className="lg:col-span-2 space-y-8">
-            <div className="bg-card border border-border p-6 sm:p-8 rounded-3xl shadow-sm">
+            <div className="bg-white dark:bg-zinc-900 border border-slate-100 dark:border-white/5 p-6 sm:p-8 rounded-[2.5rem] shadow-sm">
               <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
                 
                 <div className="relative w-32 h-32 sm:w-40 sm:h-40 rounded-3xl overflow-hidden bg-muted shrink-0 shadow-md">
@@ -171,7 +171,7 @@ export default async function DoctorProfilePage({ params }: { params: Promise<{ 
 
             {/* Bio & Credentials */}
             {(doctor.bio || doctor.credentials) && (
-              <div className="bg-card border border-border p-6 sm:p-8 rounded-3xl shadow-sm space-y-6">
+              <div className="bg-white dark:bg-zinc-900 border border-slate-100 dark:border-white/5 p-6 sm:p-8 rounded-[2.5rem] shadow-sm space-y-8">
                 {doctor.bio && (
                   <div>
                     <h2 className="text-xl font-bold text-foreground mb-3">
@@ -202,8 +202,8 @@ export default async function DoctorProfilePage({ params }: { params: Promise<{ 
           {/* Sidebar Booking Column */}
           <div className="lg:col-span-1 space-y-6">
              <div className="sticky top-24 space-y-4">
-               <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
-                 <h3 className="text-sm font-bold text-foreground">
+               <div className="rounded-3xl border border-primary/10 bg-primary/5 dark:bg-primary/10 p-6 shadow-sm">
+                 <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
                    {dir === "rtl" ? "اترك تقييما بعد زيارتك" : "Leave feedback after your visit"}
                  </h3>
                  <p className="mt-1 text-xs text-muted-foreground">
@@ -212,7 +212,7 @@ export default async function DoctorProfilePage({ params }: { params: Promise<{ 
                  <Link
                    href={`/feedback/${slug}`}
                    prefetch={true}
-                   className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-primary/30 bg-background px-3 py-2 text-sm font-semibold text-primary hover:bg-primary/10 transition-colors"
+                   className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-white dark:bg-zinc-900 border border-primary/20 px-4 py-3 text-sm font-medium text-primary hover:bg-primary/5 transition-colors"
                  >
                    <MessageSquarePlus className="w-4 h-4" />
                    {dir === "rtl" ? "أضف تقييمك" : "Leave Feedback"}

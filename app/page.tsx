@@ -115,24 +115,49 @@ export default async function PatientLandingPage() {
           </div>
         </section>
 
-        {/* 2. Logo Wall */}
-        <section className="px-4 sm:px-6 lg:px-8 py-12 border-y border-slate-100 dark:border-white/5">
-          <p className="text-center text-sm font-medium text-slate-500 dark:text-zinc-500 mb-8 uppercase tracking-widest">
-            {dir === "rtl" ? "موثوق من قبل العيادات الرائدة" : "Trusted by leading clinics"}
-          </p>
-          <div className="flex flex-wrap justify-center gap-12 md:gap-24 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
-            {/* Simple geometric logos to replace wordmarks */}
-            <div className="flex items-center gap-2 font-semibold text-xl tracking-tight text-slate-900 dark:text-white">
-              <div className="w-6 h-6 rounded-md bg-slate-900 dark:bg-white" />
-              Apex Health
+        {/* 2. Secure, Fast, Reliable */}
+        <section className="px-4 sm:px-6 lg:px-8 py-12 border-y border-slate-100 dark:border-white/5 bg-slate-50/50 dark:bg-zinc-900/20">
+          <div className="flex flex-wrap justify-center gap-12 md:gap-24">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                <ShieldCheck className="w-5 h-5 text-emerald-500" />
+              </div>
+              <div>
+                <div className="font-semibold text-slate-900 dark:text-white leading-tight">
+                  {dir === "rtl" ? "آمن وموثوق" : "Secure & Reliable"}
+                </div>
+                <div className="text-sm text-slate-500 dark:text-zinc-400">
+                  {dir === "rtl" ? "تشفير تام للبيانات" : "End-to-end encryption"}
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-2 font-semibold text-xl tracking-tight text-slate-900 dark:text-white">
-              <div className="w-6 h-6 rounded-full border-4 border-slate-900 dark:border-white" />
-              Nova Medical
+            
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center">
+                <CheckCircle2 className="w-5 h-5 text-blue-500" />
+              </div>
+              <div>
+                <div className="font-semibold text-slate-900 dark:text-white leading-tight">
+                  {dir === "rtl" ? "موثق وسريع" : "Verified & Fast"}
+                </div>
+                <div className="text-sm text-slate-500 dark:text-zinc-400">
+                  {dir === "rtl" ? "حجوزات فورية مؤكدة" : "Instant confirmed bookings"}
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-2 font-semibold text-xl tracking-tight text-slate-900 dark:text-white">
-              <div className="w-6 h-6 rotate-45 bg-slate-900 dark:bg-white" />
-              Pulse Clinic
+            
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center">
+                <MessageCircle className="w-5 h-5 text-orange-500" />
+              </div>
+              <div>
+                <div className="font-semibold text-slate-900 dark:text-white leading-tight">
+                  {dir === "rtl" ? "متابعة لحظية" : "Live Updates"}
+                </div>
+                <div className="text-sm text-slate-500 dark:text-zinc-400">
+                  {dir === "rtl" ? "عبر منصة واتساب" : "Via WhatsApp platform"}
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -243,7 +268,7 @@ export default async function PatientLandingPage() {
       <footer className="border-t border-slate-100 dark:border-white/5 bg-white dark:bg-black py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-[1400px] mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-md bg-primary" />
+            <img src="/icon.svg" alt="mermer" className="w-6 h-6" />
             <span className="font-semibold text-lg tracking-tight">mermer</span>
           </div>
           <div className="text-sm font-medium text-slate-500 dark:text-zinc-500">

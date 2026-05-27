@@ -42,8 +42,8 @@ export default async function FeedbackPage({
 
       <main className="max-w-5xl mx-auto w-full px-4 sm:px-6 py-6 sm:py-8 flex-1 flex flex-col justify-start sm:justify-center">
         {/* Doctor Info Subheader */}
-        <div className="bg-white dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 p-4 sm:p-5 rounded-lg flex items-center gap-4 sm:gap-5 shadow-sm mb-6 sm:mb-8">
-          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-lg overflow-hidden bg-slate-100 dark:bg-zinc-800 ring-1 ring-slate-200 dark:ring-zinc-700 shrink-0 relative">
+        <div className="bg-white dark:bg-zinc-900 border border-slate-100 dark:border-white/5 p-4 sm:p-5 rounded-3xl flex items-center gap-4 sm:gap-5 shadow-sm mb-6 sm:mb-8">
+          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl overflow-hidden bg-slate-100 dark:bg-zinc-800 shrink-0 relative">
             {doctor.profilePhotoUrl ? (
               <Image src={doctor.profilePhotoUrl} alt={doctor.name} fill className="object-cover" sizes="(max-width: 640px) 56px, 64px" />
             ) : (
