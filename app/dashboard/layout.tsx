@@ -63,8 +63,45 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
   if (!isLoaded || isLoading || currentUser === undefined) {
     return (
-      <div className="min-h-screen bg-[#f0efea] dark:bg-[#111110] flex items-center justify-center">
-        <IOSSpinner size={48} className="text-[#007AFF]" />
+      <div className="dashboard-font contents" dir={dir}>
+        <SidebarProvider>
+          {/* Skeleton Sidebar (Hidden on mobile to match real sidebar) */}
+          <div className="w-[260px] shrink-0 border-r border-border/50 bg-sidebar flex flex-col h-screen max-md:hidden">
+            <div className="flex items-center gap-3 px-4 py-4 border-b border-border/50">
+              <div className="w-8 h-8 rounded-full bg-muted animate-pulse shrink-0" />
+              <div className="flex-1 space-y-2">
+                <div className="h-3.5 bg-muted rounded-md w-24 animate-pulse" />
+                <div className="h-2.5 bg-muted rounded-md w-16 animate-pulse" />
+              </div>
+            </div>
+            <div className="flex-1 p-3 space-y-1.5 mt-2">
+              {[...Array(7)].map((_, i) => (
+                <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-lg">
+                  <div className="w-4 h-4 bg-muted rounded animate-pulse shrink-0" />
+                  <div className="h-3.5 bg-muted rounded-md w-24 animate-pulse" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <SidebarInset className="bg-background relative flex-1 flex flex-col h-screen overflow-hidden">
+            <main className="flex-1 p-4 sm:p-6 flex flex-col gap-6">
+              {/* Skeleton Header Area */}
+              <div className="flex justify-between items-start mb-2">
+                <div className="space-y-2">
+                  <div className="h-7 bg-muted rounded-md w-48 animate-pulse" />
+                  <div className="h-4 bg-muted rounded-md w-64 animate-pulse" />
+                </div>
+              </div>
+              
+              {/* Skeleton Main Cards Area */}
+              <div className="grid gap-6 mt-4">
+                <div className="h-[200px] bg-muted/40 rounded-2xl animate-pulse" />
+                <div className="h-[300px] bg-muted/40 rounded-2xl animate-pulse" />
+              </div>
+            </main>
+          </SidebarInset>
+        </SidebarProvider>
       </div>
     );
   }

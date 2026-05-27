@@ -5,9 +5,9 @@ import { useUser } from "@clerk/nextjs";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { PageHeader } from "@/components/page-header";
-import { Trash2, Plus, Upload, Download, FileText, Loader2, X, AlertTriangle, Sparkles } from "lucide-react";
+import { Trash2, Plus, Upload, Download, FileText, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
-import { IOSSpinner } from "@/components/ui/spinner";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useI18n } from "@/lib/i18n/client";
 import Papa from "papaparse";
 import {
@@ -36,7 +36,10 @@ export default function MedicationsPage() {
     return "الملاحظات";
   };
 
-  const allClinicalOptions = useQuery(api.clinicalOptions.getAllClinicalOptions, clerkId ? { clerkId } : "skip");
+  const allClinicalOptions = useQuery(
+    api.clinicalOptions.getAllClinicalOptions,
+    isLoaded && clerkId ? { clerkId } : "skip"
+  );
 
   const addMedication = useMutation(api.clinicalOptions.addMedicationOption);
   const addFrequency = useMutation(api.clinicalOptions.addFrequencyOption);
@@ -89,7 +92,7 @@ export default function MedicationsPage() {
         toast.info(t("settings.noDataToExport") || "No data to export");
         return;
       }
-      const csv = Papa.unparse(data.map(d => ({ Name: d.name })));
+      const csv = Papa.unparse(data.map((d) => ({ Name: d.name })));
       const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       const link = document.createElement("a");
       const url = URL.createObjectURL(blob);
@@ -116,27 +119,30 @@ export default function MedicationsPage() {
           setCsvHeaders(results.meta.fields);
           setCsvData(results.data as Record<string, string>[]);
           const autoMap: Record<string, string> = {};
-          const match = results.meta.fields.find(
-            h => h.toLowerCase().includes("name")
+          const match = results.meta.fields.find((h) =>
+            h.toLowerCase().includes("name")
           );
           if (match) autoMap["name"] = match;
           setColumnMap(autoMap);
         }
       },
-      error: () => toast.error(t("settings.csvParseError") || "Failed to parse CSV file"),
+      error: () =>
+        toast.error(t("settings.csvParseError") || "Failed to parse CSV file"),
     });
     e.target.value = "";
   };
 
   const handleImportAll = async () => {
     if (!columnMap["name"]) {
-      toast.error(t("settings.csvMapNameFirst") || "Please map the Name column first");
+      toast.error(
+        t("settings.csvMapNameFirst") || "Please map the Name column first"
+      );
       return;
     }
     setImporting(true);
     try {
       const names = csvData
-        .map(row => row[columnMap["name"]]?.trim())
+        .map((row) => row[columnMap["name"]]?.trim())
         .filter(Boolean);
 
       if (names.length === 0) {
@@ -151,7 +157,9 @@ export default function MedicationsPage() {
       } else if (activeTab === "notes") {
         await batchAddNotes({ clerkId, notes: names });
       }
-      toast.success(`${t("settings.csvImportedAll") || "Imported"} ${names.length} ${t("settings.csvRecords") || "records"}`);
+      toast.success(
+        `${t("settings.csvImportedAll") || "Imported"} ${names.length} ${t("settings.csvRecords") || "records"}`
+      );
       setImportModalOpen(false);
       setCsvData([]);
       setColumnMap({});
@@ -162,32 +170,28 @@ export default function MedicationsPage() {
     }
   };
 
-  if (!isLoaded || !allClinicalOptions) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <IOSSpinner size={32} />
-      </div>
-    );
-  }
-
-  const items = allClinicalOptions[activeTab] || [];
+  // Show skeleton while loading — never block with a full-screen spinner
+  const isLoading = !isLoaded || allClinicalOptions === undefined;
+  const items = allClinicalOptions?.[activeTab] ?? [];
 
   return (
     <div className="flex flex-col h-full bg-muted/20" suppressHydrationWarning>
-      <PageHeader 
-        title={t("nav.medications") || "Medications"} 
-        description={t("settings.importDataDesc") || "Manage your medications, frequencies and notes"} 
+      <PageHeader
+        title={t("nav.medications") || "Medications"}
+        description={
+          t("settings.importDataDesc") ||
+          "Manage your medications, frequencies and notes"
+        }
       />
 
-      <div className="flex-1 overflow-auto p-4 sm:p-6 max-w-4xl mx-auto w-full pb-20">
-        
+      <div className="flex-1 overflow-auto p-3 sm:p-6 max-w-4xl mx-auto w-full pb-24">
         {/* Tabs */}
-        <div className="flex bg-card p-1 rounded-xl shadow-sm mb-6 w-full max-w-md mx-auto">
+        <div className="flex bg-card p-1 rounded-xl shadow-sm mb-4 sm:mb-6 w-full">
           {(["medications", "frequencies", "notes"] as TabType[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 text-sm font-medium py-2 px-3 rounded-lg transition-colors capitalize ${
+              className={`flex-1 text-xs sm:text-sm font-medium py-2 px-1 sm:px-3 rounded-lg transition-colors capitalize ${
                 activeTab === tab
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:bg-muted"
@@ -198,67 +202,97 @@ export default function MedicationsPage() {
           ))}
         </div>
 
-        {/* Header with actions */}
-        <div className="flex flex-col sm:flex-row gap-6 mb-8 w-full items-start sm:items-center justify-between">
-          
-          {/* Add Item Section */}
-          <div className="bg-card p-4 rounded-xl shadow-sm border border-border w-full sm:w-1/2 flex flex-col gap-3">
-            <h3 className="text-sm font-semibold">{isAr ? `إضافة ${getTabName(activeTab)} جديد` : `Add new ${getTabName(activeTab)}`}</h3>
+        {/* Add Item + CSV actions */}
+        <div className="flex flex-col gap-3 mb-5 sm:mb-8">
+          {/* Add Item Card */}
+          <div className="bg-card p-3 sm:p-4 rounded-xl shadow-sm border border-border">
+            <h3 className="text-sm font-semibold mb-2">
+              {isAr
+                ? `إضافة ${getTabName(activeTab)} جديد`
+                : `Add new ${getTabName(activeTab)}`}
+            </h3>
             <form onSubmit={handleAdd} className="flex gap-2 w-full">
               <input
                 type="text"
                 value={newItemName}
                 onChange={(e) => setNewItemName(e.target.value)}
-                placeholder={isAr ? `اسم ${getTabName(activeTab)}...` : `Name of ${getTabName(activeTab)}...`}
-                className="flex-1 p-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                placeholder={
+                  isAr
+                    ? `اسم ${getTabName(activeTab)}...`
+                    : `Name of ${getTabName(activeTab)}...`
+                }
+                className="flex-1 min-w-0 p-2.5 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
               <button
                 type="submit"
                 disabled={!newItemName.trim()}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg transition-colors text-sm font-semibold disabled:opacity-50 flex items-center justify-center whitespace-nowrap"
+                className="shrink-0 px-3 sm:px-4 py-2 bg-primary text-primary-foreground rounded-lg transition-colors text-sm font-semibold disabled:opacity-50 flex items-center gap-1"
               >
-                <Plus className="w-4 h-4 mr-1" />
-                {isAr ? "إضافة" : "Add"}
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">{isAr ? "إضافة" : "Add"}</span>
               </button>
             </form>
           </div>
-          
-          {/* Import/Export Section */}
-          <div className="bg-card p-4 rounded-xl shadow-sm border border-border w-full sm:w-1/2 flex flex-col gap-3">
-             <h3 className="text-sm font-semibold">{isAr ? "إدارة البيانات" : "Manage Data"}</h3>
-             <div className="flex items-center gap-2 w-full flex-wrap">
+
+          {/* CSV Import / Export — horizontal row that wraps cleanly */}
+          <div className="bg-card p-3 sm:p-4 rounded-xl shadow-sm border border-border">
+            <h3 className="text-sm font-semibold mb-2">
+              {isAr ? "إدارة البيانات" : "Manage Data"}
+            </h3>
+            <div className="grid grid-cols-2 gap-2">
               <button
-                onClick={() => { setCsvData([]); setColumnMap({}); setCsvHeaders([]); setImportModalOpen(true); }}
-                className="flex-1 px-4 py-2 bg-background border border-border hover:bg-muted rounded-lg transition-colors text-sm font-semibold flex items-center justify-center gap-2 whitespace-nowrap"
+                onClick={() => {
+                  setCsvData([]);
+                  setColumnMap({});
+                  setCsvHeaders([]);
+                  setImportModalOpen(true);
+                }}
+                className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-background border border-border hover:bg-muted rounded-lg transition-colors text-xs sm:text-sm font-semibold"
               >
-                <Upload className="w-4 h-4" />
-                {isAr ? "استيراد CSV" : "Import CSV"}
+                <Upload className="w-4 h-4 shrink-0" />
+                <span>{isAr ? "استيراد CSV" : "Import CSV"}</span>
               </button>
               <button
                 onClick={handleExport}
-                className="flex-1 px-4 py-2 bg-background border border-border hover:bg-muted rounded-lg transition-colors text-sm font-semibold flex items-center justify-center gap-2 whitespace-nowrap"
+                className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-background border border-border hover:bg-muted rounded-lg transition-colors text-xs sm:text-sm font-semibold"
               >
-                <Download className="w-4 h-4" />
-                {isAr ? "تصدير CSV" : "Export CSV"}
+                <Download className="w-4 h-4 shrink-0" />
+                <span>{isAr ? "تصدير CSV" : "Export CSV"}</span>
               </button>
             </div>
           </div>
         </div>
 
-        {/* List */}
+        {/* List — skeleton while loading, content after */}
         <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
-          {items.length === 0 ? (
+          {isLoading ? (
+            <div className="divide-y divide-border">
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div key={i} className="flex items-center justify-between p-4">
+                  <Skeleton className="h-4 w-48 rounded-md" />
+                  <Skeleton className="h-8 w-8 rounded-lg" />
+                </div>
+              ))}
+            </div>
+          ) : items.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground text-sm">
-              {isAr ? `لا توجد ${getTabName(activeTab)} مضافة. أضف واحداً بالأعلى أو استورد ملف CSV.` : `No ${activeTab} found. Add one above or import a CSV.`}
+              {isAr
+                ? `لا توجد ${getTabName(activeTab)} مضافة. أضف واحداً بالأعلى أو استورد ملف CSV.`
+                : `No ${activeTab} found. Add one above or import a CSV.`}
             </div>
           ) : (
             <div className="divide-y divide-border">
               {items.map((item) => (
-                <div key={item._id} className="flex items-center justify-between p-4 hover:bg-muted/30 transition-colors">
-                  <span className="text-sm font-medium">{item.name}</span>
+                <div
+                  key={item._id}
+                  className="flex items-center justify-between p-3 sm:p-4 hover:bg-muted/30 transition-colors"
+                >
+                  <span className="text-sm font-medium flex-1 min-w-0 truncate pr-2">
+                    {item.name}
+                  </span>
                   <button
                     onClick={() => handleDelete(item._id)}
-                    className="p-2 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
+                    className="shrink-0 p-2 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-colors"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -279,9 +313,14 @@ export default function MedicationsPage() {
                   <FileText className="w-5 h-5 text-primary" />
                 </div>
                 <div className="text-left" dir={dir}>
-                  <DrawerTitle>{isAr ? `استيراد ` : `Import `}{getTabName(activeTab)}</DrawerTitle>
+                  <DrawerTitle>
+                    {isAr ? `استيراد ` : `Import `}
+                    {getTabName(activeTab)}
+                  </DrawerTitle>
                   <DrawerDescription className="mt-1">
-                    {isAr ? `قم برفع ملف CSV يحتوي على ${getTabName(activeTab)} الخاصة بك` : `Upload a CSV file containing your ${activeTab}`}
+                    {isAr
+                      ? `قم برفع ملف CSV يحتوي على ${getTabName(activeTab)} الخاصة بك`
+                      : `Upload a CSV file containing your ${activeTab}`}
                   </DrawerDescription>
                 </div>
               </div>
@@ -293,16 +332,30 @@ export default function MedicationsPage() {
             <div className="flex-1 overflow-auto p-4 sm:p-6 bg-muted/20">
               <div className="space-y-6" dir={dir}>
                 <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
-                  <h3 className="text-sm font-semibold mb-4">{isAr ? "١. رفع ملف CSV" : "1. Upload CSV"}</h3>
+                  <h3 className="text-sm font-semibold mb-4">
+                    {isAr ? "١. رفع ملف CSV" : "1. Upload CSV"}
+                  </h3>
                   <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
                     <div className="flex-1 w-full">
-                      <input type="file" accept=".csv" className="hidden" ref={fileInputRef} onChange={handleFileUpload} />
+                      <input
+                        type="file"
+                        accept=".csv"
+                        className="hidden"
+                        ref={fileInputRef}
+                        onChange={handleFileUpload}
+                      />
                       <button
                         onClick={() => fileInputRef.current?.click()}
                         className="px-4 py-2.5 bg-background border border-dashed border-primary/50 text-primary hover:bg-primary/5 rounded-lg transition-colors text-sm font-medium w-full flex items-center justify-center gap-2"
                       >
                         <Upload className="w-4 h-4" />
-                        {csvHeaders.length > 0 ? (isAr ? "رفع ملف مختلف" : "Upload a different CSV") : (isAr ? "اضغط لرفع ملف CSV" : "Click to upload CSV")}
+                        {csvHeaders.length > 0
+                          ? isAr
+                            ? "رفع ملف مختلف"
+                            : "Upload a different CSV"
+                          : isAr
+                          ? "اضغط لرفع ملف CSV"
+                          : "Click to upload CSV"}
                       </button>
                     </div>
                   </div>
@@ -310,16 +363,28 @@ export default function MedicationsPage() {
 
                 {csvHeaders.length > 0 && (
                   <div className="bg-card border border-border rounded-xl p-5 shadow-sm">
-                    <h3 className="text-sm font-semibold mb-4">{isAr ? "٢. ربط الأعمدة" : "2. Map Columns"}</h3>
+                    <h3 className="text-sm font-semibold mb-4">
+                      {isAr ? "٢. ربط الأعمدة" : "2. Map Columns"}
+                    </h3>
                     <div className="space-y-1.5 max-w-xs">
-                      <label className="text-xs font-medium text-muted-foreground">{isAr ? "عمود الاسم" : "Name Column"}</label>
+                      <label className="text-xs font-medium text-muted-foreground">
+                        {isAr ? "عمود الاسم" : "Name Column"}
+                      </label>
                       <select
                         value={columnMap["name"] || ""}
-                        onChange={(e) => setColumnMap({ name: e.target.value })}
+                        onChange={(e) =>
+                          setColumnMap({ name: e.target.value })
+                        }
                         className="w-full p-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
                       >
-                        <option value="">{isAr ? "-- تجاهل --" : "-- Ignore --"}</option>
-                        {csvHeaders.map(h => <option key={h} value={h}>{h}</option>)}
+                        <option value="">
+                          {isAr ? "-- تجاهل --" : "-- Ignore --"}
+                        </option>
+                        {csvHeaders.map((h) => (
+                          <option key={h} value={h}>
+                            {h}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   </div>
@@ -329,15 +394,21 @@ export default function MedicationsPage() {
                   <div className="bg-card border border-border rounded-xl overflow-hidden shadow-sm flex flex-col">
                     <div className="p-4 border-b border-border flex items-center justify-between">
                       <div>
-                        <h3 className="text-sm font-semibold">{isAr ? "٣. معاينة واستيراد" : "3. Preview & Import"}</h3>
-                        <p className="text-xs text-muted-foreground">{csvData.length} {isAr ? "صفوف" : "rows"}</p>
+                        <h3 className="text-sm font-semibold">
+                          {isAr ? "٣. معاينة واستيراد" : "3. Preview & Import"}
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                          {csvData.length} {isAr ? "صفوف" : "rows"}
+                        </p>
                       </div>
                       <button
                         onClick={handleImportAll}
                         disabled={importing || !columnMap["name"]}
                         className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl text-sm font-semibold flex items-center gap-2 disabled:opacity-50"
                       >
-                        {importing && <Loader2 className="w-4 h-4 animate-spin" />}
+                        {importing && (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        )}
                         {isAr ? "استيراد الكل" : "Import All"}
                       </button>
                     </div>
@@ -345,13 +416,25 @@ export default function MedicationsPage() {
                       <table className="w-full text-sm text-left">
                         <thead className="text-xs text-muted-foreground uppercase bg-muted/50">
                           <tr>
-                            <th className={`px-4 py-3 font-medium ${isAr ? "text-right" : "text-left"}`}>{isAr ? "الاسم" : "Name"}</th>
+                            <th
+                              className={`px-4 py-3 font-medium ${
+                                isAr ? "text-right" : "text-left"
+                              }`}
+                            >
+                              {isAr ? "الاسم" : "Name"}
+                            </th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border">
                           {csvData.slice(0, 50).map((row, i) => (
                             <tr key={i} className="hover:bg-muted/30">
-                              <td className={`px-4 py-3 truncate ${isAr ? "text-right" : "text-left"}`}>{row[columnMap["name"]] || "—"}</td>
+                              <td
+                                className={`px-4 py-3 truncate ${
+                                  isAr ? "text-right" : "text-left"
+                                }`}
+                              >
+                                {row[columnMap["name"]] || "—"}
+                              </td>
                             </tr>
                           ))}
                         </tbody>

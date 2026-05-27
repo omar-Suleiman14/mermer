@@ -83,11 +83,11 @@ export const createAppointment = mutation({
     }
 
     const patientPhone = normalizeEgyptMobile(args.patientPhone);
-    if (
-      args.patientAge !== undefined &&
-      (!Number.isInteger(args.patientAge) || args.patientAge < 0 || args.patientAge > 120)
-    ) {
-      throw new ConvexError("Invalid patient age");
+    if (args.patientAge !== undefined) {
+      const age = Math.floor(args.patientAge);
+      if (!Number.isFinite(age) || age < 0 || age > 120) {
+        throw new ConvexError("Invalid patient age");
+      }
     }
 
     assertPublicBookingSlot(args.date, doctor);
