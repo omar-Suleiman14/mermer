@@ -629,8 +629,10 @@ export default function DashboardPage() {
           <BarChart3 className="w-5 h-5 text-[#007AFF]" />
           <h2 className="font-bold text-base">{lang === "ar" ? "إحصائيات اليوم" : "Today's Analytics"}</h2>
         </div>
-        {statsData === undefined ? (
-          <div className="flex justify-center py-4"><IOSSpinner size={24} /></div>
+        {statsData === undefined || statsData === null ? (
+          <div className="flex justify-center py-4">
+            {statsData === undefined ? <IOSSpinner size={24} /> : <p className="text-sm text-muted-foreground">{t("dashboard.noStatsAvailable") || "No stats available."}</p>}
+          </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="p-3 bg-muted/30 rounded-xl">
