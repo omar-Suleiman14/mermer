@@ -30,7 +30,18 @@ export const listinstallments = query({
         const visitsLeft = Math.max(0, total - completed);
         const costPerVisit = c.costPerVisit ?? 0;
         const remainingBalance = (c.totalAmount ?? 0) - ((c.downPayment ?? 0) + (c.paidVisits ?? 0) * costPerVisit);
-        return { ...c, fileUrl, visitsLeft, remainingBalance: Math.max(0, remainingBalance) };
+        
+        let nextVisitId: string | undefined;
+        if (c.nextVisitDate) {
+          const upcomingVisits = await ctx.db
+            .query("visits")
+            .withIndex("by_installment", (q) => q.eq("installmentId", c._id))
+            .collect();
+          const nextVisit = upcomingVisits.find(v => v.date === c.nextVisitDate && v.status !== "cancelled" && v.status !== "completed");
+          if (nextVisit) nextVisitId = nextVisit._id;
+        }
+
+        return { ...c, fileUrl, visitsLeft, remainingBalance: Math.max(0, remainingBalance), nextVisitId };
       })
     );
   },
@@ -312,6 +323,9 @@ export const completeinstallmentVisit = mutation({
     installmentId: v.id("installments"),
     isPaid: v.boolean(),
     notes: v.optional(v.string()),
+    diagnosis: v.optional(v.string()),
+    measurements: v.optional(v.string()),
+    vitals: v.optional(v.string()),
     prescriptionImageId: v.optional(v.id("_storage")),
     documentIds: v.optional(v.array(v.id("_storage"))),
     prescribedMedications: v.optional(
@@ -343,6 +357,9 @@ export const completeinstallmentVisit = mutation({
       status: "completed",
       isPaid: args.isPaid,
       notes: args.notes,
+      diagnosis: args.diagnosis,
+      measurements: args.measurements,
+      vitals: args.vitals,
       prescriptionImageId: args.prescriptionImageId,
       documentIds: args.documentIds,
       prescribedMedications: args.prescribedMedications,

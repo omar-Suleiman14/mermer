@@ -175,7 +175,10 @@ export const addVisitFiles = mutation({
     prescriptionPdfId: v.optional(v.id("_storage")),
     documentIds: v.optional(v.array(v.id("_storage"))),
     notes: v.optional(v.string()),
-    status: v.optional(v.union(v.literal("confirmed"), v.literal("completed"), v.literal("cancelled"))),
+    diagnosis: v.optional(v.string()),
+    measurements: v.optional(v.string()),
+    vitals: v.optional(v.string()),
+    status: v.optional(v.union(v.literal("confirmed"), v.literal("completed"), v.literal("cancelled"), v.literal("no-show"), v.literal("rescheduled"))),
     prescribedMedications: v.optional(
       v.array(
         v.union(
@@ -203,6 +206,9 @@ export const addVisitFiles = mutation({
       ...(args.prescriptionPdfId ? { prescriptionPdfId: args.prescriptionPdfId } : {}),
       documentIds: [...existingDocIds, ...newDocIds],
       ...(args.notes !== undefined ? { notes: args.notes } : {}),
+      ...(args.diagnosis !== undefined ? { diagnosis: args.diagnosis } : {}),
+      ...(args.measurements !== undefined ? { measurements: args.measurements } : {}),
+      ...(args.vitals !== undefined ? { vitals: args.vitals } : {}),
       ...(args.status !== undefined ? { status: args.status } : {}),
       ...(args.prescribedMedications !== undefined ? { prescribedMedications: args.prescribedMedications } : {}),
       actionBy: user.actualUserName || "Doctor",
@@ -284,7 +290,9 @@ export const updateVisit = mutation({
         v.union(
           v.literal("confirmed"),
           v.literal("cancelled"),
-          v.literal("completed")
+          v.literal("completed"),
+          v.literal("no-show"),
+          v.literal("rescheduled")
         )
       ),
       notes: v.optional(v.string()),
@@ -453,6 +461,35 @@ export const getVisit = query({
         age: patient?.age,
       },
       followUp: followUps.length > 0 ? followUps[0] : null,
+    };
+  },
+});
+
+export const checkWorkingHoursConflict = query({
+  args: {
+    clerkId: v.string(),
+    newStart: v.number(),
+    newEnd: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx, args.clerkId);
+    if (!user) return { conflict: false, conflictingVisits: [] };
+
+    const visits = await ctx.db
+      .query("visits")
+      .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+      .take(10000);
+
+    const conflictingVisits = visits.filter(v => {
+      if (v.status === "cancelled") return false;
+      const vDate = new Date(v.date);
+      const timeInHours = vDate.getHours() + vDate.getMinutes() / 60;
+      return timeInHours < args.newStart || timeInHours >= args.newEnd;
+    });
+
+    return {
+      conflict: conflictingVisits.length > 0,
+      conflictingVisits: conflictingVisits.map(v => ({ _id: v._id, date: v.date, reasonForVisit: v.reasonForVisit }))
     };
   },
 });

@@ -6,7 +6,7 @@ import { api } from "@/convex/_generated/api";
 import { PageHeader } from "@/components/page-header";
 import { useI18n } from "@/lib/i18n/client";
 import { IOSSpinner } from "@/components/ui/spinner";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { 
   CalendarIcon, Filter, Activity, History, Globe, 
   CheckCircle2, Clock, XCircle, Users, 
@@ -96,6 +96,14 @@ export default function HistoryPage() {
   const [dateFilter, setDateFilter] = useState<string>("");
   const [staffFilter, setStaffFilter] = useState<string>("all");
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+  const observerTarget = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [typeFilter, dateFilter, staffFilter]);
+
   const unifiedLogs: UnifiedLog[] = useMemo(() => {
     if (!rawLogs || !auditLogs) return [];
 
@@ -162,6 +170,30 @@ export default function HistoryPage() {
 
     return filtered;
   }, [unifiedLogs, typeFilter, staffFilter, dateFilter]);
+
+  const paginatedLogs = useMemo(() => {
+    const end = currentPage * itemsPerPage;
+    return filteredLogs.slice(0, end);
+  }, [filteredLogs, currentPage]);
+
+  const totalPages = Math.ceil(filteredLogs.length / itemsPerPage);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && currentPage < totalPages) {
+          setCurrentPage((prev) => prev + 1);
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => observer.disconnect();
+  }, [currentPage, totalPages]);
 
   if (rawLogs === undefined || auditLogs === undefined) {
     return (
@@ -240,7 +272,7 @@ export default function HistoryPage() {
             </div>
           ) : (
             <div className="divide-y divide-border">
-              {filteredLogs.map((log) => {
+              {paginatedLogs.map((log) => {
                 if (log.type === "visit") {
                   const isOnline = log.source === "online";
                   const isInstallment = log.source === "installment";
@@ -348,6 +380,12 @@ export default function HistoryPage() {
             </div>
           )}
         </div>
+
+        {currentPage < totalPages && (
+          <div ref={observerTarget} className="py-6 flex justify-center">
+            <IOSSpinner size={24} className="text-muted-foreground" />
+          </div>
+        )}
       </div>
     </div>
   );

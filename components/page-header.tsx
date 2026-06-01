@@ -4,6 +4,10 @@ import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
 import { NotificationCenter } from "@/components/notification-center";
 
+import { useEffect } from "react";
+
+import { useI18n } from "@/lib/i18n/client";
+
 interface PageHeaderProps {
   title: string;
   description?: string;
@@ -12,6 +16,13 @@ interface PageHeaderProps {
 }
 
 export function PageHeader({ title, description, action, children }: PageHeaderProps) {
+  const { lang } = useI18n();
+
+  useEffect(() => {
+    if (title) {
+      document.title = `${title} — ${lang === "ar" ? "مرمر" : "mermer"}`;
+    }
+  }, [title, lang]);
   return (
     <header className="flex h-14 shrink-0 items-center gap-2 px-4 border-b border-border/60 bg-background">
       <SidebarTrigger className="-ms-1 text-muted-foreground hover:text-foreground" />

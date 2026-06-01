@@ -25,14 +25,14 @@ export function DoctorCard({ doctor, className }: DoctorCardProps) {
       href={`/doctors/${slug}`}
       prefetch={true}
       className={cn(
-        "group block rounded-3xl bg-slate-50 dark:bg-zinc-900/50 p-6 shadow-sm border border-transparent",
-        "hover:bg-white dark:hover:bg-zinc-900 hover:border-slate-200 dark:hover:border-white/10 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300",
+        "group block rounded-2xl sm:rounded-3xl bg-white dark:bg-zinc-900 p-4 sm:p-6 shadow-sm border border-slate-200/60 dark:border-white/5",
+        "hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300",
         className
       )}
     >
-      <div className="flex gap-5">
+      <div className="flex gap-3 sm:gap-5">
         {/* Avatar */}
-        <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden bg-slate-200 dark:bg-zinc-800 shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-105 group-hover:-rotate-2">
+        <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden bg-slate-100 dark:bg-zinc-800 shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-105 group-hover:-rotate-2">
           {doctor.profilePhotoUrl ? (
             <Image
               src={doctor.profilePhotoUrl}
@@ -42,7 +42,7 @@ export function DoctorCard({ doctor, className }: DoctorCardProps) {
               className="object-cover"
             />
           ) : (
-            <span className="absolute inset-0 flex items-center justify-center text-2xl font-bold text-slate-500 dark:text-zinc-400">
+            <span className="absolute inset-0 flex items-center justify-center text-2xl font-bold text-slate-400 dark:text-zinc-500">
               {doctor.name.charAt(0)}
             </span>
           )}
@@ -52,7 +52,7 @@ export function DoctorCard({ doctor, className }: DoctorCardProps) {
         <div className="flex-1 min-w-0 flex flex-col justify-between">
           <div>
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
+              <div className="flex-1 min-w-0">
                 <h2 className="text-lg font-semibold text-slate-900 dark:text-white truncate">
                   {formatDoctorTitle(doctor.name, lang)}
                 </h2>
@@ -99,7 +99,7 @@ export function DoctorCard({ doctor, className }: DoctorCardProps) {
       </div>
       
       {/* Footer bar for price and availability */}
-      <div className="mt-5 pt-4 border-t border-slate-200/50 dark:border-white/5 flex items-center justify-between">
+      <div className="mt-5 pt-4 border-t border-slate-200/60 dark:border-white/5 flex flex-wrap gap-3 items-center justify-between">
         {doctor.consultationFee !== null ? (
           <span className="font-semibold text-slate-900 dark:text-white">
             {doctor.consultationFee.toLocaleString(lang === "ar" ? "ar-EG" : "en-US")}{" "}

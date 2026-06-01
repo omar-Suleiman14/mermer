@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect, useSyncExternalStore } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useMutation, useConvex, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -20,6 +20,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import { useI18n } from "@/lib/i18n/client";
+import { useIsDesktop } from "@/hooks/use-is-desktop";
+import { useKeyboardHeight } from "@/hooks/use-keyboard-height";
 
 interface PatientIntakeDrawerProps {
   open: boolean;
@@ -30,6 +32,7 @@ interface PatientIntakeDrawerProps {
     name: string;
     age: number;
     phone: string;
+    gender?: "male" | "female" | "other";
     chronicConditions: string[];
   } | null;
 }
@@ -56,37 +59,28 @@ function sanitisePhoneInput(raw: string): string {
   return raw.replace(/\D/g, "").replace(/^0+/, "").slice(0, 10);
 }
 
-const defaultForm = {
+interface FormState {
+  name: string;
+  age: string;
+  phone: string;
+  gender: "male" | "female" | "other";
+  chronicConditions: string[];
+  notes: string;
+  reasonForVisit: string;
+}
+
+const defaultForm: FormState = {
   name: "",
   age: "",
   phone: "",
-  chronicConditions: [] as string[],
+  gender: "other",
+  chronicConditions: [],
   notes: "",
   reasonForVisit: "",
 };
 
-const inputClass = "w-full px-3 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] transition-shadow";
-
-// Detect if we're on a sm+ screen (>= 640px) — reads synchronously to avoid flicker
-function subscribeDesktop(callback: () => void) {
-  if (typeof window === "undefined") return () => {};
-  const mq = window.matchMedia("(min-width: 640px)");
-  mq.addEventListener("change", callback);
-  return () => mq.removeEventListener("change", callback);
-}
-
-function getDesktopSnapshot() {
-  if (typeof window === "undefined") return false;
-  return window.matchMedia("(min-width: 640px)").matches;
-}
-
-function getServerDesktopSnapshot() {
-  return false;
-}
-
-function useIsDesktop() {
-  return useSyncExternalStore(subscribeDesktop, getDesktopSnapshot, getServerDesktopSnapshot);
-}
+const inputClass =
+  "w-full px-3 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] transition-shadow";
 
 export function PatientIntakeDrawer({
   open,
@@ -97,10 +91,19 @@ export function PatientIntakeDrawer({
   const isEdit = !!editPatient;
   const { t, lang, dir } = useI18n();
   const isDesktop = useIsDesktop();
+  const { keyboardHeight, isKeyboardOpen } = useKeyboardHeight();
 
-  const [form, setForm] = useState(() =>
-    isEdit
-      ? { ...defaultForm, ...editPatient, age: String(editPatient?.age ?? ""), phone: stripPrefix(editPatient?.phone ?? "") }
+  const [form, setForm] = useState<FormState>(() =>
+    isEdit && editPatient
+      ? {
+          name: editPatient.name,
+          age: String(editPatient.age ?? ""),
+          phone: stripPrefix(editPatient.phone ?? ""),
+          gender: editPatient.gender ?? "other",
+          chronicConditions: editPatient.chronicConditions ?? [],
+          notes: "",
+          reasonForVisit: "",
+        }
       : defaultForm
   );
   const [loading, setLoading] = useState(false);
@@ -108,7 +111,7 @@ export function PatientIntakeDrawer({
   // Optional visit toggle
   const [addVisit, setAddVisit] = useState(true);
 
-  // Visit date & time (new style matching visit-drawer)
+  // Visit date & time
   const [visitDate, setVisitDate] = useState<Date | undefined>(new Date());
   const [visitTime, setVisitTime] = useState<string>("10:00");
   const [calOpen, setCalOpen] = useState(false);
@@ -154,7 +157,7 @@ export function PatientIntakeDrawer({
         const hh = h.toString().padStart(2, "0");
         const mm = m.toString().padStart(2, "0");
         const timeStr = `${hh}:${mm}`;
-        const ampm = h >= 12 ? (lang === "ar" ? "م" : "PM") : (lang === "ar" ? "ص" : "AM");
+        const ampm = h >= 12 ? (lang === "ar" ? "م" : "PM") : lang === "ar" ? "ص" : "AM";
         const displayH = h % 12 || 12;
         const label = `${displayH}:${mm} ${ampm}`;
         const isWorkingHour = h >= startHour && h < endHour;
@@ -168,7 +171,7 @@ export function PatientIntakeDrawer({
   // Auto-select first available working slot
   useEffect(() => {
     if (timeSlots.length > 0 && visitTime === "10:00") {
-      const firstAvailable = timeSlots.find(s => s.isWorkingHour && !s.isReserved);
+      const firstAvailable = timeSlots.find((s) => s.isWorkingHour && !s.isReserved);
       if (firstAvailable) {
         setTimeout(() => setVisitTime(firstAvailable.timeStr), 0);
       }
@@ -190,7 +193,8 @@ export function PatientIntakeDrawer({
     return opts.filter((c) => c.toLowerCase().includes(q));
   }, [conditionOptions, conditionSearch]);
 
-  const canAddCustom = conditionSearch.trim().length > 0 &&
+  const canAddCustom =
+    conditionSearch.trim().length > 0 &&
     !filteredConditions.some((c) => c.toLowerCase() === conditionSearch.trim().toLowerCase()) &&
     !form.chronicConditions.some((c) => c.toLowerCase() === conditionSearch.trim().toLowerCase());
 
@@ -219,6 +223,7 @@ export function PatientIntakeDrawer({
           name: editPatient.name,
           age: String(editPatient.age),
           phone: stripPrefix(editPatient.phone),
+          gender: editPatient.gender ?? "other",
           chronicConditions: editPatient.chronicConditions,
           notes: "",
           reasonForVisit: "",
@@ -267,7 +272,6 @@ export function PatientIntakeDrawer({
       return;
     }
 
-    // If adding a visit, validate date
     if (!isEdit && addVisit && !visitDate) {
       toast.error("Please pick a visit date");
       return;
@@ -282,6 +286,7 @@ export function PatientIntakeDrawer({
           clerkId,
           name: form.name,
           age: Number(form.age),
+          gender: form.gender as "male" | "female" | "other",
           phone: fullPhone,
           chronicConditions: form.chronicConditions,
         });
@@ -302,6 +307,7 @@ export function PatientIntakeDrawer({
             clerkId,
             name: form.name,
             age: Number(form.age),
+            gender: form.gender as "male" | "female" | "other",
             phone: fullPhone,
             chronicConditions: form.chronicConditions,
           });
@@ -309,7 +315,7 @@ export function PatientIntakeDrawer({
         }
 
         if (addVisit && visitDate) {
-          const selectedSlot = timeSlots.find(s => s.timeStr === visitTime);
+          const selectedSlot = timeSlots.find((s) => s.timeStr === visitTime);
           if (selectedSlot?.isReserved) {
             toast.error("This time slot is already reserved — pick another");
             setLoading(false);
@@ -349,7 +355,7 @@ export function PatientIntakeDrawer({
         <input
           value={form.name}
           onChange={(e) => set("name", e.target.value)}
-          placeholder="Patient full name"
+          placeholder={dir === "rtl" ? "الاسم الكامل للمريض" : "Patient full name"}
           className={inputClass}
           required
         />
@@ -387,6 +393,19 @@ export function PatientIntakeDrawer({
         </div>
       </div>
 
+      {/* Gender */}
+      <div>
+        <label className="text-xs font-medium text-muted-foreground block mb-1.5">{dir === "rtl" ? "الجنس" : "Gender"}</label>
+        <select
+          value={form.gender}
+          onChange={(e) => set("gender", e.target.value)}
+          className={inputClass}
+        >
+          <option value="male">{dir === "rtl" ? "ذكر" : "Male"}</option>
+          <option value="female">{dir === "rtl" ? "أنثى" : "Female"}</option>
+        </select>
+      </div>
+
       {/* Chronic Conditions */}
       <div ref={conditionRef}>
         <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("drawer.chronicConditions")}</label>
@@ -407,7 +426,10 @@ export function PatientIntakeDrawer({
             <Search className="w-3.5 h-3.5 text-muted-foreground ml-3 shrink-0" />
             <input
               value={conditionSearch}
-              onChange={(e) => { setConditionSearch(e.target.value); setConditionDropdownOpen(true); }}
+              onChange={(e) => {
+                setConditionSearch(e.target.value);
+                setConditionDropdownOpen(true);
+              }}
               onFocus={() => setConditionDropdownOpen(true)}
               placeholder={t("drawer.searchConditions")}
               className="flex-1 px-2 py-2.5 text-sm bg-transparent outline-none"
@@ -428,7 +450,9 @@ export function PatientIntakeDrawer({
                     <button
                       key={c}
                       type="button"
-                      onClick={() => { toggleCondition(c); }}
+                      onClick={() => {
+                        toggleCondition(c);
+                      }}
                       className={`w-full flex items-center gap-2 px-3 py-2 text-start text-sm transition-colors hover:bg-muted/40 ${selected ? "text-[#007AFF] font-medium" : ""}`}
                     >
                       {selected && <Check className="w-3.5 h-3.5 text-[#007AFF] shrink-0" />}
@@ -464,7 +488,7 @@ export function PatientIntakeDrawer({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold">{t("drawer.visitDateTime") || "Schedule a Visit"}</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Optional — you can add a visit later</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{t("drawer.visitOptional") || "Optional - you can add a visit later"}</p>
               </div>
               <Switch checked={addVisit} onCheckedChange={setAddVisit} />
             </div>
@@ -485,16 +509,23 @@ export function PatientIntakeDrawer({
                     {/* Calendar */}
                     <div>
                       <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
-                        <CalendarIcon className="w-3 h-3" /> Date *
+                        <CalendarIcon className="w-3 h-3" /> {t("visit.date") || "Date"} *
                       </p>
                       <Popover open={calOpen} onOpenChange={setCalOpen}>
                         <PopoverTrigger asChild>
-                          <button type="button" className="w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border border-border rounded-xl hover:border-[#007AFF]/50 transition-colors text-start">
+                          <button
+                            type="button"
+                            className="w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border border-border rounded-xl hover:border-[#007AFF]/50 transition-colors text-start"
+                          >
                             <CalendarIcon className="w-4 h-4 text-muted-foreground shrink-0" />
                             <span>
                               {visitDate
-                                ? visitDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-                                : "Pick a date"}
+                                ? visitDate.toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                    year: "numeric",
+                                  })
+                                : (dir === "rtl" ? "اختر تاريخاً" : "Pick a date")}
                             </span>
                           </button>
                         </PopoverTrigger>
@@ -502,7 +533,13 @@ export function PatientIntakeDrawer({
                           <Calendar
                             mode="single"
                             selected={visitDate}
-                            onSelect={(d) => { if (d) { setVisitDate(d); setCalOpen(false); setVisitTime("10:00"); } }}
+                            onSelect={(d) => {
+                              if (d) {
+                                setVisitDate(d);
+                                setCalOpen(false);
+                                setVisitTime("10:00");
+                              }
+                            }}
                             disabled={(d) => {
                               const today = new Date();
                               today.setHours(0, 0, 0, 0);
@@ -519,27 +556,33 @@ export function PatientIntakeDrawer({
                         <Clock className="w-3 h-3" /> {t("visit.timeSlot")}
                       </p>
                       <div className="max-h-48 overflow-y-auto border border-border rounded-xl divide-y divide-border/50">
-                        {timeSlots.filter(s => s.isWorkingHour).map(slot => (
-                          <button
-                            key={slot.timeStr}
-                            type="button"
-                            onClick={() => !slot.isReserved && setVisitTime(slot.timeStr)}
-                            disabled={slot.isReserved}
-                            className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${
-                              slot.isReserved
-                                ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed line-through"
-                                : visitTime === slot.timeStr
+                        {timeSlots
+                          .filter((s) => s.isWorkingHour)
+                          .map((slot) => (
+                            <button
+                              key={slot.timeStr}
+                              type="button"
+                              onClick={() => !slot.isReserved && setVisitTime(slot.timeStr)}
+                              disabled={slot.isReserved}
+                              className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${
+                                slot.isReserved
+                                  ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed line-through"
+                                  : visitTime === slot.timeStr
                                   ? "bg-[#007AFF]/10 text-[#007AFF] font-semibold"
                                   : "hover:bg-muted/30"
-                            }`}
-                          >
-                            <span>{slot.label}</span>
-                            {slot.isReserved && <span className="text-[10px] font-medium text-red-400 uppercase tracking-wider">{t("visit.reserved") || "Reserved"}</span>}
-                            {!slot.isReserved && visitTime === slot.timeStr && <CheckCircle2 className="w-3.5 h-3.5" />}
-                          </button>
-                        ))}
-                        {timeSlots.filter(s => s.isWorkingHour).length === 0 && (
-                          <p className="px-3 py-4 text-xs text-muted-foreground text-center">No working hours configured</p>
+                              }`}
+                            >
+                              <span>{slot.label}</span>
+                              {slot.isReserved && (
+                                <span className="text-[10px] font-medium text-red-400 uppercase tracking-wider">
+                                  {t("visit.reserved") || "Reserved"}
+                                </span>
+                              )}
+                              {!slot.isReserved && visitTime === slot.timeStr && <CheckCircle2 className="w-3.5 h-3.5" />}
+                            </button>
+                          ))}
+                        {timeSlots.filter((s) => s.isWorkingHour).length === 0 && (
+                          <p className="px-3 py-4 text-xs text-muted-foreground text-center">{dir === "rtl" ? "لم يتم تحديد ساعات عمل" : "No working hours configured"}</p>
                         )}
                       </div>
                     </div>
@@ -552,7 +595,7 @@ export function PatientIntakeDrawer({
                       type="text"
                       value={form.reasonForVisit}
                       onChange={(e) => set("reasonForVisit", e.target.value)}
-                      placeholder="e.g. Follow-up, checkup, acute complaint…"
+                      placeholder={dir === "rtl" ? "مثال: متابعة، فحص، شكوى حادة..." : "e.g. Follow-up, checkup, acute complaint…"}
                       className={inputClass}
                     />
                   </div>
@@ -563,7 +606,7 @@ export function PatientIntakeDrawer({
                     <textarea
                       value={form.notes}
                       onChange={(e) => set("notes", e.target.value)}
-                      placeholder="Optional notes..."
+                      placeholder={dir === "rtl" ? "ملاحظات اختيارية..." : "Optional notes..."}
                       rows={2}
                       className={`${inputClass} resize-none`}
                     />
@@ -591,19 +634,20 @@ export function PatientIntakeDrawer({
         disabled={loading}
         className="flex-1 bg-[#007AFF] text-white text-sm font-semibold py-2.5 px-4 rounded-xl hover:bg-[#0062cc] transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
       >
-        {loading
-          ? <><IOSSpinner size={16} className="text-white" /> {t("onboarding.saving")}</>
-          : isEdit
-            ? t("drawer.saveChanges")
-            : addVisit
-              ? t("drawer.submit")
-              : "Save Patient Only"}
+        {loading ? (
+          <>
+            <IOSSpinner size={16} className="text-white" /> {t("onboarding.saving")}
+          </>
+        ) : isEdit ? (
+          t("drawer.saveChanges")
+        ) : addVisit ? (
+          t("drawer.submit")
+        ) : (
+          dir === "rtl" ? "حفظ المريض فقط" : "Save Patient Only"
+        )}
       </button>
     </div>
   );
-
-  // When not open and on mobile, render nothing
-  if (!open && !isDesktop) return null;
 
   // ── DESKTOP: centered modal popup ─────────────────────────────────────────
   if (isDesktop) {
@@ -659,8 +703,19 @@ export function PatientIntakeDrawer({
 
   // ── MOBILE: bottom drawer ──────────────────────────────────────────────────
   return (
-    <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[90vh]">
+    <Drawer
+      open={open}
+      onOpenChange={onOpenChange}
+      snapPoints={[0.65, 0.9]}
+    >
+      <DrawerContent
+        dir={dir}
+        style={
+          isKeyboardOpen && keyboardHeight > 0
+            ? { paddingBottom: keyboardHeight }
+            : undefined
+        }
+      >
         <DrawerHeader>
           <DrawerTitle>{isEdit ? t("drawer.editPatient") : t("drawer.patientIntake")}</DrawerTitle>
           <DrawerDescription>

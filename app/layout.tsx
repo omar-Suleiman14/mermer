@@ -59,6 +59,14 @@ export const metadata: Metadata = {
     images: ["/icon.svg"],
   },
 };
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  maximumScale: 1,
+};
+
 export default async function RootLayout({
   children,
 }: Readonly<{

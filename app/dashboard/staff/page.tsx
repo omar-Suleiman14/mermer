@@ -21,12 +21,17 @@ import {
 } from "lucide-react";
 
 const ALL_PERMISSIONS = [
-  "manage_queue",
-  "manage_patients",
-  "manage_installments",
-  "manage_inventory",
-  "manage_settings",
-  "manage_history",
+  "appointments.create",
+  "appointments.edit",
+  "appointments.reschedule",
+  "appointments.cancel",
+  "prescriptions.create",
+  "prescriptions.edit",
+  "analytics.access",
+  "finances.access",
+  "patients.manage",
+  "staff.manage",
+  "whatsapp.send",
 ] as const;
 
 type Permission = (typeof ALL_PERMISSIONS)[number];
@@ -79,8 +84,11 @@ export default function StaffPage() {
   const [inviteName, setInviteName] = useState("");
   const [inviteRole, setInviteRole] = useState("");
   const [invitePermissions, setInvitePermissions] = useState<Permission[]>([
-    "manage_queue",
-    "manage_patients",
+    "appointments.create",
+    "appointments.edit",
+    "appointments.reschedule",
+    "appointments.cancel",
+    "patients.manage",
   ]);
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteError, setInviteError] = useState("");
@@ -131,7 +139,7 @@ export default function StaffPage() {
       setInviteEmail("");
       setInviteName("");
       setInviteRole("");
-      setInvitePermissions(["manage_queue", "manage_patients"]);
+      setInvitePermissions(["appointments.create", "appointments.edit", "appointments.reschedule", "appointments.cancel", "patients.manage"]);
     } catch (e: any) {
       setInviteError(e.message || "Error");
     } finally {

@@ -1,12 +1,12 @@
 "use client";
 import { useUser } from "@clerk/nextjs";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useConvex } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { toast } from "sonner";
-import { Camera, Globe, Palette, AlertTriangle, Bell } from "lucide-react";
+import { Camera, Globe, Palette, AlertTriangle, Bell, Loader2 } from "lucide-react";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import dynamic from "next/dynamic";
@@ -64,138 +64,53 @@ export default function SettingsPage() {
   const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
   const profilePhotoUrl = currentUser?.profilePhotoUrl;
   const updateProfile = useMutation(api.users.updateProfile);
+  const updateClinicalPreferences = useMutation(api.users.updateClinicalPreferences);
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   const saveProfilePhoto = useMutation(api.users.saveProfilePhoto);
 
   // ── Rescheduling non-working days ──
-  const [dateRange] = useState(() => {
-    const now = Date.now();
-    return { startDate: now, endDate: now + 30 * 86400000 };
-  });
-
-  const upcomingVisits = useQuery(api.visits.getVisitsByDateRange, clerkId ? {
-    clerkId,
-    startDate: dateRange.startDate,
-    endDate: dateRange.endDate,
-  } : "skip");
-  const bulkReschedule = useMutation(api.visits.bulkRescheduleVisits);
-
   const [reschedulePromptOpen, setReschedulePromptOpen] = useState(false);
   const [conflictingVisits, setConflictingVisits] = useState<any[]>([]);
-  const [rescheduling, setRescheduling] = useState(false);
-
-  type AvailabilityUpdates = {
-    workingHoursStart?: number;
-    workingHoursEnd?: number;
-    isAlwaysOpen?: boolean;
-    slotMin?: number;
-    workingDays?: string[];
-  };
-  const [pendingAvailability, setPendingAvailability] = useState<AvailabilityUpdates | null>(null);
   const [conflictReason, setConflictReason] = useState<"hours" | "days">("hours");
 
-  function requestAvailabilityChange(updates: AvailabilityUpdates) {
-    if (upcomingVisits === undefined) {
-      toast.info("Please wait while we check your schedule...");
+  const [validatingHours, setValidatingHours] = useState(false);
+  const convex = useConvex();
+
+  async function handleHoursChange(newStart?: string, newEnd?: string) {
+    const checkStart = newStart !== undefined ? Number(newStart) : Number(workingHoursStart);
+    const checkEnd = newEnd !== undefined ? Number(newEnd) : Number(workingHoursEnd);
+
+    if (checkStart >= checkEnd && checkEnd !== 0) {
+      toast.error(dir === "rtl" ? "وقت البدء يجب أن يكون قبل وقت الانتهاء" : "Start time must be before end time");
       return;
     }
 
-    const isHoursChange = updates.workingHoursStart !== undefined || updates.workingHoursEnd !== undefined || updates.isAlwaysOpen !== undefined;
-    const isDaysChange = updates.workingDays !== undefined;
-
-    const newAlwaysOpen = updates.isAlwaysOpen ?? isAlwaysOpen;
-    const newStart = newAlwaysOpen ? 0 : (updates.workingHoursStart ?? Number(workingHoursStart));
-    const newEnd = newAlwaysOpen ? 24 : (updates.workingHoursEnd ?? Number(workingHoursEnd));
-    const newDays = updates.workingDays ?? workingDays;
-
-    const conflicts = upcomingVisits.filter(v => {
-      if (v.status !== "confirmed" || new Date(v.date).getTime() <= Date.now()) return false;
-      const vDate = new Date(v.date);
-      const timeInHours = vDate.getHours() + vDate.getMinutes() / 60;
-      const dayName = vDate.toLocaleDateString("en-US", { weekday: "short" });
-
-      if (isDaysChange && !newDays.includes(dayName)) return true;
-      if (isHoursChange && !newAlwaysOpen && (timeInHours < newStart || timeInHours >= newEnd)) return true;
-
-      return false;
-    });
-
-    if (conflicts.length > 0) {
-      setConflictReason(isDaysChange ? "days" : "hours");
-      setPendingAvailability(updates);
-      setConflictingVisits(conflicts);
-      setReschedulePromptOpen(true);
-    } else {
-      applyAvailabilityChange(updates);
-    }
-  }
-
-  function applyAvailabilityChange(updates: AvailabilityUpdates) {
-    if (updates.workingHoursStart !== undefined) setWHS(String(updates.workingHoursStart));
-    if (updates.workingHoursEnd !== undefined) setWHE(String(updates.workingHoursEnd));
-    if (updates.isAlwaysOpen !== undefined) setIsAlwaysOpen(updates.isAlwaysOpen);
-    if (updates.slotMin !== undefined) setSlotMin(String(updates.slotMin));
-    if (updates.workingDays !== undefined) setWorkingDays(updates.workingDays);
-  }
-
-  async function handleReschedule() {
-    setRescheduling(true);
+    setValidatingHours(true);
     try {
-      const updates: { visitId: any; newDate: number }[] = [];
-      const newAlwaysOpen = pendingAvailability?.isAlwaysOpen ?? isAlwaysOpen;
-      const newStartH = newAlwaysOpen ? 0 : (pendingAvailability?.workingHoursStart ?? Number(workingHoursStart));
-      const newEndH = newAlwaysOpen ? 24 : (pendingAvailability?.workingHoursEnd ?? Number(workingHoursEnd));
-      const newDays = pendingAvailability?.workingDays ?? workingDays;
-      const now = Date.now();
-
-      for (const v of conflictingVisits) {
-        let foundMs: number | null = null;
-        // Search up to 90 days forward for a valid future slot
-        for (let i = 1; i <= 90; i++) {
-          const attempt = new Date(v.date);
-          attempt.setDate(attempt.getDate() + i);
-          attempt.setHours(newStartH || 9, 0, 0, 0);
-
-          // Must be in the future
-          if (attempt.getTime() <= now) continue;
-
-          // Must be on a working day
-          const dayAbbr = attempt.toLocaleDateString("en-US", { weekday: "short" });
-          if (newDays.length > 0 && !newDays.includes(dayAbbr)) continue;
-
-          // Must be within working hours
-          const h = attempt.getHours() + attempt.getMinutes() / 60;
-          if (!newAlwaysOpen && (h < newStartH || h >= newEndH)) continue;
-
-          foundMs = attempt.getTime();
-          break;
-        }
-
-        if (foundMs !== null) {
-          updates.push({ visitId: v._id, newDate: foundMs });
-        }
-      }
-
-      if (updates.length === 0) {
-        toast.error("Could not find a valid future slot for some visits. Please reschedule them manually.");
+      const { conflict, conflictingVisits } = await convex.query(api.visits.checkWorkingHoursConflict, {
+        clerkId,
+        newStart: checkStart,
+        newEnd: checkEnd
+      });
+      if (conflict) {
+        setConflictReason("hours");
+        setConflictingVisits(conflictingVisits);
+        setReschedulePromptOpen(true);
+        toast.error(dir === "rtl" ? "لا يمكنك تقليص ساعات العمل لوجود حجوزات سابقة في هذه الأوقات." : "Cannot restrict hours: you have existing visits outside these bounds.");
         return;
       }
 
-      await bulkReschedule({ clerkId, updates, skipHoursValidation: true });
-      toast.success(t("toast.rescheduledSuccessfully") || "Visits rescheduled to future dates");
-
-      if (pendingAvailability) applyAvailabilityChange(pendingAvailability);
-      setPendingAvailability(null);
-      setReschedulePromptOpen(false);
-    } catch {
-      toast.error(t("toast.rescheduleFailed") || "Failed to reschedule visits");
+      if (newStart !== undefined) setWHS(newStart);
+      if (newEnd !== undefined) setWHE(newEnd);
+    } catch (e) {
+      console.error(e);
+      toast.error(dir === "rtl" ? "حدث خطأ أثناء التحقق من الساعات" : "Error validating hours");
     } finally {
-      setRescheduling(false);
+      setValidatingHours(false);
     }
   }
 
   // ── State ──
-  const [selectKey, setSelectKey] = useState(0);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [clinicName, setClinicName] = useState("");
@@ -211,7 +126,13 @@ export default function SettingsPage() {
   const [slotMin, setSlotMin] = useState("30");
   const [workingDays, setWorkingDays] = useState<string[]>([]);
   const [bio, setBio] = useState("");
-  const [publicProfile, setPublicProfile] = useState(false);
+  const [showClinicLocationOnRx, setShowClinicLocationOnRx] = useState(true);
+
+  // Clinical preferences
+  const [enableDiagnosis] = useState(false);
+  const [enableMeasurements] = useState(false);
+  const [enableVitals] = useState(false);
+  const [enableNotes] = useState(false);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -243,9 +164,12 @@ export default function SettingsPage() {
     setWHE(String((currentUser as any).workingHoursEnd ?? 17));
     setIsAlwaysOpen((currentUser as any).workingHoursStart === 0 && (currentUser as any).workingHoursEnd === 24);
     setSlotMin(String(currentUser.slotDurationMinutes ?? 30));
+
+
     setWorkingDays((currentUser as any).availableDays ?? []);
     setBio((currentUser as any).bio ?? "");
-    setPublicProfile(currentUser.publicProfile ?? false);
+    setShowClinicLocationOnRx((currentUser as any).showClinicLocationOnRx ?? true);
+
   }, [currentUser]);
 
   // ── Auto-save (1s debounce) ──
@@ -265,14 +189,21 @@ export default function SettingsPage() {
         workingHoursEnd: isAlwaysOpen ? 24 : Number(workingHoursEnd),
         slotDurationMinutes: slotMin ? Number(slotMin) : 30,
         bio: bio || undefined,
-        publicProfile: publicProfile,
+        publicProfile: false,
         feePerVisit: consultationFee ? Number(consultationFee) : undefined,
         workingDays: workingDays,
+        showClinicLocationOnRx: showClinicLocationOnRx,
+      });
+      await updateClinicalPreferences({
+        clerkId,
+        enableDiagnosis,
+        enableMeasurements,
+        enableVitals,
+        enableNotes,
       });
       toast.success(t("toast.settingsSaved"), { id: "settings-save" });
     } catch { toast.error(t("toast.settingsSaveFailed"), { id: "settings-save-error" }); }
-  }, [clerkId, currentUser, name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, consultationFee, updateProfile, t, workingDays]);
-
+  }, [clerkId, currentUser, name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, consultationFee, updateProfile, updateClinicalPreferences, t, workingDays, showClinicLocationOnRx, enableDiagnosis, enableMeasurements, enableVitals, enableNotes]);
   function triggerSave() {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(doSave, 2000);
@@ -282,12 +213,12 @@ export default function SettingsPage() {
   const prevValues = useRef("");
   useEffect(() => {
     if (!initialised.current) return;
-    const key = JSON.stringify({ name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, consultationFee, workingDays });
+    const key = JSON.stringify({ name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, consultationFee, workingDays, showClinicLocationOnRx, enableDiagnosis, enableMeasurements, enableVitals, enableNotes });
     if (prevValues.current && key !== prevValues.current) {
       triggerSave();
     }
     prevValues.current = key;
-  }, [name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, consultationFee, workingDays]);
+  }, [name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, consultationFee, workingDays, showClinicLocationOnRx, enableDiagnosis, enableMeasurements, enableVitals, enableNotes]);
 
   async function handlePhotoUpload(file: File) {
     setUploadingPhoto(true);
@@ -464,7 +395,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Public Profile */}
-            <div className={rowClass}>
+            <div className={`${rowClass} opacity-50`}>
               <label htmlFor="settings-public-profile" className={labelClass}>
                 <Globe className="w-4 h-4 text-muted-foreground" /> {t("settings.publicProfile") || "Public Profile"}
               </label>
@@ -472,17 +403,9 @@ export default function SettingsPage() {
                 <Switch
                   id="settings-public-profile"
                   name="publicProfile"
-                  checked={publicProfile}
-                  onCheckedChange={(c) => {
-                    setPublicProfile(c);
-                    updateProfile({
-                      clerkId,
-                      name: name || currentUser?.name || "",
-                      phone: normalisePhone(phone || currentUser?.phone || ""),
-                      clinicName: clinicName || currentUser?.clinicName || "",
-                      publicProfile: c,
-                    });
-                  }}
+                  checked={false}
+                  disabled
+                  onCheckedChange={() => {}}
                 />
               </div>
             </div>
@@ -505,7 +428,7 @@ export default function SettingsPage() {
           </div>
 
           <p className="text-[12px] text-muted-foreground ms-4 mb-8">
-            {t("settings.publicProfileHint") || "If enabled, your profile will be listed in the public directory."}
+            {t("settings.publicProfileLockedHint") || "Public profile is temporarily unavailable."}
           </p>
         </section>
 
@@ -543,6 +466,17 @@ export default function SettingsPage() {
             </div>
 
             <div className={rowClass}>
+              <label htmlFor="settings-show-clinic" className={labelClass}>{dir === "rtl" ? "عرض العنوان في الروشتة" : "Show Address on Prescription"}</label>
+              <div className="flex-1 flex justify-end">
+                <Switch
+                  id="settings-show-clinic"
+                  checked={showClinicLocationOnRx}
+                  onCheckedChange={setShowClinicLocationOnRx}
+                />
+              </div>
+            </div>
+
+            <div className={rowClass}>
               <label htmlFor="settings-fee" className={labelClass}>{t("settings.feeEgp")}</label>
               <input id="settings-fee" name="fee" type="number" value={consultationFee} onChange={(e) => setConsultationFee(e.target.value)}
                 placeholder="350" className={inputClass} />
@@ -554,11 +488,98 @@ export default function SettingsPage() {
         </section>
 
         {/* ═══════════════════════════════════════════════════════════ */}
+        {/* CLINICAL PREFERENCES                                      */}
+        {/* ═══════════════════════════════════════════════════════════ */}
+        <section className="hidden">
+          <h3 className={sectionTitleClass}>{dir === "rtl" ? "الإعدادات الطبية" : "Clinical Preferences"}</h3>
+          <div className={blockClass}>
+            <div className={`${rowClass} opacity-50`}>
+              <label htmlFor="settings-enable-diagnosis" className={labelClass}>{dir === "rtl" ? "تفعيل التشخيص" : "Enable Diagnosis Section"}</label>
+              <div className="flex-1 flex justify-end">
+                <Switch
+                  id="settings-enable-diagnosis"
+                  checked={false}
+                  disabled={true}
+                  onCheckedChange={() => {}}
+                />
+              </div>
+            </div>
+
+            <div className={`${rowClass} opacity-50`}>
+              <label htmlFor="settings-enable-measurements" className={labelClass}>{dir === "rtl" ? "تفعيل القياسات" : "Enable Measurements Section"}</label>
+              <div className="flex-1 flex justify-end">
+                <Switch
+                  id="settings-enable-measurements"
+                  checked={false}
+                  disabled={true}
+                  onCheckedChange={() => {}}
+                />
+              </div>
+            </div>
+
+            <div className={`${rowClass} opacity-50`}>
+              <label htmlFor="settings-enable-vitals" className={labelClass}>{dir === "rtl" ? "تفعيل العلامات الحيوية" : "Enable Vitals Section"}</label>
+              <div className="flex-1 flex justify-end">
+                <Switch
+                  id="settings-enable-vitals"
+                  checked={false}
+                  disabled={true}
+                  onCheckedChange={() => {}}
+                />
+              </div>
+            </div>
+
+            <div className={`${rowClass} opacity-50`}>
+              <label htmlFor="settings-enable-notes" className={labelClass}>{dir === "rtl" ? "تفعيل الملاحظات السريرية" : "Enable Clinical Notes"}</label>
+              <div className="flex-1 flex justify-end">
+                <Switch
+                  id="settings-enable-notes"
+                  checked={false}
+                  disabled={true}
+                  onCheckedChange={() => {}}
+                />
+              </div>
+            </div>
+          </div>
+          <p className="text-[12px] text-muted-foreground ms-4 -mt-5 mb-8">
+            {dir === "rtl" ? "تخصيص الأقسام التي تظهر أثناء زيارة المريض." : "Customize which sections appear during a patient visit."}
+          </p>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════════ */}
         {/* SCHEDULE                                                  */}
         {/* ═══════════════════════════════════════════════════════════ */}
         <section>
           <h3 className={sectionTitleClass}>{t("settings.availabilitySection")}</h3>
           <div className={blockClass}>
+            <div className={rowClass}>
+              <label className={labelClass}>{dir === "rtl" ? "ساعات العمل" : "Working Hours"}</label>
+              <div className="flex items-center gap-2 flex-1 justify-end min-w-0" dir="ltr">
+                <select
+                  value={workingHoursStart}
+                  onChange={(e) => handleHoursChange(e.target.value, undefined)}
+                  className="bg-transparent text-sm focus:outline-none focus:text-[#007AFF] disabled:opacity-50"
+                  disabled={validatingHours}
+                >
+                  {Array.from({ length: 24 }).map((_, i) => (
+                    <option key={i} value={i}>{`${i.toString().padStart(2, "0")}:00`}</option>
+                  ))}
+                </select>
+                <span className="text-muted-foreground text-sm">-</span>
+                <select
+                  value={workingHoursEnd}
+                  onChange={(e) => handleHoursChange(undefined, e.target.value)}
+                  className="bg-transparent text-sm focus:outline-none focus:text-[#007AFF] disabled:opacity-50"
+                  disabled={validatingHours}
+                >
+                  {Array.from({ length: 24 }).map((_, i) => (
+                    <option key={i} value={i}>{`${i.toString().padStart(2, "0")}:00`}</option>
+                  ))}
+                  <option value={24}>24:00</option>
+                </select>
+                {validatingHours && <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />}
+              </div>
+            </div>
 
             <div className={rowClass}>
               <label htmlFor="settings-slot-duration" className={labelClass}>{t("settings.slotDurationLabel")}</label>
@@ -658,14 +679,10 @@ export default function SettingsPage() {
                   {t("common.close")}
                 </button>
                 <button
-                  onClick={() => handleReschedule()}
-                  disabled={rescheduling}
-                  className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl transition-colors text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-60 order-1 sm:order-2"
+                  onClick={() => { window.location.href = "/dashboard/queue"; }}
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl transition-colors text-sm font-semibold flex items-center justify-center gap-2 order-1 sm:order-2"
                 >
-                  {rescheduling ? (
-                    <IOSSpinner size={14} className="text-white" />
-                  ) : null}
-                  {t("settings.rescheduleToFuture") || "Reschedule to Future Dates"}
+                  {t("settings.conflictGoFix") || "Go to Schedule"}
                 </button>
               </div>
             </div>

@@ -90,7 +90,7 @@ export default function PrintPrescriptionPage({
               {t("print.dr")} {doctor.name}
             </h1>
             <p className="text-gray-600 text-lg">{doctor.specialty || t("specialty.Other")}</p>
-            {(doctor.clinicName || doctor.clinicAddress) && (
+            {(doctor.showClinicLocationOnRx !== false) && (doctor.clinicName || doctor.clinicAddress) && (
               <div className="text-sm text-gray-500 mt-2 space-y-0.5">
                 {doctor.clinicName && <p>{doctor.clinicName}</p>}
                 {doctor.clinicAddress && <p>{doctor.clinicAddress}</p>}
@@ -121,23 +121,23 @@ export default function PrintPrescriptionPage({
         </div>
 
         {/* Rx Symbol */}
-        <div className="mb-6">
+        <div className="mb-6" dir="ltr">
           <span className="text-4xl font-serif italic font-bold text-gray-800">Rx</span>
         </div>
 
         {/* Medications */}
         {visit.prescribedMedications && visit.prescribedMedications.length > 0 ? (
-          <div className="space-y-6 min-h-[300px]">
+          <div className="space-y-6 min-h-[300px]" dir="ltr">
             {visit.prescribedMedications.map((med: any, idx: number) => {
               if (typeof med === 'string') {
                 return (
-                  <div key={idx} className="flex flex-col gap-1 border-b border-gray-100 pb-4 last:border-0">
+                  <div key={idx} className="flex flex-col gap-1 border-b border-gray-100 pb-4 last:border-0 items-start text-left">
                     <p className="text-lg font-bold text-gray-900">{med}</p>
                   </div>
                 );
               }
               return (
-                <div key={idx} className="flex flex-col gap-1 border-b border-gray-100 pb-4 last:border-0">
+                <div key={idx} className="flex flex-col gap-1 border-b border-gray-100 pb-4 last:border-0 items-start text-left">
                   <p className="text-lg font-bold text-gray-900">{med.name}</p>
                   <div className="flex gap-4 text-sm text-gray-700">
                     {med.frequency && <p>• {t(med.frequency) || med.frequency}</p>}

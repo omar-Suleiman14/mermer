@@ -119,7 +119,7 @@ export default function FeedbackDashboard() {
                       navigator.clipboard.writeText(feedbackUrl);
                       toast.success(t("feedback.linkCopied"));
                     }}
-                    className="flex items-center gap-1.5 text-xs text-[#007AFF] hover:underline font-medium"
+                    className="flex items-center gap-1.5 text-xs text-[#007AFF] hover:underline font-medium cursor-pointer"
                   >
                     <Link2 className="w-3.5 h-3.5" />
                     {t("feedback.copyLink")}

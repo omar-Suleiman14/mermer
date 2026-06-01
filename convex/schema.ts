@@ -66,8 +66,14 @@ export default defineSchema({
     prescriptionAddress: v.optional(v.string()),
     prescriptionPhone: v.optional(v.string()),
     prescriptionWorkingHours: v.optional(v.string()),
+    showClinicLocationOnRx: v.optional(v.boolean()),
 
-    // Queue settings
+    // Clinical Preferences
+    enableDiagnosis: v.optional(v.boolean()),
+    enableMeasurements: v.optional(v.boolean()),
+    enableVitals: v.optional(v.boolean()),
+    enableNotes: v.optional(v.boolean()),
+    enableDashboardAnalytics: v.optional(v.boolean()), // Legacy field
     slotDurationMinutes: v.optional(v.number()),
 
     // installment defaults
@@ -121,6 +127,7 @@ export default defineSchema({
     phone: v.string(),
     chronicConditions: v.array(v.string()),
     notes: v.optional(v.string()),
+    gender: v.optional(v.union(v.literal("male"), v.literal("female"), v.literal("other"))),
     createdAt: v.number(),
   })
     .index("by_doctor", ["doctorId"])
@@ -151,7 +158,9 @@ export default defineSchema({
       v.union(
         v.literal("confirmed"),
         v.literal("completed"),
-        v.literal("cancelled")
+        v.literal("cancelled"),
+        v.literal("no-show"),
+        v.literal("rescheduled")
       )
     ),
 
@@ -185,6 +194,9 @@ export default defineSchema({
     ),
     analysisRequested: v.optional(v.array(v.string())),
     notes: v.optional(v.string()),
+    diagnosis: v.optional(v.string()),
+    measurements: v.optional(v.string()),
+    vitals: v.optional(v.string()),
 
     // Prescription & documents
     prescriptionImageId: v.optional(v.id("_storage")),
@@ -349,5 +361,31 @@ export default defineSchema({
     doctorId: v.id("users"),
     name: v.string(),
   }).index("by_doctor", ["doctorId"]),
+
+  diagnosisOptions: defineTable({
+    doctorId: v.id("users"),
+    name: v.string(),
+  }).index("by_doctor", ["doctorId"]),
+
+  measurementOptions: defineTable({
+    doctorId: v.id("users"),
+    name: v.string(),
+  }).index("by_doctor", ["doctorId"]),
+
+  vitalsOptions: defineTable({
+    doctorId: v.id("users"),
+    name: v.string(),
+  }).index("by_doctor", ["doctorId"]),
+
+  supportMessages: defineTable({
+    userId: v.id("users"),
+    userName: v.string(),
+    userPhone: v.optional(v.string()),
+    message: v.string(),
+    reply: v.optional(v.string()), // Legacy
+    fromAdmin: v.optional(v.boolean()), // New chat bubble format
+    isRead: v.boolean(),
+    createdAt: v.number(),
+  }).index("by_user", ["userId"]).index("by_isRead", ["isRead"]),
 
 });

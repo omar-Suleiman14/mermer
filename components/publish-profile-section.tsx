@@ -159,12 +159,11 @@ export function PublishProfileSection({ clerkId, currentUser, profilePhotoUrl }:
   const [days, setDays] = useState<string[]>(currentUser.availableDays ?? []);
   const [availFrom, setAvailFrom] = useState(currentUser.availableFrom ?? "09:00");
   const [availTo, setAvailTo] = useState(currentUser.availableTo ?? "17:00");
-  const [isPublished, setIsPublished] = useState(currentUser.publicProfile ?? false);
+  const [isPublished] = useState(currentUser.publicProfile ?? false);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
 
   const updatePublicProfile = useMutation(api.doctors.updatePublicProfile);
-  const setVisibility = useMutation(api.doctors.setPublicProfileVisibility);
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   const saveProfilePhoto = useMutation(api.users.saveProfilePhoto);
   const photoRef = useRef<HTMLInputElement>(null);
@@ -178,8 +177,6 @@ export function PublishProfileSection({ clerkId, currentUser, profilePhotoUrl }:
     { label: "Clinic address", done: !!address },
     { label: "Available days", done: days.length > 0 },
   ];
-  const allDone = checks.every((c) => c.done);
-
   async function handleSave() {
     setSaving(true);
     try {
@@ -204,22 +201,7 @@ export function PublishProfileSection({ clerkId, currentUser, profilePhotoUrl }:
   }
 
   async function handleTogglePublish() {
-    if (!allDone && !isPublished) {
-      toast.error("Complete your profile before publishing");
-      return;
-    }
-    const next = !isPublished;
-    setSaving(true);
-    try {
-      await handleSave();
-      await setVisibility({ clerkId, publicProfile: next });
-      setIsPublished(next);
-      toast.success(next ? "Profile is now public 🎉" : "Profile hidden from feed");
-    } catch {
-      toast.error("Failed to update visibility");
-    } finally {
-      setSaving(false);
-    }
+    toast.info("Public profiles are temporarily unavailable");
   }
 
   async function handlePhoto(file: File) {
@@ -260,7 +242,8 @@ export function PublishProfileSection({ clerkId, currentUser, profilePhotoUrl }:
         </div>
         <div className={saving ? "opacity-60 pointer-events-none" : ""}>
           <Switch
-            checked={isPublished}
+            checked={false}
+            disabled
             onCheckedChange={handleTogglePublish}
           />
         </div>

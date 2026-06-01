@@ -11,7 +11,7 @@ import { DoctorOnboarding } from "@/components/doctor-onboarding";
 import { useState, useEffect } from "react";
 import { useI18n } from "@/lib/i18n/client";
 import { OnlineBookingNotifier } from "@/components/online-booking-notifier";
-import { AlertTriangle, X, Building2, UserCheck, UserX, Clock } from "lucide-react";
+import { AlertTriangle, X, Building2, UserCheck, UserX, Clock, Loader2 } from "lucide-react";
 import { UserProvider, useCurrentUser } from "@/components/providers/user-provider";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
@@ -63,45 +63,8 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
   if (!isLoaded || isLoading || currentUser === undefined) {
     return (
-      <div className="dashboard-font contents" dir={dir}>
-        <SidebarProvider>
-          {/* Skeleton Sidebar (Hidden on mobile to match real sidebar) */}
-          <div className="w-[260px] shrink-0 border-r border-border/50 bg-sidebar flex flex-col h-screen max-md:hidden">
-            <div className="flex items-center gap-3 px-4 py-4 border-b border-border/50">
-              <div className="w-8 h-8 rounded-full bg-muted animate-pulse shrink-0" />
-              <div className="flex-1 space-y-2">
-                <div className="h-3.5 bg-muted rounded-md w-24 animate-pulse" />
-                <div className="h-2.5 bg-muted rounded-md w-16 animate-pulse" />
-              </div>
-            </div>
-            <div className="flex-1 p-3 space-y-1.5 mt-2">
-              {[...Array(7)].map((_, i) => (
-                <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-lg">
-                  <div className="w-4 h-4 bg-muted rounded animate-pulse shrink-0" />
-                  <div className="h-3.5 bg-muted rounded-md w-24 animate-pulse" />
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <SidebarInset className="bg-background relative flex-1 flex flex-col h-screen overflow-hidden">
-            <main className="flex-1 p-4 sm:p-6 flex flex-col gap-6">
-              {/* Skeleton Header Area */}
-              <div className="flex justify-between items-start mb-2">
-                <div className="space-y-2">
-                  <div className="h-7 bg-muted rounded-md w-48 animate-pulse" />
-                  <div className="h-4 bg-muted rounded-md w-64 animate-pulse" />
-                </div>
-              </div>
-              
-              {/* Skeleton Main Cards Area */}
-              <div className="grid gap-6 mt-4">
-                <div className="h-[200px] bg-muted/40 rounded-2xl animate-pulse" />
-                <div className="h-[300px] bg-muted/40 rounded-2xl animate-pulse" />
-              </div>
-            </main>
-          </SidebarInset>
-        </SidebarProvider>
+      <div className="dashboard-font fixed inset-0 z-[9999] flex items-center justify-center bg-background" dir={dir}>
+        <IOSSpinner className="w-8 h-8 text-[#007AFF]" />
       </div>
     );
   }
@@ -158,7 +121,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           <div className="w-full sm:max-w-sm bg-card border border-border/50 rounded-t-3xl sm:rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.5)] overflow-hidden">
             {/* Header gradient */}
             <div className="h-2 bg-gradient-to-r from-[#007AFF] to-[#5AC8FA]" />
-            <div className="p-6">
+            <div className="p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
               <div className="flex items-center gap-4 mb-5">
                 <div className="w-14 h-14 rounded-2xl bg-[#007AFF]/10 border border-[#007AFF]/20 flex items-center justify-center shrink-0">
                   <Building2 className="w-7 h-7 text-[#007AFF]" />
@@ -237,7 +200,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
       {showBannedPopup && (
         <div className="fixed inset-0 z-200 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" dir={dir}>
-          <div className="w-full max-w-sm bg-card border border-border/50 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden p-6 relative">
+          <div className="w-full max-w-sm bg-card border border-border/50 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] overflow-hidden p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] relative">
             <button onClick={() => {
               setShowBannedPopup(false);
               localStorage.setItem("bannedPopupDismissedAt", Date.now().toString());

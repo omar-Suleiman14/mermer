@@ -46,7 +46,7 @@ export const setPublicProfileVisibility = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
-    await ctx.db.patch(user._id, { publicProfile: args.publicProfile });
+    await ctx.db.patch(user._id, { publicProfile: false });
   },
 });
 
@@ -786,6 +786,8 @@ export const getStatsAggregated = query({
       downPaymentType: c.downPaymentType,
     }));
 
+    const todayVisitsAll = allVisits.filter((a) => a.date >= todayStart && a.date < todayStart + DAY_MS);
+
     return {
       // Visit analytics
       today,
@@ -818,6 +820,14 @@ export const getStatsAggregated = query({
       outstanding,
       installmentVisitsThisMonthCount: installmentVisitsThisMonth.length,
       topinstallments,
+      // Daily breakdown
+      todayFollowUps: todayVisitsAll.filter((a) => a.source === "follow-up").length,
+      todayInstallments: todayVisitsAll.filter((a) => a.source === "installment").length,
+      todayFirstVisits: todayVisitsAll.filter((a) => a.source !== "follow-up" && a.source !== "installment").length,
+      todayCompleted: todayVisitsAll.filter((a) => a.status === "completed").length,
+      todayCancelled: todayVisitsAll.filter((a) => a.status === "cancelled").length,
+      todayMissed: todayVisitsAll.filter((a) => a.status === "no-show").length,
+      todayRescheduled: todayVisitsAll.filter((a) => a.status === "rescheduled").length,
       // Fee
       consultationFee: fee,
     };

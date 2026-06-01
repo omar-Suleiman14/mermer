@@ -62,8 +62,8 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     { title: t("nav.installments") || "Installments", href: "/dashboard/installments", icon: FileText, perm: "manage_installments" },
     { title: t("nav.feedback") || "Feedback", href: "/dashboard/feedback", icon: Star, perm: null },
     { title: t("nav.analytics") || "Analytics", href: "/dashboard/stats", icon: BarChart3, perm: "manage_analytics", doctorOnly: true },
+    { title: lang === "ar" ? "تحليلات المرضى" : "Patient Analytics", href: "/dashboard/patients-analytics", icon: Users, perm: "manage_analytics", doctorOnly: true },
     { title: t("nav.history") || "History", href: "/dashboard/history", icon: History, perm: "manage_history", doctorOnly: true },
-    { title: t("nav.clinicScreen") === "nav.clinicScreen" ? (lang === "ar" ? "شاشة العيادة" : "Clinic Screen") : (t("nav.clinicScreen") || "Clinic Screen"), href: "/clinic-screen", icon: Monitor, target: "_blank", perm: null },
     { title: t("nav.staff") || "Staff", href: "/dashboard/staff", icon: UserCheck, perm: null, doctorOnly: true },
     { title: t("nav.settings") || "Settings", href: "/dashboard/settings", icon: Settings, perm: "manage_settings", doctorOnly: true },
   ];

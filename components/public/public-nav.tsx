@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 import { useIsMounted } from "@/hooks/use-is-mounted";
 import Image from "next/image";
 
+import { usePathname } from "next/navigation";
+
 interface PublicNavProps {
   className?: string;
   backHref?: string;
@@ -21,6 +23,8 @@ export function PublicNav({ className, backHref, backLabel }: PublicNavProps) {
   const { theme, setTheme } = useTheme();
   const mounted = useIsMounted();
   const { t, dir } = useI18n();
+  const pathname = usePathname();
+  const isForDoctors = pathname.startsWith("/fordoctors");
 
   return (
     <header
@@ -59,7 +63,7 @@ export function PublicNav({ className, backHref, backLabel }: PublicNavProps) {
               {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
           )}
-          {mounted && (
+          {mounted && isForDoctors && (
             <>
               <SignedOut>
                 <Link

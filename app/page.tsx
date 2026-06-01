@@ -16,7 +16,7 @@ export default async function PatientLandingPage() {
       <main className="flex-1 w-full max-w-[1400px] mx-auto overflow-hidden">
         
         {/* 1. Hero Section (Asymmetric Split) */}
-        <section className="relative px-4 sm:px-6 lg:px-8 pt-12 md:pt-24 lg:pt-32 pb-16 lg:pb-32">
+        <section className="relative px-4 sm:px-6 lg:px-8 pt-8 md:pt-12 lg:pt-16 pb-16 lg:pb-32">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-8 items-center">
             
             {/* Left Col: Copy & CTAs */}

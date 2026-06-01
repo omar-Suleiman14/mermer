@@ -24,6 +24,9 @@ import {
   X,
   BarChart3,
   Activity,
+  MessageSquare,
+  Send,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { IOSSpinner } from "@/components/ui/spinner";
@@ -178,6 +181,123 @@ function DoctorAnalyticsPanel({
   );
 }
 
+// ── Admin Support Chat Drawer ───────────────────────────────────────────────────
+
+function AdminSupportChatDrawer({
+  clerkId,
+  doctorId,
+  doctorName,
+  onClose,
+}: {
+  clerkId: string;
+  doctorId: Id<"users">;
+  doctorName: string;
+  onClose: () => void;
+}) {
+  const messages = useQuery(api.support.listMessagesForAdminByUserId, { userId: doctorId });
+  const replyMutation = useMutation(api.support.replyToSupportMessage);
+  const deleteMutation = useMutation(api.support.deleteSupportMessage);
+  const markAsRead = useMutation(api.support.markAsRead);
+  const [replyText, setReplyText] = useState("");
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!replyText.trim()) return;
+    await replyMutation({ userId: doctorId, reply: replyText });
+    setReplyText("");
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: 40 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: 40 }}
+      className="fixed inset-y-0 right-0 w-full max-w-sm bg-white dark:bg-[#1c1c1a] border-l border-border shadow-2xl z-50 flex flex-col"
+    >
+      <div className="flex items-center justify-between px-5 py-4 border-b border-border bg-white dark:bg-[#1c1c1a] z-10">
+        <div className="flex items-center gap-2">
+          <MessageSquare className="w-5 h-5 text-[#007AFF]" />
+          <div>
+            <p className="font-bold text-sm">Dr. {doctorName}</p>
+            <p className="text-xs text-muted-foreground">Support Chat</p>
+          </div>
+        </div>
+        <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted/40 transition-colors">
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-auto p-5 space-y-4 flex flex-col bg-muted/10">
+        {messages === undefined ? (
+          <div className="flex items-center justify-center h-32 text-[#007AFF]">
+            <IOSSpinner size={28} />
+          </div>
+        ) : messages.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground space-y-2">
+            <MessageSquare className="w-8 h-8 opacity-20" />
+            <p className="text-sm">No messages yet</p>
+          </div>
+        ) : (
+          messages.map(msg => {
+            if (!msg.fromAdmin && !msg.isRead) {
+              markAsRead({ messageId: msg._id });
+            }
+            
+            return (
+            <div key={msg._id} className={`flex ${msg.fromAdmin ? 'justify-end' : 'justify-start'}`}>
+              <div className={`group relative max-w-[85%] rounded-2xl p-3 text-sm ${msg.fromAdmin ? 'bg-[#007AFF] text-white rounded-br-sm' : 'bg-white dark:bg-neutral-800 border border-border rounded-bl-sm shadow-sm'}`}>
+                <p className="whitespace-pre-wrap">{msg.message}</p>
+                
+                <div className={`flex items-center justify-between gap-3 mt-1 ${msg.fromAdmin ? 'text-white/70' : 'text-muted-foreground'}`}>
+                  <span className="text-[10px]">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  <button 
+                    onClick={() => deleteMutation({ messageId: msg._id })}
+                    className={`opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md ${msg.fromAdmin ? 'hover:bg-white/20 text-white' : 'hover:bg-red-50 text-red-500'}`}
+                    title="Delete message"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+                
+                {msg.reply && (
+                  <div className="mt-2 pt-2 border-t border-border/50">
+                    <p className="text-[10px] font-bold text-[#34c759] mb-1">Legacy Reply:</p>
+                    <p className="whitespace-pre-wrap">{msg.reply}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+            );
+          })
+        )}
+      </div>
+
+      <form onSubmit={handleSend} className="p-4 bg-white dark:bg-[#1c1c1a] border-t border-border flex items-end gap-2">
+        <textarea
+          className="flex-1 text-sm p-3 rounded-xl border border-border bg-muted/20 resize-none max-h-32 focus:outline-none focus:ring-2 focus:ring-[#007AFF]/50"
+          placeholder="Type a message..."
+          rows={1}
+          value={replyText}
+          onChange={(e) => setReplyText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              handleSend(e);
+            }
+          }}
+        />
+        <button
+          type="submit"
+          disabled={!replyText.trim()}
+          className="p-3 bg-[#007AFF] text-white rounded-xl hover:bg-[#0062cc] disabled:opacity-50 transition-colors shrink-0"
+        >
+          <Send className="w-5 h-5" />
+        </button>
+      </form>
+    </motion.div>
+  );
+}
+
 // ── Admin Dashboard ───────────────────────────────────────────────────────────
 
 function AdminDashboard({ clerkId }: { clerkId: string }) {
@@ -186,6 +306,8 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
   const [selectedDoctorId, setSelectedDoctorId] = useState<Id<"users"> | null>(null);
   const [selectedDoctorName, setSelectedDoctorName] = useState("");
+  const [selectedChatDoctorId, setSelectedChatDoctorId] = useState<Id<"users"> | null>(null);
+  const [selectedChatDoctorName, setSelectedChatDoctorName] = useState("");
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
   const allDoctors = useQuery(api.users.listAllDoctors, { clerkId });
@@ -421,6 +543,12 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
                           >
                             Stats
                           </button>
+                          <button
+                            onClick={() => { setSelectedChatDoctorId(doc._id); setSelectedChatDoctorName(doc.name); }}
+                            className="text-[10px] font-semibold px-2 py-1 rounded-lg border border-border hover:border-[#34c759]/40 hover:text-[#34c759] transition-colors flex items-center gap-1"
+                          >
+                            <MessageSquare className="w-3 h-3" /> Chat
+                          </button>
                         </>
                       )}
                     </div>
@@ -432,7 +560,7 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
         </div>
       </div>
 
-      {/* Doctor analytics slide-over */}
+      {/* Drawers */}
       <AnimatePresence>
         {selectedDoctorId && (
           <>
@@ -448,6 +576,23 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
               doctorId={selectedDoctorId}
               doctorName={selectedDoctorName}
               onClose={() => setSelectedDoctorId(null)}
+            />
+          </>
+        )}
+        {selectedChatDoctorId && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedChatDoctorId(null)}
+              className="fixed inset-0 bg-black/20 dark:bg-black/40 z-40"
+            />
+            <AdminSupportChatDrawer
+              clerkId={clerkId}
+              doctorId={selectedChatDoctorId}
+              doctorName={selectedChatDoctorName}
+              onClose={() => setSelectedChatDoctorId(null)}
             />
           </>
         )}

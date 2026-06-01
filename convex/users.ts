@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { getAuthUser, requireAuthUser, requireAdmin } from "./authHelper";
+import { internal } from "./_generated/api";
 
 function generateSlug(name: string): string {
   return (
@@ -76,13 +77,35 @@ export const getOrCreateUser = mutation({
       createdAt: Date.now(),
       isAdmin: false,
       qrSlug: slug,
-      publicProfile: true,
+      publicProfile: false,
+      enableDiagnosis: false,
+      enableMeasurements: false,
+      enableVitals: false,
+      enableNotes: false,
       timezoneOffset: args.timezoneOffset,
       isBlocked: role === "doctor" ? true : false, // Assistants don't need manual unblocking, their doctor is already approved
       role,
       clinicId,
       permissions,
     });
+
+    // Notify admins of new clinic signup
+    if (role === "doctor") {
+      const admins = await ctx.db
+        .query("users")
+        .withIndex("by_isAdmin", (q) => q.eq("isAdmin", true))
+        .collect();
+      const dateStr = new Date().toLocaleString();
+      for (const admin of admins) {
+        await ctx.scheduler.runAfter(0, internal.pushActions.sendPushNotification, {
+          userId: admin._id,
+          title: "New Clinic Registration",
+          body: `A new clinic signed up: ${args.email || "No Email"} at ${dateStr}`,
+          url: "/admin",
+        });
+      }
+    }
+
     return id;
   },
 });
@@ -196,9 +219,9 @@ export const updateProfile = mutation({
     slotDurationMinutes: v.optional(v.number()),
     bio: v.optional(v.string()),
     publicProfile: v.optional(v.boolean()),
-    // Working days & fee per visit
     workingDays: v.optional(v.array(v.string())),
     feePerVisit: v.optional(v.number()),
+    showClinicLocationOnRx: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
@@ -218,6 +241,27 @@ export const updateProfile = mutation({
       ...(args.publicProfile !== undefined ? { publicProfile: args.publicProfile } : {}),
       ...(args.workingDays !== undefined ? { availableDays: args.workingDays } : {}),
       ...(args.feePerVisit !== undefined ? { consultationFee: args.feePerVisit } : {}),
+      ...(args.showClinicLocationOnRx !== undefined ? { showClinicLocationOnRx: args.showClinicLocationOnRx } : {}),
+    });
+  },
+});
+
+export const updateClinicalPreferences = mutation({
+  args: {
+    clerkId: v.string(),
+    enableDiagnosis: v.boolean(),
+    enableMeasurements: v.boolean(),
+    enableVitals: v.boolean(),
+    enableNotes: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx, args.clerkId);
+    // Only the clinic owner should update these preferences, but for now we'll update the user record
+    await ctx.db.patch(user._id, {
+      enableDiagnosis: false,
+      enableMeasurements: false,
+      enableVitals: false,
+      enableNotes: false,
     });
   },
 });
@@ -244,6 +288,7 @@ export const updatePrescriptionTemplate = mutation({
     prescriptionAddress: v.optional(v.string()),
     prescriptionPhone: v.optional(v.string()),
     prescriptionWorkingHours: v.optional(v.string()),
+    showClinicLocationOnRx: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
@@ -257,6 +302,7 @@ export const updatePrescriptionTemplate = mutation({
     if (args.prescriptionAddress !== undefined) patch.prescriptionAddress = args.prescriptionAddress;
     if (args.prescriptionPhone !== undefined) patch.prescriptionPhone = args.prescriptionPhone;
     if (args.prescriptionWorkingHours !== undefined) patch.prescriptionWorkingHours = args.prescriptionWorkingHours;
+    if (args.showClinicLocationOnRx !== undefined) patch.showClinicLocationOnRx = args.showClinicLocationOnRx;
     await ctx.db.patch(user._id, patch);
   },
 });
@@ -571,4 +617,3 @@ export const removeInvitation = mutation({
     await ctx.db.delete(args.invitationId);
   },
 });
-

@@ -39,6 +39,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { TOP_EGYPTIAN_MEDS } from "@/lib/topEgyptianMeds";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 interface MedicationEntry {
@@ -67,6 +68,7 @@ function CreatableCombobox({
 }: CreatableComboboxProps) {
   const [open, setOpen] = useState(false);
   const [inputVal, setInputVal] = useState(value);
+  const [visibleCount, setVisibleCount] = useState(50);
   const [dropdownStyle, setDropdownStyle] = useState<CSSProperties>({});
   const triggerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -78,6 +80,11 @@ function CreatableCombobox({
   useEffect(() => {
     setInputVal(value);
   }, [value]);
+
+  // Reset pagination on input change
+  useEffect(() => {
+    setVisibleCount(50);
+  }, [inputVal]);
 
   // Position dropdown via portal using trigger's bounding rect
   const updatePosition = useCallback(() => {
@@ -117,8 +124,8 @@ function CreatableCombobox({
 
   const filtered = useMemo(() => {
     const q = inputVal.toLowerCase().trim();
-    return options.filter((o) => o.toLowerCase().includes(q));
-  }, [options, inputVal]);
+    return options.filter((o) => o.toLowerCase().includes(q)).slice(0, visibleCount);
+  }, [options, inputVal, visibleCount]);
 
   const showCreate =
     inputVal.trim().length > 0 &&
@@ -138,6 +145,13 @@ function CreatableCombobox({
     setOpen(false);
   };
 
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollHeight - scrollTop <= clientHeight + 50) {
+      setVisibleCount(c => c + 50);
+    }
+  };
+
   const dropdown = (
     <AnimatePresence>
       {open && (
@@ -150,7 +164,7 @@ function CreatableCombobox({
           style={dropdownStyle}
           className="bg-background border border-border rounded-xl shadow-2xl overflow-hidden"
         >
-          <div className="max-h-44 overflow-y-auto">
+          <div className="max-h-44 overflow-y-auto" onScroll={handleScroll}>
             {filtered.length === 0 && !showCreate && (
               <p className="px-3 py-2.5 text-xs text-muted-foreground">No options</p>
             )}
@@ -239,6 +253,9 @@ const DEFAULT_NOTES = [
 function draftKey(visitId: string) { return `visit_draft_${visitId}`; }
 interface DraftState {
   notes: string;
+  diagnosis: string;
+  measurements: string;
+  vitals: string;
   medications: { name: string; frequency: string; notes: string }[];
   fuNote: string;
   fuTime: string;
@@ -287,11 +304,24 @@ export function VisitCompletionModal({
   const medOptions = allClinicalOptions?.medications;
   const freqOptions = allClinicalOptions?.frequencies;
   const noteOptions = allClinicalOptions?.notes;
+  const diagnosisOptions = allClinicalOptions?.diagnoses;
+  const measurementOptions = allClinicalOptions?.measurements;
+  const vitalsOptions = allClinicalOptions?.vitals;
+
+  const addDiagnosisOption = useMutation(api.clinicalOptions.addDiagnosisOption);
+  const addMeasurementOption = useMutation(api.clinicalOptions.addMeasurementOption);
+  const addVitalsOption = useMutation(api.clinicalOptions.addVitalsOption);
 
   const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
   const isinstallmentVisit = !!installmentId;
   const { t, lang, dir } = useI18n();
   const dateLocale = lang === "ar" ? "ar-EG" : "en-US";
+
+  const enableDiagnosis = (currentUser as any)?.enableDiagnosis === true;
+  const enableMeasurements = (currentUser as any)?.enableMeasurements === true;
+  const enableVitals = (currentUser as any)?.enableVitals === true;
+  const enableNotes = (currentUser as any)?.enableNotes === true;
+
 
   /** installment data (for unpaid / past-due banner) */
   const installmentData = useQuery(
@@ -368,6 +398,9 @@ export function VisitCompletionModal({
   const [rxPreviewUrl, setRxPreviewUrl] = useState<string | null>(null);
   const [extraFiles, setExtraFiles] = useState<File[]>([]);
   const [notes, setNotes] = useState("");
+  const [diagnosis, setDiagnosis] = useState("");
+  const [measurements, setMeasurements] = useState("");
+  const [vitals, setVitals] = useState("");
   const [waiveConfirm, setWaiveConfirm] = useState(false);
 
   // ── Medications state — pre-populated with one empty row ────────────────────
@@ -384,10 +417,12 @@ export function VisitCompletionModal({
       prev.map((m, i) => (i === idx ? { ...m, [field]: val } : m))
     );
 
-  // Merged options: doctor-saved + defaults (deduped)
+  // Merged options: doctor-saved custom meds + static Egyptian meds list (client-side, never fetched from server)
   const allMedNames = useMemo(() => {
-    const saved = (medOptions ?? []).map((o: { name: string }) => o.name);
-    return Array.from(new Set([...saved]));
+    const savedNames = new Set((medOptions ?? []).map((o: { name: string }) => o.name.toLowerCase()));
+    const defaults = TOP_EGYPTIAN_MEDS.filter(n => !savedNames.has(n.toLowerCase()));
+    const custom = (medOptions ?? []).map((o: { name: string }) => o.name);
+    return [...custom, ...defaults];
   }, [medOptions]);
 
   const allFreqNames = useMemo(() => {
@@ -401,6 +436,10 @@ export function VisitCompletionModal({
     const defaults = DEFAULT_NOTES.map((key) => t(key as string) || key);
     return Array.from(new Set([...defaults, ...saved]));
   }, [noteOptions, t]);
+
+  const allDiagNames = useMemo(() => (diagnosisOptions ?? []).map((o: { name: string }) => o.name), [diagnosisOptions]);
+  const allMeasNames = useMemo(() => (measurementOptions ?? []).map((o: { name: string }) => o.name), [measurementOptions]);
+  const allVitNames = useMemo(() => (vitalsOptions ?? []).map((o: { name: string }) => o.name), [vitalsOptions]);
 
   // installment visit state
   const [isPaid, setIsPaid] = useState(true);
@@ -422,6 +461,9 @@ export function VisitCompletionModal({
       if (raw) {
         const draft: DraftState = JSON.parse(raw);
         if (draft.notes) setNotes(draft.notes);
+        if (draft.diagnosis) setDiagnosis(draft.diagnosis);
+        if (draft.measurements) setMeasurements(draft.measurements);
+        if (draft.vitals) setVitals(draft.vitals);
         if (draft.medications?.length) setMedications(draft.medications);
         if (draft.fuNote) setFuNote(draft.fuNote);
         if (draft.fuTime) setFuTime(draft.fuTime);
@@ -433,9 +475,9 @@ export function VisitCompletionModal({
   // ── Save draft to localStorage ─────────────────────────────────────────────
   const saveDraftToStorage = useCallback(() => {
     if (!visitId) return;
-    const draft: DraftState = { notes, medications, fuNote, fuTime };
+    const draft: DraftState = { notes, diagnosis, measurements, vitals, medications, fuNote, fuTime };
     try { localStorage.setItem(draftKey(visitId), JSON.stringify(draft)); } catch {}
-  }, [visitId, notes, medications, fuNote, fuTime]);
+  }, [visitId, notes, diagnosis, measurements, vitals, medications, fuNote, fuTime]);
 
   // ── Clear draft from localStorage ─────────────────────────────────────────
   const clearDraft = useCallback(() => {
@@ -547,6 +589,9 @@ export function VisitCompletionModal({
           installmentId,
           isPaid,
           notes: notes || undefined,
+          diagnosis: diagnosis || undefined,
+          measurements: measurements || undefined,
+          vitals: vitals || undefined,
           prescriptionImageId,
           documentIds: documentIds.length > 0 ? documentIds : undefined,
           nextVisitDate: nextTs,
@@ -562,6 +607,9 @@ export function VisitCompletionModal({
           prescriptionImageId: !skip ? prescriptionImageId : undefined,
           documentIds: documentIds.length > 0 ? documentIds : undefined,
           notes: notes || undefined,
+          diagnosis: diagnosis || undefined,
+          measurements: measurements || undefined,
+          vitals: vitals || undefined,
           status: "completed",
           prescribedMedications: prescribedMedications.length > 0 ? prescribedMedications : undefined,
         });
@@ -584,7 +632,7 @@ export function VisitCompletionModal({
 
   const forceClose = () => {
     setRxFile(null); setRxPreviewUrl(null); setExtraFiles([]);
-    setNotes(""); setScheduleFollowUp(false); setFuDate(undefined);
+    setNotes(""); setDiagnosis(""); setMeasurements(""); setVitals(""); setScheduleFollowUp(false); setFuDate(undefined);
     setFuTime(timeSlots.find(s => s.isWorkingHour && !s.isReserved)?.timeStr || "10:00");
     setFuNote(""); setIsPaid(true); setScheduleNextinstallment(true);
     setNextinstallmentDate(undefined); setNextinstallmentTime("10:00"); setDone(false);
@@ -842,17 +890,70 @@ export function VisitCompletionModal({
                     </button>
                   </div>
 
+                  {/* Diagnosis */}
+                  {enableDiagnosis && (
+                    <div>
+                      <p className="text-sm font-medium mb-2">{dir === "rtl" ? "التشخيص" : "Diagnosis"} <span className="text-muted-foreground font-normal">({t("onboarding.optional")})</span></p>
+                      <CreatableCombobox
+                        options={allDiagNames}
+                        value={diagnosis}
+                        onChange={setDiagnosis}
+                        onCreateOption={(val) => {
+                          addDiagnosisOption({ clerkId, name: val });
+                        }}
+                        placeholder={dir === "rtl" ? "أدخل التشخيص هنا..." : "Enter diagnosis here…"}
+                        accentColor="#007AFF"
+                      />
+                    </div>
+                  )}
+
+                  {/* Measurements */}
+                  {enableMeasurements && (
+                    <div>
+                      <p className="text-sm font-medium mb-2">{dir === "rtl" ? "القياسات" : "Measurements"} <span className="text-muted-foreground font-normal">({t("onboarding.optional")})</span></p>
+                      <CreatableCombobox
+                        options={allMeasNames}
+                        value={measurements}
+                        onChange={setMeasurements}
+                        onCreateOption={(val) => {
+                          addMeasurementOption({ clerkId, name: val });
+                        }}
+                        placeholder={dir === "rtl" ? "الوزن، الطول، الخ..." : "Weight, height, etc…"}
+                        accentColor="#007AFF"
+                      />
+                    </div>
+                  )}
+
+                  {/* Vitals */}
+                  {enableVitals && (
+                    <div>
+                      <p className="text-sm font-medium mb-2">{dir === "rtl" ? "العلامات الحيوية" : "Vitals"} <span className="text-muted-foreground font-normal">({t("onboarding.optional")})</span></p>
+                      <CreatableCombobox
+                        options={allVitNames}
+                        value={vitals}
+                        onChange={setVitals}
+                        onCreateOption={(val) => {
+                          addVitalsOption({ clerkId, name: val });
+                        }}
+                        placeholder={dir === "rtl" ? "ضغط الدم، النبض، الحرارة..." : "BP, HR, Temp…"}
+                        accentColor="#007AFF"
+                      />
+                    </div>
+                  )}
+
                   {/* Notes */}
-                  <div>
-                    <p className="text-sm font-medium mb-2">{t("visit.visitNotes")} <span className="text-muted-foreground font-normal">({t("onboarding.optional")})</span></p>
-                    <textarea
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      rows={2}
-                      placeholder={dir === "rtl" ? "التشخيص، خطة العلاج، الملاحظات..." : "Diagnosis, treatment plan, observations…"}
-                      className="w-full px-4 py-2.5 text-sm bg-background border border-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] resize-none"
-                    />
-                  </div>
+                  {enableNotes && (
+                    <div>
+                      <p className="text-sm font-medium mb-2">{t("visit.visitNotes")} <span className="text-muted-foreground font-normal">({t("onboarding.optional")})</span></p>
+                      <textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        rows={2}
+                        placeholder={dir === "rtl" ? "ملاحظات إضافية، خطة العلاج..." : "Additional notes, treatment plan…"}
+                        className="w-full px-4 py-2.5 text-sm bg-background border border-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] resize-none"
+                      />
+                    </div>
+                  )}
 
                   {/* ─── installment visit: Paid switch + Next Visit ──── */}
                   {isinstallmentVisit ? (
@@ -1003,7 +1104,7 @@ export function VisitCompletionModal({
                       disabled={isSaving}
                       className="flex-1 border border-border text-sm font-medium py-2.5 rounded-2xl hover:bg-muted/40 transition-colors disabled:opacity-60"
                     >
-                      Save & Close
+                      {t("common.save") || "Save"}
                     </button>
                     <button
                       onClick={async () => { await handleSave(false); }}

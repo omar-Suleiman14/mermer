@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -11,14 +11,17 @@ import {
   DrawerTitle,
   DrawerDescription,
   DrawerFooter,
-  DrawerClose,
 } from "@/components/ui/drawer";
 import dynamic from "next/dynamic";
-const PatientIntakeDrawer = dynamic(() => import("@/components/patient-intake-drawer").then(m => m.PatientIntakeDrawer));
+const PatientIntakeDrawer = dynamic(() =>
+  import("@/components/patient-intake-drawer").then((m) => m.PatientIntakeDrawer)
+);
 import { toast } from "sonner";
 import { Search, UserPlus, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { motion, AnimatePresence } from "framer-motion";
+import { useIsDesktop } from "@/hooks/use-is-desktop";
+import { useKeyboardHeight } from "@/hooks/use-keyboard-height";
 
 interface AddToQueueDrawerProps {
   open: boolean;
@@ -43,27 +46,6 @@ function formatTime(ts: number) {
   });
 }
 
-// Detect if we're on a sm+ screen (>= 640px) — reads synchronously to avoid flicker
-function subscribeDesktop(callback: () => void) {
-  if (typeof window === "undefined") return () => {};
-  const mq = window.matchMedia("(min-width: 640px)");
-  mq.addEventListener("change", callback);
-  return () => mq.removeEventListener("change", callback);
-}
-
-function getDesktopSnapshot() {
-  if (typeof window === "undefined") return false;
-  return window.matchMedia("(min-width: 640px)").matches;
-}
-
-function getServerDesktopSnapshot() {
-  return false;
-}
-
-function useIsDesktop() {
-  return useSyncExternalStore(subscribeDesktop, getDesktopSnapshot, getServerDesktopSnapshot);
-}
-
 export function AddToQueueDrawer({
   open,
   onOpenChange,
@@ -75,10 +57,15 @@ export function AddToQueueDrawer({
   const dayTs = selectedDate ?? startOfDay(Date.now());
   const { t, dir } = useI18n();
   const isDesktop = useIsDesktop();
+  const { keyboardHeight, isKeyboardOpen } = useKeyboardHeight();
 
   // ── Search ─────────────────────────────────────────────────────────────────
   const [search, setSearch] = useState("");
   const [intakeOpen, setIntakeOpen] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  // Snap points — taller snap when keyboard is open so content stays visible
+  const snapPoints = isKeyboardOpen ? [0.95] : [0.55, 0.92];
 
   const patients = useQuery(
     api.patients.searchPatients,
@@ -86,13 +73,19 @@ export function AddToQueueDrawer({
   );
   const addManualAppointment = useMutation(api.appointments.addManualAppointment);
 
+  // Focus search after the sheet has animated in (avoids keyboard popping mid-animation)
+  useEffect(() => {
+    if (open && !isDesktop) {
+      const timer = setTimeout(() => searchRef.current?.focus(), 400);
+      return () => clearTimeout(timer);
+    }
+  }, [open, isDesktop]);
+
   function resetState() {
     setSearch("");
   }
 
   async function handleSelectPatient(patientId: Id<"patients">) {
-    // If no preselected slot, we use the start of the day (doctor will see it
-    // as a general booking and can reschedule if needed).
     const bookingTime = preselectedSlot ?? dayTs;
     try {
       await addManualAppointment({
@@ -124,17 +117,17 @@ export function AddToQueueDrawer({
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <input
+            ref={searchRef}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t("drawer.searchByNamePhone") || "Search by name or phone..."}
             className="w-full pl-9 pr-4 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent transition-shadow"
-            autoFocus
           />
         </div>
       </div>
 
       {/* Patient list */}
-      <div className="px-6 overflow-y-auto flex-1 space-y-1.5 pb-4 min-h-[250px] max-h-[40vh]">
+      <div className="px-6 overflow-y-auto flex-1 space-y-1.5 pb-4 min-h-[200px] max-h-[45vh]">
         {patients === undefined ? (
           <p className="text-sm text-muted-foreground text-center py-12">
             Loading...
@@ -200,9 +193,6 @@ export function AddToQueueDrawer({
       </button>
     </div>
   );
-
-  // When not open and on mobile, render nothing
-  if (!open && !isDesktop) return null;
 
   // ── DESKTOP: centered modal popup ─────────────────────────────────────────
   if (isDesktop) {
@@ -278,8 +268,17 @@ export function AddToQueueDrawer({
           if (!v) resetState();
           onOpenChange(v);
         }}
+        snapPoints={snapPoints}
       >
-        <DrawerContent className="max-h-[90vh]" dir={dir}>
+        <DrawerContent
+          dir={dir}
+          // Shift the sheet up when keyboard is visible so the search input stays reachable
+          style={
+            isKeyboardOpen && keyboardHeight > 0
+              ? { paddingBottom: keyboardHeight }
+              : undefined
+          }
+        >
           <DrawerHeader className="text-start px-6">
             <DrawerTitle>{t("drawer.addToSchedule") || "Add Patient to Schedule"}</DrawerTitle>
             <DrawerDescription>

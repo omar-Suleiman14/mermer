@@ -11,7 +11,7 @@ import dynamic from "next/dynamic";
 const PatientIntakeDrawer = dynamic(() => import("@/components/patient-intake-drawer").then(m => m.PatientIntakeDrawer));
 import { VisitDrawer } from "@/components/visit-drawer";
 import { VisitCompletionModal } from "@/components/visit-completion-modal";
-import { Skeleton } from "@/components/ui/skeleton";
+import { IOSSpinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import {
   Phone,
@@ -60,9 +60,8 @@ export default function PatientProfilePage() {
     return (
       <div className="flex flex-col h-full">
         <PageHeader title={t("patient.title")} />
-        <div className="p-6 space-y-4">
-          <Skeleton className="h-28 rounded-2xl" />
-          <Skeleton className="h-48 rounded-2xl" />
+        <div className="flex-1 flex items-center justify-center">
+          <IOSSpinner size={32} className="text-[#007AFF]" />
         </div>
       </div>
     );
@@ -136,7 +135,10 @@ export default function PatientProfilePage() {
                 )}
               </div>
               <div className="flex items-center gap-4 flex-wrap text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">{t("patient.yearsOld").replace("{age}", String(patient.age))}</span>
+                <span className="font-medium text-foreground">
+                  {t("patient.yearsOld").replace("{age}", String(patient.age))}
+                  {patient.gender && patient.gender !== "other" && ` · ${patient.gender === "male" ? (dir === "rtl" ? "ذكر" : "Male") : (dir === "rtl" ? "أنثى" : "Female")}`}
+                </span>
                 <a
                   href={`tel:${patient.phone}`}
                   className="flex items-center gap-1.5 hover:text-[#007AFF] transition-colors"
@@ -181,7 +183,9 @@ export default function PatientProfilePage() {
             </h3>
 
             {installments === undefined ? (
-              <Skeleton className="h-20 rounded-xl" />
+              <div className="flex items-center justify-center py-6">
+                <IOSSpinner size={24} className="text-[#007AFF]" />
+              </div>
             ) : (
               <div className="space-y-3">
                 {installments.map((installment: any) => {
@@ -298,8 +302,8 @@ export default function PatientProfilePage() {
           </h3>
 
           {visits === undefined ? (
-            <div className="space-y-3">
-              {[1, 2].map((i) => <Skeleton key={i} className="h-32 rounded-xl" />)}
+            <div className="flex items-center justify-center py-10">
+              <IOSSpinner size={24} className="text-[#007AFF]" />
             </div>
           ) : visits.length === 0 ? (
             <div className="bg-card border border-border rounded-xl p-8 text-center">
@@ -521,6 +525,7 @@ export default function PatientProfilePage() {
                 name: patient.name,
                 age: patient.age,
                 phone: patient.phone,
+                gender: patient.gender,
                 chronicConditions: patient.chronicConditions,
               }
             : null

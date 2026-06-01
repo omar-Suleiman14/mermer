@@ -12,6 +12,7 @@ import dynamic from "next/dynamic";
 const PatientIntakeDrawer = dynamic(() => import("@/components/patient-intake-drawer").then(m => m.PatientIntakeDrawer));
 import { useI18n } from "@/lib/i18n/client";
 import { ImportExportSection } from "@/components/import-export-section";
+import { IOSSpinner } from "@/components/ui/spinner";
 
 export default function PatientsPage() {
   const { user } = useUser();
@@ -58,10 +59,8 @@ export default function PatientsPage() {
           </div>
 
           {patients === undefined ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <Skeleton key={i} className="h-28 rounded-2xl" />
-              ))}
+            <div className="flex items-center justify-center py-24">
+              <IOSSpinner size={32} className="text-[#007AFF]" />
             </div>
           ) : patients.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 text-center">

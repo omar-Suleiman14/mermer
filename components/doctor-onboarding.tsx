@@ -169,7 +169,7 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
         slotDurationMinutes: Number(slotDuration),
         bio: bio || undefined,
         feePerVisit: feePerVisit ? Number(feePerVisit) : undefined,
-        publicProfile: true,
+        publicProfile: false,
         workingDays: selectedDays,
       });
 

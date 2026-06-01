@@ -12,9 +12,9 @@ export const getAuditLogs = query({
     // so user._id IS the clinicId
     const user = await requireAuthUser(ctx, args.clerkId);
 
-    // If the caller is an assistant, they can only see logs if they have the manage_history permission
+    // If the caller is an assistant, they can only see logs if they have the analytics.access permission
     if (user.role === "assistant") {
-      requirePermission(user, "manage_history");
+      requirePermission(user, "analytics.access");
     }
 
     const logs = await ctx.db

@@ -9,7 +9,6 @@ import { PageHeader } from "@/components/page-header";
 import { AddToQueueDrawer } from "@/components/add-to-queue-drawer";
 import dynamic from "next/dynamic";
 const VisitCompletionModal = dynamic(() => import("@/components/visit-completion-modal").then(m => m.VisitCompletionModal));
-import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { IOSSpinner } from "@/components/ui/spinner";
@@ -240,9 +239,18 @@ const DraggableApptItem = memo(function DraggableApptItem({
                 )}
               </>
             ) : (
-              <Badge className="text-[10px] border bg-amber-500/10 text-amber-600 border-amber-500/30">
-                {t("schedule.missed")}
-              </Badge>
+              <>
+                <Badge className="text-[10px] border bg-amber-500/10 text-amber-600 border-amber-500/30">
+                  {t("schedule.missed")}
+                </Badge>
+                <button
+                  onClick={onReschedule}
+                  title={t("schedule.reschedule") || "Reschedule"}
+                  className={`p-1.5 rounded-lg transition-colors ${isinstallmentVisit ? "text-[#AF52DE] hover:bg-[#AF52DE]/10" : "text-[#007AFF] hover:bg-[#007AFF]/10"}`}
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                </button>
+              </>
             )}
           </div>
           <div className="block sm:hidden">
@@ -278,11 +286,18 @@ const DraggableApptItem = memo(function DraggableApptItem({
                     )}
                   </>
                 ) : (
-                  <DropdownMenuItem disabled className="gap-2 font-medium text-amber-600">
-                    <Badge className="text-[10px] border bg-amber-500/10 text-amber-600 border-amber-500/30">
-                      {t("schedule.missed")}
-                    </Badge>
-                  </DropdownMenuItem>
+                  <>
+                    <DropdownMenuItem disabled className="gap-2 font-medium text-amber-600">
+                      <Badge className="text-[10px] border bg-amber-500/10 text-amber-600 border-amber-500/30">
+                        {t("schedule.missed")}
+                      </Badge>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={onReschedule} className={`gap-2 cursor-pointer font-medium ${isinstallmentVisit ? "text-[#AF52DE] focus:text-[#AF52DE] focus:bg-[#AF52DE]/10" : "text-[#007AFF] focus:text-[#007AFF] focus:bg-[#007AFF]/10"}`}>
+                      <RefreshCw className="w-4 h-4" />
+                      <span>{t("schedule.reschedule") || "Reschedule"}</span>
+                    </DropdownMenuItem>
+                  </>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
@@ -293,12 +308,16 @@ const DraggableApptItem = memo(function DraggableApptItem({
   );
 });
 
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
-export default function SchedulePage() {
+function SchedulePageInner() {
   const { user } = useUser();
   const clerkId = user?.id ?? "";
   const { t, dir, lang } = useI18n();
+  const searchParams = useSearchParams();
 
   const currentUser = useQuery(
     api.users.getCurrentUser,
@@ -311,6 +330,8 @@ export default function SchedulePage() {
   );
 
   const todayTs = startOfDay(Date.now());
+  const initDate = searchParams.get("date");
+  const initVisitId = searchParams.get("visitId");
 
   // Strip container ref — used to measure how many days fit
   const stripContainerRef = useRef<HTMLDivElement>(null);
@@ -331,8 +352,21 @@ export default function SchedulePage() {
   }, []);
 
   // Single week offset: steps by daysInView instead of 7
-  const [weekOffset, setWeekOffset] = useState(0);
-  const [selectedDay, setSelectedDay] = useState<number>(todayTs);
+  const initialDay = initDate ? startOfDay(Number(initDate)) : todayTs;
+  const initialOffset = Math.round((initialDay - todayTs) / 86400000);
+  
+  const [weekOffset, setWeekOffset] = useState(initialOffset);
+  const [selectedDay, setSelectedDay] = useState<number>(initialDay);
+
+  useEffect(() => {
+    if (initDate) {
+      const d = startOfDay(Number(initDate));
+      if (d !== selectedDay) {
+        setSelectedDay(d);
+        setWeekOffset(Math.round((d - todayTs) / 86400000));
+      }
+    }
+  }, [initDate]);
 
   const [addOpen, setAddOpen] = useState(false);
   const [preselectedSlot, setPreselectedSlot] = useState<number | null>(null);
@@ -393,6 +427,22 @@ export default function SchedulePage() {
     api.appointments.getAppointmentsByDate,
     clerkId ? { clerkId, dayStart: selectedDay } : "skip"
   );
+
+  useEffect(() => {
+    if (initVisitId && rawAppointments && !completionModal) {
+      const visit = rawAppointments.find(v => v._id === initVisitId);
+      if (visit) {
+        setCompletionModal({
+          appointmentId: visit._id,
+          patientId: visit.patientId ?? undefined,
+          patientName: visit.patientName ?? "",
+          patientAge: visit.patientAge,
+          installmentId: visit.installmentId ?? undefined,
+          tag: undefined,
+        });
+      }
+    }
+  }, [initVisitId, rawAppointments]);
 
   const rescheduleDateStart = useMemo(() => {
     if (!rescheduleDate) return undefined;
@@ -726,9 +776,9 @@ export default function SchedulePage() {
             {/* Slots */}
             <div className="p-4 space-y-2">
               {rawAppointments === undefined ? (
-                Array.from({ length: 5 }).map((_, i) => (
-                  <Skeleton key={i} className="h-14 w-full rounded-xl bg-black/5 dark:bg-white/5" />
-                ))
+                <div className="flex items-center justify-center py-10">
+                  <IOSSpinner size={24} className="text-[#007AFF]" />
+                </div>
               ) : daySlots.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <Clock className="w-8 h-8 mx-auto mb-3 opacity-20" />
@@ -1082,5 +1132,13 @@ export default function SchedulePage() {
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+export default function SchedulePage() {
+  return (
+    <Suspense fallback={null}>
+      <SchedulePageInner />
+    </Suspense>
   );
 }

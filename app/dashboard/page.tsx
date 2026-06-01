@@ -24,6 +24,8 @@ import {
   XCircle,
   CalendarIcon,
   X,
+  BarChart3,
+  TrendingUp,
   MoreHorizontal,
   Link as LinkIcon,
   RefreshCw,
@@ -289,6 +291,11 @@ export default function DashboardPage() {
     clerkId ? { clerkId, dayStart: todayTs } : "skip"
   );
 
+  const statsData = useQuery(
+    api.doctors.getStatsAggregated,
+    clerkId ? { clerkId, startDate: todayTs, endDate: todayTs } : "skip"
+  );
+
   const messageTemplates = useQuery(
     api.messageTemplates.listTemplates,
     clerkId ? { clerkId } : "skip"
@@ -492,6 +499,7 @@ export default function DashboardPage() {
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="max-w-5xl mx-auto space-y-6">
 
+
       {/* Today's Schedule */}
       <div className="bg-white dark:bg-[#1c1c1a] border border-black/5 dark:border-white/5 rounded-2xl shadow-sm overflow-hidden">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-4 sm:px-6 py-4 border-b border-border/50 gap-4">
@@ -514,7 +522,7 @@ export default function DashboardPage() {
                 navigator.clipboard.writeText(`${window.location.origin}/clinic-screen`);
                 toast.success(lang === "ar" ? "تم نسخ رابط شاشة العيادة" : "Clinic Screen link copied");
               }}
-              className="flex items-center gap-1.5 text-xs font-semibold bg-muted text-foreground px-3 py-1.5 rounded-xl hover:bg-muted/80 transition-colors"
+              className="flex items-center gap-1.5 text-xs font-semibold bg-muted text-foreground px-3 py-1.5 rounded-xl hover:bg-muted/80 transition-colors cursor-pointer"
             >
               <LinkIcon className="w-3.5 h-3.5" />
               {t("dashboard.copyClinicLink")}
@@ -531,12 +539,9 @@ export default function DashboardPage() {
 
         <div className="p-4 space-y-2.5">
           {todayAppointments === undefined ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton
-                key={i}
-                className="h-16 w-full rounded-2xl bg-black/5 dark:bg-white/5"
-              />
-            ))
+            <div className="flex items-center justify-center py-10">
+              <IOSSpinner size={24} className="text-[#007AFF]" />
+            </div>
           ) : todayVisits.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-14 text-center">
               <div className="w-14 h-14 rounded-2xl bg-[#007AFF]/10 flex items-center justify-center mb-4">
@@ -617,6 +622,48 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* Today's Analytics */}
+      <div className="bg-white dark:bg-[#1c1c1a] border border-black/5 dark:border-white/5 rounded-2xl shadow-sm overflow-hidden p-4 sm:p-5 mt-6">
+        <div className="flex items-center gap-2 mb-4">
+          <BarChart3 className="w-5 h-5 text-[#007AFF]" />
+          <h2 className="font-bold text-base">{lang === "ar" ? "إحصائيات اليوم" : "Today's Analytics"}</h2>
+        </div>
+        {statsData === undefined ? (
+          <div className="flex justify-center py-4"><IOSSpinner size={24} /></div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="p-3 bg-muted/30 rounded-xl">
+              <p className="text-xs text-muted-foreground">{lang === "ar" ? "متابعات" : "Follow-ups"}</p>
+              <p className="text-lg font-bold text-[#FF9500]">{statsData.todayFollowUps}</p>
+            </div>
+            <div className="p-3 bg-muted/30 rounded-xl">
+              <p className="text-xs text-muted-foreground">{lang === "ar" ? "أقساط" : "Installments"}</p>
+              <p className="text-lg font-bold text-[#AF52DE]">{statsData.todayInstallments}</p>
+            </div>
+            <div className="p-3 bg-muted/30 rounded-xl">
+              <p className="text-xs text-muted-foreground">{lang === "ar" ? "زيارات أولى" : "First visits"}</p>
+              <p className="text-lg font-bold text-sky-500">{statsData.todayFirstVisits}</p>
+            </div>
+            <div className="p-3 bg-muted/30 rounded-xl">
+              <p className="text-xs text-muted-foreground">{lang === "ar" ? "مكتملة" : "Completed"}</p>
+              <p className="text-lg font-bold text-emerald-500">{statsData.todayCompleted}</p>
+            </div>
+            <div className="p-3 bg-muted/30 rounded-xl">
+              <p className="text-xs text-muted-foreground">{lang === "ar" ? "ملغاة" : "Cancelled"}</p>
+              <p className="text-lg font-bold text-red-500">{statsData.todayCancelled}</p>
+            </div>
+            <div className="p-3 bg-muted/30 rounded-xl">
+              <p className="text-xs text-muted-foreground">{lang === "ar" ? "فائتة" : "Missed"}</p>
+              <p className="text-lg font-bold text-orange-500">{statsData.todayMissed}</p>
+            </div>
+            <div className="p-3 bg-muted/30 rounded-xl">
+              <p className="text-xs text-muted-foreground">{lang === "ar" ? "مؤجلة" : "Rescheduled"}</p>
+              <p className="text-lg font-bold text-blue-500">{statsData.todayRescheduled}</p>
+            </div>
+          </div>
+        )}
+      </div>
 
       </div>
       </div>

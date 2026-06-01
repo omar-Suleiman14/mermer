@@ -6,7 +6,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
-import { Skeleton } from "@/components/ui/skeleton";
+import { IOSSpinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -27,7 +27,6 @@ import {
   Users,
   Search,
 } from "lucide-react";
-import { IOSSpinner } from "@/components/ui/spinner";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n/client";
 import {
@@ -672,13 +671,17 @@ function InstallmentViewDrawer({
 
           {/* Next visit */}
           {installment.status === "active" && installment.nextVisitDate && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-[#007AFF]/8 border border-[#007AFF]/20">
+            <Link
+              href={`/dashboard/queue?date=${installment.nextVisitDate}${installment.nextVisitId ? `&visitId=${installment.nextVisitId}` : ""}`}
+              onClick={onClose}
+              className="flex items-center gap-2 p-3 rounded-xl bg-[#007AFF]/8 border border-[#007AFF]/20 hover:bg-[#007AFF]/15 transition-colors cursor-pointer"
+            >
               <CalendarIcon className="w-4 h-4 text-[#007AFF] shrink-0" />
               <div>
                 <p className="text-[10px] text-muted-foreground">{t("installments.nextVisit")}</p>
                 <p className="text-sm font-semibold text-[#007AFF]">{fmtDate(installment.nextVisitDate, t("common.currency") === "ج.م" ? "ar-EG" : "en-US", true)}</p>
               </div>
-            </div>
+            </Link>
           )}
 
           {/* installment file */}
@@ -809,9 +812,9 @@ export default function InstallmentsPage() {
 
             <div className="p-4 space-y-3">
               {filteredinstallments === undefined ? (
-                Array.from({ length: 3 }).map((_, i) => (
-                  <Skeleton key={i} className="h-24 w-full rounded-xl bg-black/5 dark:bg-white/5" />
-                ))
+                <div className="flex items-center justify-center py-10">
+                  <IOSSpinner size={24} className="text-[#007AFF]" />
+                </div>
               ) : filteredinstallments.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <div className="w-14 h-14 rounded-2xl bg-[#007AFF]/10 flex items-center justify-center mb-4">
@@ -902,10 +905,14 @@ export default function InstallmentsPage() {
                             </span>
                           )}
                           {installment.status === "active" && installment.nextVisitDate && (
-                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Link 
+                              href={`/dashboard/queue?date=${installment.nextVisitDate}${installment.nextVisitId ? `&visitId=${installment.nextVisitId}` : ""}`}
+                              className="text-xs text-muted-foreground flex items-center gap-1 hover:text-[#007AFF] hover:bg-[#007AFF]/5 rounded px-1 -ml-1 transition-colors"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <CalendarIcon className="w-3 h-3" />
                               {t("installments.next")}: {fmtDate(installment.nextVisitDate, t("common.currency") === "ج.م" ? "ar-EG" : "en-US", true)}
-                            </span>
+                            </Link>
                           )}
                         </div>
 

@@ -351,3 +351,50 @@ html[dir="ltr"] .dashboard-font {
 .dark .shadow-2xl {
   box-shadow: 0 0 0 1px rgba(255,255,255,0.08), 0 30px 80px rgba(0,0,0,1) !important;
 }
+
+/* ── Safe-area inset helpers ──────────────────────────────────────────────── */
+/* Use these on any element that must clear the device notch / home indicator. */
+.pt-safe  { padding-top:    env(safe-area-inset-top,    0px); }
+.pb-safe  { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.pl-safe  { padding-left:   env(safe-area-inset-left,   0px); }
+.pr-safe  { padding-right:  env(safe-area-inset-right,  0px); }
+
+/* Margin variants */
+.mt-safe  { margin-top:    env(safe-area-inset-top,    0px); }
+.mb-safe  { margin-bottom: env(safe-area-inset-bottom, 0px); }
+
+/* Combined inset shorthand for fixed overlays */
+.inset-safe {
+  padding-top:    env(safe-area-inset-top,    0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left:   env(safe-area-inset-left,   0px);
+  padding-right:  env(safe-area-inset-right,  0px);
+}
+
+/* ── Mobile touch & scroll improvements ──────────────────────────────────── */
+/* Prevent the entire page from bouncing when a bottom sheet is open */
+body.sheet-open {
+  overflow: hidden;
+  /* iOS Safari: stop the body from scrolling under the sheet */
+  position: fixed;
+  width: 100%;
+}
+
+/* Momentum scrolling for all scrollable containers on iOS */
+.overflow-y-auto,
+.overflow-y-scroll {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent text selection during swipe-to-dismiss gesture */
+[data-vaul-drawer] {
+  user-select: none;
+  -webkit-user-select: none;
+}
+/* Re-enable selection inside the content area */
+[data-vaul-drawer] input,
+[data-vaul-drawer] textarea,
+[data-vaul-drawer] [data-slot="drawer-content"] {
+  user-select: text;
+  -webkit-user-select: text;
+}

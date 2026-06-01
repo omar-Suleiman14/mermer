@@ -11,7 +11,6 @@ import {
   DrawerTitle,
   DrawerDescription,
   DrawerFooter,
-  DrawerClose,
 } from "@/components/ui/drawer";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
@@ -22,6 +21,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { motion, AnimatePresence } from "framer-motion";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { isNonWorkingDay } from "@/lib/scheduling";
+import { useIsDesktop } from "@/hooks/use-is-desktop";
+import { useKeyboardHeight } from "@/hooks/use-keyboard-height";
 
 interface VisitDrawerProps {
   open: boolean;
@@ -31,28 +32,11 @@ interface VisitDrawerProps {
   patientName: string;
 }
 
-// Detect if we're on a sm+ screen (>= 640px) — reads synchronously to avoid flicker
-function useIsDesktop() {
-  const [isDesktop, setIsDesktop] = useState(() => {
-    if (typeof window !== "undefined") {
-      return window.matchMedia("(min-width: 640px)").matches;
-    }
-    return false;
-  });
-
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 640px)");
-    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
-  return isDesktop;
-}
-
 export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientName }: VisitDrawerProps) {
   const { t, lang, dir } = useI18n();
   const isDesktop = useIsDesktop();
-  
+  const { keyboardHeight, isKeyboardOpen } = useKeyboardHeight();
+
   const [form, setForm] = useState({
     reasonForVisit: "",
     notes: "",
@@ -61,15 +45,17 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
   const [visitDate, setVisitDate] = useState<Date | undefined>(new Date());
   const [visitTime, setVisitTime] = useState<string>("10:00");
   const [calOpen, setCalOpen] = useState(false);
-
   const [loading, setLoading] = useState(false);
+
   const createVisit = useMutation(api.visits.createVisit);
-
   const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
-  
 
-  const activeDateStart = visitDate ? new Date(visitDate.getFullYear(), visitDate.getMonth(), visitDate.getDate(), 0, 0, 0, 0).getTime() : 0;
-  const activeDateEnd = visitDate ? new Date(visitDate.getFullYear(), visitDate.getMonth(), visitDate.getDate(), 23, 59, 59, 999).getTime() : 0;
+  const activeDateStart = visitDate
+    ? new Date(visitDate.getFullYear(), visitDate.getMonth(), visitDate.getDate(), 0, 0, 0, 0).getTime()
+    : 0;
+  const activeDateEnd = visitDate
+    ? new Date(visitDate.getFullYear(), visitDate.getMonth(), visitDate.getDate(), 23, 59, 59, 999).getTime()
+    : 0;
 
   const existingVisitsOnDate = useQuery(
     api.visits.getVisitsByDateRange,
@@ -97,11 +83,9 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
         const hh = h.toString().padStart(2, "0");
         const mm = m.toString().padStart(2, "0");
         const timeStr = `${hh}:${mm}`;
-
-        const ampm = h >= 12 ? (lang === "ar" ? "م" : "PM") : (lang === "ar" ? "ص" : "AM");
+        const ampm = h >= 12 ? (lang === "ar" ? "م" : "PM") : lang === "ar" ? "ص" : "AM";
         const displayH = h % 12 || 12;
         const label = `${displayH}:${mm} ${ampm}`;
-
         const isWorkingHour = h >= startHour && h < endHour;
         const isReserved = reservedTimes.has(timeStr);
         slots.push({ timeStr, label, isWorkingHour, isReserved });
@@ -112,9 +96,8 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
 
   useEffect(() => {
     if (timeSlots.length > 0 && visitTime === "10:00") {
-      const firstAvailable = timeSlots.find(s => s.isWorkingHour && !s.isReserved);
+      const firstAvailable = timeSlots.find((s) => s.isWorkingHour && !s.isReserved);
       if (firstAvailable && firstAvailable.timeStr !== visitTime) {
-        // use setTimeout to push to next tick and avoid synchronous setState warning
         setTimeout(() => setVisitTime(firstAvailable.timeStr), 0);
       }
     }
@@ -126,10 +109,7 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
 
   function handleOpen(v: boolean) {
     if (v) {
-      setForm({
-        reasonForVisit: "",
-        notes: "",
-      });
+      setForm({ reasonForVisit: "", notes: "" });
       setVisitDate(new Date());
       setVisitTime("10:00");
     }
@@ -142,8 +122,8 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
       toast.error("Please pick a visit date");
       return;
     }
-    
-    const selectedSlot = timeSlots.find(s => s.timeStr === visitTime);
+
+    const selectedSlot = timeSlots.find((s) => s.timeStr === visitTime);
     if (selectedSlot?.isReserved) {
       toast.error("This time slot is already reserved.");
       return;
@@ -154,7 +134,7 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
       const [hh, mm] = visitTime.split(":").map(Number);
       const exactDate = new Date(visitDate);
       exactDate.setHours(hh ?? 10, mm ?? 0, 0, 0);
-      
+
       await createVisit({
         clerkId,
         patientId,
@@ -175,58 +155,85 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
   const formContent = (
     <form onSubmit={handleSubmit} className="overflow-y-auto flex-1">
       <div className="px-6 space-y-4 py-4">
-        
         <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border">
+          {/* Date picker */}
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("visit.date")} *</p>
             <Popover open={calOpen} onOpenChange={setCalOpen}>
               <PopoverTrigger asChild>
-                <button type="button" className="w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border border-border rounded-xl hover:border-[#007AFF]/50 transition-colors text-start">
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border border-border rounded-xl hover:border-[#007AFF]/50 transition-colors text-start"
+                >
                   <CalendarIcon className="w-4 h-4 text-muted-foreground shrink-0" />
                   <span className="text-sm">
-                    {visitDate ? visitDate.toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { weekday: "short", month: "short", day: "numeric" }) : t("visit.pickDate")}
+                    {visitDate
+                      ? visitDate.toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", {
+                          weekday: "short",
+                          month: "short",
+                          day: "numeric",
+                        })
+                      : t("visit.pickDate")}
                   </span>
                 </button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <Calendar 
-                  mode="single" 
-                  selected={visitDate} 
-                  onSelect={(d) => { if (d) { setVisitDate(d); setCalOpen(false); } }} 
-                  disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0)) || isNonWorkingDay(date, currentUser?.availableDays)}
+                <Calendar
+                  mode="single"
+                  selected={visitDate}
+                  onSelect={(d) => {
+                    if (d) {
+                      setVisitDate(d);
+                      setCalOpen(false);
+                    }
+                  }}
+                  disabled={(date) =>
+                    date < new Date(new Date().setHours(0, 0, 0, 0)) ||
+                    isNonWorkingDay(date, currentUser?.availableDays)
+                  }
                 />
               </PopoverContent>
             </Popover>
           </div>
-          
+
+          {/* Time slots */}
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-1.5">{t("visit.timeSlot")}</p>
             <div className="max-h-48 overflow-y-auto border border-border rounded-xl divide-y divide-border/50">
-              {timeSlots.filter(s => s.isWorkingHour).map(slot => (
-                <button 
-                  key={slot.timeStr} 
-                  type="button"
-                  onClick={() => !slot.isReserved && setVisitTime(slot.timeStr)} 
-                  disabled={slot.isReserved}
-                  className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${
-                    slot.isReserved 
-                      ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed line-through" 
-                      : visitTime === slot.timeStr 
-                        ? "bg-[#007AFF]/10 text-[#007AFF] font-semibold" 
+              {timeSlots
+                .filter((s) => s.isWorkingHour)
+                .map((slot) => (
+                  <button
+                    key={slot.timeStr}
+                    type="button"
+                    onClick={() => !slot.isReserved && setVisitTime(slot.timeStr)}
+                    disabled={slot.isReserved}
+                    className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${
+                      slot.isReserved
+                        ? "bg-muted/40 text-muted-foreground/40 cursor-not-allowed line-through"
+                        : visitTime === slot.timeStr
+                        ? "bg-[#007AFF]/10 text-[#007AFF] font-semibold"
                         : "hover:bg-muted/30"
-                  }`}
-                >
-                  <span>{slot.label}</span>
-                  {slot.isReserved && <span className="text-[10px] font-medium text-red-400 uppercase tracking-wider">{t("visit.reserved") || "Reserved"}</span>}
-                  {!slot.isReserved && visitTime === slot.timeStr && <CheckCircle2 className="w-3.5 h-3.5" />}
-                </button>
-              ))}
+                    }`}
+                  >
+                    <span>{slot.label}</span>
+                    {slot.isReserved && (
+                      <span className="text-[10px] font-medium text-red-400 uppercase tracking-wider">
+                        {t("visit.reserved") || "Reserved"}
+                      </span>
+                    )}
+                    {!slot.isReserved && visitTime === slot.timeStr && <CheckCircle2 className="w-3.5 h-3.5" />}
+                  </button>
+                ))}
             </div>
           </div>
         </div>
 
+        {/* Reason */}
         <div className="space-y-1.5 pt-2 border-t border-border">
-          <Label htmlFor="visit-reason" className="text-xs font-medium text-muted-foreground mb-1.5 block">{t("visit.reasonForVisit")}</Label>
+          <Label htmlFor="visit-reason" className="text-xs font-medium text-muted-foreground mb-1.5 block">
+            {t("visit.reasonForVisit")}
+          </Label>
           <input
             id="visit-reason"
             type="text"
@@ -237,8 +244,11 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
           />
         </div>
 
+        {/* Notes */}
         <div className="space-y-1.5">
-          <Label htmlFor="visit-notes" className="text-xs font-medium text-muted-foreground mb-1.5 block">{t("visit.notes")}</Label>
+          <Label htmlFor="visit-notes" className="text-xs font-medium text-muted-foreground mb-1.5 block">
+            {t("visit.notes")}
+          </Label>
           <textarea
             id="visit-notes"
             value={form.notes}
@@ -266,13 +276,16 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
         disabled={loading}
         className="flex-1 bg-[#007AFF] text-white text-sm font-semibold py-2.5 px-4 rounded-xl hover:bg-[#0062cc] transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
       >
-        {loading ? <><IOSSpinner size={16} className="text-white" /> {t("onboarding.saving")}</> : t("visit.saveVisit")}
+        {loading ? (
+          <>
+            <IOSSpinner size={16} className="text-white" /> {t("onboarding.saving")}
+          </>
+        ) : (
+          t("visit.saveVisit")
+        )}
       </button>
     </div>
   );
-
-  // When not open and on mobile, render nothing
-  if (!open && !isDesktop) return null;
 
   // ── DESKTOP: centered modal popup ─────────────────────────────────────────
   if (isDesktop) {
@@ -328,16 +341,27 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
 
   // ── MOBILE: bottom drawer ──────────────────────────────────────────────────
   return (
-    <Drawer open={open} onOpenChange={handleOpen}>
-      <DrawerContent className="max-h-[88vh]">
+    <Drawer
+      open={open}
+      onOpenChange={handleOpen}
+      snapPoints={[0.55, 0.90]}
+    >
+      <DrawerContent
+        dir={dir}
+        style={
+          isKeyboardOpen && keyboardHeight > 0
+            ? { paddingBottom: keyboardHeight }
+            : undefined
+        }
+      >
         <DrawerHeader className="px-6 text-start">
           <DrawerTitle>{t("visit.newVisit")}</DrawerTitle>
-          <DrawerDescription>{t("visit.recordingFor")} {patientName}</DrawerDescription>
+          <DrawerDescription>
+            {t("visit.recordingFor")} {patientName}
+          </DrawerDescription>
         </DrawerHeader>
         {formContent}
-        <DrawerFooter className="p-0">
-          {footerContent}
-        </DrawerFooter>
+        <DrawerFooter className="p-0">{footerContent}</DrawerFooter>
       </DrawerContent>
     </Drawer>
   );

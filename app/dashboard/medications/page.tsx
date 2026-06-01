@@ -7,7 +7,7 @@ import { api } from "@/convex/_generated/api";
 import { PageHeader } from "@/components/page-header";
 import { Trash2, Plus, Upload, Download, FileText, Loader2, X, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
-import { Skeleton } from "@/components/ui/skeleton";
+import { IOSSpinner } from "@/components/ui/spinner";
 import { useI18n } from "@/lib/i18n/client";
 import Papa from "papaparse";
 import { motion, AnimatePresence } from "framer-motion";
@@ -23,7 +23,7 @@ import {
   DrawerClose,
 } from "@/components/ui/drawer";
 
-type TabType = "medications" | "frequencies" | "notes";
+type TabType = "medications" | "frequencies" | "notes" | "diagnoses" | "measurements" | "vitals";
 
 export default function MedicationsPage() {
   const { user, isLoaded } = useUser();
@@ -40,7 +40,11 @@ export default function MedicationsPage() {
     if (!isAr) return tab;
     if (tab === "medications") return "الأدوية";
     if (tab === "frequencies") return "التكرار";
-    return "الملاحظات";
+    if (tab === "notes") return "الملاحظات";
+    if (tab === "diagnoses") return "التشخيص";
+    if (tab === "measurements") return "القياسات";
+    if (tab === "vitals") return "العلامات الحيوية";
+    return tab;
   };
 
   const allClinicalOptions = useQuery(
@@ -51,14 +55,23 @@ export default function MedicationsPage() {
   const addMedication = useMutation(api.clinicalOptions.addMedicationOption);
   const addFrequency = useMutation(api.clinicalOptions.addFrequencyOption);
   const addNote = useMutation(api.clinicalOptions.addNoteOption);
+  const addDiagnosis = useMutation(api.clinicalOptions.addDiagnosisOption);
+  const addMeasurement = useMutation(api.clinicalOptions.addMeasurementOption);
+  const addVitals = useMutation(api.clinicalOptions.addVitalsOption);
 
   const deleteMedication = useMutation(api.clinicalOptions.deleteMedicationOption);
   const deleteFrequency = useMutation(api.clinicalOptions.deleteFrequencyOption);
   const deleteNote = useMutation(api.clinicalOptions.deleteNoteOption);
+  const deleteDiagnosis = useMutation(api.clinicalOptions.deleteDiagnosisOption);
+  const deleteMeasurement = useMutation(api.clinicalOptions.deleteMeasurementOption);
+  const deleteVitals = useMutation(api.clinicalOptions.deleteVitalsOption);
 
   const batchAddMedications = useMutation(api.clinicalOptions.batchAddMedicationOptions);
   const batchAddFrequencies = useMutation(api.clinicalOptions.batchAddFrequencyOptions);
   const batchAddNotes = useMutation(api.clinicalOptions.batchAddNoteOptions);
+  const batchAddDiagnoses = useMutation(api.clinicalOptions.batchAddDiagnosisOptions);
+  const batchAddMeasurements = useMutation(api.clinicalOptions.batchAddMeasurementOptions);
+  const batchAddVitals = useMutation(api.clinicalOptions.batchAddVitalsOptions);
 
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [csvData, setCsvData] = useState<Record<string, string>[]>([]);
@@ -75,6 +88,9 @@ export default function MedicationsPage() {
       if (activeTab === "medications") await addMedication({ clerkId, name });
       else if (activeTab === "frequencies") await addFrequency({ clerkId, name });
       else if (activeTab === "notes") await addNote({ clerkId, name });
+      else if (activeTab === "diagnoses") await addDiagnosis({ clerkId, name });
+      else if (activeTab === "measurements") await addMeasurement({ clerkId, name });
+      else if (activeTab === "vitals") await addVitals({ clerkId, name });
       setNewItemName("");
     } catch {
       toast.error(t("common.error") || "Error adding item");
@@ -86,6 +102,9 @@ export default function MedicationsPage() {
       if (activeTab === "medications") await deleteMedication({ clerkId, id });
       else if (activeTab === "frequencies") await deleteFrequency({ clerkId, id });
       else if (activeTab === "notes") await deleteNote({ clerkId, id });
+      else if (activeTab === "diagnoses") await deleteDiagnosis({ clerkId, id });
+      else if (activeTab === "measurements") await deleteMeasurement({ clerkId, id });
+      else if (activeTab === "vitals") await deleteVitals({ clerkId, id });
     } catch {
       toast.error(t("common.error") || "Error deleting item");
     }
@@ -94,7 +113,10 @@ export default function MedicationsPage() {
   const handleExport = () => {
     if (!allClinicalOptions) return;
     try {
-      const data = allClinicalOptions[activeTab] || [];
+      let data: any[] = allClinicalOptions[activeTab] || [];
+      if (activeTab === "medications") {
+        data = data.filter((item: any) => !(item._id as string).startsWith("default_"));
+      }
       if (data.length === 0) {
         toast.info(t("settings.noDataToExport") || "No data to export");
         return;
@@ -163,6 +185,12 @@ export default function MedicationsPage() {
         await batchAddFrequencies({ clerkId, frequencies: names });
       } else if (activeTab === "notes") {
         await batchAddNotes({ clerkId, notes: names });
+      } else if (activeTab === "diagnoses") {
+        await batchAddDiagnoses({ clerkId, items: names });
+      } else if (activeTab === "measurements") {
+        await batchAddMeasurements({ clerkId, items: names });
+      } else if (activeTab === "vitals") {
+        await batchAddVitals({ clerkId, items: names });
       }
       toast.success(
         `${t("settings.csvImportedAll") || "Imported"} ${names.length} ${t("settings.csvRecords") || "records"}`
@@ -179,6 +207,9 @@ export default function MedicationsPage() {
 
   const isLoading = !isLoaded || allClinicalOptions === undefined;
   const items = allClinicalOptions?.[activeTab] ?? [];
+  const displayItems = activeTab === "medications" 
+    ? items.filter((item: any) => !(item._id as string).startsWith("default_"))
+    : items;
 
   const renderDataMenuContent = () => (
     <div className="p-4 sm:p-6 space-y-4 bg-muted/20" dir={dir}>
@@ -351,18 +382,18 @@ export default function MedicationsPage() {
   return (
     <div className="flex flex-col h-full bg-muted/20" suppressHydrationWarning>
       <PageHeader
-        title={t("nav.medications") || "Medications"}
+        title={t("settings.clinicalOptions") || "Clinical Options"}
         description={
-          t("settings.importDataDesc") ||
-          "Manage your medications, frequencies and notes"
+          t("settings.clinicalOptionsDesc") ||
+          "Manage medications, diagnoses, measurements and more"
         }
       />
 
       <div className="flex-1 overflow-auto p-3 sm:p-6 max-w-4xl mx-auto w-full pb-24">
         {/* Tabs */}
         <div className="flex items-center gap-2 mb-4 sm:mb-6 w-full">
-          <div className="flex bg-card p-1 rounded-xl shadow-sm flex-1">
-            {(["medications", "frequencies", "notes"] as TabType[]).map((tab) => (
+          <div className="flex bg-card p-1 rounded-xl shadow-sm flex-1 overflow-x-auto">
+            {(["medications", "frequencies", "notes", "diagnoses", "measurements", "vitals"] as TabType[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -419,15 +450,10 @@ export default function MedicationsPage() {
         {/* List — skeleton while loading, content after */}
         <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden">
           {isLoading ? (
-            <div className="divide-y divide-border">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="flex items-center justify-between p-4">
-                  <Skeleton className="h-4 w-48 rounded-md" />
-                  <Skeleton className="h-8 w-8 rounded-lg" />
-                </div>
-              ))}
+            <div className="flex items-center justify-center py-10">
+              <IOSSpinner size={24} className="text-primary" />
             </div>
-          ) : items.length === 0 ? (
+          ) : displayItems.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground text-sm">
               {isAr
                 ? `لا توجد ${getTabName(activeTab)} مضافة. أضف واحداً بالأعلى أو استورد ملف CSV.`
@@ -435,7 +461,7 @@ export default function MedicationsPage() {
             </div>
           ) : (
             <div className="divide-y divide-border">
-              {items.map((item) => (
+              {displayItems.map((item: any) => (
                 <div
                   key={item._id}
                   className="flex items-center justify-between p-3 sm:p-4 hover:bg-muted/30 transition-colors"

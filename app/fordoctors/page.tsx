@@ -24,8 +24,8 @@ export default async function ForDoctorsLandingPage() {
       <main className="flex-1 w-full max-w-[1400px] mx-auto overflow-hidden">
         
         {/* 1. Hero Section (Asymmetric Split) */}
-        <section className="relative px-4 sm:px-6 lg:px-8 pt-12 md:pt-24 lg:pt-32 pb-16 lg:pb-32">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-8 items-center">
+        <section className="relative px-4 sm:px-6 lg:px-8 min-h-[calc(100vh-3.5rem)] flex items-center py-12 lg:py-0">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-8 items-center w-full">
             
             {/* Left Col: Copy & CTAs */}
             <div className="max-w-2xl">
@@ -34,7 +34,7 @@ export default async function ForDoctorsLandingPage() {
                   <Sparkles className="w-3.5 h-3.5 text-primary" />
                   {dir === "rtl" ? "منصة الأطباء المهنية الأولى" : "The #1 Professional Doctor Platform"}
                 </div>
-                <h1 className="text-5xl md:text-6xl lg:text-[4.5rem] font-medium tracking-tighter leading-[1.05] text-slate-900 dark:text-white">
+                <h1 className="text-5xl md:text-6xl lg:text-7xl font-medium tracking-tighter leading-[1.05] text-slate-900 dark:text-white">
                   {dir === "rtl" ? (
                     <>ابنِ سمعتك الرقمية. <br /><span className="text-primary">وضاعف نجاح عيادتك.</span></>
                   ) : (
@@ -74,11 +74,11 @@ export default async function ForDoctorsLandingPage() {
             </div>
 
             {/* Right Col: UI Mock (Abstract Premium Aesthetic) */}
-            <AnimatedReveal delay={0.3} direction="left" className="relative lg:h-[600px] flex items-center justify-center">
+            <AnimatedReveal delay={0.3} direction="left" className="relative lg:h-[500px] flex items-center justify-center">
               {/* Soft abstract background blob */}
               <div className="absolute inset-0 bg-primary/5 dark:bg-primary/10 rounded-full blur-[100px] w-3/4 h-3/4 m-auto" />
               
-              <div className="relative w-full max-w-md bg-slate-50/60 dark:bg-zinc-900/60 backdrop-blur-3xl border border-slate-200/50 dark:border-white/10 rounded-3xl p-4 shadow-2xl shadow-primary/5 overflow-hidden flex flex-col h-[500px]">
+              <div className="relative w-full max-w-md bg-slate-50/60 dark:bg-zinc-900/60 backdrop-blur-3xl border border-slate-200/50 dark:border-white/10 rounded-3xl p-4 shadow-2xl shadow-primary/5 overflow-hidden flex flex-col h-[450px]">
                 
                 {/* Mock Header */}
                 <div className="flex items-center justify-between pb-4 border-b border-slate-200/50 dark:border-white/5 mb-4 px-2">

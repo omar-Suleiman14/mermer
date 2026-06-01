@@ -24,6 +24,7 @@ import type * as patients from "../patients.js";
 import type * as push from "../push.js";
 import type * as pushActions from "../pushActions.js";
 import type * as queue from "../queue.js";
+import type * as support from "../support.js";
 import type * as topEgyptianMeds from "../topEgyptianMeds.js";
 import type * as users from "../users.js";
 import type * as visits from "../visits.js";
@@ -51,6 +52,7 @@ declare const fullApi: ApiFromModules<{
   push: typeof push;
   pushActions: typeof pushActions;
   queue: typeof queue;
+  support: typeof support;
   topEgyptianMeds: typeof topEgyptianMeds;
   users: typeof users;
   visits: typeof visits;
