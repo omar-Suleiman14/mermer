@@ -137,7 +137,7 @@ export default function PatientProfilePage() {
               <div className="flex items-center gap-4 flex-wrap text-sm text-muted-foreground">
                 <span className="font-medium text-foreground">
                   {t("patient.yearsOld").replace("{age}", String(patient.age))}
-                  {patient.gender && patient.gender !== "other" && ` · ${patient.gender === "male" ? (dir === "rtl" ? "ذكر" : "Male") : (dir === "rtl" ? "أنثى" : "Female")}`}
+                  {patient.gender && patient.gender !== "other" && ` · ${patient.gender === "male" ? (lang === "ar" ? "ذكر" : "Male") : (lang === "ar" ? "أنثى" : "Female")}`}
                 </span>
                 <a
                   href={`tel:${patient.phone}`}
