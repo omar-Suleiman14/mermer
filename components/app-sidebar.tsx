@@ -22,6 +22,7 @@ import {
   History,
   UserCheck,
   Pill,
+  LifeBuoy,
 } from "lucide-react";
 
 
@@ -54,21 +55,28 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const isAssistant = currentUser?.role === "assistant";
   const userPerms: string[] = currentUser?.permissions ?? [];
 
-  const allNavItems = [
-    { title: t("nav.dashboard") || "Dashboard", href: "/dashboard", icon: LayoutDashboard, perm: null },
-    { title: t("nav.schedule") || "Schedule", href: "/dashboard/queue", icon: CalendarDays, perm: "manage_queue" },
-    { title: t("nav.patients") || "Patients", href: "/dashboard/patients", icon: Users, perm: "manage_patients" },
-    { title: t("nav.medications") || "Medications", href: "/dashboard/medications", icon: Pill, perm: "manage_settings", doctorOnly: true },
-    { title: t("nav.installments") || "Installments", href: "/dashboard/installments", icon: FileText, perm: "manage_installments" },
-    { title: t("nav.feedback") || "Feedback", href: "/dashboard/feedback", icon: Star, perm: null },
-    { title: t("nav.analytics") || "Analytics", href: "/dashboard/stats", icon: BarChart3, perm: "manage_analytics", doctorOnly: true },
-    { title: lang === "ar" ? "تحليلات المرضى" : "Patient Analytics", href: "/dashboard/patients-analytics", icon: Users, perm: "manage_analytics", doctorOnly: true },
-    { title: t("nav.history") || "History", href: "/dashboard/history", icon: History, perm: "manage_history", doctorOnly: true },
-    { title: t("nav.staff") || "Staff", href: "/dashboard/staff", icon: UserCheck, perm: null, doctorOnly: true },
-    { title: t("nav.settings") || "Settings", href: "/dashboard/settings", icon: Settings, perm: "manage_settings", doctorOnly: true },
+  const navGroups = [
+    [
+      { title: t("nav.dashboard") || "Dashboard", href: "/dashboard", icon: LayoutDashboard, perm: null },
+      { title: t("nav.schedule") || "Schedule", href: "/dashboard/queue", icon: CalendarDays, perm: "manage_queue" },
+      { title: t("nav.installments") || "Installments", href: "/dashboard/installments", icon: FileText, perm: "manage_installments" },
+      { title: t("nav.patients") || "Patients", href: "/dashboard/patients", icon: Users, perm: "manage_patients" },
+    ],
+    [
+      { title: t("nav.medications") || "Medications", href: "/dashboard/medications", icon: Pill, perm: "manage_settings", doctorOnly: true },
+      { title: lang === "ar" ? "بيانات" : "Insights", href: "/dashboard/patients-analytics", icon: Users, perm: "manage_analytics", doctorOnly: true },
+      { title: t("nav.analytics") || "Analytics", href: "/dashboard/stats", icon: BarChart3, perm: "manage_analytics", doctorOnly: true },
+      { title: t("nav.feedback") || "Feedback", href: "/dashboard/feedback", icon: Star, perm: null },
+      { title: t("nav.staff") || "Staff", href: "/dashboard/staff", icon: UserCheck, perm: null, doctorOnly: true },
+    ],
+    [
+      { title: t("nav.history") || "History", href: "/dashboard/history", icon: History, perm: "manage_history", doctorOnly: true },
+      { title: t("nav.settings") || "Settings", href: "/dashboard/settings", icon: Settings, perm: "manage_settings", doctorOnly: true },
+      { title: lang === "ar" ? "الدعم" : "Support", href: "/dashboard/support", icon: LifeBuoy, perm: null },
+    ]
   ];
 
-  const navItems = allNavItems.filter((item) => {
+  const filteredGroups = navGroups.map(group => group.filter(item => {
     // Doctor always sees everything
     if (!isAssistant) return true;
     // Items marked doctorOnly are hidden for assistants by default unless they have the perm
@@ -78,7 +86,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     // If item requires a perm, check it
     if (item.perm) return userPerms.includes(item.perm);
     return true;
-  });
+  })).filter(group => group.length > 0);
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -119,22 +127,27 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
       <SidebarContent className="px-2 pt-2">
         <SidebarMenu>
-          {navItems.map((item) => {
-            const isActive =
-              item.href === "/dashboard"
-                ? pathname === "/dashboard"
-                : pathname.startsWith(item.href);
-            return (
-              <SidebarMenuItem key={item.href}>
-                <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
-                  <Link href={item.href} prefetch={true} target={"target" in item ? item.target as string : undefined} className="flex items-center gap-2 relative">
-                    <item.icon className="w-4 h-4 shrink-0" aria-hidden="true" />
-                    <span className="flex-1">{item.title}</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            );
-          })}
+          {filteredGroups.map((group, groupIdx) => (
+            <React.Fragment key={groupIdx}>
+              {groupIdx > 0 && <SidebarSeparator className="my-2 opacity-50" />}
+              {group.map((item) => {
+                const isActive =
+                  item.href === "/dashboard"
+                    ? pathname === "/dashboard"
+                    : pathname.startsWith(item.href);
+                return (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
+                      <Link href={item.href} prefetch={true} target={"target" in item ? item.target as string : undefined} className="flex items-center gap-2 relative">
+                        <item.icon className="w-4 h-4 shrink-0" aria-hidden="true" />
+                        <span className="flex-1">{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </React.Fragment>
+          ))}
         </SidebarMenu>
 
         {isAdmin && (
