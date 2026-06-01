@@ -61,7 +61,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
   const sidebarSide = dir === "rtl" ? "right" : "left";
 
-  if (!isLoaded || isLoading || currentUser === undefined) {
+  if (!isLoaded) {
     return (
       <div className="dashboard-font fixed inset-0 z-[9999] flex items-center justify-center bg-background" dir={dir}>
         <IOSSpinner className="w-8 h-8 text-[#007AFF]" />

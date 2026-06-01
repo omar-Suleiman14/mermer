@@ -7,6 +7,8 @@ import { Id } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
 import dynamic from "next/dynamic";
 const VisitCompletionModal = dynamic(() => import("@/components/visit-completion-modal").then(m => m.VisitCompletionModal));
+import { TodayAnalytics } from "@/components/dashboard/today-analytics";
+import { PastDueAlerts } from "@/components/dashboard/past-due-alerts";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
@@ -291,18 +293,8 @@ export default function DashboardPage() {
     clerkId ? { clerkId, dayStart: todayTs } : "skip"
   );
 
-  const statsData = useQuery(
-    api.doctors.getStatsAggregated,
-    clerkId ? { clerkId, startDate: todayTs, endDate: todayTs } : "skip"
-  );
-
   const messageTemplates = useQuery(
     api.messageTemplates.listTemplates,
-    clerkId ? { clerkId } : "skip"
-  );
-
-  const pastDueinstallments = useQuery(
-    api.installments.listPastDueinstallments,
     clerkId ? { clerkId } : "skip"
   );
 
@@ -592,80 +584,10 @@ export default function DashboardPage() {
       </div>
 
       {/* Past Due Patients */}
-      {pastDueinstallments !== undefined && pastDueinstallments.length > 0 && (
-        <div className="bg-white dark:bg-[#1c1c1a] border border-amber-500/30 rounded-2xl shadow-sm overflow-hidden mt-6">
-          <div className="px-4 sm:px-6 py-4 border-b border-border/50 bg-amber-500/5">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-amber-500" />
-              <h2 className="font-bold text-base">{t("dashboard.pastDuePatients") || "Past Due Patients"}</h2>
-            </div>
-          </div>
-          <div className="p-4 space-y-2.5">
-            {pastDueinstallments.map((installment) => (
-              <div key={installment._id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 rounded-2xl bg-card border border-border/40 shadow-sm">
-                <div>
-                  <Link href={`/dashboard/patients/${installment.patientId}?tab=installments`} className="font-semibold text-sm hover:text-[#007AFF] transition-colors">
-                    {installment.patientName}
-                  </Link>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {t("dashboard.outstandingBalance") || "Outstanding Balance"}: <span className="font-bold text-amber-600 dark:text-amber-500">{installment.unpaidBalance} {t("common.currency")}</span>
-                  </p>
-                </div>
-                <Link
-                  href={`/dashboard/patients/${installment.patientId}?tab=installments`}
-                  className="shrink-0 inline-flex items-center justify-center text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-xl transition-colors"
-                >
-                  {t("dashboard.resolve") || "Resolve"}
-                </Link>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <PastDueAlerts />
 
       {/* Today's Analytics */}
-      <div className="bg-white dark:bg-[#1c1c1a] border border-black/5 dark:border-white/5 rounded-2xl shadow-sm overflow-hidden p-4 sm:p-5 mt-6">
-        <div className="flex items-center gap-2 mb-4">
-          <BarChart3 className="w-5 h-5 text-[#007AFF]" />
-          <h2 className="font-bold text-base">{lang === "ar" ? "إحصائيات اليوم" : "Today's Analytics"}</h2>
-        </div>
-        {statsData === undefined || statsData === null ? (
-          <div className="flex justify-center py-4">
-            {statsData === undefined ? <IOSSpinner size={24} /> : <p className="text-sm text-muted-foreground">{t("dashboard.noStatsAvailable") || "No stats available."}</p>}
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="p-3 bg-muted/30 rounded-xl">
-              <p className="text-xs text-muted-foreground">{lang === "ar" ? "متابعات" : "Follow-ups"}</p>
-              <p className="text-lg font-bold text-[#FF9500]">{statsData.todayFollowUps}</p>
-            </div>
-            <div className="p-3 bg-muted/30 rounded-xl">
-              <p className="text-xs text-muted-foreground">{lang === "ar" ? "أقساط" : "Installments"}</p>
-              <p className="text-lg font-bold text-[#AF52DE]">{statsData.todayInstallments}</p>
-            </div>
-            <div className="p-3 bg-muted/30 rounded-xl">
-              <p className="text-xs text-muted-foreground">{lang === "ar" ? "زيارات أولى" : "First visits"}</p>
-              <p className="text-lg font-bold text-sky-500">{statsData.todayFirstVisits}</p>
-            </div>
-            <div className="p-3 bg-muted/30 rounded-xl">
-              <p className="text-xs text-muted-foreground">{lang === "ar" ? "مكتملة" : "Completed"}</p>
-              <p className="text-lg font-bold text-emerald-500">{statsData.todayCompleted}</p>
-            </div>
-            <div className="p-3 bg-muted/30 rounded-xl">
-              <p className="text-xs text-muted-foreground">{lang === "ar" ? "ملغاة" : "Cancelled"}</p>
-              <p className="text-lg font-bold text-red-500">{statsData.todayCancelled}</p>
-            </div>
-            <div className="p-3 bg-muted/30 rounded-xl">
-              <p className="text-xs text-muted-foreground">{lang === "ar" ? "فائتة" : "Missed"}</p>
-              <p className="text-lg font-bold text-orange-500">{statsData.todayMissed}</p>
-            </div>
-            <div className="p-3 bg-muted/30 rounded-xl">
-              <p className="text-xs text-muted-foreground">{lang === "ar" ? "مؤجلة" : "Rescheduled"}</p>
-              <p className="text-lg font-bold text-blue-500">{statsData.todayRescheduled}</p>
-            </div>
-          </div>
-        )}
-      </div>
+      <TodayAnalytics todayAppointments={todayAppointments} />
 
       </div>
       </div>
