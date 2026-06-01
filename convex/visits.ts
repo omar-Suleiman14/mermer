@@ -455,6 +455,7 @@ export const getVisit = query({
         clinicName: doctor?.clinicName,
         phone: doctor?.phone,
         clinicAddress: doctor?.clinicAddress,
+        showClinicLocationOnRx: doctor?.showClinicLocationOnRx,
       },
       patient: {
         name: patient?.name,

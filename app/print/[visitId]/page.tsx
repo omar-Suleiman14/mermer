@@ -90,7 +90,7 @@ export default function PrintPrescriptionPage({
               {t("print.dr")} {doctor.name}
             </h1>
             <p className="text-gray-600 text-lg">{doctor.specialty || t("specialty.Other")}</p>
-            {(doctor.showClinicLocationOnRx !== false) && (doctor.clinicName || doctor.clinicAddress) && (
+            {((doctor as any).showClinicLocationOnRx !== false) && (doctor.clinicName || doctor.clinicAddress) && (
               <div className="text-sm text-gray-500 mt-2 space-y-0.5">
                 {doctor.clinicName && <p>{doctor.clinicName}</p>}
                 {doctor.clinicAddress && <p>{doctor.clinicAddress}</p>}
