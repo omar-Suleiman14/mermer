@@ -119,6 +119,13 @@ export default function SettingsPage() {
   const [credentials, setCredentials] = useState("");
   const [clinicAddress, setClinicAddress] = useState("");
   const [clinicAddressLink, setClinicAddressLink] = useState("");
+  const [phone, setPhone] = useState("");
+  const [clinicName, setClinicName] = useState("");
+  const [specialty, setSpecialty] = useState("");
+  const [customSpecialty, setCustomSpecialty] = useState("");
+  const [credentials, setCredentials] = useState("");
+  const [clinicAddress, setClinicAddress] = useState("");
+  const [clinicAddressLink, setClinicAddressLink] = useState("");
   const [consultationFee, setConsultationFee] = useState("");
   const [workingHoursStart, setWHS] = useState("9");
   const [workingHoursEnd, setWHE] = useState("17");
@@ -126,6 +133,7 @@ export default function SettingsPage() {
   const [slotMin, setSlotMin] = useState("30");
   const [workingDays, setWorkingDays] = useState<string[]>([]);
   const [bio, setBio] = useState("");
+  const [publicProfile, setPublicProfile] = useState(false);
   const [showClinicLocationOnRx, setShowClinicLocationOnRx] = useState(true);
 
   // Clinical preferences
@@ -168,6 +176,7 @@ export default function SettingsPage() {
 
     setWorkingDays((currentUser as any).availableDays ?? []);
     setBio((currentUser as any).bio ?? "");
+    setPublicProfile((currentUser as any).publicProfile ?? false);
     setShowClinicLocationOnRx((currentUser as any).showClinicLocationOnRx ?? true);
 
   }, [currentUser]);
@@ -189,7 +198,7 @@ export default function SettingsPage() {
         workingHoursEnd: isAlwaysOpen ? 24 : Number(workingHoursEnd),
         slotDurationMinutes: slotMin ? Number(slotMin) : 30,
         bio: bio || undefined,
-        publicProfile: false,
+        publicProfile: publicProfile,
         feePerVisit: consultationFee ? Number(consultationFee) : undefined,
         workingDays: workingDays,
         showClinicLocationOnRx: showClinicLocationOnRx,
@@ -203,238 +212,7 @@ export default function SettingsPage() {
       });
       toast.success(t("toast.settingsSaved"), { id: "settings-save" });
     } catch { toast.error(t("toast.settingsSaveFailed"), { id: "settings-save-error" }); }
-  }, [clerkId, currentUser, name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, consultationFee, updateProfile, updateClinicalPreferences, t, workingDays, showClinicLocationOnRx, enableDiagnosis, enableMeasurements, enableVitals, enableNotes]);
-  function triggerSave() {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(doSave, 2000);
-  }
-
-  // Trigger save on any field change (skip initial load)
-  const prevValues = useRef("");
-  useEffect(() => {
-    if (!initialised.current) return;
-    const key = JSON.stringify({ name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, consultationFee, workingDays, showClinicLocationOnRx, enableDiagnosis, enableMeasurements, enableVitals, enableNotes });
-    if (prevValues.current && key !== prevValues.current) {
-      triggerSave();
-    }
-    prevValues.current = key;
-  }, [name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, consultationFee, workingDays, showClinicLocationOnRx, enableDiagnosis, enableMeasurements, enableVitals, enableNotes]);
-
-  async function handlePhotoUpload(file: File) {
-    setUploadingPhoto(true);
-    try {
-      const uploadUrl = await generateUploadUrl({ clerkId });
-      const res = await fetch(uploadUrl, { method: "POST", headers: { "Content-Type": file.type }, body: file });
-      const { storageId } = await res.json();
-      await saveProfilePhoto({ clerkId, storageId: storageId as Id<"_storage"> });
-      toast.success(t("toast.photoUpdated"));
-    } catch { toast.error(t("toast.photoUploadFailed")); }
-    finally { setUploadingPhoto(false); }
-  }
-
-  const blockClass = "bg-card border border-border rounded-xl shadow-sm divide-y divide-border overflow-hidden mb-8";
-  const rowClass = "flex items-center justify-between p-4 gap-4 transition-colors focus-within:bg-muted/10 hover:bg-muted/5";
-  const labelClass = "text-sm font-medium flex items-center gap-2 shrink-0 max-w-[50%]";
-  const inputClass = "flex-1 min-w-0 w-full bg-transparent text-sm text-end focus:outline-none placeholder:text-muted-foreground/60 focus:text-[#007AFF] transition-colors";
-  const sectionTitleClass = "text-[13px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 ms-4";
-
-  return (
-    <div className="flex flex-col h-full bg-muted/20" suppressHydrationWarning>
-      <PageHeader title={t("settings.title")} description={t("settings.pageDescription")} />
-
-      <div className="flex-1 overflow-auto p-4 sm:p-6 max-w-3xl mx-auto w-full pb-20">
-
-
-        {/* ═══════════════════════════════════════════════════════════ */}
-        {/* APPEARANCE & LANGUAGE                                       */}
-        {/* ═══════════════════════════════════════════════════════════ */}
-        <section>
-          <h3 className={sectionTitleClass}>{t("settings.appearanceSection")}</h3>
-          <div className={blockClass}>
-            <div className={rowClass}>
-              <label className={labelClass}>
-                <Globe className="w-4 h-4 text-muted-foreground" /> {t("settings.language")}
-              </label>
-              <div className="flex-1 flex justify-end">
-                <LanguageToggle />
-              </div>
-            </div>
-            {mounted && (
-              <div className={rowClass}>
-                <label htmlFor="settings-dark-mode" className={labelClass}>
-                  <Palette className="w-4 h-4 text-muted-foreground" /> {t("settings.darkMode")}
-                </label>
-                <div className="flex-1 flex justify-end">
-                  <Switch
-                    id="settings-dark-mode"
-                    name="darkMode"
-                    checked={theme === "dark"}
-                    onCheckedChange={(c) => setTheme(c ? "dark" : "light")}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-          <p className="text-[12px] text-muted-foreground ms-4 -mt-5 mb-8">
-            {t("settings.appearanceHint")}
-          </p>
-        </section>
-
-        {/* ═══════════════════════════════════════════════════════════ */}
-        {/* NOTIFICATIONS                                             */}
-        {/* ═══════════════════════════════════════════════════════════ */}
-        <section>
-          <h3 className={sectionTitleClass}>{t("settings.notificationsSection") || "Notifications"}</h3>
-          
-          <div className="bg-muted/30 border border-border p-4 rounded-2xl flex items-center gap-4 mb-8">
-            <div className="w-10 h-10 bg-[#007AFF]/10 rounded-full flex items-center justify-center shrink-0">
-              <Bell className="w-5 h-5 text-[#007AFF]" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-semibold">{dir === "rtl" ? "إشعارات المتصفح" : "Browser Notifications"}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {dir === "rtl" ? "احصل على إشعارات فورية عند حجز موعد جديد أو لوجود تحديثات." : "Get instant notifications for new bookings and updates."}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                if ("Notification" in window) {
-                  if (Notification.permission === "granted") {
-                    toast.success(dir === "rtl" ? "الإشعارات مفعلة مسبقاً" : "Notifications already enabled");
-                  } else {
-                    Notification.requestPermission().then((permission) => {
-                      setNotifPerm(permission);
-                      if (permission === "granted") {
-                        toast.success(dir === "rtl" ? "تم تفعيل الإشعارات بنجاح" : "Notifications enabled successfully");
-                        window.dispatchEvent(new Event("subscribe-push"));
-                      } else {
-                        toast.error(dir === "rtl" ? "تم رفض الإشعارات" : "Notifications were denied");
-                      }
-                    });
-                  }
-                } else {
-                  toast.error(dir === "rtl" ? "متصفحك لا يدعم الإشعارات" : "Your browser does not support notifications");
-                }
-              }}
-              className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${
-                notifPerm === "granted"
-                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                  : "bg-[#007AFF] text-white hover:bg-[#007AFF]/90"
-              }`}
-            >
-              {notifPerm === "granted"
-                ? "✓ " + (dir === "rtl" ? "مفعلة" : "Enabled")
-                : (dir === "rtl" ? "تفعيل" : "Enable")}
-            </button>
-          </div>
-        </section>
-
-        {/* ═══════════════════════════════════════════════════════════ */}
-        {/* PROFILE                                                   */}
-        {/* ═══════════════════════════════════════════════════════════ */}
-        <section>
-          <h3 className={sectionTitleClass}>{t("settings.profileSection") || "Profile"}</h3>
-          <div className={blockClass}>
-
-            {/* Specialty */}
-            <div className={rowClass}>
-              <label className={labelClass}>{t("onboarding.specialty")}</label>
-              <div className="flex-1 flex flex-col gap-2 min-w-0">
-                <select value={specialty} onChange={(e) => setSpecialty(e.target.value)} className={inputClass}>
-                  <option value="" disabled>{t("onboarding.selectSpecialty")}</option>
-                  {SPECIALTIES.map((s) => <option key={s} value={s}>{t("specialty." + s) || s}</option>)}
-                </select>
-                {specialty === "Other" && (
-                  <input
-                    value={customSpecialty}
-                    onChange={(e) => setCustomSpecialty(e.target.value)}
-                    placeholder={dir === "rtl" ? "اكتب تخصصك..." : "Type your specialty..."}
-                    className={inputClass}
-                  />
-                )}
-              </div>
-            </div>
-
-            {/* Photo */}
-            <div className={rowClass}>
-              <label className={labelClass}>
-                <Camera className="w-4 h-4 text-muted-foreground" /> {dir === "rtl" ? "الصورة الشخصية" : "Profile Photo"}
-              </label>
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-10 h-10 rounded-full bg-muted border border-border overflow-hidden flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity shrink-0"
-                  onClick={() => photoRef.current?.click()}
-                >
-                  {uploadingPhoto ? (
-                    <IOSSpinner size={16} />
-                  ) : profilePhotoUrl ? (
-                    <Image src={profilePhotoUrl} alt="photo" width={100} height={100} className="w-full h-full object-cover" />
-                  ) : (
-                    <Camera className="w-4 h-4 text-muted-foreground/50" />
-                  )}
-                </div>
-                <button
-                  onClick={() => photoRef.current?.click()}
-                  disabled={uploadingPhoto}
-                  className="text-sm font-semibold text-primary hover:underline disabled:opacity-50"
-                >
-                  {dir === "rtl" ? "تغيير الصورة" : "Change Photo"}
-                </button>
-                <input
-                  ref={photoRef}
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) handlePhotoUpload(file);
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Public Profile */}
-            <div className={`${rowClass} opacity-50`}>
-              <label htmlFor="settings-public-profile" className={labelClass}>
-                <Globe className="w-4 h-4 text-muted-foreground" /> {t("settings.publicProfile") || "Public Profile"}
-              </label>
-              <div className="flex-1 flex justify-end">
-                <Switch
-                  id="settings-public-profile"
-                  name="publicProfile"
-                  checked={false}
-                  disabled
-                  onCheckedChange={() => {}}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Bio */}
-          <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden mt-2 mb-2">
-            <div className="p-4">
-              <label className="text-sm font-medium text-foreground block mb-2">
-                {dir === "rtl" ? "نبذة شخصية" : "Short Bio"}
-              </label>
-              <textarea
-                value={bio}
-                onChange={(e) => setBio(e.target.value)}
-                rows={3}
-                placeholder={dir === "rtl" ? "اكتب نبذة مختصرة عن تخصصك وخبرتك..." : "A brief intro about your specialty and experience..."}
-                className="w-full bg-transparent text-sm focus:outline-none placeholder:text-muted-foreground/50 resize-none"
-              />
-            </div>
-          </div>
-
-          <p className="text-[12px] text-muted-foreground ms-4 mb-8">
-            {t("settings.publicProfileLockedHint") || "Public profile is temporarily unavailable."}
-          </p>
-        </section>
-
-        {/* ═══════════════════════════════════════════════════════════ */}
-        {/* CLINIC & LOCATION                                         */}
-        {/* ═══════════════════════════════════════════════════════════ */}
+  }, [clerkId, currentUser, name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, publicProfile, consultationFee, updateProfile, updateClinicalPreferences, t, workingDays, showClinicLocationOnRx, enableDiagnosis, enableMeasurements, enableVitals, enableNotes]);
         <section>
           <h3 className={sectionTitleClass}>{t("settings.clinicSection")}</h3>
           <div className={blockClass}>
