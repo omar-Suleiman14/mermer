@@ -127,21 +127,21 @@ export default function PrintPrescriptionPage({
 
         {/* Medications */}
         {visit.prescribedMedications && visit.prescribedMedications.length > 0 ? (
-          <div className="space-y-6 min-h-75">
+          <div className="space-y-6 min-h-75" dir="ltr">
             {visit.prescribedMedications.map((med: any, idx: number) => {
               if (typeof med === 'string') {
                 return (
-                  <div key={idx} className="flex flex-col gap-1 border-b border-gray-100 pb-4 last:border-0 items-start text-left">
+                  <div key={idx} className="flex flex-col gap-1 border-b border-gray-100 pb-4 last:border-0 items-start text-left w-full">
                     <p className="text-lg font-bold text-gray-900">{med}</p>
                   </div>
                 );
               }
               return (
-                <div key={idx} className="flex flex-col gap-1 border-b border-gray-100 pb-4 last:border-0 items-start text-left">
+                <div key={idx} className="flex flex-col gap-1 border-b border-gray-100 pb-4 last:border-0 items-start text-left w-full">
                   <p className="text-lg font-bold text-gray-900">{med.name}</p>
-                  <div className="flex gap-4 text-sm text-gray-700">
-                    {med.frequency && <p>• {t(med.frequency) || med.frequency}</p>}
-                    {med.notes && <p>• {t(med.notes) || med.notes}</p>}
+                  <div className="flex justify-start gap-4 text-sm text-gray-700 w-full">
+                    {med.frequency && <p dir="rtl">{t(med.frequency) || med.frequency} •</p>}
+                    {med.notes && <p dir="rtl">{t(med.notes) || med.notes} •</p>}
                   </div>
                 </div>
               );
