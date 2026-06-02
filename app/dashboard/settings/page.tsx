@@ -25,7 +25,7 @@ const MessageTemplatesSection = dynamic(
 
 
 
-// ── helpers ──────────────────────────────────────────────────────────────────
+// ΓöÇΓöÇ helpers ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
 
 function normalisePhone(raw: string): string {
   const digits = raw.replace(/\D/g, "");
@@ -49,7 +49,7 @@ export default function SettingsPage() {
   const { user } = useUser();
   const clerkId = user?.id ?? "";
   const { t, lang, dir } = useI18n();
-  // ── Appearance & Notifications ──
+  // ΓöÇΓöÇ Appearance & Notifications ΓöÇΓöÇ
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [notifPerm, setNotifPerm] = useState<string>("default");
@@ -68,7 +68,7 @@ export default function SettingsPage() {
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   const saveProfilePhoto = useMutation(api.users.saveProfilePhoto);
 
-  // ── Rescheduling non-working days ──
+  // ΓöÇΓöÇ Rescheduling non-working days ΓöÇΓöÇ
   const [reschedulePromptOpen, setReschedulePromptOpen] = useState(false);
   const [conflictingVisits, setConflictingVisits] = useState<any[]>([]);
   const [conflictReason, setConflictReason] = useState<"hours" | "days">("hours");
@@ -81,7 +81,7 @@ export default function SettingsPage() {
     const checkEnd = newEnd !== undefined ? Number(newEnd) : Number(workingHoursEnd);
 
     if (checkStart >= checkEnd && checkEnd !== 0) {
-      toast.error(dir === "rtl" ? "وقت البدء يجب أن يكون قبل وقت الانتهاء" : "Start time must be before end time");
+      toast.error(dir === "rtl" ? "┘ê┘é╪¬ ╪º┘ä╪¿╪»╪í ┘è╪¼╪¿ ╪ú┘å ┘è┘â┘ê┘å ┘é╪¿┘ä ┘ê┘é╪¬ ╪º┘ä╪º┘å╪¬┘ç╪º╪í" : "Start time must be before end time");
       return;
     }
 
@@ -96,7 +96,7 @@ export default function SettingsPage() {
         setConflictReason("hours");
         setConflictingVisits(conflictingVisits);
         setReschedulePromptOpen(true);
-        toast.error(dir === "rtl" ? "لا يمكنك تقليص ساعات العمل لوجود حجوزات سابقة في هذه الأوقات." : "Cannot restrict hours: you have existing visits outside these bounds.");
+        toast.error(dir === "rtl" ? "┘ä╪º ┘è┘à┘â┘å┘â ╪¬┘é┘ä┘è╪╡ ╪│╪º╪╣╪º╪¬ ╪º┘ä╪╣┘à┘ä ┘ä┘ê╪¼┘ê╪» ╪¡╪¼┘ê╪▓╪º╪¬ ╪│╪º╪¿┘é╪⌐ ┘ü┘è ┘ç╪░┘ç ╪º┘ä╪ú┘ê┘é╪º╪¬." : "Cannot restrict hours: you have existing visits outside these bounds.");
         return;
       }
 
@@ -104,21 +104,14 @@ export default function SettingsPage() {
       if (newEnd !== undefined) setWHE(newEnd);
     } catch (e) {
       console.error(e);
-      toast.error(dir === "rtl" ? "حدث خطأ أثناء التحقق من الساعات" : "Error validating hours");
+      toast.error(dir === "rtl" ? "╪¡╪»╪½ ╪«╪╖╪ú ╪ú╪½┘å╪º╪í ╪º┘ä╪¬╪¡┘é┘é ┘à┘å ╪º┘ä╪│╪º╪╣╪º╪¬" : "Error validating hours");
     } finally {
       setValidatingHours(false);
     }
   }
 
-  // ── State ──
+  // ΓöÇΓöÇ State ΓöÇΓöÇ
   const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [clinicName, setClinicName] = useState("");
-  const [specialty, setSpecialty] = useState("");
-  const [customSpecialty, setCustomSpecialty] = useState("");
-  const [credentials, setCredentials] = useState("");
-  const [clinicAddress, setClinicAddress] = useState("");
-  const [clinicAddressLink, setClinicAddressLink] = useState("");
   const [phone, setPhone] = useState("");
   const [clinicName, setClinicName] = useState("");
   const [specialty, setSpecialty] = useState("");
@@ -181,7 +174,7 @@ export default function SettingsPage() {
 
   }, [currentUser]);
 
-  // ── Auto-save (1s debounce) ──
+  // ΓöÇΓöÇ Auto-save (1s debounce) ΓöÇΓöÇ
   const doSave = useCallback(async () => {
     if (!currentUser) return;
     try {
@@ -213,6 +206,236 @@ export default function SettingsPage() {
       toast.success(t("toast.settingsSaved"), { id: "settings-save" });
     } catch { toast.error(t("toast.settingsSaveFailed"), { id: "settings-save-error" }); }
   }, [clerkId, currentUser, name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, publicProfile, consultationFee, updateProfile, updateClinicalPreferences, t, workingDays, showClinicLocationOnRx, enableDiagnosis, enableMeasurements, enableVitals, enableNotes]);
+  function triggerSave() {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(doSave, 2000);
+  }
+
+  // Trigger save on any field change (skip initial load)
+  const prevValues = useRef("");
+  useEffect(() => {
+    if (!initialised.current) return;
+    const key = JSON.stringify({ name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, publicProfile, consultationFee, workingDays, showClinicLocationOnRx, enableDiagnosis, enableMeasurements, enableVitals, enableNotes });
+    if (prevValues.current && key !== prevValues.current) {
+      triggerSave();
+    }
+    prevValues.current = key;
+  }, [name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, publicProfile, consultationFee, workingDays, showClinicLocationOnRx, enableDiagnosis, enableMeasurements, enableVitals, enableNotes]);
+
+  async function handlePhotoUpload(file: File) {
+    setUploadingPhoto(true);
+    try {
+      const uploadUrl = await generateUploadUrl({ clerkId });
+      const res = await fetch(uploadUrl, { method: "POST", headers: { "Content-Type": file.type }, body: file });
+      const { storageId } = await res.json();
+      await saveProfilePhoto({ clerkId, storageId: storageId as Id<"_storage"> });
+      toast.success(t("toast.photoUpdated"));
+    } catch { toast.error(t("toast.photoUploadFailed")); }
+    finally { setUploadingPhoto(false); }
+  }
+
+  const blockClass = "bg-card border border-border rounded-xl shadow-sm divide-y divide-border overflow-hidden mb-8";
+  const rowClass = "flex items-center justify-between p-4 gap-4 transition-colors focus-within:bg-muted/10 hover:bg-muted/5";
+  const labelClass = "text-sm font-medium flex items-center gap-2 shrink-0 max-w-[50%]";
+  const inputClass = "flex-1 min-w-0 w-full bg-transparent text-sm text-end focus:outline-none placeholder:text-muted-foreground/60 focus:text-[#007AFF] transition-colors";
+  const sectionTitleClass = "text-[13px] font-semibold text-muted-foreground uppercase tracking-wider mb-2 ms-4";
+
+  return (
+    <div className="flex flex-col h-full bg-muted/20" suppressHydrationWarning>
+      <PageHeader title={t("settings.title")} description={t("settings.pageDescription")} />
+
+      <div className="flex-1 overflow-auto p-4 sm:p-6 max-w-3xl mx-auto w-full pb-20">
+
+
+        {/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */}
+        {/* APPEARANCE & LANGUAGE                                       */}
+        {/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */}
+        <section>
+          <h3 className={sectionTitleClass}>{t("settings.appearanceSection")}</h3>
+          <div className={blockClass}>
+            <div className={rowClass}>
+              <label className={labelClass}>
+                <Globe className="w-4 h-4 text-muted-foreground" /> {t("settings.language")}
+              </label>
+              <div className="flex-1 flex justify-end">
+                <LanguageToggle />
+              </div>
+            </div>
+            {mounted && (
+              <div className={rowClass}>
+                <label htmlFor="settings-dark-mode" className={labelClass}>
+                  <Palette className="w-4 h-4 text-muted-foreground" /> {t("settings.darkMode")}
+                </label>
+                <div className="flex-1 flex justify-end">
+                  <Switch
+                    id="settings-dark-mode"
+                    name="darkMode"
+                    checked={theme === "dark"}
+                    onCheckedChange={(c) => setTheme(c ? "dark" : "light")}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+          <p className="text-[12px] text-muted-foreground ms-4 -mt-5 mb-8">
+            {t("settings.appearanceHint")}
+          </p>
+        </section>
+
+        {/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */}
+        {/* NOTIFICATIONS                                             */}
+        {/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */}
+        <section>
+          <h3 className={sectionTitleClass}>{t("settings.notificationsSection") || "Notifications"}</h3>
+          
+          <div className="bg-muted/30 border border-border p-4 rounded-2xl flex items-center gap-4 mb-8">
+            <div className="w-10 h-10 bg-[#007AFF]/10 rounded-full flex items-center justify-center shrink-0">
+              <Bell className="w-5 h-5 text-[#007AFF]" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold">{dir === "rtl" ? "╪Ñ╪┤╪╣╪º╪▒╪º╪¬ ╪º┘ä┘à╪¬╪╡┘ü╪¡" : "Browser Notifications"}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {dir === "rtl" ? "╪º╪¡╪╡┘ä ╪╣┘ä┘ë ╪Ñ╪┤╪╣╪º╪▒╪º╪¬ ┘ü┘ê╪▒┘è╪⌐ ╪╣┘å╪» ╪¡╪¼╪▓ ┘à┘ê╪╣╪» ╪¼╪»┘è╪» ╪ú┘ê ┘ä┘ê╪¼┘ê╪» ╪¬╪¡╪»┘è╪½╪º╪¬." : "Get instant notifications for new bookings and updates."}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                if ("Notification" in window) {
+                  if (Notification.permission === "granted") {
+                    toast.success(dir === "rtl" ? "╪º┘ä╪Ñ╪┤╪╣╪º╪▒╪º╪¬ ┘à┘ü╪╣┘ä╪⌐ ┘à╪│╪¿┘é╪º┘ï" : "Notifications already enabled");
+                  } else {
+                    Notification.requestPermission().then((permission) => {
+                      setNotifPerm(permission);
+                      if (permission === "granted") {
+                        toast.success(dir === "rtl" ? "╪¬┘à ╪¬┘ü╪╣┘è┘ä ╪º┘ä╪Ñ╪┤╪╣╪º╪▒╪º╪¬ ╪¿┘å╪¼╪º╪¡" : "Notifications enabled successfully");
+                        window.dispatchEvent(new Event("subscribe-push"));
+                      } else {
+                        toast.error(dir === "rtl" ? "╪¬┘à ╪▒┘ü╪╢ ╪º┘ä╪Ñ╪┤╪╣╪º╪▒╪º╪¬" : "Notifications were denied");
+                      }
+                    });
+                  }
+                } else {
+                  toast.error(dir === "rtl" ? "┘à╪¬╪╡┘ü╪¡┘â ┘ä╪º ┘è╪»╪╣┘à ╪º┘ä╪Ñ╪┤╪╣╪º╪▒╪º╪¬" : "Your browser does not support notifications");
+                }
+              }}
+              className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${
+                notifPerm === "granted"
+                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                  : "bg-[#007AFF] text-white hover:bg-[#007AFF]/90"
+              }`}
+            >
+              {notifPerm === "granted"
+                ? "Γ£ô " + (dir === "rtl" ? "┘à┘ü╪╣┘ä╪⌐" : "Enabled")
+                : (dir === "rtl" ? "╪¬┘ü╪╣┘è┘ä" : "Enable")}
+            </button>
+          </div>
+        </section>
+
+        {/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */}
+        {/* PROFILE                                                   */}
+        {/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */}
+        <section>
+          <h3 className={sectionTitleClass}>{t("settings.profileSection") || "Profile"}</h3>
+          <div className={blockClass}>
+
+            {/* Specialty */}
+            <div className={rowClass}>
+              <label className={labelClass}>{t("onboarding.specialty")}</label>
+              <div className="flex-1 flex flex-col gap-2 min-w-0">
+                <select value={specialty} onChange={(e) => setSpecialty(e.target.value)} className={inputClass}>
+                  <option value="" disabled>{t("onboarding.selectSpecialty")}</option>
+                  {SPECIALTIES.map((s) => <option key={s} value={s}>{t("specialty." + s) || s}</option>)}
+                </select>
+                {specialty === "Other" && (
+                  <input
+                    value={customSpecialty}
+                    onChange={(e) => setCustomSpecialty(e.target.value)}
+                    placeholder={dir === "rtl" ? "╪º┘â╪¬╪¿ ╪¬╪«╪╡╪╡┘â..." : "Type your specialty..."}
+                    className={inputClass}
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Photo */}
+            <div className={rowClass}>
+              <label className={labelClass}>
+                <Camera className="w-4 h-4 text-muted-foreground" /> {dir === "rtl" ? "╪º┘ä╪╡┘ê╪▒╪⌐ ╪º┘ä╪┤╪«╪╡┘è╪⌐" : "Profile Photo"}
+              </label>
+              <div className="flex items-center gap-3">
+                <div
+                  className="w-10 h-10 rounded-full bg-muted border border-border overflow-hidden flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity shrink-0"
+                  onClick={() => photoRef.current?.click()}
+                >
+                  {uploadingPhoto ? (
+                    <IOSSpinner size={16} />
+                  ) : profilePhotoUrl ? (
+                    <Image src={profilePhotoUrl} alt="photo" width={100} height={100} className="w-full h-full object-cover" />
+                  ) : (
+                    <Camera className="w-4 h-4 text-muted-foreground/50" />
+                  )}
+                </div>
+                <button
+                  onClick={() => photoRef.current?.click()}
+                  disabled={uploadingPhoto}
+                  className="text-sm font-semibold text-primary hover:underline disabled:opacity-50"
+                >
+                  {dir === "rtl" ? "╪¬╪║┘è┘è╪▒ ╪º┘ä╪╡┘ê╪▒╪⌐" : "Change Photo"}
+                </button>
+                <input
+                  ref={photoRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handlePhotoUpload(file);
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Public Profile */}
+            <div className={rowClass}>
+              <label htmlFor="settings-public-profile" className={labelClass}>
+                <Globe className="w-4 h-4 text-muted-foreground" /> {t("settings.publicProfile") || "Public Profile"}
+              </label>
+              <div className="flex-1 flex justify-end">
+                <Switch
+                  id="settings-public-profile"
+                  name="publicProfile"
+                  checked={publicProfile}
+                  onCheckedChange={setPublicProfile}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Bio */}
+          <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden mt-2 mb-2">
+            <div className="p-4">
+              <label className="text-sm font-medium text-foreground block mb-2">
+                {dir === "rtl" ? "┘å╪¿╪░╪⌐ ╪┤╪«╪╡┘è╪⌐" : "Short Bio"}
+              </label>
+              <textarea
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                rows={3}
+                placeholder={dir === "rtl" ? "╪º┘â╪¬╪¿ ┘å╪¿╪░╪⌐ ┘à╪«╪¬╪╡╪▒╪⌐ ╪╣┘å ╪¬╪«╪╡╪╡┘â ┘ê╪«╪¿╪▒╪¬┘â..." : "A brief intro about your specialty and experience..."}
+                className="w-full bg-transparent text-sm focus:outline-none placeholder:text-muted-foreground/50 resize-none"
+              />
+            </div>
+          </div>
+
+          <p className="text-[12px] text-muted-foreground ms-4 mb-8">
+            {dir === "rtl" ? "عند التفعيل، سيتمكن المرضى من رؤية ملفك وحجز المواعيد عبر الإنترنت." : "When enabled, patients can view your profile and book online."}
+          </p>
+        </section>
+
+        {/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */}
+        {/* CLINIC & LOCATION                                         */}
+        {/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */}
         <section>
           <h3 className={sectionTitleClass}>{t("settings.clinicSection")}</h3>
           <div className={blockClass}>
@@ -244,7 +467,7 @@ export default function SettingsPage() {
             </div>
 
             <div className={rowClass}>
-              <label htmlFor="settings-show-clinic" className={labelClass}>{dir === "rtl" ? "عرض العنوان في الروشتة" : "Show Address on Prescription"}</label>
+              <label htmlFor="settings-show-clinic" className={labelClass}>{dir === "rtl" ? "╪╣╪▒╪╢ ╪º┘ä╪╣┘å┘ê╪º┘å ┘ü┘è ╪º┘ä╪▒┘ê╪┤╪¬╪⌐" : "Show Address on Prescription"}</label>
               <div className="flex-1 flex justify-end">
                 <Switch
                   id="settings-show-clinic"
@@ -265,14 +488,14 @@ export default function SettingsPage() {
           </p>
         </section>
 
-        {/* ═══════════════════════════════════════════════════════════ */}
+        {/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */}
         {/* CLINICAL PREFERENCES                                      */}
-        {/* ═══════════════════════════════════════════════════════════ */}
+        {/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */}
         <section className="hidden">
-          <h3 className={sectionTitleClass}>{dir === "rtl" ? "الإعدادات الطبية" : "Clinical Preferences"}</h3>
+          <h3 className={sectionTitleClass}>{dir === "rtl" ? "╪º┘ä╪Ñ╪╣╪»╪º╪»╪º╪¬ ╪º┘ä╪╖╪¿┘è╪⌐" : "Clinical Preferences"}</h3>
           <div className={blockClass}>
             <div className={`${rowClass} opacity-50`}>
-              <label htmlFor="settings-enable-diagnosis" className={labelClass}>{dir === "rtl" ? "تفعيل التشخيص" : "Enable Diagnosis Section"}</label>
+              <label htmlFor="settings-enable-diagnosis" className={labelClass}>{dir === "rtl" ? "╪¬┘ü╪╣┘è┘ä ╪º┘ä╪¬╪┤╪«┘è╪╡" : "Enable Diagnosis Section"}</label>
               <div className="flex-1 flex justify-end">
                 <Switch
                   id="settings-enable-diagnosis"
@@ -284,7 +507,7 @@ export default function SettingsPage() {
             </div>
 
             <div className={`${rowClass} opacity-50`}>
-              <label htmlFor="settings-enable-measurements" className={labelClass}>{dir === "rtl" ? "تفعيل القياسات" : "Enable Measurements Section"}</label>
+              <label htmlFor="settings-enable-measurements" className={labelClass}>{dir === "rtl" ? "╪¬┘ü╪╣┘è┘ä ╪º┘ä┘é┘è╪º╪│╪º╪¬" : "Enable Measurements Section"}</label>
               <div className="flex-1 flex justify-end">
                 <Switch
                   id="settings-enable-measurements"
@@ -296,7 +519,7 @@ export default function SettingsPage() {
             </div>
 
             <div className={`${rowClass} opacity-50`}>
-              <label htmlFor="settings-enable-vitals" className={labelClass}>{dir === "rtl" ? "تفعيل العلامات الحيوية" : "Enable Vitals Section"}</label>
+              <label htmlFor="settings-enable-vitals" className={labelClass}>{dir === "rtl" ? "╪¬┘ü╪╣┘è┘ä ╪º┘ä╪╣┘ä╪º┘à╪º╪¬ ╪º┘ä╪¡┘è┘ê┘è╪⌐" : "Enable Vitals Section"}</label>
               <div className="flex-1 flex justify-end">
                 <Switch
                   id="settings-enable-vitals"
@@ -308,7 +531,7 @@ export default function SettingsPage() {
             </div>
 
             <div className={`${rowClass} opacity-50`}>
-              <label htmlFor="settings-enable-notes" className={labelClass}>{dir === "rtl" ? "تفعيل الملاحظات السريرية" : "Enable Clinical Notes"}</label>
+              <label htmlFor="settings-enable-notes" className={labelClass}>{dir === "rtl" ? "╪¬┘ü╪╣┘è┘ä ╪º┘ä┘à┘ä╪º╪¡╪╕╪º╪¬ ╪º┘ä╪│╪▒┘è╪▒┘è╪⌐" : "Enable Clinical Notes"}</label>
               <div className="flex-1 flex justify-end">
                 <Switch
                   id="settings-enable-notes"
@@ -320,18 +543,18 @@ export default function SettingsPage() {
             </div>
           </div>
           <p className="text-[12px] text-muted-foreground ms-4 -mt-5 mb-8">
-            {dir === "rtl" ? "تخصيص الأقسام التي تظهر أثناء زيارة المريض." : "Customize which sections appear during a patient visit."}
+            {dir === "rtl" ? "╪¬╪«╪╡┘è╪╡ ╪º┘ä╪ú┘é╪│╪º┘à ╪º┘ä╪¬┘è ╪¬╪╕┘ç╪▒ ╪ú╪½┘å╪º╪í ╪▓┘è╪º╪▒╪⌐ ╪º┘ä┘à╪▒┘è╪╢." : "Customize which sections appear during a patient visit."}
           </p>
         </section>
 
-        {/* ═══════════════════════════════════════════════════════════ */}
+        {/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */}
         {/* SCHEDULE                                                  */}
-        {/* ═══════════════════════════════════════════════════════════ */}
+        {/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */}
         <section>
           <h3 className={sectionTitleClass}>{t("settings.availabilitySection")}</h3>
           <div className={blockClass}>
             <div className={rowClass}>
-              <label className={labelClass}>{dir === "rtl" ? "ساعات العمل" : "Working Hours"}</label>
+              <label className={labelClass}>{dir === "rtl" ? "╪│╪º╪╣╪º╪¬ ╪º┘ä╪╣┘à┘ä" : "Working Hours"}</label>
               <div className="flex items-center gap-2 flex-1 justify-end min-w-0" dir="ltr">
                 <select
                   value={workingHoursStart}
@@ -392,15 +615,15 @@ export default function SettingsPage() {
                     );
                   })}
                 </div>
-                <p className="text-[12px] text-muted-foreground mt-2">{dir === "rtl" ? "هذا الخيار يؤثر فقط على الحجوزات الإلكترونية" : "This option only affects online booking."}</p>
+                <p className="text-[12px] text-muted-foreground mt-2">{dir === "rtl" ? "┘ç╪░╪º ╪º┘ä╪«┘è╪º╪▒ ┘è╪ñ╪½╪▒ ┘ü┘é╪╖ ╪╣┘ä┘ë ╪º┘ä╪¡╪¼┘ê╪▓╪º╪¬ ╪º┘ä╪Ñ┘ä┘â╪¬╪▒┘ê┘å┘è╪⌐" : "This option only affects online booking."}</p>
               </div>
             </div>
           </div>
         </section>
 
-        {/* ═══════════════════════════════════════════════════════════ */}
+        {/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */}
         {/* MESSAGE TEMPLATES                                         */}
-        {/* ═══════════════════════════════════════════════════════════ */}
+        {/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */}
         <section>
           <h3 className={sectionTitleClass}>{t("settings.msgTemplates")}</h3>
           <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden mb-2">
