@@ -81,7 +81,7 @@ export default function GlobalError({
             {isAr ? "العودة للرئيسية" : "Go to Home"}
           </Link>
           <a
-            href={`https://wa.me/${process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP?.replace("+", "") ?? "201012756994"}`}
+            href={`https://wa.me/${process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP?.replace("+", "") ?? "201035555282"}`}
             target="_blank"
             rel="noopener noreferrer"
             className="px-6 py-3 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold text-sm hover:bg-emerald-500/20 transition-colors border border-emerald-500/20"

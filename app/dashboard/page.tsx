@@ -73,6 +73,17 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { startOfDay, formatTime, formatFullDate, isNonWorkingDay, useWhatsAppTemplate } from "@/lib/scheduling";
 
+interface SortableApptItemProps {
+  appt: any;
+  onComplete: () => void;
+  onReminder: (e: React.MouseEvent) => void;
+  onCancel: () => void;
+  onReschedule: () => void;
+  tag?: "current" | "next";
+  canReschedule?: boolean;
+  canCancel?: boolean;
+}
+
 const SortableApptItem = memo(function SortableApptItem({
   appt,
   onComplete,
@@ -80,14 +91,9 @@ const SortableApptItem = memo(function SortableApptItem({
   onCancel,
   onReschedule,
   tag,
-}: {
-  appt: any;
-  onComplete: () => void;
-  onReminder: (e: React.MouseEvent) => void;
-  onCancel: () => void;
-  onReschedule: () => void;
-  tag?: "current" | "next";
-}) {
+  canReschedule = true,
+  canCancel = true,
+}: SortableApptItemProps) {
   const isinstallmentVisit = appt.source === "installment";
   const isDone = appt.status === "completed";
   
@@ -221,14 +227,16 @@ const SortableApptItem = memo(function SortableApptItem({
                 <MessageCircle className="w-5 h-5" />
               </button>
             )}
-            <button
-              onClick={onReschedule}
-              className={`p-2 rounded-full transition-colors ${isinstallmentVisit ? "hover:bg-[#AF52DE]/10 text-muted-foreground hover:text-[#AF52DE]" : "hover:bg-[#007AFF]/10 text-muted-foreground hover:text-[#007AFF]"}`}
-              title={t("schedule.reschedule") || "Reschedule"}
-            >
-              <RefreshCw className="w-5 h-5" />
-            </button>
-            {!isinstallmentVisit && (
+            {canReschedule && (
+              <button
+                onClick={onReschedule}
+                className={`p-2 rounded-full transition-colors ${isinstallmentVisit ? "hover:bg-[#AF52DE]/10 text-muted-foreground hover:text-[#AF52DE]" : "hover:bg-[#007AFF]/10 text-muted-foreground hover:text-[#007AFF]"}`}
+                title={t("schedule.reschedule") || "Reschedule"}
+              >
+                <RefreshCw className="w-5 h-5" />
+              </button>
+            )}
+            {canCancel && !isinstallmentVisit && (
               <button
                 onClick={onCancel}
                 className="p-2 rounded-full hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-colors"
@@ -256,12 +264,14 @@ const SortableApptItem = memo(function SortableApptItem({
                     <span>{t("schedule.sendReminder") || "Send Reminder"}</span>
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onReschedule} className={`gap-2 cursor-pointer font-medium ${isinstallmentVisit ? "text-[#AF52DE] focus:text-[#AF52DE] focus:bg-[#AF52DE]/10" : "text-[#007AFF] focus:text-[#007AFF] focus:bg-[#007AFF]/10"}`}>
-                  <RefreshCw className="w-4 h-4" />
-                  <span>{t("schedule.reschedule")}</span>
-                </DropdownMenuItem>
-                {!isinstallmentVisit && (
+                {(canReschedule || (canCancel && !isinstallmentVisit)) && <DropdownMenuSeparator />}
+                {canReschedule && (
+                  <DropdownMenuItem onClick={onReschedule} className={`gap-2 cursor-pointer font-medium ${isinstallmentVisit ? "text-[#AF52DE] focus:text-[#AF52DE] focus:bg-[#AF52DE]/10" : "text-[#007AFF] focus:text-[#007AFF] focus:bg-[#007AFF]/10"}`}>
+                    <RefreshCw className="w-4 h-4" />
+                    <span>{t("schedule.reschedule")}</span>
+                  </DropdownMenuItem>
+                )}
+                {canCancel && !isinstallmentVisit && (
                   <DropdownMenuItem onClick={onCancel} className="gap-2 cursor-pointer font-medium text-red-500 focus:text-red-500 focus:bg-red-500/10">
                     <XCircle className="w-4 h-4" />
                     <span>{t("common.cancel") || "Cancel"}</span>
@@ -287,6 +297,12 @@ export default function DashboardPage() {
     api.users.getCurrentUser,
     clerkId ? { clerkId } : "skip"
   );
+
+  // Permission checks
+  const isAssistant = currentUser?.role === "assistant";
+  const userPerms: string[] = currentUser?.permissions ?? [];
+  const canReschedule = !isAssistant || userPerms.includes("appointments.reschedule");
+  const canCancel = !isAssistant || userPerms.includes("appointments.cancel");
 
   const todayAppointments = useQuery(
     api.appointments.getAppointmentsByDate,
@@ -570,6 +586,8 @@ export default function DashboardPage() {
                       key={appt._id}
                       appt={appt}
                       tag={apptTag}
+                      canReschedule={canReschedule}
+                      canCancel={canCancel}
                       onComplete={() => setCompletionModal({ appointmentId: appt._id, patientId: appt.patientId ?? undefined, patientName: appt.patientName, patientAge: appt.patientAge, installmentId: appt.installmentId ?? undefined, tag: apptTag })}
                       onReminder={(e: React.MouseEvent) => openTemplatePicker(appt.patientName, appt.patientPhone, appt.date, e)}
                       onCancel={() => setCancelModal(appt._id)}
@@ -672,7 +690,7 @@ export default function DashboardPage() {
                         <button className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border rounded-2xl transition-colors text-left ${rescheduleModal.isinstallment ? "hover:border-[#AF52DE]/50" : "hover:border-[#007AFF]/50"} ${!rescheduleDate ? "border-red-400/60" : "border-border"}`}>
                           <CalendarIcon className="w-4 h-4 text-muted-foreground shrink-0" />
                           <span className={rescheduleDate ? "" : "text-muted-foreground"}>
-                            {rescheduleDate ? rescheduleDate.toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { month: "short", day: "numeric" }) : (t("visit.pickDate") || "Pick date")}
+                            {rescheduleDate ? rescheduleDate.toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { month: "short", day: "numeric" }) : (t("visit.pickDate") || (lang === "ar" ? "اختر تاريخاً" : "Pick date"))}
                           </span>
                         </button>
                       </PopoverTrigger>

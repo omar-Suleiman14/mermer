@@ -23,7 +23,7 @@ import {
   DrawerClose,
 } from "@/components/ui/drawer";
 
-type TabType = "medications" | "frequencies" | "notes" | "diagnoses" | "measurements" | "vitals";
+type TabType = "medications" | "frequencies" | "notes";
 
 export default function MedicationsPage() {
   const { user, isLoaded } = useUser();
@@ -41,9 +41,6 @@ export default function MedicationsPage() {
     if (tab === "medications") return "الأدوية";
     if (tab === "frequencies") return "التكرار";
     if (tab === "notes") return "الملاحظات";
-    if (tab === "diagnoses") return "التشخيص";
-    if (tab === "measurements") return "القياسات";
-    if (tab === "vitals") return "العلامات الحيوية";
     return tab;
   };
 
@@ -393,7 +390,7 @@ export default function MedicationsPage() {
         {/* Tabs */}
         <div className="flex items-center gap-2 mb-4 sm:mb-6 w-full">
           <div className="flex bg-card p-1 rounded-xl shadow-sm flex-1 overflow-x-auto">
-            {(["medications", "frequencies", "notes", "diagnoses", "measurements", "vitals"] as TabType[]).map((tab) => (
+            {(["medications", "frequencies", "notes"] as TabType[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}

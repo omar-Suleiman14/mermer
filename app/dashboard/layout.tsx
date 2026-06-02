@@ -63,7 +63,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
   if (!isLoaded) {
     return (
-      <div className="dashboard-font fixed inset-0 z-[9999] flex items-center justify-center bg-background" dir={dir}>
+      <div className="dashboard-font fixed inset-0 z-9999 flex items-center justify-center bg-background" dir={dir}>
         <IOSSpinner className="w-8 h-8 text-[#007AFF]" />
       </div>
     );
@@ -85,12 +85,12 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
               : "Your account has been created and is under review. You'll have access shortly. To reach us:"}
           </p>
           <a
-            href={`https://wa.me/${process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP?.replace('+', '') || '201012756994'}`}
+            href={`https://wa.me/${process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP?.replace('+', '') || '201035555282'}`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-sm font-semibold rounded-xl hover:bg-emerald-500/20 transition-colors"
           >
-            <span dir="ltr">WhatsApp: {process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP || '+201012756994'}</span>
+            <span dir="ltr">WhatsApp: {process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP || '+201035555282'}</span>
           </a>
           <SignOutButton>
             <button className="w-full py-2.5 bg-secondary text-secondary-foreground text-sm font-semibold rounded-xl hover:bg-secondary/80 transition-colors">
@@ -104,12 +104,12 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
   return (
     <TooltipProvider delayDuration={0}>
-      <div className="dashboard-font contents">
+      <div className="dashboard-font relative flex min-h-screen w-full flex-col overflow-x-hidden">
         <SidebarProvider>
           <UserSync />
           <OnlineBookingNotifier />
           <AppSidebar side={sidebarSide} />
-          <SidebarInset className="bg-background">
+          <SidebarInset className="bg-background overflow-x-hidden">
             {children}
           </SidebarInset>
         </SidebarProvider>
@@ -117,10 +117,10 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
       {/* New-user invite card — shown on top of onboarding or dashboard */}
       {showInviteCard && (
-        <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm" dir={dir}>
+        <div className="fixed inset-0 z-200 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm" dir={dir}>
           <div className="w-full sm:max-w-sm bg-card border border-border/50 rounded-t-3xl sm:rounded-3xl shadow-[0_0_60px_rgba(0,0,0,0.5)] overflow-hidden">
             {/* Header gradient */}
-            <div className="h-2 bg-gradient-to-r from-[#007AFF] to-[#5AC8FA]" />
+            <div className="h-2 bg-linear-to-r from-[#007AFF] to-[#5AC8FA]" />
             <div className="p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
               <div className="flex items-center gap-4 mb-5">
                 <div className="w-14 h-14 rounded-2xl bg-[#007AFF]/10 border border-[#007AFF]/20 flex items-center justify-center shrink-0">
@@ -217,7 +217,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
               <p className="text-sm text-muted-foreground leading-relaxed">
                 {lang === "ar" 
                   ? "يرجى الاشتراك للاستمرار في استخدام جميع الميزات. للتجديد تواصل معنا على" 
-                  : "Please subscribe to continue using all features. To renew, contact us at"} <span className="font-semibold text-foreground" dir="ltr">{process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP || '+201012756994'}</span>
+                  : "Please subscribe to continue using all features. To renew, contact us at"} <span className="font-semibold text-foreground" dir="ltr">{process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP || '+201035555282'}</span>
               </p>
               <button onClick={() => {
                 setShowBannedPopup(false);

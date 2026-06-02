@@ -121,13 +121,13 @@ export default function PrintPrescriptionPage({
         </div>
 
         {/* Rx Symbol */}
-        <div className="mb-6" dir="ltr">
+        <div className="mb-6 w-full flex" style={{ justifyContent: dir === "rtl" ? "flex-end" : "flex-start" }}>
           <span className="text-4xl font-serif italic font-bold text-gray-800">Rx</span>
         </div>
 
         {/* Medications */}
         {visit.prescribedMedications && visit.prescribedMedications.length > 0 ? (
-          <div className="space-y-6 min-h-[300px]" dir="ltr">
+          <div className="space-y-6 min-h-75">
             {visit.prescribedMedications.map((med: any, idx: number) => {
               if (typeof med === 'string') {
                 return (
@@ -148,7 +148,7 @@ export default function PrintPrescriptionPage({
             })}
           </div>
         ) : (
-          <div className="min-h-[300px] flex items-center justify-center text-gray-400 italic">
+          <div className="min-h-75 flex items-center justify-center text-gray-400 italic">
             No medications prescribed
           </div>
         )}

@@ -93,6 +93,8 @@ interface DraggableApptItemProps {
   onCancel: () => void;
   onReschedule: () => void;
   tag?: "current" | "next";
+  canReschedule?: boolean;
+  canCancel?: boolean;
 }
 
 const DraggableApptItem = memo(function DraggableApptItem({
@@ -106,6 +108,8 @@ const DraggableApptItem = memo(function DraggableApptItem({
   onCancel,
   onReschedule,
   tag,
+  canReschedule = true,
+  canCancel = true,
 }: DraggableApptItemProps) {
   const { t, dir, lang } = useI18n();
   const isinstallmentVisit = appt.source === "installment";
@@ -221,14 +225,16 @@ const DraggableApptItem = memo(function DraggableApptItem({
                 >
                   <MessageCircle className="w-3.5 h-3.5" />
                 </button>
-                <button
-                  onClick={onReschedule}
-                  title={t("schedule.reschedule") || "Reschedule"}
-                  className={`p-1.5 rounded-lg transition-colors ${isinstallmentVisit ? "text-[#AF52DE] hover:bg-[#AF52DE]/10" : "text-[#007AFF] hover:bg-[#007AFF]/10"}`}
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                </button>
-                {!isinstallmentVisit && (
+                {canReschedule && (
+                  <button
+                    onClick={onReschedule}
+                    title={t("schedule.reschedule") || "Reschedule"}
+                    className={`p-1.5 rounded-lg transition-colors ${isinstallmentVisit ? "text-[#AF52DE] hover:bg-[#AF52DE]/10" : "text-[#007AFF] hover:bg-[#007AFF]/10"}`}
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                {canCancel && !isinstallmentVisit && (
                   <button
                     onClick={onCancel}
                     title={t("schedule.cancelTitle") || "Cancel"}
@@ -243,13 +249,15 @@ const DraggableApptItem = memo(function DraggableApptItem({
                 <Badge className="text-[10px] border bg-amber-500/10 text-amber-600 border-amber-500/30">
                   {t("schedule.missed")}
                 </Badge>
-                <button
-                  onClick={onReschedule}
-                  title={t("schedule.reschedule") || "Reschedule"}
-                  className={`p-1.5 rounded-lg transition-colors ${isinstallmentVisit ? "text-[#AF52DE] hover:bg-[#AF52DE]/10" : "text-[#007AFF] hover:bg-[#007AFF]/10"}`}
-                >
-                  <RefreshCw className="w-3.5 h-3.5" />
-                </button>
+                {canReschedule && (
+                  <button
+                    onClick={onReschedule}
+                    title={t("schedule.reschedule") || "Reschedule"}
+                    className={`p-1.5 rounded-lg transition-colors ${isinstallmentVisit ? "text-[#AF52DE] hover:bg-[#AF52DE]/10" : "text-[#007AFF] hover:bg-[#007AFF]/10"}`}
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -273,12 +281,14 @@ const DraggableApptItem = memo(function DraggableApptItem({
                         <span>{t("schedule.sendReminder") || "Send Reminder"}</span>
                       </DropdownMenuItem>
                     )}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={onReschedule} className={`gap-2 cursor-pointer font-medium ${isinstallmentVisit ? "text-[#AF52DE] focus:text-[#AF52DE] focus:bg-[#AF52DE]/10" : "text-[#007AFF] focus:text-[#007AFF] focus:bg-[#007AFF]/10"}`}>
-                      <RefreshCw className="w-4 h-4" />
-                      <span>{t("schedule.reschedule") || "Reschedule"}</span>
-                    </DropdownMenuItem>
-                    {!isinstallmentVisit && (
+                    {(canReschedule || (canCancel && !isinstallmentVisit)) && <DropdownMenuSeparator />}
+                    {canReschedule && (
+                      <DropdownMenuItem onClick={onReschedule} className={`gap-2 cursor-pointer font-medium ${isinstallmentVisit ? "text-[#AF52DE] focus:text-[#AF52DE] focus:bg-[#AF52DE]/10" : "text-[#007AFF] focus:text-[#007AFF] focus:bg-[#007AFF]/10"}`}>
+                        <RefreshCw className="w-4 h-4" />
+                        <span>{t("schedule.reschedule") || "Reschedule"}</span>
+                      </DropdownMenuItem>
+                    )}
+                    {canCancel && !isinstallmentVisit && (
                       <DropdownMenuItem onClick={onCancel} className="gap-2 cursor-pointer font-medium text-red-500 focus:text-red-500 focus:bg-red-500/10">
                         <XCircle className="w-4 h-4" />
                         <span>{t("common.cancel") || "Cancel"}</span>
@@ -292,11 +302,15 @@ const DraggableApptItem = memo(function DraggableApptItem({
                         {t("schedule.missed")}
                       </Badge>
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={onReschedule} className={`gap-2 cursor-pointer font-medium ${isinstallmentVisit ? "text-[#AF52DE] focus:text-[#AF52DE] focus:bg-[#AF52DE]/10" : "text-[#007AFF] focus:text-[#007AFF] focus:bg-[#007AFF]/10"}`}>
-                      <RefreshCw className="w-4 h-4" />
-                      <span>{t("schedule.reschedule") || "Reschedule"}</span>
-                    </DropdownMenuItem>
+                    {canReschedule && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={onReschedule} className={`gap-2 cursor-pointer font-medium ${isinstallmentVisit ? "text-[#AF52DE] focus:text-[#AF52DE] focus:bg-[#AF52DE]/10" : "text-[#007AFF] focus:text-[#007AFF] focus:bg-[#007AFF]/10"}`}>
+                          <RefreshCw className="w-4 h-4" />
+                          <span>{t("schedule.reschedule") || "Reschedule"}</span>
+                        </DropdownMenuItem>
+                      </>
+                    )}
                   </>
                 )}
               </DropdownMenuContent>
@@ -323,6 +337,12 @@ function SchedulePageInner() {
     api.users.getCurrentUser,
     clerkId ? { clerkId } : "skip"
   );
+
+  // Permission checks
+  const isAssistant = currentUser?.role === "assistant";
+  const userPerms: string[] = currentUser?.permissions ?? [];
+  const canReschedule = !isAssistant || userPerms.includes("appointments.reschedule");
+  const canCancel = !isAssistant || userPerms.includes("appointments.cancel");
 
   const messageTemplates = useQuery(
     api.messageTemplates.listTemplates,
@@ -856,6 +876,8 @@ function SchedulePageInner() {
                                   isDone={isDone}
                                   initials={initials}
                                   tag={apptTag}
+                                  canReschedule={canReschedule}
+                                  canCancel={canCancel}
                                   onComplete={() => {
                                     setCompletionModal({ appointmentId: appt._id, patientId: appt.patientId ?? undefined, patientName: appt.patientName, patientAge: appt.patientAge, installmentId: appt.installmentId ?? undefined, tag: apptTag });
                                   }}

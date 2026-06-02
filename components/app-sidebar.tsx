@@ -58,20 +58,20 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const navGroups = [
     [
       { title: t("nav.dashboard") || "Dashboard", href: "/dashboard", icon: LayoutDashboard, perm: null },
-      { title: t("nav.schedule") || "Schedule", href: "/dashboard/queue", icon: CalendarDays, perm: "manage_queue" },
-      { title: t("nav.installments") || "Installments", href: "/dashboard/installments", icon: FileText, perm: "manage_installments" },
-      { title: t("nav.patients") || "Patients", href: "/dashboard/patients", icon: Users, perm: "manage_patients" },
+      { title: t("nav.schedule") || "Schedule", href: "/dashboard/queue", icon: CalendarDays, perm: "appointments.create" },
+      { title: t("nav.installments") || "Installments", href: "/dashboard/installments", icon: FileText, perm: "appointments.create" },
+      { title: t("nav.patients") || "Patients", href: "/dashboard/patients", icon: Users, perm: "patients.manage" },
     ],
     [
-      { title: t("nav.medications") || "Medications", href: "/dashboard/medications", icon: Pill, perm: "manage_settings", doctorOnly: true },
-      { title: lang === "ar" ? "بيانات" : "Insights", href: "/dashboard/patients-analytics", icon: Users, perm: "manage_analytics", doctorOnly: true },
-      { title: t("nav.analytics") || "Analytics", href: "/dashboard/stats", icon: BarChart3, perm: "manage_analytics", doctorOnly: true },
-      { title: t("nav.feedback") || "Feedback", href: "/dashboard/feedback", icon: Star, perm: null },
+      { title: t("nav.medications") || "Medications", href: "/dashboard/medications", icon: Pill, perm: null, doctorOnly: true },
+      { title: lang === "ar" ? "بيانات" : "Insights", href: "/dashboard/patients-analytics", icon: Users, perm: "analytics.access", doctorOnly: true },
+      { title: t("nav.analytics") || "Analytics", href: "/dashboard/stats", icon: BarChart3, perm: "finances.access", doctorOnly: true },
+      { title: t("nav.feedback") || "Feedback", href: "/dashboard/feedback", icon: Star, perm: "feedback.access" },
       { title: t("nav.staff") || "Staff", href: "/dashboard/staff", icon: UserCheck, perm: null, doctorOnly: true },
     ],
     [
-      { title: t("nav.history") || "History", href: "/dashboard/history", icon: History, perm: "manage_history", doctorOnly: true },
-      { title: t("nav.settings") || "Settings", href: "/dashboard/settings", icon: Settings, perm: "manage_settings", doctorOnly: true },
+      { title: t("nav.history") || "History", href: "/dashboard/history", icon: History, perm: null, doctorOnly: true },
+      { title: t("nav.settings") || "Settings", href: "/dashboard/settings", icon: Settings, perm: "settings.access", doctorOnly: true },
       { title: lang === "ar" ? "الدعم" : "Support", href: "/dashboard/support", icon: LifeBuoy, perm: null },
     ]
   ];

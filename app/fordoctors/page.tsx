@@ -18,10 +18,10 @@ export default async function ForDoctorsLandingPage() {
   const { t, dir } = await getServerI18n();
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-white dark:bg-black text-foreground" dir={dir}>
+    <div className="min-h-dvh flex flex-col bg-white dark:bg-black text-foreground" dir={dir}>
       <PublicNav />
 
-      <main className="flex-1 w-full max-w-[1400px] mx-auto overflow-hidden">
+      <main className="flex-1 w-full max-w-350 mx-auto overflow-hidden">
         
         {/* 1. Hero Section (Asymmetric Split) */}
         <section className="relative px-4 sm:px-6 lg:px-8 min-h-[calc(100vh-3.5rem)] flex items-center py-12 lg:py-0">
@@ -64,7 +64,7 @@ export default async function ForDoctorsLandingPage() {
                     <ArrowRight className={`w-4 h-4 transition-transform group-hover:translate-x-1 ${dir === "rtl" ? "rotate-180 group-hover:-translate-x-1" : ""}`} />
                   </Link>
                   <Link
-                    href="tel:+201012756994"
+                    href="tel:+201035555282"
                     className="inline-flex h-14 items-center justify-center gap-2 rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-black px-8 text-base font-medium text-slate-900 dark:text-white transition-all hover:bg-slate-50 dark:hover:bg-zinc-900 hover:scale-[0.98] active:scale-95"
                   >
                     {dir === "rtl" ? "تواصل مع الدعم" : "Contact Support"}
@@ -74,11 +74,11 @@ export default async function ForDoctorsLandingPage() {
             </div>
 
             {/* Right Col: UI Mock (Abstract Premium Aesthetic) */}
-            <AnimatedReveal delay={0.3} direction="left" className="relative lg:h-[500px] flex items-center justify-center">
+            <AnimatedReveal delay={0.3} direction="left" className="relative lg:h-125 flex items-center justify-center">
               {/* Soft abstract background blob */}
               <div className="absolute inset-0 bg-primary/5 dark:bg-primary/10 rounded-full blur-[100px] w-3/4 h-3/4 m-auto" />
               
-              <div className="relative w-full max-w-md bg-slate-50/60 dark:bg-zinc-900/60 backdrop-blur-3xl border border-slate-200/50 dark:border-white/10 rounded-3xl p-4 shadow-2xl shadow-primary/5 overflow-hidden flex flex-col h-[450px]">
+              <div className="relative w-full max-w-md bg-slate-50/60 dark:bg-zinc-900/60 backdrop-blur-3xl border border-slate-200/50 dark:border-white/10 rounded-3xl p-4 shadow-2xl shadow-primary/5 overflow-hidden flex flex-col h-112.5">
                 
                 {/* Mock Header */}
                 <div className="flex items-center justify-between pb-4 border-b border-slate-200/50 dark:border-white/5 mb-4 px-2">
@@ -279,7 +279,7 @@ export default async function ForDoctorsLandingPage() {
 
       {/* Footer */}
       <footer className="border-t border-slate-100 dark:border-white/5 bg-white dark:bg-black py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-[1400px] mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+        <div className="max-w-350 mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2">
             <Image src="/icon.svg" alt="mermer" width={24} height={24} className="w-6 h-6" />
             <span className="font-semibold text-lg tracking-tight">mermer</span>

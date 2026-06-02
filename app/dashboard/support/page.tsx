@@ -182,7 +182,7 @@ export default function SupportPage() {
           </div>
 
           {/* Chat Launcher */}
-          <div className="bg-card border border-border rounded-2xl shadow-sm p-6 sm:p-8 flex items-center justify-between">
+          <div className="bg-card border border-border rounded-2xl shadow-sm p-6 sm:p-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 sm:gap-4">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                 <MessageCircle className="w-6 h-6 text-primary" />
@@ -196,7 +196,7 @@ export default function SupportPage() {
             </div>
             <button
               onClick={() => setIsChatOpen(true)}
-              className="px-6 py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 transition-colors flex items-center gap-2"
+              className="w-full sm:w-auto px-6 py-3 bg-primary text-primary-foreground rounded-xl font-semibold hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 shrink-0"
             >
               <MessageCircle className="w-5 h-5" />
               {isAr ? "افتح المحادثة" : "Open Chat"}

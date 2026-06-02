@@ -369,7 +369,7 @@ export function PatientIntakeDrawer({
             type="number"
             value={form.age}
             onChange={(e) => set("age", e.target.value)}
-            placeholder="45"
+            placeholder={dir === "rtl" ? "مثال: 45" : "45"}
             className={inputClass}
             min={0}
             max={150}
@@ -384,7 +384,7 @@ export function PatientIntakeDrawer({
               type="tel"
               value={form.phone}
               onChange={(e) => set("phone", sanitisePhoneInput(e.target.value))}
-              placeholder="1023456789"
+              placeholder={dir === "rtl" ? "1023456789" : "1023456789"}
               className={`flex-1 ${inputClass} rounded-l-none`}
               maxLength={10}
               required
