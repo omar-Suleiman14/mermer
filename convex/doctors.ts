@@ -311,6 +311,7 @@ export const getPublicDoctorProfile = query({
       workingHoursStart: doctor.workingHoursStart ?? null,
       workingHoursEnd: doctor.workingHoursEnd ?? null,
       slotDurationMinutes: doctor.slotDurationMinutes ?? 30,
+      clinicPhone: doctor.phone,
     };
   },
 });

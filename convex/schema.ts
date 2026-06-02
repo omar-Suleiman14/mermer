@@ -93,12 +93,19 @@ export default defineSchema({
     installmentDefaultDurationDays: v.optional(v.number()),
 
     queueDisplayToken: v.optional(v.string()),
+
+    // Evolution API Integration
+    evolutionInstanceName: v.optional(v.string()),
+    evolutionApiKey: v.optional(v.string()),
+    evolutionStatus: v.optional(v.string()), // disconnected, connecting, open
+    isEvolutionActive: v.optional(v.boolean()),
   })
     .index("by_clerk_id", ["clerkId"])
     .index("by_qr_slug", ["qrSlug"])
     .index("by_public_profile", ["publicProfile"])
     .index("by_isAdmin", ["isAdmin"])
-    .index("by_clinic_id", ["clinicId"]),
+    .index("by_clinic_id", ["clinicId"])
+    .index("by_evolution_active", ["isEvolutionActive"]),
 
   invitations: defineTable({
     doctorId: v.id("users"),

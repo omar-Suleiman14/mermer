@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
+import { internal } from "./_generated/api";
 import { getAuthUser, requireAuthUser } from "./authHelper";
 
 /** Returns the start-of-day timestamp (midnight) for a given UTC timestamp. */
@@ -193,6 +194,17 @@ export const markDone = mutation({
 
       if (waiting.length > 0) {
         await ctx.db.patch(waiting[0]._id, { status: "in-progress" });
+        
+        // Notify the next patient
+        const nextPatientName = waiting[0].patientName;
+        const nextPatientPhone = waiting[0].patientPhone;
+        if (nextPatientName && nextPatientPhone) {
+          await ctx.scheduler.runAfter(0, internal.whatsappAutomations.sendQueueUpdateMessage, {
+            clinicId: user._id,
+            patientName: nextPatientName,
+            patientPhone: nextPatientPhone,
+          });
+        }
       }
     }
   },

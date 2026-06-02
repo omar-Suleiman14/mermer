@@ -14,6 +14,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { useTheme } from "next-themes";
 import { LanguageToggle } from "@/components/language-toggle";
 import Image from "next/image";
+import { WhatsAppIntegration } from "@/components/settings/whatsapp-integration";
 
 const MessageTemplatesSection = dynamic(
   () => import("@/components/message-templates-section").then((m) => m.MessageTemplatesSection),
@@ -333,9 +334,22 @@ export default function SettingsPage() {
         </section>
 
         {/* ═══════════════════════════════════════════════════════════ */}
+        {/* AUTOMATED WHATSAPP                                        */}
+        {/* ═══════════════════════════════════════════════════════════ */}
+        {currentUser && (
+          <section>
+            <h3 className={sectionTitleClass}>{dir === "rtl" ? "واتساب التلقائي" : "Automated WhatsApp"}</h3>
+            <div className="mb-8">
+              <WhatsAppIntegration clinicId={currentUser._id as string} />
+            </div>
+          </section>
+        )}
+
+        {/* ═══════════════════════════════════════════════════════════ */}
         {/* PROFILE                                                   */}
         {/* ═══════════════════════════════════════════════════════════ */}
         <section>
+
           <h3 className={sectionTitleClass}>{t("settings.profileSection") || "Profile"}</h3>
           <div className={blockClass}>
 
