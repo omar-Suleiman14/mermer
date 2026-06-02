@@ -25,7 +25,7 @@ const MessageTemplatesSection = dynamic(
 
 
 
-// ΓöÇΓöÇ helpers ΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇΓöÇ
+// ── helpers ──────────────────────────────────────────────────────────────────
 
 function normalisePhone(raw: string): string {
   const digits = raw.replace(/\D/g, "");
@@ -49,7 +49,7 @@ export default function SettingsPage() {
   const { user } = useUser();
   const clerkId = user?.id ?? "";
   const { t, lang, dir } = useI18n();
-  // ΓöÇΓöÇ Appearance & Notifications ΓöÇΓöÇ
+  // ── Appearance & Notifications ──
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [notifPerm, setNotifPerm] = useState<string>("default");
@@ -68,7 +68,7 @@ export default function SettingsPage() {
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   const saveProfilePhoto = useMutation(api.users.saveProfilePhoto);
 
-  // ΓöÇΓöÇ Rescheduling non-working days ΓöÇΓöÇ
+  // ── Rescheduling non-working days ──
   const [reschedulePromptOpen, setReschedulePromptOpen] = useState(false);
   const [conflictingVisits, setConflictingVisits] = useState<any[]>([]);
   const [conflictReason, setConflictReason] = useState<"hours" | "days">("hours");
@@ -81,7 +81,7 @@ export default function SettingsPage() {
     const checkEnd = newEnd !== undefined ? Number(newEnd) : Number(workingHoursEnd);
 
     if (checkStart >= checkEnd && checkEnd !== 0) {
-      toast.error(dir === "rtl" ? "┘ê┘é╪¬ ╪º┘ä╪¿╪»╪í ┘è╪¼╪¿ ╪ú┘å ┘è┘â┘ê┘å ┘é╪¿┘ä ┘ê┘é╪¬ ╪º┘ä╪º┘å╪¬┘ç╪º╪í" : "Start time must be before end time");
+      toast.error(dir === "rtl" ? "وقت البدء يجب أن يكون قبل وقت الانتهاء" : "Start time must be before end time");
       return;
     }
 
@@ -96,7 +96,7 @@ export default function SettingsPage() {
         setConflictReason("hours");
         setConflictingVisits(conflictingVisits);
         setReschedulePromptOpen(true);
-        toast.error(dir === "rtl" ? "┘ä╪º ┘è┘à┘â┘å┘â ╪¬┘é┘ä┘è╪╡ ╪│╪º╪╣╪º╪¬ ╪º┘ä╪╣┘à┘ä ┘ä┘ê╪¼┘ê╪» ╪¡╪¼┘ê╪▓╪º╪¬ ╪│╪º╪¿┘é╪⌐ ┘ü┘è ┘ç╪░┘ç ╪º┘ä╪ú┘ê┘é╪º╪¬." : "Cannot restrict hours: you have existing visits outside these bounds.");
+        toast.error(dir === "rtl" ? "لا يمكنك تقليص ساعات العمل لوجود حجوزات سابقة في هذه الأوقات." : "Cannot restrict hours: you have existing visits outside these bounds.");
         return;
       }
 
@@ -104,13 +104,13 @@ export default function SettingsPage() {
       if (newEnd !== undefined) setWHE(newEnd);
     } catch (e) {
       console.error(e);
-      toast.error(dir === "rtl" ? "╪¡╪»╪½ ╪«╪╖╪ú ╪ú╪½┘å╪º╪í ╪º┘ä╪¬╪¡┘é┘é ┘à┘å ╪º┘ä╪│╪º╪╣╪º╪¬" : "Error validating hours");
+      toast.error(dir === "rtl" ? "حدث خطأ أثناء التحقق من الساعات" : "Error validating hours");
     } finally {
       setValidatingHours(false);
     }
   }
 
-  // ΓöÇΓöÇ State ΓöÇΓöÇ
+  // ── State ──
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [clinicName, setClinicName] = useState("");
@@ -174,7 +174,7 @@ export default function SettingsPage() {
 
   }, [currentUser]);
 
-  // ΓöÇΓöÇ Auto-save (1s debounce) ΓöÇΓöÇ
+  // ── Auto-save (1s debounce) ──
   const doSave = useCallback(async () => {
     if (!currentUser) return;
     try {
@@ -247,9 +247,9 @@ export default function SettingsPage() {
       <div className="flex-1 overflow-auto p-4 sm:p-6 max-w-3xl mx-auto w-full pb-20">
 
 
-        {/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */}
+        {/* ═══════════════════════════════════════════════════════════ */}
         {/* APPEARANCE & LANGUAGE                                       */}
-        {/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */}
+        {/* ═══════════════════════════════════════════════════════════ */}
         <section>
           <h3 className={sectionTitleClass}>{t("settings.appearanceSection")}</h3>
           <div className={blockClass}>
@@ -282,9 +282,9 @@ export default function SettingsPage() {
           </p>
         </section>
 
-        {/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */}
+        {/* ═══════════════════════════════════════════════════════════ */}
         {/* NOTIFICATIONS                                             */}
-        {/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */}
+        {/* ═══════════════════════════════════════════════════════════ */}
         <section>
           <h3 className={sectionTitleClass}>{t("settings.notificationsSection") || "Notifications"}</h3>
           
@@ -293,9 +293,9 @@ export default function SettingsPage() {
               <Bell className="w-5 h-5 text-[#007AFF]" />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-semibold">{dir === "rtl" ? "╪Ñ╪┤╪╣╪º╪▒╪º╪¬ ╪º┘ä┘à╪¬╪╡┘ü╪¡" : "Browser Notifications"}</p>
+              <p className="text-sm font-semibold">{dir === "rtl" ? "إشعارات المتصفح" : "Browser Notifications"}</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {dir === "rtl" ? "╪º╪¡╪╡┘ä ╪╣┘ä┘ë ╪Ñ╪┤╪╣╪º╪▒╪º╪¬ ┘ü┘ê╪▒┘è╪⌐ ╪╣┘å╪» ╪¡╪¼╪▓ ┘à┘ê╪╣╪» ╪¼╪»┘è╪» ╪ú┘ê ┘ä┘ê╪¼┘ê╪» ╪¬╪¡╪»┘è╪½╪º╪¬." : "Get instant notifications for new bookings and updates."}
+                {dir === "rtl" ? "احصل على إشعارات فورية عند حجز موعد جديد أو لوجود تحديثات." : "Get instant notifications for new bookings and updates."}
               </p>
             </div>
             <button
@@ -303,20 +303,20 @@ export default function SettingsPage() {
               onClick={() => {
                 if ("Notification" in window) {
                   if (Notification.permission === "granted") {
-                    toast.success(dir === "rtl" ? "╪º┘ä╪Ñ╪┤╪╣╪º╪▒╪º╪¬ ┘à┘ü╪╣┘ä╪⌐ ┘à╪│╪¿┘é╪º┘ï" : "Notifications already enabled");
+                    toast.success(dir === "rtl" ? "الإشعارات مفعلة مسبقاً" : "Notifications already enabled");
                   } else {
                     Notification.requestPermission().then((permission) => {
                       setNotifPerm(permission);
                       if (permission === "granted") {
-                        toast.success(dir === "rtl" ? "╪¬┘à ╪¬┘ü╪╣┘è┘ä ╪º┘ä╪Ñ╪┤╪╣╪º╪▒╪º╪¬ ╪¿┘å╪¼╪º╪¡" : "Notifications enabled successfully");
+                        toast.success(dir === "rtl" ? "تم تفعيل الإشعارات بنجاح" : "Notifications enabled successfully");
                         window.dispatchEvent(new Event("subscribe-push"));
                       } else {
-                        toast.error(dir === "rtl" ? "╪¬┘à ╪▒┘ü╪╢ ╪º┘ä╪Ñ╪┤╪╣╪º╪▒╪º╪¬" : "Notifications were denied");
+                        toast.error(dir === "rtl" ? "تم رفض الإشعارات" : "Notifications were denied");
                       }
                     });
                   }
                 } else {
-                  toast.error(dir === "rtl" ? "┘à╪¬╪╡┘ü╪¡┘â ┘ä╪º ┘è╪»╪╣┘à ╪º┘ä╪Ñ╪┤╪╣╪º╪▒╪º╪¬" : "Your browser does not support notifications");
+                  toast.error(dir === "rtl" ? "متصفحك لا يدعم الإشعارات" : "Your browser does not support notifications");
                 }
               }}
               className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${
@@ -326,15 +326,15 @@ export default function SettingsPage() {
               }`}
             >
               {notifPerm === "granted"
-                ? "Γ£ô " + (dir === "rtl" ? "┘à┘ü╪╣┘ä╪⌐" : "Enabled")
-                : (dir === "rtl" ? "╪¬┘ü╪╣┘è┘ä" : "Enable")}
+                ? "✓ " + (dir === "rtl" ? "مفعلة" : "Enabled")
+                : (dir === "rtl" ? "تفعيل" : "Enable")}
             </button>
           </div>
         </section>
 
-        {/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */}
+        {/* ═══════════════════════════════════════════════════════════ */}
         {/* PROFILE                                                   */}
-        {/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */}
+        {/* ═══════════════════════════════════════════════════════════ */}
         <section>
           <h3 className={sectionTitleClass}>{t("settings.profileSection") || "Profile"}</h3>
           <div className={blockClass}>
@@ -351,7 +351,7 @@ export default function SettingsPage() {
                   <input
                     value={customSpecialty}
                     onChange={(e) => setCustomSpecialty(e.target.value)}
-                    placeholder={dir === "rtl" ? "╪º┘â╪¬╪¿ ╪¬╪«╪╡╪╡┘â..." : "Type your specialty..."}
+                    placeholder={dir === "rtl" ? "اكتب تخصصك..." : "Type your specialty..."}
                     className={inputClass}
                   />
                 )}
@@ -361,7 +361,7 @@ export default function SettingsPage() {
             {/* Photo */}
             <div className={rowClass}>
               <label className={labelClass}>
-                <Camera className="w-4 h-4 text-muted-foreground" /> {dir === "rtl" ? "╪º┘ä╪╡┘ê╪▒╪⌐ ╪º┘ä╪┤╪«╪╡┘è╪⌐" : "Profile Photo"}
+                <Camera className="w-4 h-4 text-muted-foreground" /> {dir === "rtl" ? "الصورة الشخصية" : "Profile Photo"}
               </label>
               <div className="flex items-center gap-3">
                 <div
@@ -381,7 +381,7 @@ export default function SettingsPage() {
                   disabled={uploadingPhoto}
                   className="text-sm font-semibold text-primary hover:underline disabled:opacity-50"
                 >
-                  {dir === "rtl" ? "╪¬╪║┘è┘è╪▒ ╪º┘ä╪╡┘ê╪▒╪⌐" : "Change Photo"}
+                  {dir === "rtl" ? "تغيير الصورة" : "Change Photo"}
                 </button>
                 <input
                   ref={photoRef}
@@ -416,13 +416,13 @@ export default function SettingsPage() {
           <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden mt-2 mb-2">
             <div className="p-4">
               <label className="text-sm font-medium text-foreground block mb-2">
-                {dir === "rtl" ? "┘å╪¿╪░╪⌐ ╪┤╪«╪╡┘è╪⌐" : "Short Bio"}
+                {dir === "rtl" ? "نبذة شخصية" : "Short Bio"}
               </label>
               <textarea
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
                 rows={3}
-                placeholder={dir === "rtl" ? "╪º┘â╪¬╪¿ ┘å╪¿╪░╪⌐ ┘à╪«╪¬╪╡╪▒╪⌐ ╪╣┘å ╪¬╪«╪╡╪╡┘â ┘ê╪«╪¿╪▒╪¬┘â..." : "A brief intro about your specialty and experience..."}
+                placeholder={dir === "rtl" ? "اكتب نبذة مختصرة عن تخصصك وخبرتك..." : "A brief intro about your specialty and experience..."}
                 className="w-full bg-transparent text-sm focus:outline-none placeholder:text-muted-foreground/50 resize-none"
               />
             </div>
@@ -433,9 +433,9 @@ export default function SettingsPage() {
           </p>
         </section>
 
-        {/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */}
+        {/* ═══════════════════════════════════════════════════════════ */}
         {/* CLINIC & LOCATION                                         */}
-        {/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */}
+        {/* ═══════════════════════════════════════════════════════════ */}
         <section>
           <h3 className={sectionTitleClass}>{t("settings.clinicSection")}</h3>
           <div className={blockClass}>
@@ -467,7 +467,7 @@ export default function SettingsPage() {
             </div>
 
             <div className={rowClass}>
-              <label htmlFor="settings-show-clinic" className={labelClass}>{dir === "rtl" ? "╪╣╪▒╪╢ ╪º┘ä╪╣┘å┘ê╪º┘å ┘ü┘è ╪º┘ä╪▒┘ê╪┤╪¬╪⌐" : "Show Address on Prescription"}</label>
+              <label htmlFor="settings-show-clinic" className={labelClass}>{dir === "rtl" ? "عرض العنوان في الروشتة" : "Show Address on Prescription"}</label>
               <div className="flex-1 flex justify-end">
                 <Switch
                   id="settings-show-clinic"
@@ -488,14 +488,14 @@ export default function SettingsPage() {
           </p>
         </section>
 
-        {/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */}
+        {/* ═══════════════════════════════════════════════════════════ */}
         {/* CLINICAL PREFERENCES                                      */}
-        {/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */}
+        {/* ═══════════════════════════════════════════════════════════ */}
         <section className="hidden">
-          <h3 className={sectionTitleClass}>{dir === "rtl" ? "╪º┘ä╪Ñ╪╣╪»╪º╪»╪º╪¬ ╪º┘ä╪╖╪¿┘è╪⌐" : "Clinical Preferences"}</h3>
+          <h3 className={sectionTitleClass}>{dir === "rtl" ? "الإعدادات الطبية" : "Clinical Preferences"}</h3>
           <div className={blockClass}>
             <div className={`${rowClass} opacity-50`}>
-              <label htmlFor="settings-enable-diagnosis" className={labelClass}>{dir === "rtl" ? "╪¬┘ü╪╣┘è┘ä ╪º┘ä╪¬╪┤╪«┘è╪╡" : "Enable Diagnosis Section"}</label>
+              <label htmlFor="settings-enable-diagnosis" className={labelClass}>{dir === "rtl" ? "تفعيل التشخيص" : "Enable Diagnosis Section"}</label>
               <div className="flex-1 flex justify-end">
                 <Switch
                   id="settings-enable-diagnosis"
@@ -507,7 +507,7 @@ export default function SettingsPage() {
             </div>
 
             <div className={`${rowClass} opacity-50`}>
-              <label htmlFor="settings-enable-measurements" className={labelClass}>{dir === "rtl" ? "╪¬┘ü╪╣┘è┘ä ╪º┘ä┘é┘è╪º╪│╪º╪¬" : "Enable Measurements Section"}</label>
+              <label htmlFor="settings-enable-measurements" className={labelClass}>{dir === "rtl" ? "تفعيل القياسات" : "Enable Measurements Section"}</label>
               <div className="flex-1 flex justify-end">
                 <Switch
                   id="settings-enable-measurements"
@@ -519,7 +519,7 @@ export default function SettingsPage() {
             </div>
 
             <div className={`${rowClass} opacity-50`}>
-              <label htmlFor="settings-enable-vitals" className={labelClass}>{dir === "rtl" ? "╪¬┘ü╪╣┘è┘ä ╪º┘ä╪╣┘ä╪º┘à╪º╪¬ ╪º┘ä╪¡┘è┘ê┘è╪⌐" : "Enable Vitals Section"}</label>
+              <label htmlFor="settings-enable-vitals" className={labelClass}>{dir === "rtl" ? "تفعيل العلامات الحيوية" : "Enable Vitals Section"}</label>
               <div className="flex-1 flex justify-end">
                 <Switch
                   id="settings-enable-vitals"
@@ -531,7 +531,7 @@ export default function SettingsPage() {
             </div>
 
             <div className={`${rowClass} opacity-50`}>
-              <label htmlFor="settings-enable-notes" className={labelClass}>{dir === "rtl" ? "╪¬┘ü╪╣┘è┘ä ╪º┘ä┘à┘ä╪º╪¡╪╕╪º╪¬ ╪º┘ä╪│╪▒┘è╪▒┘è╪⌐" : "Enable Clinical Notes"}</label>
+              <label htmlFor="settings-enable-notes" className={labelClass}>{dir === "rtl" ? "تفعيل الملاحظات السريرية" : "Enable Clinical Notes"}</label>
               <div className="flex-1 flex justify-end">
                 <Switch
                   id="settings-enable-notes"
@@ -543,18 +543,18 @@ export default function SettingsPage() {
             </div>
           </div>
           <p className="text-[12px] text-muted-foreground ms-4 -mt-5 mb-8">
-            {dir === "rtl" ? "╪¬╪«╪╡┘è╪╡ ╪º┘ä╪ú┘é╪│╪º┘à ╪º┘ä╪¬┘è ╪¬╪╕┘ç╪▒ ╪ú╪½┘å╪º╪í ╪▓┘è╪º╪▒╪⌐ ╪º┘ä┘à╪▒┘è╪╢." : "Customize which sections appear during a patient visit."}
+            {dir === "rtl" ? "تخصيص الأقسام التي تظهر أثناء زيارة المريض." : "Customize which sections appear during a patient visit."}
           </p>
         </section>
 
-        {/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */}
+        {/* ═══════════════════════════════════════════════════════════ */}
         {/* SCHEDULE                                                  */}
-        {/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */}
+        {/* ═══════════════════════════════════════════════════════════ */}
         <section>
           <h3 className={sectionTitleClass}>{t("settings.availabilitySection")}</h3>
           <div className={blockClass}>
             <div className={rowClass}>
-              <label className={labelClass}>{dir === "rtl" ? "╪│╪º╪╣╪º╪¬ ╪º┘ä╪╣┘à┘ä" : "Working Hours"}</label>
+              <label className={labelClass}>{dir === "rtl" ? "ساعات العمل" : "Working Hours"}</label>
               <div className="flex items-center gap-2 flex-1 justify-end min-w-0" dir="ltr">
                 <select
                   value={workingHoursStart}
@@ -615,15 +615,15 @@ export default function SettingsPage() {
                     );
                   })}
                 </div>
-                <p className="text-[12px] text-muted-foreground mt-2">{dir === "rtl" ? "┘ç╪░╪º ╪º┘ä╪«┘è╪º╪▒ ┘è╪ñ╪½╪▒ ┘ü┘é╪╖ ╪╣┘ä┘ë ╪º┘ä╪¡╪¼┘ê╪▓╪º╪¬ ╪º┘ä╪Ñ┘ä┘â╪¬╪▒┘ê┘å┘è╪⌐" : "This option only affects online booking."}</p>
+                <p className="text-[12px] text-muted-foreground mt-2">{dir === "rtl" ? "هذا الخيار يؤثر فقط على الحجوزات الإلكترونية" : "This option only affects online booking."}</p>
               </div>
             </div>
           </div>
         </section>
 
-        {/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */}
+        {/* ═══════════════════════════════════════════════════════════ */}
         {/* MESSAGE TEMPLATES                                         */}
-        {/* ΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉΓòÉ */}
+        {/* ═══════════════════════════════════════════════════════════ */}
         <section>
           <h3 className={sectionTitleClass}>{t("settings.msgTemplates")}</h3>
           <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden mb-2">
