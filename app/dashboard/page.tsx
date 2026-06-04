@@ -338,9 +338,21 @@ export default function DashboardPage() {
       .sort((a, b) => a.date - b.date);
   }, [todayAppointments]);
 
-  const incompleteApptIds = useMemo(() => {
-    return todayVisits.filter(a => a.status !== "completed").map(a => a._id);
-  }, [todayVisits]);
+  const { currentApptId, nextApptId } = useMemo(() => {
+    if (!currentUser || !todayVisits) return { currentApptId: null, nextApptId: null };
+    
+    const now = Date.now();
+    const slotDurationMs = ((currentUser as any).slotDurationMinutes || 30) * 60000;
+    
+    const incomplete = todayVisits.filter(a => a.status !== "completed");
+    const current = incomplete.find(a => a.date <= now && a.date + slotDurationMs > now);
+    const next = incomplete.find(a => a.date > now);
+
+    return {
+      currentApptId: current?._id || null,
+      nextApptId: next?._id || null,
+    };
+  }, [todayVisits, currentUser]);
 
   const messageTemplates = useQuery(
     api.messageTemplates.listTemplates,
@@ -651,8 +663,8 @@ export default function DashboardPage() {
                 strategy={verticalListSortingStrategy}
               >
                 {todayVisits.map((appt) => {
-                  const isCurrent = incompleteApptIds[0] === appt._id;
-                  const isNext = incompleteApptIds[1] === appt._id;
+                  const isCurrent = currentApptId === appt._id;
+                  const isNext = nextApptId === appt._id;
                   const apptTag = isCurrent ? "current" : isNext ? "next" : undefined;
 
                   return (

@@ -14,14 +14,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { createPortal } from "react-dom";
 import { useIsMounted } from "@/hooks/use-is-mounted";
 import { useIsMobile } from "@/hooks/use-mobile";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerDescription,
-  DrawerClose,
-} from "@/components/ui/drawer";
+
 
 type TabType = "medications" | "frequencies" | "notes";
 
@@ -31,7 +24,6 @@ export default function MedicationsPage() {
   const { t, lang, dir } = useI18n();
   const isAr = lang === "ar";
   const mounted = useIsMounted();
-  const isMobile = useIsMobile();
   const [activeTab, setActiveTab] = useState<TabType>("medications");
   const [newItemName, setNewItemName] = useState("");
   const [dataMenuOpen, setDataMenuOpen] = useState(false);
@@ -479,129 +471,83 @@ export default function MedicationsPage() {
         </div>
       </div>
 
-      {mounted && isMobile ? (
-        <Drawer open={dataMenuOpen} onOpenChange={setDataMenuOpen}>
-          <DrawerContent className="max-h-[90vh]">
-            <div className="mx-auto w-full max-w-md overflow-hidden flex flex-col h-full">
-              <DrawerHeader className="border-b border-border shrink-0 text-left" dir={dir}>
-                <DrawerTitle>{isAr ? "إدارة البيانات" : "Data Management"}</DrawerTitle>
-              </DrawerHeader>
-              <div className="overflow-auto">
-                {renderDataMenuContent()}
-              </div>
-            </div>
-          </DrawerContent>
-        </Drawer>
-      ) : mounted && !isMobile ? (
-        typeof document !== "undefined" && createPortal(
-          <AnimatePresence>
-            {dataMenuOpen && (
+      {mounted && typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
+          {dataMenuOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            >
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                initial={{ y: 20, opacity: 0, scale: 0.95 }}
+                animate={{ y: 0, opacity: 1, scale: 1 }}
+                exit={{ y: 20, opacity: 0, scale: 0.95 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                className="w-full max-w-xl bg-card rounded-3xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]"
               >
-                <motion.div
-                  initial={{ y: 20, opacity: 0, scale: 0.95 }}
-                  animate={{ y: 0, opacity: 1, scale: 1 }}
-                  exit={{ y: 20, opacity: 0, scale: 0.95 }}
-                  transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                  className="w-full max-w-xl bg-card rounded-3xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]"
-                >
-                  <div className="border-b border-border shrink-0 flex items-center justify-between p-6">
-                    <h2 className="text-xl font-bold">{isAr ? "إدارة البيانات" : "Data Management"}</h2>
-                    <button onClick={() => setDataMenuOpen(false)} className="p-2 rounded-full hover:bg-muted transition-colors">
-                      <X className="w-5 h-5" />
-                    </button>
-                  </div>
-                  <div className="overflow-auto">
-                    {renderDataMenuContent()}
-                  </div>
-                </motion.div>
+                <div className="border-b border-border shrink-0 flex items-center justify-between p-6">
+                  <h2 className="text-xl font-bold">{isAr ? "إدارة البيانات" : "Data Management"}</h2>
+                  <button onClick={() => setDataMenuOpen(false)} className="p-2 rounded-full hover:bg-muted transition-colors">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                <div className="overflow-auto">
+                  {renderDataMenuContent()}
+                </div>
               </motion.div>
-            )}
-          </AnimatePresence>,
-          document.body
-        )
-      ) : null}
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* Import Modal Responsive */}
-      {mounted && isMobile ? (
-        <Drawer open={importModalOpen} onOpenChange={setImportModalOpen}>
-          <DrawerContent className="max-h-[90vh]">
-            <div className="mx-auto w-full max-w-5xl overflow-hidden flex flex-col h-full">
-              <DrawerHeader className="border-b border-border shrink-0 flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <FileText className="w-5 h-5 text-primary" />
-                  </div>
-                  <div className="text-left" dir={dir}>
-                    <DrawerTitle>
-                      {isAr ? `استيراد ` : `Import `}
-                      {getTabName(activeTab)}
-                    </DrawerTitle>
-                    <DrawerDescription className="mt-1">
-                      {isAr
-                        ? `قم برفع ملف CSV يحتوي على ${getTabName(activeTab)} الخاصة بك`
-                        : `Upload a CSV file containing your ${activeTab}`}
-                    </DrawerDescription>
-                  </div>
-                </div>
-                <DrawerClose className="p-2 rounded-full hover:bg-muted transition-colors">
-                  <X className="w-5 h-5" />
-                </DrawerClose>
-              </DrawerHeader>
-              {renderImportContent()}
-            </div>
-          </DrawerContent>
-        </Drawer>
-      ) : mounted && !isMobile ? (
-        typeof document !== "undefined" && createPortal(
-          <AnimatePresence>
-            {importModalOpen && (
+      {mounted && typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
+          {importModalOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            >
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                initial={{ y: 20, opacity: 0, scale: 0.95 }}
+                animate={{ y: 0, opacity: 1, scale: 1 }}
+                exit={{ y: 20, opacity: 0, scale: 0.95 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                className="w-full max-w-5xl bg-card rounded-3xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]"
               >
-                <motion.div
-                  initial={{ y: 20, opacity: 0, scale: 0.95 }}
-                  animate={{ y: 0, opacity: 1, scale: 1 }}
-                  exit={{ y: 20, opacity: 0, scale: 0.95 }}
-                  transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                  className="w-full max-w-5xl bg-card rounded-3xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]"
-                >
-                  <div className="border-b border-border shrink-0 flex items-start justify-between p-6">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                        <FileText className="w-5 h-5 text-primary" />
-                      </div>
-                      <div className="text-left" dir={dir}>
-                        <h2 className="text-xl font-bold">
-                          {isAr ? `استيراد ` : `Import `}
-                          {getTabName(activeTab)}
-                        </h2>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {isAr
-                            ? `قم برفع ملف CSV يحتوي على ${getTabName(activeTab)} الخاصة بك`
-                            : `Upload a CSV file containing your ${activeTab}`}
-                        </p>
-                      </div>
+                <div className="border-b border-border shrink-0 flex items-start justify-between p-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <FileText className="w-5 h-5 text-primary" />
                     </div>
-                    <button onClick={() => setImportModalOpen(false)} className="p-2 rounded-full hover:bg-muted transition-colors">
-                      <X className="w-5 h-5" />
-                    </button>
+                    <div className="text-left" dir={dir}>
+                      <h2 className="text-xl font-bold">
+                        {isAr ? `استيراد ` : `Import `}
+                        {getTabName(activeTab)}
+                      </h2>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {isAr
+                          ? `قم برفع ملف CSV يحتوي على ${getTabName(activeTab)} الخاصة بك`
+                          : `Upload a CSV file containing your ${activeTab}`}
+                      </p>
+                    </div>
                   </div>
-                  {renderImportContent()}
-                </motion.div>
+                  <button onClick={() => setImportModalOpen(false)} className="p-2 rounded-full hover:bg-muted transition-colors">
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+                {renderImportContent()}
               </motion.div>
-            )}
-          </AnimatePresence>,
-          document.body
-        )
-      ) : null}
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   );
 }

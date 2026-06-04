@@ -4,14 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerDescription,
-  DrawerFooter,
-} from "@/components/ui/drawer";
+// Removed vaul drawer imports
 import dynamic from "next/dynamic";
 const PatientIntakeDrawer = dynamic(() =>
   import("@/components/patient-intake-drawer").then((m) => m.PatientIntakeDrawer)
@@ -23,7 +16,6 @@ import { Search, UserPlus, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { motion, AnimatePresence } from "framer-motion";
 import { useIsDesktop } from "@/hooks/use-is-desktop";
-import { useKeyboardHeight } from "@/hooks/use-keyboard-height";
 
 interface AddToQueueDrawerProps {
   open: boolean;
@@ -59,15 +51,13 @@ export function AddToQueueDrawer({
   const dayTs = selectedDate ?? startOfDay(Date.now());
   const { t, dir, lang } = useI18n();
   const isDesktop = useIsDesktop();
-  const { keyboardHeight, isKeyboardOpen } = useKeyboardHeight();
 
   // ── Search ─────────────────────────────────────────────────────────────────
   const [search, setSearch] = useState("");
   const [intakeOpen, setIntakeOpen] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  // Snap points — taller snap when keyboard is open so content stays visible
-  const snapPoints = isKeyboardOpen ? [0.95] : [0.55, 0.92];
+  // 
 
   const patients = useQuery(
     api.patients.searchPatients,
@@ -196,105 +186,57 @@ export function AddToQueueDrawer({
     </div>
   );
 
-  // ── DESKTOP: centered modal popup ─────────────────────────────────────────
-  if (isDesktop) {
-    return (
-      <>
-        <AnimatePresence>
-          {open && (
+  return (
+    <>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[999] flex items-center justify-center p-4"
+            dir={dir}
+          >
+            {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 z-50 flex items-center justify-center p-4"
-              dir={dir}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => onOpenChange(false)}
+            />
+            {/* Panel */}
+            <motion.div
+              initial={{ y: 20, opacity: 0, scale: 0.97 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: 20, opacity: 0, scale: 0.97 }}
+              transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              className="relative z-10 w-full max-w-md bg-background rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
-              {/* Backdrop */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-                onClick={() => onOpenChange(false)}
-              />
-              {/* Panel */}
-              <motion.div
-                initial={{ y: 20, opacity: 0, scale: 0.97 }}
-                animate={{ y: 0, opacity: 1, scale: 1 }}
-                exit={{ y: 20, opacity: 0, scale: 0.97 }}
-                transition={{ type: "spring", stiffness: 380, damping: 30 }}
-                className="relative z-10 w-full max-w-md bg-background rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
-              >
-                {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-border mb-4">
-                  <div>
-                    <h2 className="text-base font-semibold">{t("drawer.addToSchedule") || "Add Patient to Schedule"}</h2>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {preselectedSlot
-                        ? (t("drawer.bookingFor")?.replace("{time}", formatTime(preselectedSlot)) || `Booking for ${formatTime(preselectedSlot)} — select a patient below.`)
-                        : "Search for a patient or create a new one."}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => onOpenChange(false)}
-                    className="p-2 rounded-xl hover:bg-muted/50 transition-colors text-muted-foreground"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
+              {/* Header */}
+              <div className="flex-none flex items-center justify-between px-6 py-4 border-b border-border mb-4">
+                <div>
+                  <h2 className="text-base font-semibold">{t("drawer.addToSchedule") || "Add Patient to Schedule"}</h2>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {preselectedSlot
+                      ? (t("drawer.bookingFor")?.replace("{time}", formatTime(preselectedSlot)) || `Booking for ${formatTime(preselectedSlot)} — select a patient below.`)
+                      : "Search for a patient or create a new one."}
+                  </p>
                 </div>
-                {formContent}
-                {footerContent}
-              </motion.div>
+                <button
+                  type="button"
+                  onClick={() => onOpenChange(false)}
+                  className="p-2 rounded-xl hover:bg-muted/50 transition-colors text-muted-foreground"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              {formContent}
+              {footerContent}
             </motion.div>
-          )}
-        </AnimatePresence>
-
-        <PatientIntakeDrawer
-          open={intakeOpen}
-          onOpenChange={(v) => {
-            setIntakeOpen(v);
-            if (!v) resetState();
-          }}
-          clerkId={clerkId}
-        />
-      </>
-    );
-  }
-
-  // ── MOBILE: bottom drawer ──────────────────────────────────────────────────
-  return (
-    <>
-      <Drawer
-        open={open}
-        onOpenChange={(v) => {
-          if (!v) resetState();
-          onOpenChange(v);
-        }}
-        snapPoints={snapPoints}
-      >
-        <DrawerContent
-          dir={dir}
-          // Shift the sheet up when keyboard is visible so the search input stays reachable
-          style={
-            isKeyboardOpen && keyboardHeight > 0
-              ? { paddingBottom: keyboardHeight }
-              : undefined
-          }
-        >
-          <DrawerHeader className="text-start px-6">
-            <DrawerTitle>{t("drawer.addToSchedule") || "Add Patient to Schedule"}</DrawerTitle>
-            <DrawerDescription>
-              {preselectedSlot
-                ? (t("drawer.bookingFor")?.replace("{time}", formatTime(preselectedSlot)) || `Booking for ${formatTime(preselectedSlot)} — select a patient below.`)
-                : "Search for a patient or create a new one."}
-            </DrawerDescription>
-          </DrawerHeader>
-          {formContent}
-          <DrawerFooter className="p-0">
-            {footerContent}
-          </DrawerFooter>
-        </DrawerContent>
-      </Drawer>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <PatientIntakeDrawer
         open={intakeOpen}

@@ -19,7 +19,6 @@ import {
   Bell,
 } from "lucide-react";
 import { IOSSpinner } from "@/components/ui/spinner";
-import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useI18n } from "@/lib/i18n/client";
 import Image from "next/image";
@@ -109,7 +108,6 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
   const [saving, setSaving] = useState(false);
-  const isMobile = useIsMobile();
 
   function toggleDay(d: string) {
     setSelectedDays((prev) =>
@@ -546,19 +544,8 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
     </>
   );
 
-  if (isMobile) {
-    return (
-      <Drawer open={true}>
-        <DrawerContent className="p-0 overflow-hidden bg-background border-t border-border/50 rounded-t-2xl flex flex-col max-h-[95vh] shadow-2xl">
-          <DrawerTitle className="sr-only">{t("onboarding.setup")}</DrawerTitle>
-          {content}
-        </DrawerContent>
-      </Drawer>
-    );
-  }
-
   return (
-    <div className="fixed inset-0 z-100 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       {/* Overlay */}
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
 

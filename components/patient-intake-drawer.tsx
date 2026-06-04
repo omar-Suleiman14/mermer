@@ -8,20 +8,11 @@ import { toast } from "sonner";
 import { Clock, X, Search, Plus, Check, CalendarIcon, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { IOSSpinner } from "@/components/ui/spinner";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerDescription,
-  DrawerFooter,
-} from "@/components/ui/drawer";
+// Removed vaul drawer imports
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import { useI18n } from "@/lib/i18n/client";
-import { useIsDesktop } from "@/hooks/use-is-desktop";
-import { useKeyboardHeight } from "@/hooks/use-keyboard-height";
 import { openWhatsApp } from "@/lib/scheduling";
 
 interface PatientIntakeDrawerProps {
@@ -91,8 +82,6 @@ export function PatientIntakeDrawer({
 }: PatientIntakeDrawerProps) {
   const isEdit = !!editPatient;
   const { t, lang, dir } = useI18n();
-  const isDesktop = useIsDesktop();
-  const { keyboardHeight, isKeyboardOpen } = useKeyboardHeight();
 
   const [form, setForm] = useState<FormState>(() =>
     isEdit && editPatient
@@ -652,84 +641,53 @@ export function PatientIntakeDrawer({
     </div>
   );
 
-  // ── DESKTOP: centered modal popup ─────────────────────────────────────────
-  if (isDesktop) {
-    return (
-      <AnimatePresence>
-        {open && (
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[999] flex items-center justify-center p-4"
+          dir={dir}
+        >
+          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            dir={dir}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => onOpenChange(false)}
+          />
+          {/* Panel */}
+          <motion.div
+            initial={{ y: 20, opacity: 0, scale: 0.97 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: 20, opacity: 0, scale: 0.97 }}
+            transition={{ type: "spring", stiffness: 380, damping: 30 }}
+            className="relative z-10 w-full max-w-lg bg-background rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
           >
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-              onClick={() => onOpenChange(false)}
-            />
-            {/* Panel */}
-            <motion.div
-              initial={{ y: 20, opacity: 0, scale: 0.97 }}
-              animate={{ y: 0, opacity: 1, scale: 1 }}
-              exit={{ y: 20, opacity: 0, scale: 0.97 }}
-              transition={{ type: "spring", stiffness: 380, damping: 30 }}
-              className="relative z-10 w-full max-w-lg bg-background rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-                <div>
-                  <h2 className="text-base font-semibold">{isEdit ? t("drawer.editPatient") : t("drawer.patientIntake")}</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {isEdit ? t("drawer.updatePatient") : t("drawer.registerPatient")}
-                  </p>
-                </div>
-                <button
-                  onClick={() => onOpenChange(false)}
-                  className="p-2 rounded-xl hover:bg-muted/50 transition-colors text-muted-foreground"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+            {/* Header */}
+            <div className="flex-none flex items-center justify-between px-6 py-4 border-b border-border">
+              <div>
+                <h2 className="text-base font-semibold">{isEdit ? t("drawer.editPatient") : t("drawer.patientIntake")}</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {isEdit ? t("drawer.updatePatient") : t("drawer.registerPatient")}
+                </p>
               </div>
-              {formContent}
-              {footerContent}
-            </motion.div>
+              <button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                className="p-2 rounded-xl hover:bg-muted/50 transition-colors text-muted-foreground"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            {formContent}
+            {footerContent}
           </motion.div>
-        )}
-      </AnimatePresence>
-    );
-  }
-
-  // ── MOBILE: bottom drawer ──────────────────────────────────────────────────
-  return (
-    <Drawer
-      open={open}
-      onOpenChange={onOpenChange}
-      snapPoints={[0.65, 0.9]}
-    >
-      <DrawerContent
-        dir={dir}
-        style={
-          isKeyboardOpen && keyboardHeight > 0
-            ? { paddingBottom: keyboardHeight }
-            : undefined
-        }
-      >
-        <DrawerHeader>
-          <DrawerTitle>{isEdit ? t("drawer.editPatient") : t("drawer.patientIntake")}</DrawerTitle>
-          <DrawerDescription>
-            {isEdit ? t("drawer.updatePatient") : t("drawer.registerPatient")}
-          </DrawerDescription>
-        </DrawerHeader>
-        {formContent}
-        <DrawerFooter className="p-0">
-          {footerContent}
-        </DrawerFooter>
-      </DrawerContent>
-    </Drawer>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

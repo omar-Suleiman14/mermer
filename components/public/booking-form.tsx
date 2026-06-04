@@ -184,7 +184,7 @@ export function BookingForm({ doctor }: BookingFormProps) {
       const waLink = waPhone ? `https://wa.me/${waPhone}?text=${waMessage}` : null;
 
       if (waLink) {
-        window.open(waLink, "_blank");
+        window.location.href = waLink;
       }
 
       // Reset form

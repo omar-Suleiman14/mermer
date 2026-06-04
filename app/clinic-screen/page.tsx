@@ -216,9 +216,16 @@ export default function ClinicScreen() {
   );
 
   const todayVisits = todayAppointments?.filter((a) => a.status !== "cancelled").sort((a, b) => a.date - b.date) || [];
-  const incompleteAppts = todayVisits.filter(a => a.status !== "completed");
-  const currentPatient = incompleteAppts[0];
-  const nextPatient = incompleteAppts[1];
+  
+  // Calculate based on time
+  const now = time.getTime();
+  const slotDurationMs = (currentUser?.slotDurationMinutes || 30) * 60000;
+
+  const currentPatient = todayVisits.find(a => a.date <= now && a.date + slotDurationMs > now && a.status !== "completed")
+    || todayVisits.find(a => a.date <= now && a.date + slotDurationMs > now);
+
+  const nextPatient = todayVisits.find(a => a.date > now && a.status !== "completed")
+    || todayVisits.find(a => a.date > now);
 
   // Generate QR Code
   useEffect(() => {

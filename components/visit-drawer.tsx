@@ -4,15 +4,6 @@ import { useState, useMemo, useEffect } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerHeader,
-  DrawerTitle,
-  DrawerDescription,
-  DrawerFooter,
-} from "@/components/ui/drawer";
-import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n/client";
 import { Clock, CalendarIcon, CheckCircle2, X } from "lucide-react";
@@ -21,8 +12,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { motion, AnimatePresence } from "framer-motion";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { isNonWorkingDay } from "@/lib/scheduling";
-import { useIsDesktop } from "@/hooks/use-is-desktop";
-import { useKeyboardHeight } from "@/hooks/use-keyboard-height";
 
 interface VisitDrawerProps {
   open: boolean;
@@ -34,13 +23,6 @@ interface VisitDrawerProps {
 
 export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientName }: VisitDrawerProps) {
   const { t, lang, dir } = useI18n();
-  const isDesktop = useIsDesktop();
-  const { keyboardHeight, isKeyboardOpen } = useKeyboardHeight();
-
-  const [form, setForm] = useState({
-    reasonForVisit: "",
-    notes: "",
-  });
 
   const [visitDate, setVisitDate] = useState<Date | undefined>(new Date());
   const [visitTime, setVisitTime] = useState<string>("10:00");
@@ -103,13 +85,9 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
     }
   }, [timeSlots, visitTime]);
 
-  function set(field: string, value: unknown) {
-    setForm((f) => ({ ...f, [field]: value }));
-  }
 
   function handleOpen(v: boolean) {
     if (v) {
-      setForm({ reasonForVisit: "", notes: "" });
       setVisitDate(new Date());
       setVisitTime("10:00");
     }
@@ -140,8 +118,6 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
         patientId,
         date: exactDate.getTime(),
         source: "manual",
-        reasonForVisit: form.reasonForVisit || undefined,
-        notes: form.notes || undefined,
       });
       toast.success(lang === "ar" ? "تم تسجيل الزيارة" : "Visit recorded");
       onOpenChange(false);
@@ -228,36 +204,6 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
             </div>
           </div>
         </div>
-
-        {/* Reason */}
-        <div className="space-y-1.5 pt-2 border-t border-border">
-          <Label htmlFor="visit-reason" className="text-xs font-medium text-muted-foreground mb-1.5 block">
-            {t("visit.reasonForVisit")}
-          </Label>
-          <input
-            id="visit-reason"
-            type="text"
-            value={form.reasonForVisit}
-            onChange={(e) => set("reasonForVisit", e.target.value)}
-            placeholder="e.g. Follow-up, checkup, acute complaint…"
-            className="w-full px-3 py-2 text-sm bg-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent transition-shadow"
-          />
-        </div>
-
-        {/* Notes */}
-        <div className="space-y-1.5">
-          <Label htmlFor="visit-notes" className="text-xs font-medium text-muted-foreground mb-1.5 block">
-            {t("visit.notes")}
-          </Label>
-          <textarea
-            id="visit-notes"
-            value={form.notes}
-            onChange={(e) => set("notes", e.target.value)}
-            placeholder="Optional free-form notes..."
-            rows={3}
-            className="w-full px-3 py-2 text-sm bg-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent resize-none transition-shadow"
-          />
-        </div>
       </div>
     </form>
   );
@@ -287,82 +233,52 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
     </div>
   );
 
-  // ── DESKTOP: centered modal popup ─────────────────────────────────────────
-  if (isDesktop) {
-    return (
-      <AnimatePresence>
-        {open && (
+  return (
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          dir={dir}
+        >
+          {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            dir={dir}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => onOpenChange(false)}
+          />
+          {/* Panel */}
+          <motion.div
+            initial={{ y: 20, opacity: 0, scale: 0.97 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: 20, opacity: 0, scale: 0.97 }}
+            transition={{ type: "spring", stiffness: 380, damping: 30 }}
+            className="relative z-10 w-full max-w-md bg-background rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
           >
-            {/* Backdrop */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-              onClick={() => onOpenChange(false)}
-            />
-            {/* Panel */}
-            <motion.div
-              initial={{ y: 20, opacity: 0, scale: 0.97 }}
-              animate={{ y: 0, opacity: 1, scale: 1 }}
-              exit={{ y: 20, opacity: 0, scale: 0.97 }}
-              transition={{ type: "spring", stiffness: 380, damping: 30 }}
-              className="relative z-10 w-full max-w-md bg-background rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-border">
-                <div>
-                  <h2 className="text-base font-semibold">{t("visit.newVisit")}</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {t("visit.recordingFor")} {patientName}
-                  </p>
-                </div>
-                <button
-                  onClick={() => onOpenChange(false)}
-                  className="p-2 rounded-xl hover:bg-muted/50 transition-colors text-muted-foreground"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+              <div>
+                <h2 className="text-base font-semibold">{t("visit.newVisit")}</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {t("visit.recordingFor")} {patientName}
+                </p>
               </div>
-              {formContent}
-              {footerContent}
-            </motion.div>
+              <button
+                onClick={() => onOpenChange(false)}
+                className="p-2 rounded-xl hover:bg-muted/50 transition-colors text-muted-foreground"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            {formContent}
+            {footerContent}
           </motion.div>
-        )}
-      </AnimatePresence>
-    );
-  }
-
-  // ── MOBILE: bottom drawer ──────────────────────────────────────────────────
-  return (
-    <Drawer
-      open={open}
-      onOpenChange={handleOpen}
-      snapPoints={[0.55, 0.90]}
-    >
-      <DrawerContent
-        dir={dir}
-        style={
-          isKeyboardOpen && keyboardHeight > 0
-            ? { paddingBottom: keyboardHeight }
-            : undefined
-        }
-      >
-        <DrawerHeader className="px-6 text-start">
-          <DrawerTitle>{t("visit.newVisit")}</DrawerTitle>
-          <DrawerDescription>
-            {t("visit.recordingFor")} {patientName}
-          </DrawerDescription>
-        </DrawerHeader>
-        {formContent}
-        <DrawerFooter className="p-0">{footerContent}</DrawerFooter>
-      </DrawerContent>
-    </Drawer>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

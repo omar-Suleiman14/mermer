@@ -95,6 +95,7 @@ interface DraggableApptItemProps {
   tag?: "current" | "next";
   canReschedule?: boolean;
   canCancel?: boolean;
+  onConfirm?: () => void;
 }
 
 const DraggableApptItem = memo(function DraggableApptItem({
@@ -110,6 +111,7 @@ const DraggableApptItem = memo(function DraggableApptItem({
   tag,
   canReschedule = true,
   canCancel = true,
+  onConfirm,
 }: DraggableApptItemProps) {
   const { t, dir, lang } = useI18n();
   const isinstallmentVisit = appt.source === "installment";
@@ -196,6 +198,11 @@ const DraggableApptItem = memo(function DraggableApptItem({
               Next
             </span>
           )}
+          {appt.status === "pending" && (
+            <span className="text-[9px] font-bold uppercase tracking-wider bg-orange-500/10 text-orange-500 border border-orange-500/20 px-1.5 py-0.5 rounded-full">
+              {lang === "ar" ? "قيد الانتظار" : "Pending"}
+            </span>
+          )}
         </div>
         {appt.patientPhone && (
           <p className="text-xs text-muted-foreground mt-0.5">{appt.patientPhone}</p>
@@ -225,6 +232,15 @@ const DraggableApptItem = memo(function DraggableApptItem({
                 >
                   <MessageCircle className="w-3.5 h-3.5" />
                 </button>
+                {appt.status === "pending" && onConfirm && (
+                  <button
+                    onClick={onConfirm}
+                    title={t("common.confirm") || "Confirm"}
+                    className="p-1.5 rounded-lg text-green-500 hover:bg-green-500/10 transition-colors"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                  </button>
+                )}
                 {canReschedule && (
                   <button
                     onClick={onReschedule}
@@ -279,6 +295,12 @@ const DraggableApptItem = memo(function DraggableApptItem({
                       <DropdownMenuItem onClick={onReminder} className="gap-2 cursor-pointer font-medium text-[#25D366] focus:text-[#25D366]">
                         <MessageCircle className="w-4 h-4" />
                         <span>{t("schedule.sendReminder") || "Send Reminder"}</span>
+                      </DropdownMenuItem>
+                    )}
+                    {appt.status === "pending" && onConfirm && (
+                      <DropdownMenuItem onClick={onConfirm} className="gap-2 cursor-pointer font-medium text-green-500 focus:text-green-500 focus:bg-green-500/10">
+                        <CheckCircle2 className="w-4 h-4" />
+                        <span>{t("common.confirm") || "Confirm"}</span>
                       </DropdownMenuItem>
                     )}
                     {(canReschedule || (canCancel && !isinstallmentVisit)) && <DropdownMenuSeparator />}
@@ -528,21 +550,31 @@ function SchedulePageInner() {
     return map;
   }, [rawAppointments, daySlots]);
 
-  // Compute the ordered list of incomplete appointments to determine "current" and "next"
-  const incompleteApptIds = useMemo(() => {
-    const ids: Id<"visits">[] = [];
-    if (!daySlots || !appointmentsBySlot) return ids;
-
-    for (const ts of daySlots) {
-      const appts = appointmentsBySlot.get(ts) || [];
-      for (const appt of appts) {
-        if (appt.status !== "completed") {
-          ids.push(appt._id);
-        }
-      }
+  // Compute current and next appointments based on real time
+  const { currentApptId, nextApptId } = useMemo(() => {
+    if (!rawAppointments || !currentUser) return { currentApptId: null, nextApptId: null };
+    
+    // Only apply for today
+    if (startOfDay(Date.now()) !== selectedDay) {
+      return { currentApptId: null, nextApptId: null };
     }
-    return ids;
-  }, [daySlots, appointmentsBySlot]);
+
+    const now = Date.now();
+    // We use slotDurationMinutes from the doctor's profile.
+    const slotDurationMs = ((currentUser as any).slotDurationMinutes || 30) * 60000;
+    
+    const incomplete = rawAppointments
+      .filter(a => a.status !== "completed" && a.status !== "cancelled")
+      .sort((a, b) => a.date - b.date);
+
+    const current = incomplete.find(a => a.date <= now && a.date + slotDurationMs > now);
+    const next = incomplete.find(a => a.date > now);
+
+    return {
+      currentApptId: current?._id || null,
+      nextApptId: next?._id || null,
+    };
+  }, [rawAppointments, currentUser, selectedDay]);
 
   const cancelledToday = useMemo(
     () => (rawAppointments ?? []).filter((a) => a.status === "cancelled"),
@@ -581,6 +613,19 @@ function SchedulePageInner() {
       toast.error(lang === "ar" ? "تعذّر إلغاء الموعد" : "Failed to cancel appointment");
     }
   }, [clerkId, updateAppointment, rawAppointments, t]);
+
+  const handleConfirmVisit = useCallback(async (appointmentId: Id<"visits">) => {
+    try {
+      await updateAppointment({
+        clerkId,
+        appointmentId,
+        updates: { status: "confirmed" },
+      });
+      toast.success(lang === "ar" ? "تم تأكيد الموعد بنجاح" : "Appointment confirmed successfully");
+    } catch {
+      toast.error(lang === "ar" ? "تعذّر تأكيد الموعد" : "Failed to confirm appointment");
+    }
+  }, [clerkId, updateAppointment, t]);
 
   const handleReschedule = useCallback(async () => {
     if (!rescheduleModal || !rescheduleDate) return;
@@ -863,8 +908,8 @@ function SchedulePageInner() {
                                 .toUpperCase()
                                 .slice(0, 2);
 
-                              const isCurrent = incompleteApptIds[0] === appt._id;
-                              const isNext = incompleteApptIds[1] === appt._id;
+                              const isCurrent = currentApptId === appt._id;
+                              const isNext = nextApptId === appt._id;
                               const apptTag = isCurrent ? "current" : isNext ? "next" : undefined;
 
                               return (
@@ -881,6 +926,7 @@ function SchedulePageInner() {
                                   onComplete={() => {
                                     setCompletionModal({ appointmentId: appt._id, patientId: appt.patientId ?? undefined, patientName: appt.patientName, patientAge: appt.patientAge, installmentId: appt.installmentId ?? undefined, tag: apptTag });
                                   }}
+                                  onConfirm={() => handleConfirmVisit(appt._id)}
                                   onReminder={(e: React.MouseEvent) => appt.patientPhone && openTemplatePicker(appt.patientName, appt.patientPhone, appt.date, e)}
                                   onCancel={() => setCancelModal(appt._id)}
                                   onReschedule={() => setRescheduleModal({ visitId: appt._id, patientName: appt.patientName, isinstallment: appt.source === "installment" })}
