@@ -540,6 +540,36 @@ export const updateAppointment = mutation({
 
     await ctx.db.patch(args.appointmentId, args.updates);
     
+    // Notify the next patient if this visit was completed
+    if (args.updates.status === "completed" && visit.status !== "completed") {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      const todayStart = d.getTime();
+      const todayEnd = todayStart + 86400000;
+
+      const upcoming = await ctx.db
+        .query("visits")
+        .withIndex("by_doctor_date", (q) =>
+          q.eq("doctorId", user._id).gte("date", todayStart).lt("date", todayEnd)
+        )
+        .collect();
+
+      const activeVisits = upcoming
+        .filter(v => (v.status === "confirmed" || v.status === "pending") && v._id !== visit._id)
+        .sort((a, b) => a.date - b.date);
+
+      if (activeVisits.length > 0) {
+        const nextVisit = activeVisits[0];
+        if (nextVisit.patientPhone && user.evolutionInstanceName && user.evolutionApiKey) {
+          await ctx.scheduler.runAfter(0, internal.whatsappAutomations.sendQueueUpdateMessage, {
+            clinicId: user._id,
+            patientName: nextVisit.patientName || "",
+            patientPhone: nextVisit.patientPhone,
+          });
+        }
+      }
+    }
+    
     await logAction(ctx, user, "Updated Appointment", `Updated visit status to ${args.updates.status || "changed"}`);
 
     return {};

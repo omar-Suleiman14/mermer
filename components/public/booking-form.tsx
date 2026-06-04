@@ -384,79 +384,58 @@ export function BookingForm({ doctor }: BookingFormProps) {
         </div>
       </div>
 
-      {/* Confirmation Modal/Drawer */}
-      {mounted && isMobile ? (
-        <Drawer open={drawerOpen} onOpenChange={setDrawerOpen}>
-          <DrawerContent>
-            <DrawerHeader>
-              <DrawerTitle>{dir === "rtl" ? "تأكيد الحجز" : "Confirm Booking"}</DrawerTitle>
-              <DrawerDescription>
-                {selectedSlotMs
-                  ? new Date(selectedSlotMs).toLocaleString(lang === "ar" ? "ar-EG" : "en-US", {
-                      weekday: "short",
-                      month: "short",
-                      day: "numeric",
-                      hour: "numeric",
-                      minute: "2-digit",
-                      hour12: true,
-                    })
-                  : ""}
-              </DrawerDescription>
-            </DrawerHeader>
-            {renderFormContent()}
-          </DrawerContent>
-        </Drawer>
-      ) : mounted && !isMobile ? (
-        typeof document !== "undefined" && createPortal(
-          <AnimatePresence>
-            {drawerOpen && (
+      {/* Confirmation Modal */}
+      {mounted && typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
+          {drawerOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            >
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+                initial={{ y: 20, opacity: 0, scale: 0.95 }}
+                animate={{ y: 0, opacity: 1, scale: 1 }}
+                exit={{ y: 20, opacity: 0, scale: 0.95 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                className="w-full max-w-md max-h-[90vh] flex flex-col bg-card rounded-3xl shadow-xl overflow-hidden"
+                dir={dir}
               >
-                <motion.div
-                  initial={{ y: 20, opacity: 0, scale: 0.95 }}
-                  animate={{ y: 0, opacity: 1, scale: 1 }}
-                  exit={{ y: 20, opacity: 0, scale: 0.95 }}
-                  transition={{ type: "spring", damping: 25, stiffness: 300 }}
-                  className="w-full max-w-md bg-card rounded-3xl shadow-xl overflow-hidden"
-                  dir={dir}
-                >
-                  <div className="flex items-center justify-between p-6 pb-2">
-                    <div>
-                      <h2 className="text-xl font-bold text-foreground">
-                        {dir === "rtl" ? "تأكيد الحجز" : "Confirm Booking"}
-                      </h2>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {selectedSlotMs
-                          ? new Date(selectedSlotMs).toLocaleString(lang === "ar" ? "ar-EG" : "en-US", {
-                              weekday: "short",
-                              month: "short",
-                              day: "numeric",
-                              hour: "numeric",
-                              minute: "2-digit",
-                              hour12: true,
-                            })
-                          : ""}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setDrawerOpen(false)}
-                      className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
+                <div className="flex-none flex items-center justify-between p-6 pb-2">
+                  <div>
+                    <h2 className="text-xl font-bold text-foreground">
+                      {dir === "rtl" ? "تأكيد الحجز" : "Confirm Booking"}
+                    </h2>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {selectedSlotMs
+                        ? new Date(selectedSlotMs).toLocaleString(lang === "ar" ? "ar-EG" : "en-US", {
+                            weekday: "short",
+                            month: "short",
+                            day: "numeric",
+                            hour: "numeric",
+                            minute: "2-digit",
+                            hour12: true,
+                          })
+                        : ""}
+                    </p>
                   </div>
+                  <button
+                    onClick={() => setDrawerOpen(false)}
+                    className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-y-auto">
                   {renderFormContent()}
-                </motion.div>
+                </div>
               </motion.div>
-            )}
-          </AnimatePresence>,
-          document.body
-        )
-      ) : null}
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </>
   );
 }

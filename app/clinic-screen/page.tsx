@@ -329,8 +329,12 @@ export default function ClinicScreen() {
           <div className="relative z-10 flex flex-row items-stretch justify-between w-full h-full p-12 lg:p-16">
             {/* LEFT SIDE: Clinic Name & Time */}
             <div className="flex-1 flex flex-col items-center justify-center text-center pe-8 border-e border-slate-200 dark:border-zinc-700 overflow-hidden">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-foreground tracking-tight mb-8 break-words leading-tight line-clamp-2 max-w-full">
-                {currentUser.clinicName}
+              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-foreground tracking-tight mb-8 break-words leading-tight line-clamp-2 max-w-full text-center">
+                {currentPatient ? (
+                  <span className="text-[#007AFF]">{currentPatient.patientName}</span>
+                ) : (
+                  currentUser.clinicName
+                )}
               </h2>
 
               <div className="w-full flex items-center justify-center" style={{ height: '1.2em', fontSize: 'clamp(2.5rem, 6vw, 4.5rem)' }}>
@@ -349,6 +353,17 @@ export default function ClinicScreen() {
               <p className="mt-6 text-xl md:text-2xl lg:text-3xl font-medium text-muted-foreground whitespace-nowrap">
                 {dateString}
               </p>
+
+              {nextPatient && (
+                <div className="mt-8 flex flex-col items-center justify-center animate-in fade-in zoom-in duration-500">
+                  <span className="text-sm md:text-base font-semibold text-muted-foreground uppercase tracking-widest mb-1">
+                    {lang === "ar" ? "المريض التالي" : "Up Next"}
+                  </span>
+                  <p className="text-2xl md:text-3xl font-bold text-foreground truncate max-w-[90%]">
+                    {nextPatient.patientName}
+                  </p>
+                </div>
+              )}
 
               {!isAlwaysOpen && (
                 <div className="mt-10 flex items-center justify-center gap-3 text-sm md:text-lg lg:text-xl text-muted-foreground/80 font-medium">
@@ -375,53 +390,27 @@ export default function ClinicScreen() {
               )}
             </div>
 
-            {/* RIGHT SIDE: Current & Next Patient / QR Code */}
+            {/* RIGHT SIDE: QR Code */}
             <div className="flex-1 flex flex-col items-center justify-center space-y-6 text-center ps-8">
-              {currentPatient ? (
-                <div className="w-full flex flex-col space-y-4">
-                  <div className="bg-[#007AFF]/10 border border-[#007AFF]/20 rounded-3xl p-6 md:p-8 flex flex-col items-center justify-center">
-                    <span className="text-[#007AFF] font-bold text-lg md:text-xl uppercase tracking-widest mb-2">
-                      {lang === "ar" ? "المريض الحالي" : "Current Patient"}
-                    </span>
-                    <h3 className="text-3xl md:text-5xl font-extrabold text-foreground truncate max-w-full">
-                      {currentPatient.patientName}
-                    </h3>
-                  </div>
-                  
-                  {nextPatient && (
-                    <div className="bg-muted border border-border rounded-3xl p-6 md:p-8 flex flex-col items-center justify-center">
-                      <span className="text-muted-foreground font-semibold text-base md:text-lg uppercase tracking-widest mb-1">
-                        {lang === "ar" ? "المريض التالي" : "Next Patient"}
-                      </span>
-                      <h4 className="text-2xl md:text-4xl font-bold text-foreground truncate max-w-full">
-                        {nextPatient.patientName}
-                      </h4>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <>
-                  <p className="text-2xl md:text-3xl lg:text-4xl text-foreground font-semibold max-w-[80%] leading-relaxed">
-                    {lang === "ar" ? "امسح الرمز لترك تقييمك" : "Scan to leave feedback"}
-                  </p>
+              <p className="text-2xl md:text-3xl lg:text-4xl text-foreground font-semibold max-w-[80%] leading-relaxed">
+                {lang === "ar" ? "امسح الرمز لترك تقييمك" : "Scan to leave feedback"}
+              </p>
 
-                  <div className="bg-white p-6 md:p-8 rounded-[2rem] border border-slate-200 dark:border-zinc-800">
-                    {qrSrc ? (
-                      <Image
-                        src={qrSrc}
-                        alt="Clinic QR Code"
-                        width={320}
-                        height={320}
-                        className="w-50 h-50 md:w-62.5 md:h-62.5 lg:w-80 lg:h-80 object-contain"
-                      />
-                    ) : (
-                      <div className="w-50 h-50 md:w-62.5 md:h-62.5 lg:w-80 lg:h-80 flex items-center justify-center bg-muted rounded-[1.5rem] animate-pulse">
-                        <IOSSpinner size={32} />
-                      </div>
-                    )}
+              <div className="bg-white p-6 md:p-8 rounded-[2rem] border border-slate-200 dark:border-zinc-800">
+                {qrSrc ? (
+                  <Image
+                    src={qrSrc}
+                    alt="Clinic QR Code"
+                    width={320}
+                    height={320}
+                    className="w-50 h-50 md:w-62.5 md:h-62.5 lg:w-80 lg:h-80 object-contain"
+                  />
+                ) : (
+                  <div className="w-50 h-50 md:w-62.5 md:h-62.5 lg:w-80 lg:h-80 flex items-center justify-center bg-muted rounded-[1.5rem] animate-pulse">
+                    <IOSSpinner size={32} />
                   </div>
-                </>
-              )}
+                )}
+              </div>
             </div>
           </div>
         </div>

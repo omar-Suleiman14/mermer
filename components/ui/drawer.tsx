@@ -13,6 +13,7 @@ function Drawer({
       data-slot="drawer"
       // Prevent page from scrolling while the user is dragging the sheet
       preventScrollRestoration
+      repositionInputs={false}
       {...props}
     />
   )

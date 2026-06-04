@@ -3,10 +3,10 @@ import { internal } from "./_generated/api";
 
 const crons = cronJobs();
 
-// Send daily reminders for today's appointments at 5:00 AM UTC (adjust if needed)
+// Send daily reminders for today's appointments at 2:00 AM UTC (5:00 AM Egypt time)
 crons.daily(
   "daily patient reminders",
-  { hourUTC: 5, minuteUTC: 0 },
+  { hourUTC: 2, minuteUTC: 0 },
   internal.whatsappAutomations.scheduleDailyReminders
 );
 
