@@ -529,6 +529,25 @@ export const updateAppointment = mutation({
       }
     }
 
+    if (args.updates.status === "confirmed" && visit.status !== "confirmed" && visit.patientPhone && user.evolutionInstanceName && user.evolutionApiKey) {
+      const slotNum = calcSlotNumber(visit.date, user.workingHoursStart ?? 9, user.slotDurationMinutes ?? 30);
+      const messageText = msgBookingConfirmed({
+        patientName: visit.patientName || "",
+        clinicName: user.clinicName || "العيادة",
+        doctorName: user.name,
+        date: visit.date,
+        slotNumber: slotNum,
+        clinicAddress: user.clinicAddress,
+      });
+
+      await ctx.scheduler.runAfter(0, internal.whatsappAutomations.sendMessage, {
+        instanceName: user.evolutionInstanceName,
+        evolutionApiKey: user.evolutionApiKey,
+        phoneNumber: visit.patientPhone,
+        messageText,
+      });
+    }
+
     if (args.updates.status === "cancelled" && visit.status !== "cancelled" && visit.patientPhone && user.evolutionInstanceName && user.evolutionApiKey) {
       await ctx.scheduler.runAfter(0, internal.whatsappAutomations.sendMessage, {
         instanceName: user.evolutionInstanceName,
