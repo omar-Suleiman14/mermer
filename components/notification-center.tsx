@@ -124,6 +124,7 @@ export function NotificationCenter() {
 
   const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
   const onlineAppointments = useQuery(api.appointments.listOnlineAppointments, clerkId ? { clerkId } : "skip");
+  const supportMsgs = useQuery(api.support.listUserSupportMessages, clerkId ? { clerkId } : "skip");
   const messageTemplates = useQuery(api.messageTemplates.listTemplates, clerkId ? { clerkId } : "skip");
   const pendingInvite = useQuery(api.users.getPendingInvitation, clerkId ? { clerkId } : "skip");
 
@@ -163,7 +164,16 @@ export function NotificationCenter() {
   }, []);
 
   // ── Derived lists ─────────────────────────────────────────────────────────
-  const notifications = (onlineAppointments ?? [])
+  type AppNotification = 
+    | { type: "onlineBooking"; _id: string; createdAt: number; patientName: string; date: number; patientPhone: string; }
+    | { type: "supportMsg"; _id: string; createdAt: number; message: string; isRead: boolean; };
+
+  const allItems: AppNotification[] = [
+    ...(onlineAppointments ?? []).map(a => ({ type: "onlineBooking" as const, _id: a._id, createdAt: a.createdAt, patientName: a.patientName || "", date: a.date, patientPhone: a.patientPhone || "" })),
+    ...(supportMsgs ?? []).filter(m => m.fromAdmin).map(m => ({ type: "supportMsg" as const, _id: m._id, createdAt: m.createdAt, message: m.message, isRead: m.isRead }))
+  ];
+
+  const notifications = allItems
     .filter((a) => !deletedIds.includes(a._id))
     .sort((a, b) => b.createdAt - a.createdAt)
     .slice(0, 20);
@@ -200,7 +210,7 @@ export function NotificationCenter() {
   };
 
   const handleClearAll = () => {
-    const allIds = (onlineAppointments ?? []).map(a => a._id);
+    const allIds = allItems.map(a => a._id);
     const newDeleted = Array.from(new Set([...deletedIds, ...allIds]));
     setDeletedIds(newDeleted);
     try {
@@ -316,8 +326,12 @@ export function NotificationCenter() {
                     <div className="flex gap-3 pe-8">
                       {/* Icon */}
                       <div className="relative shrink-0 mt-0.5">
-                        <div className="w-8 h-8 rounded-full bg-[#007AFF]/10 flex items-center justify-center">
-                          <Calendar className="w-4 h-4 text-[#007AFF]" />
+                        <div className={`w-8 h-8 rounded-full ${noti.type === "supportMsg" ? "bg-purple-500/10" : "bg-[#007AFF]/10"} flex items-center justify-center`}>
+                          {noti.type === "supportMsg" ? (
+                            <MessageCircle className="w-4 h-4 text-purple-500" />
+                          ) : (
+                            <Calendar className="w-4 h-4 text-[#007AFF]" />
+                          )}
                         </div>
                         {isUnread && (
                           <span className="absolute -top-0.5 -inset-e-0.5 w-2.5 h-2.5 rounded-full bg-[#007AFF] ring-2 ring-background" />
@@ -327,22 +341,33 @@ export function NotificationCenter() {
                       {/* Content */}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold leading-tight mb-0.5">
-                          {t("notifications.newOnlineBooking") || "New Online Booking"}
+                          {noti.type === "supportMsg" 
+                            ? (lang === "ar" ? "رسالة من الدعم الفني" : "Message from Support")
+                            : (t("notifications.newOnlineBooking") || "New Online Booking")
+                          }
                         </p>
-                        <p className="text-xs text-muted-foreground leading-relaxed">
-                          <span className="font-semibold text-foreground">{noti.patientName}</span>{" "}
-                          {t("notifications.bookedOn") || "booked on"}{" "}
-                          {new Date(noti.date).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { month: "short", day: "numeric" })}{" "}
-                          {t("notifications.at") || "at"}{" "}
-                          {new Date(noti.date).toLocaleTimeString(lang === "ar" ? "ar-EG" : "en-US", { hour: "numeric", minute: "2-digit" })}
-                        </p>
+                        
+                        {noti.type === "onlineBooking" ? (
+                          <p className="text-xs text-muted-foreground leading-relaxed">
+                            <span className="font-semibold text-foreground">{noti.patientName}</span>{" "}
+                            {t("notifications.bookedOn") || "booked on"}{" "}
+                            {new Date(noti.date).toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { month: "short", day: "numeric" })}{" "}
+                            {t("notifications.at") || "at"}{" "}
+                            {new Date(noti.date).toLocaleTimeString(lang === "ar" ? "ar-EG" : "en-US", { hour: "numeric", minute: "2-digit" })}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-muted-foreground leading-relaxed truncate">
+                            {noti.message}
+                          </p>
+                        )}
+                        
                         <div className="flex items-center gap-1.5 mt-1.5 text-[10px] text-muted-foreground font-medium">
                           <Clock className="w-3 h-3" />
                           {formatDistanceToNow(noti.createdAt, { addSuffix: true, locale: dateLocale })}
                         </div>
 
                         {/* Send Reminder */}
-                        {noti.patientPhone && (
+                        {noti.type === "onlineBooking" && noti.patientPhone && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();

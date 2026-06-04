@@ -96,18 +96,18 @@ export const createAppointmentInternal = internalMutation({
 
     const queueNumber = assertPublicBookingSlot(args.date, doctor);
 
-    // Rate Limiting: Max 3 upcoming appointments per phone number
-    const upcoming = await ctx.db
+    // Rate Limiting: Max 3 appointments created per hour per phone number
+    const recent = await ctx.db
       .query("visits")
       .withIndex("by_doctor_phone", (q) =>
         q.eq("doctorId", doctor._id).eq("patientPhone", patientPhone)
       )
       .take(10);
-    const phoneUpcoming = upcoming.filter(
-      (visit) => visit.date >= Date.now() - 86400000 && visit.status !== "cancelled"
+    const createdLastHour = recent.filter(
+      (visit) => visit.createdAt >= Date.now() - 3600000
     );
-    if (phoneUpcoming.length >= 3) {
-      throw new ConvexError("Rate limit exceeded: You already have 3 active appointments.");
+    if (createdLastHour.length >= 3) {
+      throw new ConvexError("Rate limit exceeded: You can only book 3 appointments per hour.");
     }
 
     // Conflict check against visits table (Convex OCC makes this race-condition safe)
@@ -398,7 +398,7 @@ export const listOnlineAppointments = query({
       .take(200);
 
     return visits
-      .filter((v) => v.source === "online" && v.status === "confirmed")
+      .filter((v) => v.source === "online" && (v.status === "confirmed" || v.status === "pending"))
       .slice(0, 50);
   },
 });

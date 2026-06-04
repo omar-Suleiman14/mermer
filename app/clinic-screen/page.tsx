@@ -189,6 +189,7 @@ import { IOSSpinner } from "@/components/ui/spinner";
 import { motion } from "framer-motion";
 import { useI18n } from "@/lib/i18n/client";
 import Image from "next/image";
+import { startOfDay } from "@/lib/scheduling";
 
 export default function ClinicScreen() {
   const { user, isLoaded } = useUser();
@@ -207,6 +208,17 @@ export default function ClinicScreen() {
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  const todayTs = startOfDay(Date.now());
+  const todayAppointments = useQuery(
+    api.appointments.getAppointmentsByDate,
+    isLoaded && user ? { clerkId: user.id, dayStart: todayTs } : "skip"
+  );
+
+  const todayVisits = todayAppointments?.filter((a) => a.status !== "cancelled").sort((a, b) => a.date - b.date) || [];
+  const incompleteAppts = todayVisits.filter(a => a.status !== "completed");
+  const currentPatient = incompleteAppts[0];
+  const nextPatient = incompleteAppts[1];
 
   // Generate QR Code
   useEffect(() => {
@@ -363,27 +375,53 @@ export default function ClinicScreen() {
               )}
             </div>
 
-            {/* RIGHT SIDE: QR Code */}
+            {/* RIGHT SIDE: Current & Next Patient / QR Code */}
             <div className="flex-1 flex flex-col items-center justify-center space-y-6 text-center ps-8">
-              <p className="text-2xl md:text-3xl lg:text-4xl text-foreground font-semibold max-w-[80%] leading-relaxed">
-                {lang === "ar" ? "امسح الرمز لترك تقييمك" : "Scan to leave feedback"}
-              </p>
-
-              <div className="bg-white p-6 md:p-8 rounded-[2rem] border border-slate-200 dark:border-zinc-800">
-                {qrSrc ? (
-                  <Image
-                    src={qrSrc}
-                    alt="Clinic QR Code"
-                    width={320}
-                    height={320}
-                    className="w-50 h-50 md:w-62.5 md:h-62.5 lg:w-80 lg:h-80 object-contain"
-                  />
-                ) : (
-                  <div className="w-50 h-50 md:w-62.5 md:h-62.5 lg:w-80 lg:h-80 flex items-center justify-center bg-muted rounded-[1.5rem] animate-pulse">
-                    <IOSSpinner size={32} />
+              {currentPatient ? (
+                <div className="w-full flex flex-col space-y-4">
+                  <div className="bg-[#007AFF]/10 border border-[#007AFF]/20 rounded-3xl p-6 md:p-8 flex flex-col items-center justify-center">
+                    <span className="text-[#007AFF] font-bold text-lg md:text-xl uppercase tracking-widest mb-2">
+                      {lang === "ar" ? "المريض الحالي" : "Current Patient"}
+                    </span>
+                    <h3 className="text-3xl md:text-5xl font-extrabold text-foreground truncate max-w-full">
+                      {currentPatient.patientName}
+                    </h3>
                   </div>
-                )}
-              </div>
+                  
+                  {nextPatient && (
+                    <div className="bg-muted border border-border rounded-3xl p-6 md:p-8 flex flex-col items-center justify-center">
+                      <span className="text-muted-foreground font-semibold text-base md:text-lg uppercase tracking-widest mb-1">
+                        {lang === "ar" ? "المريض التالي" : "Next Patient"}
+                      </span>
+                      <h4 className="text-2xl md:text-4xl font-bold text-foreground truncate max-w-full">
+                        {nextPatient.patientName}
+                      </h4>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <p className="text-2xl md:text-3xl lg:text-4xl text-foreground font-semibold max-w-[80%] leading-relaxed">
+                    {lang === "ar" ? "امسح الرمز لترك تقييمك" : "Scan to leave feedback"}
+                  </p>
+
+                  <div className="bg-white p-6 md:p-8 rounded-[2rem] border border-slate-200 dark:border-zinc-800">
+                    {qrSrc ? (
+                      <Image
+                        src={qrSrc}
+                        alt="Clinic QR Code"
+                        width={320}
+                        height={320}
+                        className="w-50 h-50 md:w-62.5 md:h-62.5 lg:w-80 lg:h-80 object-contain"
+                      />
+                    ) : (
+                      <div className="w-50 h-50 md:w-62.5 md:h-62.5 lg:w-80 lg:h-80 flex items-center justify-center bg-muted rounded-[1.5rem] animate-pulse">
+                        <IOSSpinner size={32} />
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
