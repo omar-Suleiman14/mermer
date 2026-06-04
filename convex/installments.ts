@@ -216,6 +216,7 @@ export const createinstallment = mutation({
         firstDate: firstVisitDate,
         totalSessions: numVisits,
         slotNumber: slotNum,
+        clinicAddress: user.clinicAddress,
       });
       const payload = {
         instanceName: user.evolutionInstanceName,

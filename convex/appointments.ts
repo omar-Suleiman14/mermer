@@ -219,6 +219,7 @@ export const confirmPendingAppointmentByPhone = internalMutation({
       doctorName: doctor.name,
       date: visit.date,
       slotNumber: slotNum,
+      clinicAddress: doctor.clinicAddress,
     });
     
     await ctx.scheduler.runAfter(0, internal.whatsappAutomations.sendMessage, {
@@ -300,6 +301,7 @@ export const addManualAppointment = mutation({
         doctorName: doctor.name,
         date: args.date,
         slotNumber: slotNum,
+        clinicAddress: doctor.clinicAddress,
       });
       
       await ctx.scheduler.runAfter(0, internal.whatsappAutomations.sendMessage, {
@@ -350,7 +352,7 @@ export const swapAppointments = mutation({
           instanceName: user.evolutionInstanceName,
           evolutionApiKey: user.evolutionApiKey,
           phoneNumber: v1.patientPhone,
-          messageText: msgRescheduled({ patientName: v1.patientName || "", clinicName: user.clinicName || "العيادة", doctorName: user.name, newDate: v2.date, slotNumber: slot1 }),
+          messageText: msgRescheduled({ patientName: v1.patientName || "", clinicName: user.clinicName || "العيادة", doctorName: user.name, newDate: v2.date, slotNumber: slot1, clinicAddress: user.clinicAddress }),
         });
       }
       if (v2.patientPhone) {
@@ -359,7 +361,7 @@ export const swapAppointments = mutation({
           instanceName: user.evolutionInstanceName,
           evolutionApiKey: user.evolutionApiKey,
           phoneNumber: v2.patientPhone,
-          messageText: msgRescheduled({ patientName: v2.patientName || "", clinicName: user.clinicName || "العيادة", doctorName: user.name, newDate: v1.date, slotNumber: slot2 }),
+          messageText: msgRescheduled({ patientName: v2.patientName || "", clinicName: user.clinicName || "العيادة", doctorName: user.name, newDate: v1.date, slotNumber: slot2, clinicAddress: user.clinicAddress }),
         });
       }
     }
@@ -522,7 +524,7 @@ export const updateAppointment = mutation({
           instanceName: user.evolutionInstanceName,
           evolutionApiKey: user.evolutionApiKey,
           phoneNumber: visit.patientPhone,
-          messageText: msgRescheduled({ patientName: visit.patientName || "", clinicName: user.clinicName || "العيادة", doctorName: user.name, newDate, slotNumber: slotNum }),
+          messageText: msgRescheduled({ patientName: visit.patientName || "", clinicName: user.clinicName || "العيادة", doctorName: user.name, newDate, slotNumber: slotNum, clinicAddress: user.clinicAddress }),
         });
       }
     }
