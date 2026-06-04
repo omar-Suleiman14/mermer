@@ -7,13 +7,7 @@ import { Loader2, CheckCircle2, CalendarDays, X } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { useI18n } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
-import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
-} from "@/components/ui/drawer";
+
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useIsMounted } from "@/hooks/use-is-mounted";
 import { motion, AnimatePresence } from "framer-motion";
