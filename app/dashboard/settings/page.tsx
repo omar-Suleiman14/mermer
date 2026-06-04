@@ -131,10 +131,11 @@ export default function SettingsPage() {
   const [showClinicLocationOnRx, setShowClinicLocationOnRx] = useState(true);
 
   // Clinical preferences
-  const [enableDiagnosis] = useState(false);
-  const [enableMeasurements] = useState(false);
-  const [enableVitals] = useState(false);
-  const [enableNotes] = useState(false);
+  const [enableDiagnosis, setEnableDiagnosis] = useState(false);
+  const [enableMeasurements, setEnableMeasurements] = useState(false);
+  const [enableVitals, setEnableVitals] = useState(false);
+  const [enableNotes, setEnableNotes] = useState(false);
+  const [enablePrescription, setEnablePrescription] = useState(true);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -172,6 +173,11 @@ export default function SettingsPage() {
     setBio((currentUser as any).bio ?? "");
     setPublicProfile((currentUser as any).publicProfile ?? false);
     setShowClinicLocationOnRx((currentUser as any).showClinicLocationOnRx ?? true);
+    setEnableDiagnosis((currentUser as any).enableDiagnosis ?? false);
+    setEnableMeasurements((currentUser as any).enableMeasurements ?? false);
+    setEnableVitals((currentUser as any).enableVitals ?? false);
+    setEnableNotes((currentUser as any).enableNotes ?? false);
+    setEnablePrescription((currentUser as any).enablePrescription ?? true);
 
   }, [currentUser]);
 
@@ -203,10 +209,11 @@ export default function SettingsPage() {
         enableMeasurements,
         enableVitals,
         enableNotes,
+        enablePrescription,
       });
       toast.success(t("toast.settingsSaved"), { id: "settings-save" });
     } catch { toast.error(t("toast.settingsSaveFailed"), { id: "settings-save-error" }); }
-  }, [clerkId, currentUser, name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, publicProfile, consultationFee, updateProfile, updateClinicalPreferences, t, workingDays, showClinicLocationOnRx, enableDiagnosis, enableMeasurements, enableVitals, enableNotes]);
+  }, [clerkId, currentUser, name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, publicProfile, consultationFee, updateProfile, updateClinicalPreferences, t, workingDays, showClinicLocationOnRx, enableDiagnosis, enableMeasurements, enableVitals, enableNotes, enablePrescription]);
   function triggerSave() {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(doSave, 2000);
@@ -216,12 +223,12 @@ export default function SettingsPage() {
   const prevValues = useRef("");
   useEffect(() => {
     if (!initialised.current) return;
-    const key = JSON.stringify({ name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, publicProfile, consultationFee, workingDays, showClinicLocationOnRx, enableDiagnosis, enableMeasurements, enableVitals, enableNotes });
+    const key = JSON.stringify({ name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, publicProfile, consultationFee, workingDays, showClinicLocationOnRx, enableDiagnosis, enableMeasurements, enableVitals, enableNotes, enablePrescription });
     if (prevValues.current && key !== prevValues.current) {
       triggerSave();
     }
     prevValues.current = key;
-  }, [name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, publicProfile, consultationFee, workingDays, showClinicLocationOnRx, enableDiagnosis, enableMeasurements, enableVitals, enableNotes]);
+  }, [name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, publicProfile, consultationFee, workingDays, showClinicLocationOnRx, enableDiagnosis, enableMeasurements, enableVitals, enableNotes, enablePrescription]);
 
   async function handlePhotoUpload(file: File) {
     setUploadingPhoto(true);
@@ -505,53 +512,16 @@ export default function SettingsPage() {
         {/* ═══════════════════════════════════════════════════════════ */}
         {/* CLINICAL PREFERENCES                                      */}
         {/* ═══════════════════════════════════════════════════════════ */}
-        <section className="hidden">
+        <section>
           <h3 className={sectionTitleClass}>{dir === "rtl" ? "الإعدادات الطبية" : "Clinical Preferences"}</h3>
           <div className={blockClass}>
-            <div className={`${rowClass} opacity-50`}>
-              <label htmlFor="settings-enable-diagnosis" className={labelClass}>{dir === "rtl" ? "تفعيل التشخيص" : "Enable Diagnosis Section"}</label>
+            <div className={rowClass}>
+              <label htmlFor="settings-enable-prescription" className={labelClass}>{dir === "rtl" ? "تفعيل الوصفة الطبية" : "Enable Prescription / Medications"}</label>
               <div className="flex-1 flex justify-end">
                 <Switch
-                  id="settings-enable-diagnosis"
-                  checked={false}
-                  disabled={true}
-                  onCheckedChange={() => {}}
-                />
-              </div>
-            </div>
-
-            <div className={`${rowClass} opacity-50`}>
-              <label htmlFor="settings-enable-measurements" className={labelClass}>{dir === "rtl" ? "تفعيل القياسات" : "Enable Measurements Section"}</label>
-              <div className="flex-1 flex justify-end">
-                <Switch
-                  id="settings-enable-measurements"
-                  checked={false}
-                  disabled={true}
-                  onCheckedChange={() => {}}
-                />
-              </div>
-            </div>
-
-            <div className={`${rowClass} opacity-50`}>
-              <label htmlFor="settings-enable-vitals" className={labelClass}>{dir === "rtl" ? "تفعيل العلامات الحيوية" : "Enable Vitals Section"}</label>
-              <div className="flex-1 flex justify-end">
-                <Switch
-                  id="settings-enable-vitals"
-                  checked={false}
-                  disabled={true}
-                  onCheckedChange={() => {}}
-                />
-              </div>
-            </div>
-
-            <div className={`${rowClass} opacity-50`}>
-              <label htmlFor="settings-enable-notes" className={labelClass}>{dir === "rtl" ? "تفعيل الملاحظات السريرية" : "Enable Clinical Notes"}</label>
-              <div className="flex-1 flex justify-end">
-                <Switch
-                  id="settings-enable-notes"
-                  checked={false}
-                  disabled={true}
-                  onCheckedChange={() => {}}
+                  id="settings-enable-prescription"
+                  checked={enablePrescription}
+                  onCheckedChange={setEnablePrescription}
                 />
               </div>
             </div>

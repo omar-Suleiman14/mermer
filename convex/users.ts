@@ -253,15 +253,16 @@ export const updateClinicalPreferences = mutation({
     enableMeasurements: v.boolean(),
     enableVitals: v.boolean(),
     enableNotes: v.boolean(),
+    enablePrescription: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
-    // Only the clinic owner should update these preferences, but for now we'll update the user record
     await ctx.db.patch(user._id, {
-      enableDiagnosis: false,
-      enableMeasurements: false,
-      enableVitals: false,
-      enableNotes: false,
+      enableDiagnosis: args.enableDiagnosis,
+      enableMeasurements: args.enableMeasurements,
+      enableVitals: args.enableVitals,
+      enableNotes: args.enableNotes,
+      enablePrescription: args.enablePrescription,
     });
   },
 });

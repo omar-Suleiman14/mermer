@@ -96,3 +96,11 @@ export function useWhatsAppTemplate(lang: Lang) {
 
   return generateAndOpen;
 }
+
+export function openWhatsApp(phone: string) {
+  let num = phone.replace(/[\s\-\(\)]/g, "");
+  if (num.startsWith("+")) num = num.slice(1);
+  if (num.startsWith("0")) num = "20" + num.slice(1);
+  else if (!num.startsWith("20")) num = "20" + num;
+  window.open(`https://wa.me/${num}`, "_blank");
+}

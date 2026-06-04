@@ -1,7 +1,9 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, action, internalMutation } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
+import { Id } from "./_generated/dataModel";
 import { getAuthUser, requireAuthUser, logAction } from "./authHelper";
 import { internal } from "./_generated/api";
+import { msgBookingConfirmed, msgAppointmentCancelled, msgRescheduled, calcSlotNumber, fmtTimeAr } from "./messageHelpers";
 
 const DAY_ABBREVS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 const MAX_PUBLIC_BOOKING_WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
@@ -56,11 +58,13 @@ function assertPublicBookingSlot(
   if ((slotMinutes - startMinutes) % slotDuration !== 0) {
     throw new ConvexError("Appointment must match an available slot");
   }
+
+  return Math.floor((slotMinutes - startMinutes) / slotDuration) + 1;
 }
 
 // ─── Public booking (online) ─────────────────────────────────────────────────
 
-export const createAppointment = mutation({
+export const createAppointmentInternal = internalMutation({
   args: {
     doctorSlug: v.string(),
     patientName: v.string(),
@@ -68,7 +72,7 @@ export const createAppointment = mutation({
     patientAge: v.optional(v.number()),
     date: v.number(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{ visitId: Id<"visits">; doctor: any; patientPhone: string; patientName: string; queueNumber: number }> => {
     const doctor = await ctx.db
       .query("users")
       .withIndex("by_qr_slug", (q) => q.eq("qrSlug", args.doctorSlug))
@@ -90,7 +94,7 @@ export const createAppointment = mutation({
       }
     }
 
-    assertPublicBookingSlot(args.date, doctor);
+    const queueNumber = assertPublicBookingSlot(args.date, doctor);
 
     // Rate Limiting: Max 3 upcoming appointments per phone number
     const upcoming = await ctx.db
@@ -148,27 +152,93 @@ export const createAppointment = mutation({
       patientPhone,
       patientAge: args.patientAge,
       date: args.date,
-      status: "confirmed",
+      status: "pending",
       source: "online",
+      queueNumber,
       createdAt: Date.now(),
     });
 
-    // Fire push notification to doctor
-    const apptTime = new Date(args.date).toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-    await ctx.scheduler.runAfter(0, internal.pushActions.sendPushNotification, {
-      userId: doctor._id,
-      title: "حجز إلكتروني جديد",
-      body: `${patientName} حجز موعداً الساعة ${apptTime}`,
-      url: "/dashboard",
-    });
+    // Schedule auto-cancel after 15 minutes if not confirmed
+    await ctx.scheduler.runAfter(15 * 60 * 1000, internal.appointments.autoCancelPendingAppointment, { visitId });
 
-    return visitId;
+    return { visitId, doctor, patientPhone, patientName: args.patientName, queueNumber };
   },
 });
+
+export const autoCancelPendingAppointment = internalMutation({
+  args: { visitId: v.id("visits") },
+  handler: async (ctx, args) => {
+    const visit = await ctx.db.get(args.visitId);
+    if (visit && visit.status === "pending") {
+      await ctx.db.patch(args.visitId, { status: "cancelled" });
+    }
+  }
+});
+
+export const deleteAppointmentInternal = internalMutation({
+  args: { visitId: v.id("visits") },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.visitId);
+  }
+});
+
+export const confirmPendingAppointmentByPhone = internalMutation({
+  args: { 
+    patientPhone: v.string(),
+    instanceName: v.string()
+  },
+  handler: async (ctx, args) => {
+    // 1. Find the latest pending visit for this phone
+    const pendingVisits = await ctx.db
+      .query("visits")
+      .withIndex("by_patient") // Wait, by_patient requires patientId. I'll use filter.
+      .filter(q => q.and(
+        q.eq(q.field("patientPhone"), args.patientPhone),
+        q.eq(q.field("status"), "pending")
+      ))
+      .collect();
+
+    if (pendingVisits.length === 0) return;
+
+    // Sort to get the most recently created one
+    pendingVisits.sort((a, b) => b.createdAt - a.createdAt);
+    const visit = pendingVisits[0];
+
+    // 2. Mark as confirmed
+    await ctx.db.patch(visit._id, { status: "confirmed" });
+
+    // 3. Get doctor to fetch API key and name
+    const doctor = await ctx.db.get(visit.doctorId);
+    if (!doctor) return;
+
+    // 4. Send confirmation reply via Evolution API using scheduler
+    const slotNum = calcSlotNumber(visit.date, doctor.workingHoursStart ?? 9, doctor.slotDurationMinutes ?? 30);
+    const messageText = msgBookingConfirmed({
+      patientName: visit.patientName || "",
+      clinicName: doctor.clinicName || "العيادة",
+      doctorName: doctor.name,
+      date: visit.date,
+      slotNumber: slotNum,
+    });
+    
+    await ctx.scheduler.runAfter(0, internal.whatsappAutomations.sendMessage, {
+      instanceName: args.instanceName,
+      evolutionApiKey: doctor.evolutionApiKey || "",
+      phoneNumber: args.patientPhone,
+      messageText,
+    });
+
+    // 5. Notify doctor that it's confirmed
+    await ctx.scheduler.runAfter(0, internal.pushActions.sendPushNotification, {
+      userId: doctor._id,
+      title: "تأكيد حجز عبر الواتساب",
+      body: `قام ${visit.patientName} بتأكيد موعده للساعة ${fmtTimeAr(visit.date)}.`,
+      url: "/dashboard",
+    });
+  }
+});
+
+
 
 // ─── Doctor manually adds a visit ────────────────────────────────────────────
 
@@ -209,7 +279,7 @@ export const addManualAppointment = mutation({
       throw new ConvexError("This time slot is already booked");
     }
 
-    return await ctx.db.insert("visits", {
+    const visitId = await ctx.db.insert("visits", {
       doctorId: doctor._id,
       patientId: args.patientId,
       patientName: patient.name,
@@ -221,6 +291,26 @@ export const addManualAppointment = mutation({
       notes: args.notes,
       createdAt: Date.now(),
     });
+
+    if (doctor.evolutionInstanceName && doctor.evolutionApiKey) {
+      const slotNum = calcSlotNumber(args.date, doctor.workingHoursStart ?? 9, doctor.slotDurationMinutes ?? 30);
+      const messageText = msgBookingConfirmed({
+        patientName: patient.name,
+        clinicName: doctor.clinicName || "العيادة",
+        doctorName: doctor.name,
+        date: args.date,
+        slotNumber: slotNum,
+      });
+      
+      await ctx.scheduler.runAfter(0, internal.whatsappAutomations.sendMessage, {
+        instanceName: doctor.evolutionInstanceName,
+        evolutionApiKey: doctor.evolutionApiKey,
+        phoneNumber: patient.phone,
+        messageText,
+      });
+    }
+
+    return { visitId };
   },
 });
 
@@ -252,6 +342,27 @@ export const swapAppointments = mutation({
 
     await ctx.db.patch(v1._id, { date: v2.date });
     await ctx.db.patch(v2._id, { date: v1.date });
+
+    if (user.evolutionInstanceName && user.evolutionApiKey) {
+      if (v1.patientPhone) {
+        const slot1 = calcSlotNumber(v2.date, user.workingHoursStart ?? 9, user.slotDurationMinutes ?? 30);
+        await ctx.scheduler.runAfter(0, internal.whatsappAutomations.sendMessage, {
+          instanceName: user.evolutionInstanceName,
+          evolutionApiKey: user.evolutionApiKey,
+          phoneNumber: v1.patientPhone,
+          messageText: msgRescheduled({ patientName: v1.patientName || "", clinicName: user.clinicName || "العيادة", doctorName: user.name, newDate: v2.date, slotNumber: slot1 }),
+        });
+      }
+      if (v2.patientPhone) {
+        const slot2 = calcSlotNumber(v1.date, user.workingHoursStart ?? 9, user.slotDurationMinutes ?? 30);
+        await ctx.scheduler.runAfter(5000, internal.whatsappAutomations.sendMessage, {
+          instanceName: user.evolutionInstanceName,
+          evolutionApiKey: user.evolutionApiKey,
+          phoneNumber: v2.patientPhone,
+          messageText: msgRescheduled({ patientName: v2.patientName || "", clinicName: user.clinicName || "العيادة", doctorName: user.name, newDate: v1.date, slotNumber: slot2 }),
+        });
+      }
+    }
   },
 });
 
@@ -402,11 +513,34 @@ export const updateAppointment = mutation({
       if (visit.installmentId) {
         await ctx.db.patch(visit.installmentId, { nextVisitDate: args.updates.date });
       }
+
+      // Send WhatsApp notification for date change
+      if (visit.patientPhone && user.evolutionInstanceName && user.evolutionApiKey && args.updates.date !== visit.date) {
+        const newDate = args.updates.date;
+        const slotNum = calcSlotNumber(newDate, user.workingHoursStart ?? 9, user.slotDurationMinutes ?? 30);
+        await ctx.scheduler.runAfter(0, internal.whatsappAutomations.sendMessage, {
+          instanceName: user.evolutionInstanceName,
+          evolutionApiKey: user.evolutionApiKey,
+          phoneNumber: visit.patientPhone,
+          messageText: msgRescheduled({ patientName: visit.patientName || "", clinicName: user.clinicName || "العيادة", doctorName: user.name, newDate, slotNumber: slotNum }),
+        });
+      }
+    }
+
+    if (args.updates.status === "cancelled" && visit.status !== "cancelled" && visit.patientPhone && user.evolutionInstanceName && user.evolutionApiKey) {
+      await ctx.scheduler.runAfter(0, internal.whatsappAutomations.sendMessage, {
+        instanceName: user.evolutionInstanceName,
+        evolutionApiKey: user.evolutionApiKey,
+        phoneNumber: visit.patientPhone,
+        messageText: msgAppointmentCancelled({ patientName: visit.patientName || "", clinicName: user.clinicName || "العيادة", doctorName: user.name, date: visit.date }),
+      });
     }
 
     await ctx.db.patch(args.appointmentId, args.updates);
     
     await logAction(ctx, user, "Updated Appointment", `Updated visit status to ${args.updates.status || "changed"}`);
+
+    return {};
   },
 });
 
@@ -444,6 +578,15 @@ export const cancelAppointmentByPhone = mutation({
     // Don't allow cancelling already-completed visits
     if (visit.status === "completed") {
       throw new ConvexError("Completed visits cannot be cancelled");
+    }
+
+    if (visit.status !== "cancelled" && visit.patientPhone && user.evolutionInstanceName && user.evolutionApiKey) {
+      await ctx.scheduler.runAfter(0, internal.whatsappAutomations.sendMessage, {
+        instanceName: user.evolutionInstanceName,
+        evolutionApiKey: user.evolutionApiKey,
+        phoneNumber: visit.patientPhone,
+        messageText: msgAppointmentCancelled({ patientName: visit.patientName || "", clinicName: user.clinicName || "العيادة", doctorName: user.name, date: visit.date }),
+      });
     }
 
     await ctx.db.patch(args.appointmentId, { status: "cancelled" });

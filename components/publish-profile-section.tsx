@@ -24,6 +24,7 @@ import {
 import { IOSSpinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import Image from "next/image";
+import { useI18n } from "@/lib/i18n/client";
 
 const SPECIALTIES = [
   "General Practitioner", "Cardiologist", "Dermatologist", "Dentist",
@@ -162,6 +163,7 @@ export function PublishProfileSection({ clerkId, currentUser, profilePhotoUrl }:
   const [isPublished] = useState(currentUser.publicProfile ?? false);
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const { lang } = useI18n();
 
   const updatePublicProfile = useMutation(api.doctors.updatePublicProfile);
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
@@ -192,16 +194,16 @@ export function PublishProfileSection({ clerkId, currentUser, profilePhotoUrl }:
         availableFrom: availFrom || undefined,
         availableTo: availTo || undefined,
       });
-      toast.success("Profile saved");
+      toast.success(lang === "ar" ? "تم حفظ الملف الشخصي" : "Profile saved");
     } catch {
-      toast.error("Failed to save");
+      toast.error(lang === "ar" ? "فشل الحفظ" : "Failed to save");
     } finally {
       setSaving(false);
     }
   }
 
   async function handleTogglePublish() {
-    toast.info("Public profiles are temporarily unavailable");
+    toast.info(lang === "ar" ? "الملفات الشخصية العامة غير متاحة مؤقتاً" : "Public profiles are temporarily unavailable");
   }
 
   async function handlePhoto(file: File) {
@@ -211,8 +213,8 @@ export function PublishProfileSection({ clerkId, currentUser, profilePhotoUrl }:
       const res = await fetch(url, { method: "POST", headers: { "Content-Type": file.type }, body: file });
       const { storageId } = await res.json();
       await saveProfilePhoto({ clerkId, storageId: storageId as Id<"_storage"> });
-      toast.success("Photo updated");
-    } catch { toast.error("Photo upload failed"); } finally { setUploadingPhoto(false); }
+      toast.success(lang === "ar" ? "تم تحديث الصورة" : "Photo updated");
+    } catch { toast.error(lang === "ar" ? "فشل رفع الصورة" : "Photo upload failed"); } finally { setUploadingPhoto(false); }
   }
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";

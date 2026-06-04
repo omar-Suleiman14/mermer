@@ -40,9 +40,13 @@ export function MessageTemplatesSection({ clerkId, clinicAddressLink }: { clerkI
     seeded.current = true;
     setSeeding(true);
     const defaults = [
-      { name: "الدور القادم", body: "مرحباً {patient_name}، دورك القادم الآن. يرجى التوجه إلى العيادة في أقرب وقت." },
-      { name: "تذكير بالموعد", body: "مرحباً {patient_name}، نذكّرك بموعدك اليوم الساعة {time}. عنوان العيادة: {clinic_address}. نراك قريباً." },
-      { name: "موعد فائت", body: "مرحباً {patient_name}، يبدو أنك لم تحضر موعدك بتاريخ {date}. يسعدنا إعادة الحجز عند اتصالك بنا." },
+      { name: "الدور القادم",    body: "مرحباً {patient_name}\nدورك القادم الآن. يرجى التوجه إلى العيادة في أقرب وقت." },
+      { name: "تذكير بالموعد",  body: "تذكير بموعدك\nمرحباً {patient_name}، موعدك اليوم الساعة {time}.\n{clinic_address}\nنتمنى لك الشفاء العاجل." },
+      { name: "موعد فائت",      body: "مرحباً {patient_name}\nيبدو أنك لم تحضر موعدك بتاريخ {date}.\nنتمنى أن تكون بخير. يسعدنا إعادة الحجز عند اتصالك بنا." },
+      { name: "تأكيد حجز",      body: "مرحباً {patient_name}\nتم تأكيد حجزك بتاريخ {date} الساعة {time}.\nنراك قريباً." },
+      { name: "تعديل الموعد",   body: "مرحباً {patient_name}\nتم تعديل موعدك ليصبح بتاريخ {date} الساعة {time}.\nنراك قريباً." },
+      { name: "إلغاء الموعد",   body: "مرحباً {patient_name}\nنعتذر عن إلغاء موعدك بتاريخ {date}.\nيسعدنا إعادة الحجز عند اتصالك بنا." },
+      { name: "خطة علاج",       body: "مرحباً {patient_name}\nتم إنشاء خطة تقسيط علاجية خاصة بك.\nموعدك الأول بتاريخ {date} الساعة {time}.\nنراك قريباً." },
     ];
     Promise.all(defaults.map((d) => createTemplate({ clerkId, name: d.name, body: d.body })))
       .then(() => setSeeding(false))

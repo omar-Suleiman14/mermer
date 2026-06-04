@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Loader2, QrCode, CheckCircle2, RefreshCcw, Smartphone, AlertTriangle } from "lucide-react";
+import { Loader2, QrCode, CheckCircle2, RefreshCcw, RotateCcw, Smartphone, AlertTriangle } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import Image from "next/image";
 
@@ -17,6 +17,8 @@ export function WhatsAppIntegration({ clinicId }: { clinicId: string }) {
   const creds = useQuery(api.whatsappQueries.getClinicEvolutionCreds, { clinicId: clinicId as any });
   const activateIntegration = useAction(api.evolution.activateIntegration);
   const getConnectionState = useAction(api.evolution.getConnectionState);
+  const disconnectIntegration = useAction(api.evolution.disconnectIntegration);
+  const [resetting, setResetting] = useState(false);
 
   const fetchState = async () => {
     if (!creds?.evolutionInstanceName) return;
@@ -49,7 +51,19 @@ export function WhatsAppIntegration({ clinicId }: { clinicId: string }) {
     try {
       setLoading(true);
       setError("");
-      const res = await activateIntegration({ clinicId: clinicId as any });
+      let res = await activateIntegration({ clinicId: clinicId as any });
+
+      // If first attempt failed, wait 2s and silently retry once
+      // (tunnel can give a 502 even though the instance was created)
+      if (res && res.success === false) {
+        await new Promise(r => setTimeout(r, 2500));
+        try {
+          res = await activateIntegration({ clinicId: clinicId as any });
+        } catch {
+          // ignore – we'll fall through to the error below
+        }
+      }
+
       if (res && res.success === false) {
         setError(dir === "rtl" ? "فشل تفعيل الخدمة. خادم الواتساب قد يكون غير متصل." : "Failed to activate. The WhatsApp server might be offline.");
       }
@@ -57,6 +71,22 @@ export function WhatsAppIntegration({ clinicId }: { clinicId: string }) {
       setError(dir === "rtl" ? "فشل تفعيل الخدمة. خادم الواتساب قد يكون غير متصل." : "Failed to activate. The WhatsApp server might be offline.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleReset = async () => {
+    try {
+      setResetting(true);
+      setError("");
+      setQrCodeData(null);
+      await disconnectIntegration({ 
+        clinicId: clinicId as any, 
+        instanceName: creds?.evolutionInstanceName 
+      });
+    } catch (err: any) {
+      setError(dir === "rtl" ? "فشل إعادة التعيين." : "Failed to reset.");
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -79,9 +109,19 @@ export function WhatsAppIntegration({ clinicId }: { clinicId: string }) {
       </div>
 
       {error && (
-        <div className="bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 p-4 rounded-xl flex gap-3 text-sm">
-          <AlertTriangle className="w-5 h-5 shrink-0" />
-          <p>{error}</p>
+        <div className="bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 p-4 rounded-xl flex items-start gap-3 text-sm">
+          <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+          <div className="flex-1">
+            <p>{error}</p>
+            <button
+              onClick={handleActivate}
+              disabled={loading}
+              className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-red-700 dark:text-red-300 hover:underline disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
+              {dir === "rtl" ? "إعادة المحاولة" : "Try Again"}
+            </button>
+          </div>
         </div>
       )}
 
@@ -104,7 +144,7 @@ export function WhatsAppIntegration({ clinicId }: { clinicId: string }) {
           </button>
         </div>
       ) : creds.evolutionStatus === "open" ? (
-        <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900 p-6 rounded-2xl flex flex-col items-center text-center space-y-3">
+        <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900 p-6 rounded-2xl flex flex-col items-center text-center space-y-4">
           <CheckCircle2 className="w-12 h-12 text-emerald-500" />
           <div>
             <h3 className="font-bold text-emerald-700 dark:text-emerald-400">
@@ -114,6 +154,14 @@ export function WhatsAppIntegration({ clinicId }: { clinicId: string }) {
               {dir === "rtl" ? "العيادة الآن ترسل الرسائل الآلية بنجاح." : "The clinic is now sending automated messages."}
             </p>
           </div>
+          <button
+            onClick={handleReset}
+            disabled={resetting}
+            className="mt-2 px-4 py-2 bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+          >
+            {resetting ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+            {dir === "rtl" ? "إلغاء الربط" : "Disconnect"}
+          </button>
         </div>
       ) : (
         <div className="bg-white dark:bg-zinc-900 border border-border p-6 rounded-2xl flex flex-col items-center text-center space-y-6">
@@ -136,13 +184,24 @@ export function WhatsAppIntegration({ clinicId }: { clinicId: string }) {
             )}
           </div>
           
-          <button
-            onClick={fetchState}
-            className="flex items-center gap-2 text-sm font-medium text-primary hover:underline"
-          >
-            <RefreshCcw className="w-4 h-4" />
-            {dir === "rtl" ? "تحديث الرمز" : "Refresh Code"}
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={fetchState}
+              className="flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+            >
+              <RefreshCcw className="w-4 h-4" />
+              {dir === "rtl" ? "تحديث الرمز" : "Refresh Code"}
+            </button>
+            <span className="text-border">|</span>
+            <button
+              onClick={handleReset}
+              disabled={resetting}
+              className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:underline disabled:opacity-50 transition-colors"
+            >
+              {resetting ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+              {dir === "rtl" ? "إعادة المحاولة" : "Start Over"}
+            </button>
+          </div>
         </div>
       )}
     </div>

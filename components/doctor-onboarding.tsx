@@ -23,6 +23,8 @@ import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useI18n } from "@/lib/i18n/client";
 import Image from "next/image";
+import { WhatsAppIntegration } from "@/components/settings/whatsapp-integration";
+import { useQuery } from "convex/react";
 
 function normalisePhone(raw: string): string {
   const digits = raw.replace(/\D/g, "");
@@ -74,8 +76,10 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
   const saveProfilePhoto = useMutation(api.users.saveProfilePhoto);
   const updatePrescriptionTemplate = useMutation(api.users.updatePrescriptionTemplate);
 
+  const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
+
   const [step, setStep] = useState(0);
-  const TOTAL_STEPS = 4;
+  const TOTAL_STEPS = 5;
 
   // Step 0 — Basic info
   const [name, setName] = useState(defaultName);
@@ -483,6 +487,28 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
                   {notificationsEnabled ? "✓ " + (dir === "rtl" ? "مفعلة" : "On") : (dir === "rtl" ? "تفعيل" : "Enable")}
                 </button>
               </div>
+            </motion.div>
+          )}
+
+          {/* ── Step 4: WhatsApp Integration ── */}
+          {step === 4 && (
+            <motion.div key="step4" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.22 }} className="space-y-5">
+              <div className="flex items-center gap-2 mb-2">
+                <Bell className="w-5 h-5 text-[#007AFF]" />
+                <span className="font-semibold text-lg">{dir === "rtl" ? "ربط واتساب" : "WhatsApp Integration"}</span>
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">
+                {dir === "rtl" ? "قم بربط حساب واتساب الخاص بالعيادة لإرسال التأكيدات والرسائل التلقائية للمرضى." : "Link your clinic's WhatsApp account to send automatic confirmations and messages to patients."}
+              </p>
+              
+              {currentUser?._id ? (
+                <WhatsAppIntegration clinicId={currentUser._id as string} />
+              ) : (
+                <div className="p-8 text-center text-muted-foreground">
+                  <IOSSpinner size={24} className="mx-auto mb-4" />
+                  {dir === "rtl" ? "جاري تحميل البيانات..." : "Loading data..."}
+                </div>
+              )}
             </motion.div>
           )}
 

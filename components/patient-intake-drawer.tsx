@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import { useMutation, useConvex, useQuery } from "convex/react";
+import { useMutation, useConvex, useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { toast } from "sonner";
@@ -22,6 +22,7 @@ import { Switch } from "@/components/ui/switch";
 import { useI18n } from "@/lib/i18n/client";
 import { useIsDesktop } from "@/hooks/use-is-desktop";
 import { useKeyboardHeight } from "@/hooks/use-keyboard-height";
+import { openWhatsApp } from "@/lib/scheduling";
 
 interface PatientIntakeDrawerProps {
   open: boolean;
@@ -262,7 +263,7 @@ export function PatientIntakeDrawer({
   async function handleSubmit(e?: React.FormEvent) {
     e?.preventDefault();
     if (!form.name.trim() || !form.age || !form.phone.trim()) {
-      toast.error(lang === "ar" ? "الاسم والعمر ورقم الهاتف مطلوبة" : "Name, age, and phone are required");
+      toast.error(lang === "ar" ? "الاسم والعمر ورقم الهاتف مطلوبة" : "الاسم والعمر ورقم الهاتف مطلوبة");
       return;
     }
 
@@ -273,7 +274,7 @@ export function PatientIntakeDrawer({
     }
 
     if (!isEdit && addVisit && !visitDate) {
-      toast.error("Please pick a visit date");
+      toast.error(lang === "ar" ? "يرجى اختيار تاريخ الزيارة" : "Please select a visit date");
       return;
     }
 
@@ -290,7 +291,7 @@ export function PatientIntakeDrawer({
           phone: fullPhone,
           chronicConditions: form.chronicConditions,
         });
-        toast.success("Patient updated");
+        toast.success(lang === "ar" ? "تم تحديث بيانات المريض" : "Patient data updated");
       } else {
         const existing = await convex.query(api.patients.findPatientByNameAndPhone, {
           clerkId,
@@ -301,7 +302,6 @@ export function PatientIntakeDrawer({
         let patientId: Id<"patients">;
         if (existing) {
           patientId = existing._id;
-          toast.success(addVisit ? "Returning patient — visit added to history" : "Returning patient found");
         } else {
           patientId = await createPatient({
             clerkId,
@@ -311,13 +311,12 @@ export function PatientIntakeDrawer({
             phone: fullPhone,
             chronicConditions: form.chronicConditions,
           });
-          toast.success(addVisit ? "New patient created & visit scheduled" : "New patient created");
         }
 
         if (addVisit && visitDate) {
           const selectedSlot = timeSlots.find((s) => s.timeStr === visitTime);
           if (selectedSlot?.isReserved) {
-            toast.error("This time slot is already reserved — pick another");
+            toast.error(lang === "ar" ? "هذا الوقت محجوز مسبقاً — اختر وقتاً آخر" : "This time slot is already reserved — choose another");
             setLoading(false);
             return;
           }
@@ -331,15 +330,19 @@ export function PatientIntakeDrawer({
             date: exactDate.getTime(),
             notes: form.notes || undefined,
           });
+          
+          toast.success(existing ? "مريض مسجل — تمت إضافة الزيارة للتاريخ" : "تم إنشاء المريض وجدولة الزيارة");
+        } else {
+          toast.success(existing ? "مريض مسجل تم العثور عليه" : "تم إنشاء مريض جديد");
         }
       }
       onOpenChange(false);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes("already booked")) {
-        toast.error("This time slot is already taken — pick another");
+        toast.error(lang === "ar" ? "هذا الوقت محجوز مسبقاً — اختر وقتاً آخر" : "This time slot is already reserved — choose another");
       } else {
-        toast.error("Something went wrong");
+        toast.error(lang === "ar" ? "حدث خطأ، يرجى المحاولة مرة أخرى" : "An error occurred, please try again");
       }
       console.error(err);
     } finally {

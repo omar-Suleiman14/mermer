@@ -321,6 +321,9 @@ export function VisitCompletionModal({
   const enableMeasurements = (currentUser as any)?.enableMeasurements === true;
   const enableVitals = (currentUser as any)?.enableVitals === true;
   const enableNotes = (currentUser as any)?.enableNotes === true;
+  const isAssistant = currentUser?.role === "assistant";
+  const enablePrescription = currentUser?.enablePrescription ?? true;
+  const showPrescription = !!currentUser && enablePrescription && !isAssistant;
 
 
   /** installment data (for unpaid / past-due banner) */
@@ -507,17 +510,17 @@ export function VisitCompletionModal({
   const handleSave = async (skip = false) => {
     // installment visits require a next visit date
     if (isinstallmentVisit && !nextinstallmentDate) {
-      toast.error("Please pick the next visit date before completing this visit");
+      toast.error(lang === "ar" ? "يرجى اختيار تاريخ الزيارة التالية قبل إتمام هذه الزيارة" : "Please pick the next visit date before completing this visit");
       return;
     }
     if (!isinstallmentVisit && scheduleFollowUp && !fuDate) {
-      toast.error("Please select a follow-up date");
+      toast.error(lang === "ar" ? "يرجى اختيار تاريخ المتابعة" : "Please select a follow-up date");
       return;
     }
     if (!isinstallmentVisit && scheduleFollowUp && fuDate) {
       const selectedSlot = timeSlots.find(s => s.timeStr === fuTime);
       if (selectedSlot?.isReserved) {
-        toast.error("This time slot is already reserved.");
+        toast.error(lang === "ar" ? "هذا الوقت محجوز مسبقاً." : "This time slot is already reserved.");
         return;
       }
     }
@@ -765,13 +768,15 @@ export function VisitCompletionModal({
                   </p>
                   
                   <div className="mt-6 flex flex-col gap-2 w-full max-w-xs">
-                    <button
-                      onClick={() => window.open(`/print/${visitId}`, '_blank')}
-                      className="flex items-center justify-center gap-2 px-4 py-3 bg-[#007AFF] hover:bg-[#0062cc] text-white rounded-xl transition-colors font-semibold text-sm w-full"
-                    >
-                      <Printer className="w-4 h-4" />
-                      {t("visit.printPrescription")}
-                    </button>
+                    {showPrescription && (
+                      <button
+                        onClick={() => window.open(`/print/${visitId}`, '_blank')}
+                        className="flex items-center justify-center gap-2 px-4 py-3 bg-[#007AFF] hover:bg-[#0062cc] text-white rounded-xl transition-colors font-semibold text-sm w-full"
+                      >
+                        <Printer className="w-4 h-4" />
+                        {t("visit.printPrescription")}
+                      </button>
+                    )}
                     
                     <button
                       onClick={handleClose}
@@ -787,6 +792,7 @@ export function VisitCompletionModal({
                 <div className="space-y-5">
 
                   {/* ── Medications Section ─────────────────────────────────── */}
+                  {showPrescription && (
                   <div>
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
@@ -889,6 +895,7 @@ export function VisitCompletionModal({
                       {dir === "rtl" ? "إضافة دواء آخر" : "Add another medication"}
                     </button>
                   </div>
+                  )}
 
                   {/* Diagnosis */}
                   {enableDiagnosis && (

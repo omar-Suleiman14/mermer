@@ -73,6 +73,7 @@ export default defineSchema({
     enableMeasurements: v.optional(v.boolean()),
     enableVitals: v.optional(v.boolean()),
     enableNotes: v.optional(v.boolean()),
+    enablePrescription: v.optional(v.boolean()),
     enableDashboardAnalytics: v.optional(v.boolean()), // Legacy field
     slotDurationMinutes: v.optional(v.number()),
 
@@ -99,6 +100,7 @@ export default defineSchema({
     evolutionApiKey: v.optional(v.string()),
     evolutionStatus: v.optional(v.string()), // disconnected, connecting, open
     isEvolutionActive: v.optional(v.boolean()),
+    blockedDates: v.optional(v.array(v.number())),
   })
     .index("by_clerk_id", ["clerkId"])
     .index("by_qr_slug", ["qrSlug"])
@@ -149,6 +151,7 @@ export default defineSchema({
     patientId: v.id("patients"),
     doctorId: v.id("users"),
     date: v.number(),
+    queueNumber: v.optional(v.number()),
 
     // Where the visit came from
     source: v.optional(
@@ -163,6 +166,7 @@ export default defineSchema({
     // Status
     status: v.optional(
       v.union(
+        v.literal("pending"),
         v.literal("confirmed"),
         v.literal("completed"),
         v.literal("cancelled"),

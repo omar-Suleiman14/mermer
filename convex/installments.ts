@@ -1,6 +1,8 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, action, internalMutation } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { getAuthUser, requireAuthUser } from "./authHelper";
+import { internal } from "./_generated/api";
+import { msgInstallmentCreated, calcSlotNumber } from "./messageHelpers";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -120,7 +122,6 @@ export const createinstallment = mutation({
     installmentFileId: v.optional(v.id("_storage")),
     installmentFileName: v.optional(v.string()),
     notes: v.optional(v.string()),
-    // Explicit visit schedule — each entry is a timestamp (date + time combined)
     visitSchedules: v.optional(v.array(v.number())),
   },
   handler: async (ctx, args) => {
@@ -130,7 +131,6 @@ export const createinstallment = mutation({
     if (!patient || patient.doctorId !== user._id)
       throw new ConvexError("Patient not found");
 
-    // ── Compute number of visits from financials ───────────────────────────
     let numVisits: number | undefined;
     let endDate: number | undefined;
 
@@ -144,11 +144,9 @@ export const createinstallment = mutation({
       numVisits = Math.ceil(remaining / args.costPerVisit);
     }
 
-    // Use explicit schedules to determine end date — but don't override computed numVisits
     const schedules = args.visitSchedules ?? [];
     if (schedules.length > 0) {
       endDate = Math.max(...schedules);
-      // Only override numVisits if we didn't compute it from financials
       if (numVisits === undefined) {
         numVisits = schedules.length;
       }
@@ -181,12 +179,10 @@ export const createinstallment = mutation({
       createdAt: Date.now(),
     });
 
-    // ── Create visits from explicit schedules ──────────────────────────────
     const createdAt = Date.now();
     const label = `installment visit`;
 
     if (schedules.length > 0) {
-      // FIX: Use Promise.all instead of sequential loop for visit creation
       await Promise.all(
         schedules.map((visitDate) =>
           ctx.db.insert("visits", {
@@ -206,9 +202,36 @@ export const createinstallment = mutation({
       );
     }
 
-    return id;
+    // Build WhatsApp payload if the doctor has Evolution connected
+    let whatsappPayload = undefined;
+    if (patient.phone && user.evolutionInstanceName && user.evolutionApiKey) {
+      const firstVisitDate = schedules.length > 0
+        ? Math.min(...schedules)
+        : args.startDate;
+      const slotNum = calcSlotNumber(firstVisitDate, user.workingHoursStart ?? 9, user.slotDurationMinutes ?? 30);
+      const messageText = msgInstallmentCreated({
+        patientName: patient.name,
+        clinicName: user.clinicName || "العيادة",
+        doctorName: user.name,
+        firstDate: firstVisitDate,
+        totalSessions: numVisits,
+        slotNumber: slotNum,
+      });
+      const payload = {
+        instanceName: user.evolutionInstanceName,
+        evolutionApiKey: user.evolutionApiKey,
+        phoneNumber: patient.phone,
+        messageText,
+      };
+      if (payload) {
+        await ctx.scheduler.runAfter(0, internal.whatsappAutomations.sendMessage, payload);
+      }
+    }
+
+    return { id };
   },
 });
+
 
 export const updateinstallment = mutation({
   args: {

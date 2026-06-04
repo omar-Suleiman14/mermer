@@ -1,0 +1,35 @@
+import { action } from "./_generated/server";
+import { v } from "convex/values";
+import { internal } from "./_generated/api";
+import { Id } from "./_generated/dataModel";
+
+export const createAppointment = action({
+  args: {
+    doctorSlug: v.string(),
+    patientName: v.string(),
+    patientPhone: v.string(),
+    patientAge: v.optional(v.number()),
+    date: v.number(),
+  },
+  handler: async (ctx, args): Promise<{ visitId: Id<"visits">; queueNumber: number }> => {
+    // 1. Create the appointment as pending in the DB
+    const { visitId, doctor, patientName, queueNumber } = await ctx.runMutation(internal.appointments.createAppointmentInternal, args) as any;
+
+    // 2. Fire push notification to doctor
+    const apptTime = new Date(args.date).toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+    
+    // Fire and forget
+    await ctx.runAction(internal.pushActions.sendPushNotification, {
+      userId: doctor._id,
+      title: "حجز إلكتروني جديد (قيد الانتظار)",
+      body: `${patientName} حجز موعداً الساعة ${apptTime} (رقم ${queueNumber}) بانتظار رسالة التأكيد عبر الواتساب.`,
+      url: "/dashboard",
+    }).catch(console.error);
+
+    return { visitId, queueNumber };
+  }
+});

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import {
@@ -17,6 +17,8 @@ const PatientIntakeDrawer = dynamic(() =>
   import("@/components/patient-intake-drawer").then((m) => m.PatientIntakeDrawer)
 );
 import { toast } from "sonner";
+import { IOSSpinner } from "./ui/spinner";
+import { openWhatsApp } from "@/lib/scheduling";
 import { Search, UserPlus, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import { motion, AnimatePresence } from "framer-motion";
@@ -55,7 +57,7 @@ export function AddToQueueDrawer({
 }: AddToQueueDrawerProps) {
   // eslint-disable-next-line react-hooks/purity
   const dayTs = selectedDate ?? startOfDay(Date.now());
-  const { t, dir } = useI18n();
+  const { t, dir, lang } = useI18n();
   const isDesktop = useIsDesktop();
   const { keyboardHeight, isKeyboardOpen } = useKeyboardHeight();
 
@@ -95,17 +97,17 @@ export function AddToQueueDrawer({
       });
       toast.success(
         preselectedSlot
-          ? `Patient booked at ${formatTime(preselectedSlot)}`
-          : "Patient added to schedule"
+          ? `تم الحجز بنجاح في ${formatTime(preselectedSlot)}`
+          : "تمت إضافة المريض للجدول"
       );
       onOpenChange(false);
       resetState();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       if (msg.includes("already booked")) {
-        toast.error("This time slot is already taken — pick another slot first");
+        toast.error(lang === "ar" ? "هذا الوقت محجوز مسبقاً — اختر وقتاً آخر" : "This time slot is already reserved — choose another");
       } else {
-        toast.error("Failed to add to schedule");
+        toast.error(lang === "ar" ? "حدث خطأ، يرجى المحاولة مرة أخرى" : "An error occurred, please try again");
       }
     }
   }

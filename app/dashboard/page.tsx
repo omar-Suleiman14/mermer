@@ -1,7 +1,7 @@
 "use client";
 
 import { useUser } from "@clerk/nextjs";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
@@ -71,7 +71,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { startOfDay, formatTime, formatFullDate, isNonWorkingDay, useWhatsAppTemplate } from "@/lib/scheduling";
+import { startOfDay, formatTime, formatFullDate, isNonWorkingDay, useWhatsAppTemplate, openWhatsApp } from "@/lib/scheduling";
 
 interface SortableApptItemProps {
   appt: any;
@@ -196,6 +196,11 @@ const SortableApptItem = memo(function SortableApptItem({
               {lang === "ar" ? "التالي" : "Next"}
             </span>
           )}
+          {appt.status === "pending" && (
+            <span className="text-[9px] font-bold uppercase tracking-wider bg-orange-500/10 text-orange-500 border border-orange-500/20 px-1.5 py-0.5 rounded-full">
+              {lang === "ar" ? "قيد الانتظار" : "Pending"}
+            </span>
+          )}
         </div>
         <p className="text-xs text-muted-foreground mt-0.5">
           {appt.patientAge && `${appt.patientAge}y`}
@@ -309,6 +314,17 @@ export default function DashboardPage() {
     clerkId ? { clerkId, dayStart: todayTs } : "skip"
   );
 
+  const todayVisits = useMemo(() => {
+    if (!todayAppointments) return [];
+    return [...todayAppointments]
+      .filter((a) => a.status !== "cancelled")
+      .sort((a, b) => a.date - b.date);
+  }, [todayAppointments]);
+
+  const incompleteApptIds = useMemo(() => {
+    return todayVisits.filter(a => a.status !== "completed").map(a => a._id);
+  }, [todayVisits]);
+
   const messageTemplates = useQuery(
     api.messageTemplates.listTemplates,
     clerkId ? { clerkId } : "skip"
@@ -318,13 +334,16 @@ export default function DashboardPage() {
 
   const updateAppointment = useMutation(api.appointments.updateAppointment);
   const swapAppointments = useMutation(api.appointments.swapAppointments);
+  const cancelDayAutomations = useAction(api.whatsappAutomations.cancelDayAction);
+  const [cancellingDay, setCancellingDay] = useState(false);
+  const [cancelDayModalOpen, setCancelDayModalOpen] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  const cancelAppointment = useMutation(api.appointments.updateAppointment);
+  const cancelAppointment = updateAppointment;
 
   const [cancelModal, setCancelModal] = useState<Id<"visits"> | null>(null);
   const [rescheduleModal, setRescheduleModal] = useState<{ visitId: Id<"visits">; patientName: string; isinstallment?: boolean } | null>(null);
@@ -378,9 +397,32 @@ export default function DashboardPage() {
   const handleCancelVisit = useCallback(async (appointmentId: Id<"visits">) => {
     try {
       await cancelAppointment({ clerkId, appointmentId, updates: { status: "cancelled" } });
-      toast.success("Appointment cancelled");
-    } catch { toast.error("Failed to cancel"); }
+      toast.success(lang === "ar" ? "تم إلغاء الموعد بنجاح" : "Appointment cancelled successfully");
+    } catch { toast.error(lang === "ar" ? "تعذّر إلغاء الموعد" : "Failed to cancel appointment"); }
   }, [clerkId, cancelAppointment]);
+
+  const handleCancelDay = useCallback(async () => {
+    if (!currentUser?._id) return;
+    
+    // Check if there are any installment visits today
+    const hasInstallments = (todayAppointments || []).some(v => v.status !== "cancelled" && v.source === "installment" && (v.status === "confirmed" || v.status === "pending"));
+    if (hasInstallments) {
+      toast.error(lang === "ar" ? "يجب إعادة جدولة زيارات التقسيط أولاً قبل إلغاء اليوم" : "You must reschedule installment visits before cancelling the day");
+      setCancelDayModalOpen(false);
+      return;
+    }
+    
+    setCancellingDay(true);
+    try {
+      const res = await cancelDayAutomations({ clinicId: currentUser._id, dateMs: todayTs });
+      toast.success(lang === "ar" ? `تم إلغاء ${res.cancelledCount} موعد بنجاح` : `Cancelled ${res.cancelledCount} appointments successfully`);
+    } catch (err: any) {
+      toast.error(err.message || "Failed to cancel day");
+    } finally {
+      setCancellingDay(false);
+      setCancelDayModalOpen(false);
+    }
+  }, [currentUser?._id, todayTs, todayAppointments, cancelDayAutomations, lang]);
 
   const handleReschedule = useCallback(async () => {
     if (!rescheduleModal || !rescheduleDate) return;
@@ -390,12 +432,12 @@ export default function DashboardPage() {
       const d = new Date(rescheduleDate);
       d.setHours(hh, mm, 0, 0);
       await updateAppointment({ clerkId, appointmentId: rescheduleModal.visitId, updates: { date: d.getTime() } });
-      toast.success("Visit rescheduled successfully");
+      toast.success(lang === "ar" ? "تمت إعادة الجدولة بنجاح" : "Rescheduled successfully");
       setRescheduleModal(null);
       setRescheduleDate(undefined);
-    } catch { toast.error("Failed to reschedule"); }
+    } catch { toast.error(lang === "ar" ? "تعذّر إعادة الجدولة" : "Failed to reschedule"); }
     finally { setRescheduling(false); }
-  }, [clerkId, rescheduleModal, rescheduleDate, rescheduleTime, updateAppointment]);
+  }, [clerkId, rescheduleModal, rescheduleDate, rescheduleTime, updateAppointment, lang]);
 
   // Working days from doctor profile for reschedule calendar
   const workingDayAbbrs: string[] = (currentUser as any)?.availableDays ?? [];
@@ -442,12 +484,12 @@ export default function DashboardPage() {
         appointmentId: completionModal.appointmentId,
         updates: { status: "completed", prescriptionImageId, notes },
       });
-      toast.success("Visit marked complete");
+      toast.success(lang === "ar" ? "تمت الزيارة بنجاح" : "Visit completed successfully");
       setCompletionModal(null);
     } catch {
-      toast.error("Failed to complete visit");
+      toast.error(lang === "ar" ? "تعذّر إتمام الزيارة" : "Failed to complete visit");
     }
-  }, [clerkId, completionModal, updateAppointment]);
+  }, [clerkId, completionModal, updateAppointment, lang]);
 
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event;
@@ -459,11 +501,11 @@ export default function DashboardPage() {
         appointmentId1: active.id as Id<"visits">, 
         appointmentId2: over.id as Id<"visits"> 
       });
-      toast.success("Appointments swapped");
+      toast.success(lang === "ar" ? "تم تبديل المواعيد بنجاح" : "Appointments swapped");
     } catch {
-      toast.error("Failed to swap appointments");
+      toast.error(lang === "ar" ? "تعذّر تبديل المواعيد" : "Failed to swap appointments");
     }
-  }, [clerkId, swapAppointments]);
+  }, [clerkId, swapAppointments, lang]);
 
   const sendWhatsAppTemplate = useWhatsAppTemplate(lang);
 
@@ -487,16 +529,6 @@ export default function DashboardPage() {
   }, [todayAppointments]);
 
   // Today's non-cancelled appointments sorted by time
-  const todayVisits = useMemo(() => {
-    if (!todayAppointments) return [];
-    return [...todayAppointments]
-      .filter((a) => a.status !== "cancelled")
-      .sort((a, b) => a.date - b.date);
-  }, [todayAppointments]);
-
-  const incompleteApptIds = useMemo(() => {
-    return todayVisits.filter(a => a.status !== "completed").map(a => a._id);
-  }, [todayVisits]);
 
   return (
     <div className="flex flex-col h-full">
@@ -535,6 +567,16 @@ export default function DashboardPage() {
               <LinkIcon className="w-3.5 h-3.5" />
               {t("dashboard.copyClinicLink")}
             </button>
+            {canCancel && (
+              <button
+                onClick={() => setCancelDayModalOpen(true)}
+                disabled={cancellingDay || todayVisits.length === 0}
+                className="flex items-center gap-1.5 text-xs font-semibold bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-500 px-3 py-1.5 rounded-xl hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                {cancellingDay ? <IOSSpinner size={14} className="text-red-600" /> : <XCircle className="w-3.5 h-3.5" />}
+                {lang === "ar" ? "إلغاء اليوم" : "Cancel Day"}
+              </button>
+            )}
             <Link
               href="/dashboard/queue"
               className="flex items-center gap-1.5 text-xs font-semibold bg-[#007AFF] text-white px-3 py-1.5 rounded-xl hover:bg-[#0062cc] transition-colors"
@@ -630,6 +672,31 @@ export default function DashboardPage() {
               }}
             >
               {t("dialog.deleteConfirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={cancelDayModalOpen} onOpenChange={setCancelDayModalOpen}>
+        <AlertDialogContent dir={dir}>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-500">
+              {lang === "ar" ? "إلغاء جميع المواعيد" : "Cancel All Appointments"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {lang === "ar" 
+                ? "هل أنت متأكد من إلغاء جميع مواعيد اليوم؟ سيتم إرسال رسائل واتساب للمرضى للاعتذار وإلغاء مواعيدهم."
+                : "Are you sure you want to cancel all appointments today? WhatsApp messages will be sent to patients to apologize and cancel."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-500 hover:bg-red-600 text-white"
+              onClick={handleCancelDay}
+              disabled={cancellingDay}
+            >
+              {cancellingDay ? <IOSSpinner size={16} className="text-white" /> : (lang === "ar" ? "تأكيد الإلغاء" : "Confirm Cancel")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

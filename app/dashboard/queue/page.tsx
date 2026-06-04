@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect, memo, useCallback } from "react";
 import { useUser } from "@clerk/nextjs";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
@@ -61,7 +61,7 @@ import {
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { motion, AnimatePresence } from "framer-motion";
-import { startOfDay, formatTime, formatFullDate, isNonWorkingDay, useWhatsAppTemplate, dateLocale } from "@/lib/scheduling";
+import { startOfDay, formatTime, formatFullDate, isNonWorkingDay, openWhatsApp, useWhatsAppTemplate, dateLocale } from "@/lib/scheduling";
 
 /** Returns N day timestamps starting from anchorDay */
 function getWeekDays(anchorDay: number, count = 7): number[] {
@@ -576,11 +576,11 @@ function SchedulePageInner() {
         appointmentId,
         updates: { status: "cancelled" },
       });
-      toast.success(t("toast.appointmentCancelled"));
+      toast.success(lang === "ar" ? "تم إلغاء الموعد بنجاح" : "Appointment cancelled successfully");
     } catch {
-      toast.error(t("toast.cancelAppointmentFailed"));
+      toast.error(lang === "ar" ? "تعذّر إلغاء الموعد" : "Failed to cancel appointment");
     }
-  }, [clerkId, updateAppointment, t]);
+  }, [clerkId, updateAppointment, rawAppointments, t]);
 
   const handleReschedule = useCallback(async () => {
     if (!rescheduleModal || !rescheduleDate) return;
@@ -590,12 +590,12 @@ function SchedulePageInner() {
       const d = new Date(rescheduleDate);
       d.setHours(hh, mm, 0, 0);
       await updateAppointment({ clerkId, appointmentId: rescheduleModal.visitId, updates: { date: d.getTime() } });
-      toast.success(t("toast.visitRescheduled") || "Visit rescheduled successfully");
+      toast.success(lang === "ar" ? "تمت إعادة الجدولة بنجاح" : "Rescheduled successfully");
       setRescheduleModal(null);
       setRescheduleDate(undefined);
-    } catch { toast.error("Failed to reschedule"); }
+    } catch { toast.error(lang === "ar" ? "تعذّر إعادة الجدولة" : "Failed to reschedule"); }
     finally { setRescheduling(false); }
-  }, [clerkId, rescheduleModal, rescheduleDate, rescheduleTime, updateAppointment, t]);
+  }, [clerkId, rescheduleModal, rescheduleDate, rescheduleTime, updateAppointment, rawAppointments, t]);
 
   // Working days from doctor profile for reschedule calendar
   const rescheduleWorkingDays: string[] = (currentUser as any)?.availableDays ?? [];
@@ -648,16 +648,16 @@ function SchedulePageInner() {
         const targetAppt = targetAppts[0];
         if (targetAppt._id !== draggedApptId) {
           await swapAppointments({ clerkId, appointmentId1: draggedApptId, appointmentId2: targetAppt._id });
-          toast.success(t("toast.appointmentsSwapped"));
+          toast.success(lang === "ar" ? "تم تبديل المواعيد بنجاح" : "Appointments swapped");
         }
       } else {
         await updateAppointment({ clerkId, appointmentId: draggedApptId, updates: { date: targetTs } });
-        toast.success(t("toast.appointmentMoved"));
+        toast.success(lang === "ar" ? "تم نقل الموعد بنجاح" : "Appointment moved successfully");
       }
     } catch {
-      toast.error(t("toast.scheduleReorderFailed"));
+      toast.error(lang === "ar" ? "تعذّر الترتيب - الموعد محجوز مسبقاً" : "Cannot reorder - appointment already booked");
     }
-  }, [clerkId, appointmentsBySlot, swapAppointments, updateAppointment, t]);
+  }, [clerkId, appointmentsBySlot, swapAppointments, updateAppointment, rawAppointments, t]);
 
   const sendWhatsAppTemplate = useWhatsAppTemplate(lang);
 

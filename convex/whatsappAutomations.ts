@@ -1,6 +1,7 @@
-import { action, internalAction } from "./_generated/server";
+import { action, internalAction, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 import { internal, api } from "./_generated/api";
+import { msgBookingConfirmed, msgDayCancelled, msgReminder, msgMissed, msgYourTurn, calcSlotNumber } from "./messageHelpers";
 
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || "http://localhost:8080";
 
@@ -13,7 +14,10 @@ export const sendMessage = internalAction({
     messageText: v.string(),
   },
   handler: async (ctx, args) => {
-    const cleanNumber = args.phoneNumber.replace(/[^0-9]/g, "");
+    let cleanNumber = args.phoneNumber.replace(/[^0-9]/g, "");
+    if (cleanNumber.length === 10 && cleanNumber.startsWith("1")) {
+      cleanNumber = "20" + cleanNumber;
+    }
 
     const payload = {
       number: cleanNumber,
@@ -21,9 +25,7 @@ export const sendMessage = internalAction({
         delay: 1200,
         presence: "composing",
       },
-      textMessage: {
-        text: args.messageText,
-      },
+      text: args.messageText,
     };
 
     try {
@@ -31,21 +33,37 @@ export const sendMessage = internalAction({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          apikey: args.evolutionApiKey,
+          apikey: process.env.EVOLUTION_API_KEY || "B6D711FCDE4D4FD5936544120E7139D5",
         },
         body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
-        const err = await response.text();
-        console.error("Evolution API Send Error:", err);
-        return { success: false, error: err };
+        const errText = await response.text();
+        console.error("Evolution API Send Error:", errText);
+        
+        // Parse common errors into friendly messages
+        let friendlyError = "WhatsApp send failed";
+        try {
+          const parsed = JSON.parse(errText);
+          if (parsed?.response?.message) {
+            const msgs = parsed.response.message;
+            if (Array.isArray(msgs) && msgs.some((m: any) => m.exists === false)) {
+              friendlyError = "هذا الرقم غير مسجل على واتساب";
+            }
+          }
+          if (parsed?.error === "Unauthorized" || response.status === 401) {
+            friendlyError = "خطأ في اتصال الواتساب - تحقق من الإعدادات";
+          }
+        } catch { /* keep default */ }
+        
+        return { success: false, error: friendlyError };
       }
 
       return { success: true };
     } catch (e) {
       console.error("Failed to send WhatsApp message:", e);
-      return { success: false, error: String(e) };
+      return { success: false, error: "تعذر الاتصال بخدمة الواتساب" };
     }
   },
 });
@@ -69,7 +87,7 @@ export const sendQueueUpdateMessage = internalAction({
 
     if (!args.patientPhone) return;
 
-    const messageText = `مرحباً ${args.patientName}، دورك القادم الآن. يرجى التوجه إلى العيادة في أقرب وقت.`;
+    const messageText = msgYourTurn(args.patientName);
 
     await ctx.runAction(internal.whatsappAutomations.sendMessage, {
       instanceName: clinic.evolutionInstanceName,
@@ -97,16 +115,21 @@ export const scheduleDailyReminders = internalAction({
       });
 
       for (const appt of appointments) {
-        if (!appt.patientPhone || appt.reminderSent) continue;
-        
-        let timeStr = "اليوم";
-        if (appt.scheduledTime) {
-          const date = new Date(appt.scheduledTime);
-          timeStr = `اليوم الساعة ${date.toLocaleTimeString("ar-EG", { hour: "numeric", minute: "numeric", hour12: true })}`;
-        }
+        if (!appt.patientPhone) continue;
 
-        const messageText = `مرحباً ${appt.patientName}، نذكّرك بموعدك/استشارتك ${timeStr}. عنوان العيادة: ${clinic.clinicAddress || 'العنوان غير متوفر'}. نراك قريباً.`;
-        
+        const slotNum = appt.queueNumber ?? (appt.date
+          ? calcSlotNumber(appt.date, clinic.workingHoursStart ?? 9, clinic.slotDurationMinutes ?? 30)
+          : undefined);
+
+        const messageText = msgReminder({
+          patientName: appt.patientName || "",
+          clinicName: clinic.clinicName || "العيادة",
+          doctorName: clinic.name,
+          date: appt.date,
+          slotNumber: slotNum,
+          clinicAddress: clinic.clinicAddress,
+        });
+
         // Stagger every 5 minutes
         await ctx.scheduler.runAfter(totalDelay, internal.whatsappAutomations.sendMessage, {
           instanceName: clinic.evolutionInstanceName,
@@ -139,9 +162,13 @@ export const scheduleMissedAppointments = internalAction({
       for (const appt of missedAppts) {
         if (!appt.patientPhone) continue;
 
-        const dateStr = new Date(appt.queueDate!).toLocaleDateString("ar-EG", { month: "long", day: "numeric" });
-        const messageText = `مرحباً ${appt.patientName}، يبدو أنك لم تحضر موعدك بتاريخ ${dateStr}. يسعدنا إعادة الحجز عند اتصالك بنا.`;
-        
+        const messageText = msgMissed({
+          patientName: appt.patientName || "",
+          clinicName: clinic.clinicName || "العيادة",
+          doctorName: clinic.name,
+          date: appt.queueDate!,
+        });
+
         await ctx.scheduler.runAfter(totalDelay, internal.whatsappAutomations.sendMessage, {
           instanceName: clinic.evolutionInstanceName,
           evolutionApiKey: clinic.evolutionApiKey,
@@ -153,4 +180,83 @@ export const scheduleMissedAppointments = internalAction({
       }
     }
   },
+});
+
+export const cancelDayAction = action({
+  args: { clinicId: v.id("users"), dateMs: v.number() },
+  handler: async (ctx, args): Promise<{ success: boolean; cancelledCount: number }> => {
+    // 1. Fetch clinic info
+    const clinic = await ctx.runQuery(api.whatsappQueries.getClinicEvolutionCreds, {
+      clinicId: args.clinicId,
+    });
+
+    if (!clinic || !clinic.isEvolutionActive || clinic.evolutionStatus !== "open" || !clinic.evolutionInstanceName || !clinic.evolutionApiKey) {
+      throw new Error("Evolution API not active");
+    }
+
+    // 2. Run internal mutation to mark all visits on this day as cancelled and return them
+    const cancelledVisits = await ctx.runMutation(internal.whatsappAutomations.cancelDayInternal, {
+      clinicId: args.clinicId,
+      dateMs: args.dateMs,
+    }) as any[];
+
+    // 3. Schedule the WhatsApp messages staggered
+    let totalDelay = 0;
+    const FIVE_MINUTES_MS = 5 * 60 * 1000;
+
+    for (const appt of cancelledVisits) {
+      if (!appt.patientPhone) continue;
+
+      const messageText = msgDayCancelled({
+        patientName: appt.patientName,
+        clinicName: clinic.clinicName || "العيادة",
+        doctorName: clinic.name,
+        date: appt.date,
+      });
+
+      await ctx.scheduler.runAfter(totalDelay, internal.whatsappAutomations.sendMessage, {
+        instanceName: clinic.evolutionInstanceName,
+        evolutionApiKey: clinic.evolutionApiKey,
+        phoneNumber: appt.patientPhone,
+        messageText,
+      });
+
+      totalDelay += FIVE_MINUTES_MS;
+    }
+
+    return { success: true, cancelledCount: cancelledVisits.length };
+  }
+});
+
+export const cancelDayInternal = internalMutation({
+  args: { clinicId: v.id("users"), dateMs: v.number() },
+  handler: async (ctx, args) => {
+    const startMs = args.dateMs;
+    const endMs = startMs + 24 * 60 * 60 * 1000;
+
+    const visits = await ctx.db
+      .query("visits")
+      .withIndex("by_doctor_date", (q) => 
+        q.eq("doctorId", args.clinicId)
+         .gte("date", startMs)
+         .lt("date", endMs)
+      )
+      .collect();
+
+    const toCancel = visits.filter(v => v.status === "confirmed" || v.status === "pending");
+
+    for (const v of toCancel) {
+      await ctx.db.patch(v._id, { status: "cancelled" });
+    }
+
+    const clinic = await ctx.db.get(args.clinicId);
+    if (clinic) {
+      const blockedDates = clinic.blockedDates || [];
+      if (!blockedDates.includes(args.dateMs)) {
+        await ctx.db.patch(args.clinicId, { blockedDates: [...blockedDates, args.dateMs] });
+      }
+    }
+
+    return toCancel;
+  }
 });

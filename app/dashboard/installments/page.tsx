@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
@@ -26,9 +26,11 @@ import {
   Download,
   Users,
   Search,
+  AlertTriangle,
 } from "lucide-react";
 import Link from "next/link";
 import { useI18n } from "@/lib/i18n/client";
+import { openWhatsApp } from "@/lib/scheduling";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -93,7 +95,7 @@ function VisitSlotPicker({
   availableDays: string[];
   reservedTimes: Set<string>;
 }) {
-  const { t, lang } = useI18n();
+  const { t, lang, dir } = useI18n();
   const [calOpen, setCalOpen] = useState(false);
 
   const slots = useMemo(() => {
@@ -140,7 +142,7 @@ function VisitSlotPicker({
                 <button className={`w-full flex items-center gap-2 px-3 py-2.5 text-sm bg-background border rounded-xl hover:border-[#AF52DE]/50 transition-colors text-left ${!date ? "border-red-400/60" : "border-border"}`}>
                   <CalendarIcon className="w-4 h-4 text-muted-foreground shrink-0" />
                   <span className={date ? "" : "text-muted-foreground"}>
-                    {date ? date.toLocaleDateString(t("common.currency") === "ج.م" ? "ar-EG" : "en-US", { weekday: "short", month: "short", day: "numeric" }) : "Pick date"}
+                    {date ? date.toLocaleDateString(t("common.currency") === "ج.م" ? "ar-EG" : "en-US", { weekday: "short", month: "short", day: "numeric" }) : (dir === "rtl" ? "اختر تاريخاً" : "Pick date")}
                   </span>
                 </button>
               </PopoverTrigger>
@@ -193,10 +195,10 @@ function InstallmentForm({
   const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
   const createinstallment = useMutation(api.installments.createinstallment);
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
-  const { t } = useI18n();
+  const { t, dir } = useI18n();
 
   const [search, setSearch] = useState("");
-  const [selectedPatient, setSelectedPatient] = useState<{ id: Id<"patients">; name: string } | null>(null);
+  const [selectedPatient, setSelectedPatient] = useState<{ id: Id<"patients">; name: string; phone: string } | null>(null);
 
   // Form fields
   const [totalAmount, setTotalAmount] = useState("");
@@ -267,7 +269,7 @@ function InstallmentForm({
 
   const handleFile = (file: File) => {
     if (file.size > 20 * 1024 * 1024) {
-      toast.error("File too large — max 20 MB");
+      toast.error(dir === "rtl" ? "حجم الملف كبير جداً — الحد الأقصى 20 ميجابايت" : "File too large — max 20 MB");
       return;
     }
     setinstallmentFile(file);
@@ -282,7 +284,7 @@ function InstallmentForm({
 
   async function handleSave() {
     if (!selectedPatient) return;
-    if (!firstVisitDate) { toast.error("Pick a date for the first visit"); return; }
+    if (!firstVisitDate) { toast.error(dir === "rtl" ? "اختر تاريخاً للزيارة الأولى" : "Pick a date for the first visit"); return; }
     if (reservedTimes.has(firstVisitTime)) { toast.error(t("schedule.slotBooked") || "This time slot is already booked"); return; }
 
     setSaving(true);
@@ -303,7 +305,7 @@ function InstallmentForm({
       const [hh, mm] = firstVisitTime.split(":").map(Number);
       const firstTs = new Date(firstVisitDate.getFullYear(), firstVisitDate.getMonth(), firstVisitDate.getDate(), hh, mm, 0, 0);
 
-      await createinstallment({
+      const { id } = await createinstallment({
         clerkId,
         patientId: selectedPatient.id,
         totalAmount: totalAmount ? Number(totalAmount) : undefined,
@@ -317,10 +319,10 @@ function InstallmentForm({
         visitSchedules: [firstTs.getTime()],
       });
 
-      toast.success("installment created");
+      toast.success(dir === "rtl" ? "تم إنشاء خطة التقسيط" : "Installment plan created");
       onClose();
     } catch (e: any) {
-      toast.error(e.message ?? "Failed to create installment");
+      toast.error(e.message ?? (dir === "rtl" ? "فشل إنشاء التقسيط" : "Failed to create installment"));
     } finally {
       setSaving(false);
     }
@@ -387,7 +389,7 @@ function InstallmentForm({
                   {filteredPatients.length === 0 ? (
                     <p className="text-xs text-muted-foreground p-3 text-center">{t("installments.noPatients")}</p>
                   ) : filteredPatients.map((p) => (
-                    <button key={p._id} onClick={() => setSelectedPatient({ id: p._id, name: p.name })}
+                    <button key={p._id} onClick={() => setSelectedPatient({ id: p._id, name: p.name, phone: p.phone ?? "" })}
                       className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-muted/50 transition-colors text-left">
                       <div className="w-7 h-7 rounded-full bg-[#007AFF]/10 flex items-center justify-center text-[#007AFF] font-bold text-xs shrink-0">
                         {p.name.charAt(0).toUpperCase()}
@@ -719,9 +721,9 @@ export default function InstallmentsPage() {
     setDeleting(id);
     try {
       await deleteinstallment({ clerkId, installmentId: id });
-      toast.success("installment deleted");
+      toast.success(dir === "rtl" ? "تم حذف خطة التقسيط" : "Installment deleted");
     } catch {
-      toast.error("Failed to delete");
+      toast.error(dir === "rtl" ? "فشل الحذف" : "Failed to delete");
     } finally {
       setDeleting(null);
     }

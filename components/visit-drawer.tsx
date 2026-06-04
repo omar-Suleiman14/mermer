@@ -119,13 +119,13 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
   async function handleSubmit(e?: React.FormEvent) {
     e?.preventDefault();
     if (!visitDate) {
-      toast.error("Please pick a visit date");
+      toast.error(lang === "ar" ? "يرجى اختيار تاريخ الزيارة" : "Please pick a visit date");
       return;
     }
 
     const selectedSlot = timeSlots.find((s) => s.timeStr === visitTime);
     if (selectedSlot?.isReserved) {
-      toast.error("This time slot is already reserved.");
+      toast.error(lang === "ar" ? "هذا الوقت محجوز مسبقاً." : "This time slot is already reserved.");
       return;
     }
 
@@ -143,10 +143,10 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
         reasonForVisit: form.reasonForVisit || undefined,
         notes: form.notes || undefined,
       });
-      toast.success("Visit recorded");
+      toast.success(lang === "ar" ? "تم تسجيل الزيارة" : "Visit recorded");
       onOpenChange(false);
     } catch {
-      toast.error("Failed to save visit");
+      toast.error(lang === "ar" ? "فشل حفظ الزيارة" : "Failed to save visit");
     } finally {
       setLoading(false);
     }

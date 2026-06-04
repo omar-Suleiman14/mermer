@@ -2,9 +2,11 @@ import { internalQuery, query } from "./_generated/server";
 import { v } from "convex/values";
 
 function startOfDay(ts: number): number {
-  const d = new Date(ts);
-  d.setHours(0, 0, 0, 0);
-  return d.getTime();
+  // Fix for Cairo timezone (UTC+3)
+  const CAIRO_OFFSET = 3 * 60 * 60 * 1000;
+  const cairoTime = ts + CAIRO_OFFSET;
+  const daysSinceEpoch = Math.floor(cairoTime / (24 * 60 * 60 * 1000));
+  return daysSinceEpoch * 24 * 60 * 60 * 1000 - CAIRO_OFFSET;
 }
 
 export const getClinicEvolutionCreds = query({
@@ -18,9 +20,14 @@ export const getClinicEvolutionCreds = query({
       evolutionInstanceName: user.evolutionInstanceName,
       evolutionApiKey: user.evolutionApiKey,
       clinicAddress: user.clinicAddress || "العنوان غير متوفر",
+      clinicName: user.clinicName || "العيادة",
+      name: user.name,
+      workingHoursStart: user.workingHoursStart ?? 9,
+      slotDurationMinutes: user.slotDurationMinutes ?? 30,
     };
   },
 });
+
 
 export const getActiveEvolutionClinics = internalQuery({
   args: {},
@@ -35,15 +42,20 @@ export const getActiveEvolutionClinics = internalQuery({
 export const getTodayAppointmentsForReminders = internalQuery({
   args: { clinicId: v.id("users") },
   handler: async (ctx, args) => {
-    const today = startOfDay(Date.now());
+    const todayStart = startOfDay(Date.now());
+    const tomorrowStart = todayStart + 24 * 60 * 60 * 1000;
     
-    const queue = await ctx.db
-      .query("queue")
-      .withIndex("by_doctor_date", (q) => q.eq("doctorId", args.clinicId).eq("queueDate", today))
+    const visits = await ctx.db
+      .query("visits")
+      .withIndex("by_doctor_date", (q) => 
+        q.eq("doctorId", args.clinicId)
+         .gte("date", todayStart)
+         .lt("date", tomorrowStart)
+      )
       .collect();
       
-    // Only get active ones
-    return queue.filter(q => q.status !== "done" && q.patientPhone);
+    // Only get confirmed/pending ones with a phone number
+    return visits.filter(v => (v.status === "confirmed" || v.status === "pending") && v.patientPhone);
   },
 });
 

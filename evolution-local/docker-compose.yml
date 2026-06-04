@@ -2,8 +2,8 @@ version: '3.3'
 
 services:
   evolution-api:
-    image: atendai/evolution-api:latest
-    container_name: evolution-api
+    image: docker.io/evoapicloud/evolution-api:v2.3.7
+    # container_name: evolution-api
     restart: always
     ports:
       - "8080:8080"
@@ -32,7 +32,7 @@ services:
       - redis
 
   postgres:
-    image: postgres:15
+    image: docker.io/library/postgres:15
     container_name: evolution-postgres
     restart: always
     environment:
@@ -45,7 +45,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   redis:
-    image: redis:7
+    image: docker.io/library/redis:7
     container_name: evolution-redis
     restart: always
     ports:
@@ -54,8 +54,17 @@ services:
       - redis_data:/data
     command: redis-server --appendonly yes
 
+  cloudflared:
+    image: docker.io/cloudflare/cloudflared:latest
+    container_name: evolution-cloudflared
+    restart: always
+    command: tunnel --no-autoupdate --url http://evolution-api:8080
+    depends_on:
+      - evolution-api
+
 volumes:
   evolution_instances:
   evolution_store:
   postgres_data:
   redis_data:
+
