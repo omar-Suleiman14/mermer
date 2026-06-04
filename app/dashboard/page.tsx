@@ -82,6 +82,7 @@ interface SortableApptItemProps {
   tag?: "current" | "next";
   canReschedule?: boolean;
   canCancel?: boolean;
+  onConfirm?: () => void;
 }
 
 const SortableApptItem = memo(function SortableApptItem({
@@ -93,6 +94,7 @@ const SortableApptItem = memo(function SortableApptItem({
   tag,
   canReschedule = true,
   canCancel = true,
+  onConfirm,
 }: SortableApptItemProps) {
   const isinstallmentVisit = appt.source === "installment";
   const isDone = appt.status === "completed";
@@ -232,6 +234,15 @@ const SortableApptItem = memo(function SortableApptItem({
                 <MessageCircle className="w-5 h-5" />
               </button>
             )}
+            {appt.status === "pending" && onConfirm && (
+              <button
+                onClick={onConfirm}
+                className="p-2 rounded-full hover:bg-green-500/10 text-muted-foreground hover:text-green-500 transition-colors"
+                title={t("common.confirm") || "Confirm"}
+              >
+                <CheckCircle2 className="w-5 h-5" />
+              </button>
+            )}
             {canReschedule && (
               <button
                 onClick={onReschedule}
@@ -267,6 +278,12 @@ const SortableApptItem = memo(function SortableApptItem({
                   <DropdownMenuItem onClick={onReminder} className="gap-2 cursor-pointer font-medium text-[#25D366] focus:text-[#25D366]">
                     <MessageCircle className="w-4 h-4" />
                     <span>{t("schedule.sendReminder") || "Send Reminder"}</span>
+                  </DropdownMenuItem>
+                )}
+                {appt.status === "pending" && onConfirm && (
+                  <DropdownMenuItem onClick={onConfirm} className="gap-2 cursor-pointer font-medium text-green-500 focus:text-green-500 focus:bg-green-500/10">
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>{t("common.confirm") || "Confirm"}</span>
                   </DropdownMenuItem>
                 )}
                 {(canReschedule || (canCancel && !isinstallmentVisit)) && <DropdownMenuSeparator />}
@@ -399,7 +416,14 @@ export default function DashboardPage() {
       await cancelAppointment({ clerkId, appointmentId, updates: { status: "cancelled" } });
       toast.success(lang === "ar" ? "تم إلغاء الموعد بنجاح" : "Appointment cancelled successfully");
     } catch { toast.error(lang === "ar" ? "تعذّر إلغاء الموعد" : "Failed to cancel appointment"); }
-  }, [clerkId, cancelAppointment]);
+  }, [clerkId, cancelAppointment, lang]);
+
+  const handleConfirmVisit = useCallback(async (appointmentId: Id<"visits">) => {
+    try {
+      await updateAppointment({ clerkId, appointmentId, updates: { status: "confirmed" } });
+      toast.success(lang === "ar" ? "تم تأكيد الموعد بنجاح" : "Appointment confirmed successfully");
+    } catch { toast.error(lang === "ar" ? "تعذّر تأكيد الموعد" : "Failed to confirm appointment"); }
+  }, [clerkId, updateAppointment, lang]);
 
   const handleCancelDay = useCallback(async () => {
     if (!currentUser?._id) return;
@@ -416,6 +440,14 @@ export default function DashboardPage() {
     try {
       const res = await cancelDayAutomations({ clinicId: currentUser._id, dateMs: todayTs });
       toast.success(lang === "ar" ? `تم إلغاء ${res.cancelledCount} موعد بنجاح` : `Cancelled ${res.cancelledCount} appointments successfully`);
+      if (res.warning) {
+        toast.warning(
+          lang === "ar" 
+            ? "واتساب غير متصل. تم إلغاء المواعيد ولكن يرجى التواصل مع المرضى يدوياً" 
+            : "WhatsApp disconnected. Appointments cancelled but please contact patients manually.",
+          { duration: 10000 }
+        );
+      }
     } catch (err: any) {
       toast.error(err.message || "Failed to cancel day");
     } finally {
@@ -631,6 +663,7 @@ export default function DashboardPage() {
                       canReschedule={canReschedule}
                       canCancel={canCancel}
                       onComplete={() => setCompletionModal({ appointmentId: appt._id, patientId: appt.patientId ?? undefined, patientName: appt.patientName, patientAge: appt.patientAge, installmentId: appt.installmentId ?? undefined, tag: apptTag })}
+                      onConfirm={() => handleConfirmVisit(appt._id)}
                       onReminder={(e: React.MouseEvent) => openTemplatePicker(appt.patientName, appt.patientPhone, appt.date, e)}
                       onCancel={() => setCancelModal(appt._id)}
                       onReschedule={() => setRescheduleModal({ visitId: appt._id, patientName: appt.patientName, isinstallment: appt.source === "installment" })}

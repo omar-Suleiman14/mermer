@@ -184,14 +184,15 @@ export const scheduleMissedAppointments = internalAction({
 
 export const cancelDayAction = action({
   args: { clinicId: v.id("users"), dateMs: v.number() },
-  handler: async (ctx, args): Promise<{ success: boolean; cancelledCount: number }> => {
+  handler: async (ctx, args): Promise<{ success: boolean; cancelledCount: number; warning?: string }> => {
     // 1. Fetch clinic info
     const clinic = await ctx.runQuery(api.whatsappQueries.getClinicEvolutionCreds, {
       clinicId: args.clinicId,
     });
 
+    let warning: string | undefined = undefined;
     if (!clinic || !clinic.isEvolutionActive || clinic.evolutionStatus !== "open" || !clinic.evolutionInstanceName || !clinic.evolutionApiKey) {
-      throw new Error("Evolution API not active");
+      warning = "Evolution API not active";
     }
 
     // 2. Run internal mutation to mark all visits on this day as cancelled and return them
@@ -201,30 +202,32 @@ export const cancelDayAction = action({
     }) as any[];
 
     // 3. Schedule the WhatsApp messages staggered
-    let totalDelay = 0;
-    const FIVE_MINUTES_MS = 5 * 60 * 1000;
+    if (!warning) {
+      let totalDelay = 0;
+      const FIVE_MINUTES_MS = 5 * 60 * 1000;
 
-    for (const appt of cancelledVisits) {
-      if (!appt.patientPhone) continue;
+      for (const appt of cancelledVisits) {
+        if (!appt.patientPhone) continue;
 
-      const messageText = msgDayCancelled({
-        patientName: appt.patientName,
-        clinicName: clinic.clinicName || "العيادة",
-        doctorName: clinic.name,
-        date: appt.date,
-      });
+        const messageText = msgDayCancelled({
+          patientName: appt.patientName,
+          clinicName: clinic?.clinicName || "العيادة",
+          doctorName: clinic?.name || "الطبيب",
+          date: appt.date,
+        });
 
-      await ctx.scheduler.runAfter(totalDelay, internal.whatsappAutomations.sendMessage, {
-        instanceName: clinic.evolutionInstanceName,
-        evolutionApiKey: clinic.evolutionApiKey,
-        phoneNumber: appt.patientPhone,
-        messageText,
-      });
+        await ctx.scheduler.runAfter(totalDelay, internal.whatsappAutomations.sendMessage, {
+          instanceName: clinic!.evolutionInstanceName!,
+          evolutionApiKey: clinic!.evolutionApiKey!,
+          phoneNumber: appt.patientPhone,
+          messageText,
+        });
 
-      totalDelay += FIVE_MINUTES_MS;
+        totalDelay += FIVE_MINUTES_MS;
+      }
     }
 
-    return { success: true, cancelledCount: cancelledVisits.length };
+    return { success: true, cancelledCount: cancelledVisits.length, warning };
   }
 });
 
