@@ -507,9 +507,9 @@ function SchedulePageInner() {
 
     const slots: number[] = [];
     const cursor = new Date(selectedDay);
-    cursor.setHours(startHour, 0, 0, 0);
+    cursor.setHours(Math.floor(startHour), (startHour % 1) * 60, 0, 0);
     const end = new Date(selectedDay);
-    end.setHours(endHour, 0, 0, 0);
+    end.setHours(Math.floor(endHour), (endHour % 1) * 60, 0, 0);
     while (cursor < end) {
       slots.push(cursor.getTime());
       cursor.setMinutes(cursor.getMinutes() + slotMin);

@@ -351,7 +351,9 @@ export function BookingForm({ doctor }: BookingFormProps) {
           ) : (
             <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
               {slots.map((ts) => {
-                const isReserved = bookedSlots?.includes(ts);
+                const isReserved = bookedSlots?.some(bookedTs => 
+                  bookedTs >= ts && bookedTs < ts + (safeDoctor?.slotDurationMinutes || 30) * 60000
+                );
                 const isPast = ts < now;
                 const disabled = isReserved || isPast;
 
