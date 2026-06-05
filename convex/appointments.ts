@@ -443,6 +443,38 @@ export const getAppointmentsByDate = query({
   },
 });
 
+export const getAppointmentsByRange = query({
+  args: { clerkId: v.string(), startMs: v.number(), endMs: v.number() },
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx, args.clerkId);
+    if (!user) return [];
+
+    const visits = await ctx.db
+      .query("visits")
+      .withIndex("by_doctor_date", (q) =>
+        q
+          .eq("doctorId", user._id)
+          .gte("date", args.startMs)
+          .lte("date", args.endMs)
+      )
+      .take(1000); // Allow up to 1000 visits for a range (e.g. 1-2 weeks)
+
+    return await Promise.all(
+      visits.map(async (visit) => {
+        const needsPatient = !visit.patientName && visit.patientId;
+        const patient = needsPatient ? await ctx.db.get(visit.patientId) : null;
+        return {
+          ...visit,
+          patientName: visit.patientName ?? patient?.name ?? "Unknown",
+          patientPhone: visit.patientPhone ?? patient?.phone ?? "",
+          patientAge: visit.patientAge ?? patient?.age,
+          patient: needsPatient ? patient : null,
+        };
+      })
+    );
+  },
+});
+
 export const getAvailableSlots = query({
   args: { slug: v.string(), date: v.number() },
   handler: async (ctx, args) => {

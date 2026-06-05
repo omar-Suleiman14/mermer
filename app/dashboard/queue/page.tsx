@@ -464,11 +464,20 @@ function SchedulePageInner() {
   const weekAnchor = todayTs + weekOffset * 86400000;
   const weekDays = getWeekDays(weekAnchor, daysInView);
 
-  // Fetch appointments for selected day
-  const rawAppointments = useQuery(
-    api.appointments.getAppointmentsByDate,
-    clerkId ? { clerkId, dayStart: selectedDay } : "skip"
+  // Fetch all appointments for the currently visible week
+  const weekStartMs = weekAnchor;
+  const weekEndMs = weekAnchor + daysInView * 86400000 - 1;
+  const rangeAppointments = useQuery(
+    api.appointments.getAppointmentsByRange,
+    clerkId ? { clerkId, startMs: weekStartMs, endMs: weekEndMs } : "skip"
   );
+
+  // Filter the fetched range to only show appointments for the currently selected day
+  const rawAppointments = useMemo(() => {
+    if (!rangeAppointments) return undefined;
+    const selectedDayEnd = selectedDay + 86400000 - 1;
+    return rangeAppointments.filter((a) => a.date >= selectedDay && a.date <= selectedDayEnd);
+  }, [rangeAppointments, selectedDay]);
 
   useEffect(() => {
     if (initVisitId && rawAppointments && !completionModal) {
