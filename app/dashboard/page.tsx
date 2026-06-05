@@ -7,6 +7,7 @@ import { Id } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
 import dynamic from "next/dynamic";
 const VisitCompletionModal = dynamic(() => import("@/components/visit-completion-modal").then(m => m.VisitCompletionModal));
+import { TodayAnalytics } from "@/components/dashboard/today-analytics";
 import { PastDueAlerts } from "@/components/dashboard/past-due-alerts";
 import { SortableApptItem } from "@/components/dashboard/sortable-appt-item";
 import { Skeleton } from "@/components/ui/skeleton";
