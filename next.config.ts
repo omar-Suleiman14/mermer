@@ -171,7 +171,6 @@ const nextConfig: NextConfig = {
   // Output file-tracing for faster cold starts in serverless environments
   outputFileTracingExcludes: {
     "*": [
-      "node_modules/@swc/**",
       "node_modules/@esbuild/**",
       "node_modules/webpack/**",
     ],
