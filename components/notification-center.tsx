@@ -139,6 +139,8 @@ export function NotificationCenter() {
   const [deletedIds, setDeletedIds] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
   const [reminderFor, setReminderFor] = useState<{ patientName?: string; date: number; patientPhone?: string; _id?: string } | null>(null);
+  
+  const updateAppointment = useMutation(api.appointments.updateAppointment);
 
   // Load persisted state once on mount
   useEffect(() => {
@@ -165,11 +167,11 @@ export function NotificationCenter() {
 
   // ── Derived lists ─────────────────────────────────────────────────────────
   type AppNotification = 
-    | { type: "onlineBooking"; _id: string; createdAt: number; patientName: string; date: number; patientPhone: string; }
+    | { type: "onlineBooking"; _id: string; createdAt: number; patientName: string; date: number; patientPhone: string; status: string; }
     | { type: "supportMsg"; _id: string; createdAt: number; message: string; isRead: boolean; };
 
   const allItems: AppNotification[] = [
-    ...(onlineAppointments ?? []).map(a => ({ type: "onlineBooking" as const, _id: a._id, createdAt: a.createdAt, patientName: a.patientName || "", date: a.date, patientPhone: a.patientPhone || "" })),
+    ...(onlineAppointments ?? []).map(a => ({ type: "onlineBooking" as const, _id: a._id, createdAt: a.createdAt, patientName: a.patientName || "", date: a.date, patientPhone: a.patientPhone || "", status: a.status || "pending" })),
     ...(supportMsgs ?? []).filter(m => m.fromAdmin).map(m => ({ type: "supportMsg" as const, _id: m._id, createdAt: m.createdAt, message: m.message, isRead: m.isRead }))
   ];
 
@@ -367,12 +369,24 @@ export function NotificationCenter() {
                         </div>
 
                         {/* Send Reminder */}
-                        {noti.type === "onlineBooking" && noti.patientPhone && (
+                        {noti.type === "onlineBooking" && noti.status === "pending" && noti.patientPhone && (
                           <button
-                            onClick={(e) => {
+                            onClick={async (e) => {
                               e.stopPropagation();
-                              setOpen(false);
-                              setReminderFor(noti);
+                              if (clerkId && noti._id) {
+                                toast.promise(
+                                  updateAppointment({
+                                    clerkId,
+                                    appointmentId: noti._id as any,
+                                    updates: { status: "confirmed" }
+                                  }),
+                                  {
+                                    loading: lang === "ar" ? "جاري التأكيد..." : "Confirming...",
+                                    success: lang === "ar" ? "تم تأكيد الموعد" : "Appointment confirmed",
+                                    error: lang === "ar" ? "فشل التأكيد" : "Failed to confirm"
+                                  }
+                                );
+                              }
                             }}
                             className="mt-2.5 text-xs font-semibold bg-[#25D366]/10 text-[#25D366] px-3 py-1.5 rounded-lg hover:bg-[#25D366]/20 transition-colors flex items-center gap-1.5 w-fit"
                           >
