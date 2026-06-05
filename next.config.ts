@@ -155,18 +155,12 @@ const nextConfig: NextConfig = {
     optimizePackageImports: [
       "lucide-react",
       "date-fns",
-      "framer-motion",
       "@radix-ui/react-popover",
       "@radix-ui/react-dialog",
       "@radix-ui/react-dropdown-menu",
       "@radix-ui/react-tooltip",
       "@radix-ui/react-collapsible",
-      "@dnd-kit/core",
-      "@dnd-kit/sortable",
     ],
-    // Parallelise server-component rendering (React 19 compatible)
-    parallelServerCompiles: true,
-    parallelServerBuildTraces: true,
     // Preload linked pages when they enter viewport
     optimisticClientCache: true,
   },
