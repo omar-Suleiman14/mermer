@@ -377,7 +377,7 @@ export function NotificationCenter() {
                             className="mt-2.5 text-xs font-semibold bg-[#25D366]/10 text-[#25D366] px-3 py-1.5 rounded-lg hover:bg-[#25D366]/20 transition-colors flex items-center gap-1.5 w-fit"
                           >
                             <MessageCircle className="w-3.5 h-3.5" />
-                            {t("notifications.sendReminder") || "Send reminder"}
+                            {lang === "ar" ? "تأكيد" : "Confirm"}
                           </button>
                         )}
                       </div>

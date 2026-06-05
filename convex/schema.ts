@@ -399,4 +399,13 @@ export default defineSchema({
     createdAt: v.number(),
   }).index("by_user", ["userId"]).index("by_isRead", ["isRead"]),
 
+  messageLogs: defineTable({
+    doctorId: v.id("users"),
+    patientPhone: v.string(),
+    messageText: v.string(),
+    status: v.union(v.literal("success"), v.literal("failed")),
+    error: v.optional(v.string()),
+    createdAt: v.number(),
+  }).index("by_doctor", ["doctorId"]).index("by_patient_phone", ["patientPhone"]),
+
 });

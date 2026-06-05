@@ -223,6 +223,7 @@ export const createinstallment = mutation({
         evolutionApiKey: user.evolutionApiKey,
         phoneNumber: patient.phone,
         messageText,
+        doctorId: user._id,
       };
       if (payload) {
         await ctx.scheduler.runAfter(0, internal.whatsappAutomations.sendMessage, payload);

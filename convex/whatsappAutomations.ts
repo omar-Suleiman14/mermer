@@ -1,17 +1,18 @@
-import { action, internalAction, internalMutation } from "./_generated/server";
+import { action, internalAction, internalMutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { requireAuthUser } from "./authHelper";
 import { internal, api } from "./_generated/api";
 import { msgBookingConfirmed, msgDayCancelled, msgReminder, msgMissed, msgYourTurn, calcSlotNumber } from "./messageHelpers";
 
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || "http://localhost:8080";
 
-// Internal Action: Send WhatsApp Message via Evolution API
 export const sendMessage = internalAction({
   args: {
     instanceName: v.string(),
     evolutionApiKey: v.string(),
     phoneNumber: v.string(),
     messageText: v.string(),
+    doctorId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
     let cleanNumber = args.phoneNumber.replace(/[^0-9]/g, "");
@@ -56,15 +57,62 @@ export const sendMessage = internalAction({
             friendlyError = "خطأ في اتصال الواتساب - تحقق من الإعدادات";
           }
         } catch { /* keep default */ }
+        if (args.doctorId) {
+          await ctx.runMutation(internal.whatsappAutomations.logMessage, {
+            doctorId: args.doctorId,
+            patientPhone: args.phoneNumber,
+            messageText: args.messageText,
+            status: "failed",
+            error: friendlyError,
+          });
+        }
         
         return { success: false, error: friendlyError };
+      }
+
+      if (args.doctorId) {
+        await ctx.runMutation(internal.whatsappAutomations.logMessage, {
+          doctorId: args.doctorId,
+          patientPhone: args.phoneNumber,
+          messageText: args.messageText,
+          status: "success",
+        });
       }
 
       return { success: true };
     } catch (e) {
       console.error("Failed to send WhatsApp message:", e);
+      if (args.doctorId) {
+        await ctx.runMutation(internal.whatsappAutomations.logMessage, {
+          doctorId: args.doctorId,
+          patientPhone: args.phoneNumber,
+          messageText: args.messageText,
+          status: "failed",
+          error: "تعذر الاتصال بخدمة الواتساب",
+        });
+      }
       return { success: false, error: "تعذر الاتصال بخدمة الواتساب" };
     }
+  },
+});
+
+export const logMessage = internalMutation({
+  args: {
+    doctorId: v.id("users"),
+    patientPhone: v.string(),
+    messageText: v.string(),
+    status: v.union(v.literal("success"), v.literal("failed")),
+    error: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.insert("messageLogs", {
+      doctorId: args.doctorId,
+      patientPhone: args.patientPhone,
+      messageText: args.messageText,
+      status: args.status,
+      error: args.error,
+      createdAt: Date.now(),
+    });
   },
 });
 
@@ -94,6 +142,7 @@ export const sendQueueUpdateMessage = internalAction({
       evolutionApiKey: clinic.evolutionApiKey,
       phoneNumber: args.patientPhone,
       messageText,
+      doctorId: args.clinicId,
     });
   },
 });
@@ -262,4 +311,21 @@ export const cancelDayInternal = internalMutation({
 
     return toCancel;
   }
+});
+
+export const getMessageLogs = query({
+  args: {
+    clerkId: v.string(),
+    patientPhone: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx, args.clerkId);
+    
+    return await ctx.db
+      .query("messageLogs")
+      .withIndex("by_patient_phone", (q) => q.eq("patientPhone", args.patientPhone))
+      .filter((q) => q.eq(q.field("doctorId"), user._id))
+      .order("desc")
+      .take(50);
+  },
 });

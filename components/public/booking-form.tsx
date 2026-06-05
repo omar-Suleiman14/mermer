@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useAction, useQuery } from "convex/react";
-import { Loader2, CheckCircle2, CalendarDays, X } from "lucide-react";
+import { Loader2, CheckCircle2, CalendarDays, X, MessageSquare } from "lucide-react";
 import { api } from "@/convex/_generated/api";
 import { useI18n } from "@/lib/i18n/client";
 import { cn } from "@/lib/utils";
@@ -39,6 +39,9 @@ export function BookingForm({ doctor }: BookingFormProps) {
   const [queueNumber, setQueueNumber] = useState<number | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedSlotMs, setSelectedSlotMs] = useState<number | null>(null);
+  const [pendingWaLink, setPendingWaLink] = useState<string | null>(null);
+  const [bookedSlotMs, setBookedSlotMs] = useState<number | null>(null);
+  const [bookedName, setBookedName] = useState("");
   
   // Date selection
   const [selectedDateMs, setSelectedDateMs] = useState<number>(() => {
@@ -177,16 +180,12 @@ export function BookingForm({ doctor }: BookingFormProps) {
       } for ${name}${result.queueNumber ? ` (Slot Number: ${result.queueNumber})` : ""}`);
       const waLink = waPhone ? `https://wa.me/${waPhone}?text=${waMessage}` : null;
 
-      if (waLink) {
-        window.open(waLink, "_blank");
-      }
-
-      // Reset form
-      setName("");
-      setPhone("");
-      setAge("");
-      setSelectedSlotMs(null);
-      setDrawerOpen(false);
+      // Store data for the success screen
+      setBookedSlotMs(selectedSlotMs);
+      setBookedName(name.trim());
+      setQueueNumber(result.queueNumber ?? null);
+      setPendingWaLink(waLink);
+      setSuccess(true);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       let cleanMsg = msg.replace(/\[.*?\]\s*/g, "").replace("ConvexError: ", "").replace("Uncaught Error: ", "").trim();
@@ -398,34 +397,103 @@ export function BookingForm({ doctor }: BookingFormProps) {
                 className="w-full max-w-md max-h-[90vh] flex flex-col bg-card rounded-3xl shadow-xl overflow-hidden"
                 dir={dir}
               >
-                <div className="flex-none flex items-center justify-between p-6 pb-2">
-                  <div>
-                    <h2 className="text-xl font-bold text-foreground">
-                      {dir === "rtl" ? "تأكيد الحجز" : "Confirm Booking"}
-                    </h2>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {selectedSlotMs
-                        ? new Date(selectedSlotMs).toLocaleString(lang === "ar" ? "ar-EG" : "en-US", {
-                            weekday: "short",
-                            month: "short",
-                            day: "numeric",
-                            hour: "numeric",
-                            minute: "2-digit",
-                            hour12: true,
-                          })
-                        : ""}
-                    </p>
+                {success ? (
+                  /* ── Success Screen ── */
+                  <div className="p-6 flex flex-col items-center text-center gap-4">
+                    <div className="w-16 h-16 rounded-full bg-green-500/10 flex items-center justify-center">
+                      <CheckCircle2 className="w-8 h-8 text-green-500" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-foreground">
+                        {dir === "rtl" ? "تم الحجز بنجاح!" : "Booking Submitted!"}
+                      </h2>
+                      <p className="text-sm text-muted-foreground mt-1.5">
+                        {bookedSlotMs
+                          ? new Date(bookedSlotMs).toLocaleString(lang === "ar" ? "ar-EG" : "en-US", {
+                              weekday: "long",
+                              month: "short",
+                              day: "numeric",
+                              hour: "numeric",
+                              minute: "2-digit",
+                              hour12: true,
+                            })
+                          : ""}
+                      </p>
+                    </div>
+
+                    <div className="w-full bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 text-start">
+                      <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
+                        {dir === "rtl" ? "⚠️ مهم: أكّد الحجز عبر الواتساب" : "⚠️ Important: Confirm via WhatsApp"}
+                      </p>
+                      <p className="text-xs text-amber-600/80 dark:text-amber-400/70 mt-1">
+                        {dir === "rtl"
+                          ? "حجزك قيد الانتظار. يرجى إرسال رسالة تأكيد عبر الواتساب خلال 15 دقيقة وإلا سيتم إلغاء الحجز تلقائياً."
+                          : "Your booking is pending. Please send a confirmation message via WhatsApp within 15 minutes or it will be automatically cancelled."}
+                      </p>
+                    </div>
+
+                    {pendingWaLink && (
+                      <button
+                        onClick={() => {
+                          window.open(pendingWaLink!, "_blank");
+                        }}
+                        className="w-full flex items-center justify-center gap-2.5 bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold py-3.5 rounded-2xl transition-colors text-base shadow-lg shadow-[#25D366]/20"
+                      >
+                        <MessageSquare className="w-5 h-5" />
+                        {dir === "rtl" ? "أكّد عبر الواتساب" : "Confirm via WhatsApp"}
+                      </button>
+                    )}
+
+                    <button
+                      onClick={() => {
+                        setSuccess(false);
+                        setPendingWaLink(null);
+                        setBookedSlotMs(null);
+                        setBookedName("");
+                        setName("");
+                        setPhone("");
+                        setAge("");
+                        setSelectedSlotMs(null);
+                        setDrawerOpen(false);
+                      }}
+                      className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {dir === "rtl" ? "إغلاق" : "Close"}
+                    </button>
                   </div>
-                  <button
-                    onClick={() => setDrawerOpen(false)}
-                    className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-                <div className="flex-1 overflow-y-auto">
-                  {renderFormContent()}
-                </div>
+                ) : (
+                  /* ── Form Screen ── */
+                  <>
+                    <div className="flex-none flex items-center justify-between p-6 pb-2">
+                      <div>
+                        <h2 className="text-xl font-bold text-foreground">
+                          {dir === "rtl" ? "تأكيد الحجز" : "Confirm Booking"}
+                        </h2>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {selectedSlotMs
+                            ? new Date(selectedSlotMs).toLocaleString(lang === "ar" ? "ar-EG" : "en-US", {
+                                weekday: "short",
+                                month: "short",
+                                day: "numeric",
+                                hour: "numeric",
+                                minute: "2-digit",
+                                hour12: true,
+                              })
+                            : ""}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => setDrawerOpen(false)}
+                        className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto">
+                      {renderFormContent()}
+                    </div>
+                  </>
+                )}
               </motion.div>
             </motion.div>
           )}

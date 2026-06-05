@@ -227,6 +227,7 @@ export const confirmPendingAppointmentByPhone = internalMutation({
       evolutionApiKey: doctor.evolutionApiKey || "",
       phoneNumber: args.patientPhone,
       messageText,
+      doctorId: doctor._id,
     });
 
     // 5. Notify doctor that it's confirmed
@@ -309,6 +310,7 @@ export const addManualAppointment = mutation({
         evolutionApiKey: doctor.evolutionApiKey,
         phoneNumber: patient.phone,
         messageText,
+        doctorId: doctor._id,
       });
     }
 
@@ -353,6 +355,7 @@ export const swapAppointments = mutation({
           evolutionApiKey: user.evolutionApiKey,
           phoneNumber: v1.patientPhone,
           messageText: msgRescheduled({ patientName: v1.patientName || "", clinicName: user.clinicName || "العيادة", doctorName: user.name, newDate: v2.date, slotNumber: slot1, clinicAddress: user.clinicAddress }),
+          doctorId: user._id,
         });
       }
       if (v2.patientPhone) {
@@ -362,6 +365,7 @@ export const swapAppointments = mutation({
           evolutionApiKey: user.evolutionApiKey,
           phoneNumber: v2.patientPhone,
           messageText: msgRescheduled({ patientName: v2.patientName || "", clinicName: user.clinicName || "العيادة", doctorName: user.name, newDate: v1.date, slotNumber: slot2, clinicAddress: user.clinicAddress }),
+          doctorId: user._id,
         });
       }
     }
@@ -525,6 +529,7 @@ export const updateAppointment = mutation({
           evolutionApiKey: user.evolutionApiKey,
           phoneNumber: visit.patientPhone,
           messageText: msgRescheduled({ patientName: visit.patientName || "", clinicName: user.clinicName || "العيادة", doctorName: user.name, newDate, slotNumber: slotNum, clinicAddress: user.clinicAddress }),
+          doctorId: user._id,
         });
       }
     }
@@ -545,6 +550,7 @@ export const updateAppointment = mutation({
         evolutionApiKey: user.evolutionApiKey,
         phoneNumber: visit.patientPhone,
         messageText,
+        doctorId: user._id,
       });
     }
 
@@ -554,6 +560,7 @@ export const updateAppointment = mutation({
         evolutionApiKey: user.evolutionApiKey,
         phoneNumber: visit.patientPhone,
         messageText: msgAppointmentCancelled({ patientName: visit.patientName || "", clinicName: user.clinicName || "العيادة", doctorName: user.name, date: visit.date }),
+        doctorId: user._id,
       });
     }
 
@@ -637,6 +644,7 @@ export const cancelAppointmentByPhone = mutation({
         evolutionApiKey: user.evolutionApiKey,
         phoneNumber: visit.patientPhone,
         messageText: msgAppointmentCancelled({ patientName: visit.patientName || "", clinicName: user.clinicName || "العيادة", doctorName: user.name, date: visit.date }),
+        doctorId: user._id,
       });
     }
 

@@ -29,6 +29,9 @@ import {
   CalendarIcon,
   Users,
   Printer,
+  MessageSquare,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import Link from "next/link";
@@ -54,6 +57,10 @@ export default function PatientProfilePage() {
   const installments = useQuery(
     api.installments.listinstallmentsByPatient,
     clerkId ? { patientId, clerkId } : "skip"
+  );
+  const messageLogs = useQuery(
+    api.whatsappAutomations.getMessageLogs,
+    clerkId && patient?.phone ? { clerkId, patientPhone: patient.phone } : "skip"
   );
 
   if (patient === undefined) {
@@ -510,7 +517,70 @@ export default function PatientProfilePage() {
           )}
         </div>
 
-        {/* installments section moved to top */}
+        {/* Message Logs */}
+        <div>
+          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+            <MessageSquare className="w-4 h-4 text-[#25D366]" />
+            {lang === "ar" ? "سجل رسائل الواتساب" : "WhatsApp Message Logs"}
+            {messageLogs !== undefined && (
+              <span className="text-xs text-muted-foreground font-normal">
+                ({messageLogs.length})
+              </span>
+            )}
+          </h3>
+
+          {messageLogs === undefined ? (
+            <div className="flex items-center justify-center py-10">
+              <IOSSpinner size={24} className="text-[#007AFF]" />
+            </div>
+          ) : messageLogs.length === 0 ? (
+            <div className="bg-card border border-border rounded-xl p-8 text-center">
+              <p className="text-sm text-muted-foreground">{lang === "ar" ? "لا توجد رسائل مسجلة" : "No messages logged yet"}</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {messageLogs.map((log) => (
+                <div key={log._id} className="bg-card border border-border rounded-xl p-4 flex gap-3">
+                  <div className="shrink-0 mt-0.5">
+                    {log.status === "success" ? (
+                      <div className="w-6 h-6 rounded-full bg-[#25D366]/10 flex items-center justify-center">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-[#25D366]" />
+                      </div>
+                    ) : (
+                      <div className="w-6 h-6 rounded-full bg-red-500/10 flex items-center justify-center">
+                        <XCircle className="w-3.5 h-3.5 text-red-500" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between gap-3 mb-1">
+                      <span className="text-xs font-semibold">
+                        {log.status === "success" ? (lang === "ar" ? "تم الإرسال" : "Sent") : (lang === "ar" ? "فشل الإرسال" : "Failed")}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground font-mono">
+                        {new Date(log.createdAt).toLocaleDateString(dateLocale, {
+                          month: "short",
+                          day: "numeric",
+                          hour: "numeric",
+                          minute: "2-digit",
+                        })}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground whitespace-pre-wrap leading-relaxed bg-muted/30 p-2 rounded-lg border border-border/50">
+                      {log.messageText}
+                    </p>
+                    {log.status === "failed" && log.error && (
+                      <p className="text-[10px] text-red-500 mt-1.5 font-medium flex items-center gap-1">
+                        <AlertCircle className="w-3 h-3" />
+                        {log.error}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Drawers */}
