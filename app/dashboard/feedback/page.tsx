@@ -10,6 +10,7 @@ import { IOSSpinner } from "@/components/ui/spinner";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useI18n } from "@/lib/i18n/client";
+import Image from "next/image";
 
 function StarRow({ rating }: { rating: number }) {
   return (
@@ -98,10 +99,12 @@ export default function FeedbackDashboard() {
             </div>
             <div className="flex items-start gap-4">
               {storedQrUrl ? (
-                <img
+                <Image
                   src={storedQrUrl}
-                  alt={t("feedback.qrAlt")}
-                  className="w-32 h-32 rounded-xl border border-border bg-white"
+                  alt={t("feedback.qrAlt") || "QR Code"}
+                  width={128}
+                  height={128}
+                  className="w-32 h-32 rounded-xl border border-border bg-white object-contain"
                 />
               ) : isGenerating ? (
                 <div className="w-32 h-32 rounded-xl bg-muted/40 flex flex-col items-center justify-center">

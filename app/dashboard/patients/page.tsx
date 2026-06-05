@@ -96,6 +96,7 @@ export default function PatientsPage() {
                   <Link
                     key={patient._id}
                     href={`/dashboard/patients/${patient._id}`}
+                    prefetch={true}
                     className="group bg-white dark:bg-[#1c1c1a] border border-black/5 dark:border-white/5 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-[#007AFF]/20 transition-all flex items-center gap-4"
                   >
                     <div className={`relative w-12 h-12 rounded-full ${pal.bg} flex items-center justify-center shrink-0`}>

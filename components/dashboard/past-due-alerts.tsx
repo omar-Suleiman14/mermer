@@ -33,7 +33,7 @@ export function PastDueAlerts() {
         {pastDueinstallments.map((installment: any) => (
           <div key={installment._id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 rounded-2xl bg-card border border-border/40 shadow-sm">
             <div>
-              <Link href={`/dashboard/patients/${installment.patientId}?tab=installments`} className="font-semibold text-sm hover:text-[#007AFF] transition-colors">
+              <Link href={`/dashboard/patients/${installment.patientId}?tab=installments`} prefetch={true} className="font-semibold text-sm hover:text-[#007AFF] transition-colors">
                 {installment.patientName}
               </Link>
               <p className="text-xs text-muted-foreground mt-0.5">
@@ -42,6 +42,7 @@ export function PastDueAlerts() {
             </div>
             <Link
               href={`/dashboard/patients/${installment.patientId}?tab=installments`}
+              prefetch={true}
               className="shrink-0 inline-flex items-center justify-center text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-xl transition-colors"
             >
               {t("dashboard.resolve") || "Resolve"}

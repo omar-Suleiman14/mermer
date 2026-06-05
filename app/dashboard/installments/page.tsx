@@ -675,6 +675,7 @@ function InstallmentViewDrawer({
           {installment.status === "active" && installment.nextVisitDate && (
             <Link
               href={`/dashboard/queue?date=${installment.nextVisitDate}${installment.nextVisitId ? `&visitId=${installment.nextVisitId}` : ""}`}
+              prefetch={true}
               onClick={onClose}
               className="flex items-center gap-2 p-3 rounded-xl bg-[#007AFF]/8 border border-[#007AFF]/20 hover:bg-[#007AFF]/15 transition-colors cursor-pointer"
             >
@@ -910,7 +911,7 @@ export default function InstallmentsPage() {
                             <Link 
                               href={`/dashboard/queue?date=${installment.nextVisitDate}${installment.nextVisitId ? `&visitId=${installment.nextVisitId}` : ""}`}
                               className="text-xs text-muted-foreground flex items-center gap-1 hover:text-[#007AFF] hover:bg-[#007AFF]/5 rounded px-1 -ml-1 transition-colors"
-                              onClick={(e) => e.stopPropagation()}
+                              onClick={(e: React.MouseEvent) => e.stopPropagation()}
                             >
                               <CalendarIcon className="w-3 h-3" />
                               {t("installments.next")}: {fmtDate(installment.nextVisitDate, t("common.currency") === "ج.م" ? "ar-EG" : "en-US", true)}

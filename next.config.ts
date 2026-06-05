@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const isProduction = process.env.NODE_ENV === "production";
+const isDev = process.env.NODE_ENV === "development";
 
 const nextConfig: NextConfig = {
   images: {
@@ -150,16 +151,40 @@ const nextConfig: NextConfig = {
 
   // Experimental performance features
   experimental: {
-    // Enable optimized package imports for large libraries
+    // Enable optimized package imports — tree-shakes large libs at compile time
     optimizePackageImports: [
       "lucide-react",
       "date-fns",
       "framer-motion",
+      "@radix-ui/react-popover",
+      "@radix-ui/react-dialog",
+      "@radix-ui/react-dropdown-menu",
+      "@radix-ui/react-tooltip",
+      "@radix-ui/react-collapsible",
+      "@dnd-kit/core",
+      "@dnd-kit/sortable",
     ],
+    // Parallelise server-component rendering (React 19 compatible)
+    parallelServerCompiles: true,
+    parallelServerBuildTraces: true,
+    // Preload linked pages when they enter viewport
+    optimisticClientCache: true,
   },
   compiler: {
-    removeConsole: process.env.NODE_ENV === "production",
+    removeConsole: isProduction ? { exclude: ["error"] } : false,
   },
+
+  // Output file-tracing for faster cold starts in serverless environments
+  outputFileTracingExcludes: {
+    "*": [
+      "node_modules/@swc/**",
+      "node_modules/@esbuild/**",
+      "node_modules/webpack/**",
+    ],
+  },
+
+  // Enable Turbopack in dev for instant HMR (opt-in)
+  turbopack: isDev ? {} : undefined,
 };
 
 export default nextConfig;

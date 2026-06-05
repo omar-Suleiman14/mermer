@@ -79,6 +79,12 @@ export default async function RootLayout({
       <head>
         <link rel="preconnect" href={process.env.NEXT_PUBLIC_CONVEX_URL} crossOrigin="anonymous" />
         <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_CONVEX_URL} />
+        {/* Preconnect to Clerk for faster auth */}
+        <link rel="preconnect" href="https://clerk.mermereg.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://clerk.mermereg.com" />
+        <link rel="preconnect" href="https://img.clerk.com" crossOrigin="anonymous" />
+        {/* Preload critical SVG icon */}
+        <link rel="preload" href="/icon.svg" as="image" type="image/svg+xml" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

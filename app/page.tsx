@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight, Search, CheckCircle2, MessageCircle, CalendarCheck, ShieldCheck } from "lucide-react";
 import { getServerI18n } from "@/lib/i18n/server";
 import dynamic from "next/dynamic";
@@ -268,7 +269,7 @@ export default async function PatientLandingPage() {
       <footer className="border-t border-slate-100 dark:border-white/5 bg-white dark:bg-black py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-[1400px] mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2">
-            <img src="/icon.svg" alt="mermer" className="w-6 h-6" />
+            <Image src="/icon.svg" alt="mermer" width={24} height={24} className="w-6 h-6" priority />
             <span className="font-semibold text-lg tracking-tight">mermer</span>
           </div>
           <div className="text-sm font-medium text-slate-500 dark:text-zinc-500">

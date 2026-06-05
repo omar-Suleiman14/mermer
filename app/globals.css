@@ -398,3 +398,31 @@ body.sheet-open {
   user-select: text;
   -webkit-user-select: text;
 }
+
+/* ── GPU compositing hints ────────────────────────────────────────────────── */
+/* Promote animated elements to their own compositor layer for smooth 60fps */
+[data-motion-animate],
+.framer-motion-div {
+  will-change: transform, opacity;
+}
+
+/* Contain paint for fixed overlays & sidebar — prevents unnecessary repaints */
+[data-sidebar],
+[data-radix-popper-content-wrapper] {
+  contain: layout style;
+}
+
+/* ── Content-visibility for off-screen sections ───────────────────────────── */
+/* Skips rendering of sections below the fold until they scroll into view */
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 0 500px; /* rough height placeholder */
+}
+
+/* ── Touch action optimization ────────────────────────────────────────────── */
+/* Scrollable containers: tell browser pan-y is the only touch action */
+.overflow-y-auto,
+.overflow-y-scroll {
+  touch-action: pan-y;
+}
+

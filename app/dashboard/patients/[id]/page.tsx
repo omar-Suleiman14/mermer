@@ -9,8 +9,8 @@ import { Id } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
 import dynamic from "next/dynamic";
 const PatientIntakeDrawer = dynamic(() => import("@/components/patient-intake-drawer").then(m => m.PatientIntakeDrawer));
-import { VisitDrawer } from "@/components/visit-drawer";
-import { VisitCompletionModal } from "@/components/visit-completion-modal";
+const VisitDrawer = dynamic(() => import("@/components/visit-drawer").then(m => m.VisitDrawer));
+const VisitCompletionModal = dynamic(() => import("@/components/visit-completion-modal").then(m => m.VisitCompletionModal));
 import { IOSSpinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -613,7 +613,7 @@ export default function PatientProfilePage() {
       {completionTarget && (
         <VisitCompletionModal
           open={!!completionTarget}
-          onOpenChange={(v) => !v && setCompletionTarget(null)}
+          onOpenChange={(v: boolean) => !v && setCompletionTarget(null)}
           clerkId={clerkId}
           visitId={completionTarget.visitId}
           patientId={patientId}
