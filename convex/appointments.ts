@@ -106,8 +106,8 @@ export const createAppointmentInternal = internalMutation({
     const createdLastHour = recent.filter(
       (visit) => visit.createdAt >= Date.now() - 3600000
     );
-    if (createdLastHour.length >= 3) {
-      throw new ConvexError("Rate limit exceeded: You can only book 3 appointments per hour.");
+    if (createdLastHour.length >= 30) {
+      throw new ConvexError("Rate limit exceeded: You can only book 30 appointments per hour.");
     }
 
     // Conflict check against visits table (Convex OCC makes this race-condition safe)
