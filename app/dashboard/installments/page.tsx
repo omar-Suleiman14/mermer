@@ -150,8 +150,8 @@ function VisitSlotPicker({
                 <Calendar 
                   mode="single" 
                   selected={date} 
-                  onSelect={(d) => { if (d) { onDateChange(d); setCalOpen(false); } }} 
-                  disabled={(d) => {
+                  onSelect={(d: Date | undefined) => { if (d) { onDateChange(d); setCalOpen(false); } }} 
+                  disabled={(d: Date) => {
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
                     if (d < today) return true;
@@ -263,7 +263,7 @@ function InstallmentForm({
     return Math.ceil(remaining / cpv);
   })();
 
-  const filteredPatients = (patients ?? []).filter((p) =>
+  const filteredPatients = (patients ?? []).filter((p: any) =>
     p.name.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -388,7 +388,7 @@ function InstallmentForm({
                 <div className="max-h-40 overflow-y-auto border border-border rounded-xl divide-y divide-border">
                   {filteredPatients.length === 0 ? (
                     <p className="text-xs text-muted-foreground p-3 text-center">{t("installments.noPatients")}</p>
-                  ) : filteredPatients.map((p) => (
+                  ) : filteredPatients.map((p: any) => (
                     <button key={p._id} onClick={() => setSelectedPatient({ id: p._id, name: p.name, phone: p.phone ?? "" })}
                       className="w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-muted/50 transition-colors text-left">
                       <div className="w-7 h-7 rounded-full bg-[#007AFF]/10 flex items-center justify-center text-[#007AFF] font-bold text-xs shrink-0">
@@ -730,12 +730,12 @@ export default function InstallmentsPage() {
     }
   }
 
-  const active = (installments ?? []).filter((c) => c.status === "active").length;
-  const expired = (installments ?? []).filter((c) => c.status === "expired").length;
+  const active = (installments ?? []).filter((c: any) => c.status === "active").length;
+  const expired = (installments ?? []).filter((c: any) => c.status === "expired").length;
 
   const filteredinstallments = useMemo(() => {
     if (!installments) return undefined;
-    return installments.filter((c) => {
+    return installments.filter((c: any) => {
       if (statusFilter !== "all" && c.status !== statusFilter) return false;
       if (installmentsearch.trim()) {
         const q = installmentsearch.toLowerCase();
@@ -848,7 +848,7 @@ export default function InstallmentsPage() {
                   )}
                 </div>
               ) : (
-                filteredinstallments.map((installment) => {
+                filteredinstallments.map((installment: any) => {
                   const cfg = STATUS_CONFIG[installment.status as keyof typeof STATUS_CONFIG];
                   return (
                     <div

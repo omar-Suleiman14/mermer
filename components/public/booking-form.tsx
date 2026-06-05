@@ -171,18 +171,22 @@ export function BookingForm({ doctor }: BookingFormProps) {
         else if (waPhone.length === 10 && !waPhone.startsWith("20")) waPhone = "20" + waPhone;
       }
       
-      const waMessage = encodeURIComponent(`Confirm my appointment on ${
-        selectedSlotMs 
-          ? new Date(selectedSlotMs).toLocaleString(lang === "ar" ? "ar-EG" : "en-US", {
-              weekday: "short",
-              month: "short",
-              day: "numeric",
-              hour: "numeric",
-              minute: "2-digit",
-              hour12: true,
-            }) 
-          : ""
-      } for ${name}${result.queueNumber ? ` (Slot Number: ${result.queueNumber})` : ""}`);
+      const dateStr = selectedSlotMs 
+        ? new Date(selectedSlotMs).toLocaleString(lang === "ar" ? "ar-EG" : "en-US", {
+            weekday: "short",
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+            hour12: true,
+          }) 
+        : "";
+        
+      const waMessage = encodeURIComponent(
+        dir === "rtl"
+          ? `تأكيد موعدي يوم ${dateStr} باسم ${name}${result.queueNumber ? ` (رقم الدور: ${result.queueNumber})` : ""}`
+          : `Confirm my appointment on ${dateStr} for ${name}${result.queueNumber ? ` (Slot Number: ${result.queueNumber})` : ""}`
+      );
       const waLink = waPhone ? `https://wa.me/${waPhone}?text=${waMessage}` : null;
 
       // Store data for the success screen

@@ -22,7 +22,7 @@ http.route({
           const text = data.message?.conversation || data.message?.extendedTextMessage?.text || "";
           
           // Check if it's an appointment confirmation message
-          if (text.toLowerCase().includes("confirm my appointment") || text.includes("تأكيد موعدي")) {
+          if (text.toLowerCase().includes("confirm") || text.includes("تأكيد") || text.includes("تاكيد")) {
             const remoteJid = data.key.remoteJid; // e.g. "201012345678@s.whatsapp.net"
             let phone = remoteJid.split("@")[0];
             

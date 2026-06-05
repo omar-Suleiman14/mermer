@@ -157,13 +157,13 @@ export function VisitDrawer({ open, onOpenChange, clerkId, patientId, patientNam
                 <Calendar
                   mode="single"
                   selected={visitDate}
-                  onSelect={(d) => {
+                  onSelect={(d: Date | undefined) => {
                     if (d) {
                       setVisitDate(d);
                       setCalOpen(false);
                     }
                   }}
-                  disabled={(date) =>
+                  disabled={(date: Date) =>
                     date < new Date(new Date().setHours(0, 0, 0, 0)) ||
                     isNonWorkingDay(date, currentUser?.availableDays)
                   }

@@ -81,7 +81,7 @@ export default function PatientsPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {patients.map((patient) => {
+              {patients.map((patient: any) => {
                 const initials = patient.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
                 const palettes = [
                   { bg: "bg-[#007AFF]/10", text: "text-[#007AFF]" },

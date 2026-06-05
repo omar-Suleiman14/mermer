@@ -72,7 +72,7 @@ function clinicHeader(clinicName: string, doctorName: string): string {
 
 /** Builds an address footer line if an address/maps link is provided. */
 function addressLine(clinicAddress?: string): string {
-  return clinicAddress ? `\n📍 ${clinicAddress}` : "";
+  return clinicAddress ? `\nالعنوان: ${clinicAddress}` : "";
 }
 
 // ── Message templates ─────────────────────────────────────────────────────────
@@ -87,15 +87,28 @@ interface BookingArgs {
 }
 
 /**
- * Confirmation sent when a booking is made (manual or online).
+ * Confirmation sent when a booking is made (manual or online) OR when the
+ * doctor manually confirms a pending online booking from the notification center.
  */
 export function msgBookingConfirmed(args: BookingArgs): string {
   const dateStr = fmtDateAr(args.date);
   const timeStr = fmtTimeAr(args.date);
-  const slotLine = args.slotNumber ? `\nرقم الحجز الخاص بك هو ${args.slotNumber}.` : "";
+  const slotLine = args.slotNumber
+    ? `\nرقم دورك في الطابور: *${args.slotNumber}*`
+    : "";
   const addr = addressLine(args.clinicAddress);
-  return `${clinicHeader(args.clinicName, args.doctorName)}\nمرحباً ${args.patientName}،\nتم تأكيد حجزك بتاريخ ${dateStr} الساعة ${timeStr}.${slotLine}${addr}\nنراك قريباً. 🌟`;
+  return (
+    `${clinicHeader(args.clinicName, args.doctorName)}\n` +
+    `مرحباً ${args.patientName}،\n` +
+    `تم تأكيد موعدك بنجاح!\n` +
+    `التاريخ: ${dateStr}\n` +
+    `الوقت: ${timeStr}` +
+    `${slotLine}` +
+    `${addr}\n` +
+    `نراك قريباً.`
+  );
 }
+
 
 interface CancellationArgs {
   patientName: string;
@@ -129,7 +142,7 @@ export function msgRescheduled(args: RescheduleArgs): string {
   const timeStr = fmtTimeAr(args.newDate);
   const slotLine = args.slotNumber ? `\nرقم الحجز الجديد هو ${args.slotNumber}.` : "";
   const addr = addressLine(args.clinicAddress);
-  return `${clinicHeader(args.clinicName, args.doctorName)}\nمرحباً ${args.patientName}،\nتم تعديل موعدك ليصبح بتاريخ ${dateStr} الساعة ${timeStr}.${slotLine}${addr}\nنراك قريباً. 🌟`;
+  return `${clinicHeader(args.clinicName, args.doctorName)}\nمرحباً ${args.patientName}،\nتم تعديل موعدك ليصبح بتاريخ ${dateStr} الساعة ${timeStr}.${slotLine}${addr}\nنراك قريباً.`;
 }
 
 interface DayCancelledArgs {
@@ -162,7 +175,7 @@ interface ReminderArgs {
 export function msgReminder(args: ReminderArgs): string {
   const timeStr = fmtTimeAr(args.date);
   const addr = addressLine(args.clinicAddress);
-  return `${clinicHeader(args.clinicName, args.doctorName)}\nتذكير بموعدك 🔔\nمرحباً ${args.patientName}، موعدك اليوم الساعة ${timeStr}.${addr}\nنتمنى لك الشفاء العاجل.`;
+  return `${clinicHeader(args.clinicName, args.doctorName)}\nتذكير بموعدك\nمرحباً ${args.patientName}، موعدك اليوم الساعة ${timeStr}.${addr}\nنتمنى لك الشفاء العاجل.`;
 }
 
 interface MissedArgs {
@@ -198,7 +211,7 @@ export function msgInstallmentCreated(args: InstallmentArgs): string {
   const timeStr = fmtTimeAr(args.firstDate);
   const slotLine = args.slotNumber ? `\nرقم الحجز هو ${args.slotNumber}.` : "";
   const addr = addressLine(args.clinicAddress);
-  return `${clinicHeader(args.clinicName, args.doctorName)}\nمرحباً ${args.patientName}،\nتم إنشاء خطة تقسيط علاجية خاصة بك.\nموعدك الأول بتاريخ ${dateStr} الساعة ${timeStr}.${slotLine}${addr}\nنراك قريباً. 🌟`;
+  return `${clinicHeader(args.clinicName, args.doctorName)}\nمرحباً ${args.patientName}،\nتم إنشاء خطة تقسيط علاجية خاصة بك.\nموعدك الأول بتاريخ ${dateStr} الساعة ${timeStr}.${slotLine}${addr}\nنراك قريباً.`;
 }
 
 /**
@@ -215,5 +228,5 @@ export function msgYourTurn(patientName: string, clinicName?: string, doctorName
   const header = (clinicName || doctorName)
     ? `${clinicHeader(clinicName || "", doctorName || "")}\n`
     : "";
-  return `${header}مرحباً ${patientName}،\nدورك القادم الآن. يرجى التوجه إلى العيادة في أقرب وقت. 🏥`;
+  return `${header}مرحباً ${patientName}،\nدورك القادم الآن. يرجى التوجه إلى العيادة في أقرب وقت.`;
 }

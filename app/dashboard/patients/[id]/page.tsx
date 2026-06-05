@@ -85,7 +85,7 @@ export default function PatientProfilePage() {
     );
   }
 
-  const initials = patient.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+  const initials = patient.name.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase();
 
   return (
     <div className="flex flex-col h-full">
@@ -121,7 +121,7 @@ export default function PatientProfilePage() {
               <div className="w-16 h-16 rounded-full bg-[#007AFF]/10 flex items-center justify-center shrink-0">
                 <span className="text-xl font-bold text-[#007AFF]">{initials}</span>
               </div>
-              {installments?.some(c => c.status === "active") && (
+              {installments?.some((c: any) => c.status === "active") && (
                 <div className="absolute top-0 right-0 w-4 h-4 bg-background rounded-full flex items-center justify-center">
                   <div className="w-3 h-3 rounded-full bg-[#AF52DE] animate-pulse" title="Active installment" />
                 </div>
@@ -130,12 +130,12 @@ export default function PatientProfilePage() {
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 mb-1">
                 <h2 className="text-xl font-bold tracking-tight">{patient.name}</h2>
-                {installments?.some(c => c.status === "active") && (
+                {installments?.some((c: any) => c.status === "active") && (
                   <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#AF52DE]/10 border border-[#AF52DE]/20">
                     <span className="text-[10px] font-bold text-[#AF52DE] uppercase tracking-wider">{t("dashboard.installment") || "installment"}</span>
                   </div>
                 )}
-                {installments?.some(c => (c.unpaidBalance ?? 0) > 0) && (
+                {installments?.some((c: any) => (c.unpaidBalance ?? 0) > 0) && (
                   <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/20">
                     <span className="text-[10px] font-bold text-red-500 uppercase tracking-wider">{t("installments.unpaidBalance") || "Past Due"}</span>
                   </div>
@@ -156,7 +156,7 @@ export default function PatientProfilePage() {
               </div>
               {patient.chronicConditions.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-3">
-                  {patient.chronicConditions.map((c) => (
+                  {patient.chronicConditions.map((c: string) => (
                     <Badge
                       key={c}
                       className="bg-[#007AFF]/10 text-[#007AFF] border-0 text-xs font-medium"
@@ -539,7 +539,7 @@ export default function PatientProfilePage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {messageLogs.map((log) => (
+              {messageLogs.map((log: any) => (
                 <div key={log._id} className="bg-card border border-border rounded-xl p-4 flex gap-3">
                   <div className="shrink-0 mt-0.5">
                     {log.status === "success" ? (

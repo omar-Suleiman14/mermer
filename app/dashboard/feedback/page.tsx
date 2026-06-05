@@ -82,7 +82,7 @@ export default function FeedbackDashboard() {
 
   const ratingCounts = [5, 4, 3, 2, 1].map((r) => ({
     label: String(r),
-    count: (feedback ?? []).filter((f) => f.rating === r).length,
+    count: (feedback ?? []).filter((f: any) => f.rating === r).length,
   }));
   const maxCount = Math.max(...ratingCounts.map((r) => r.count), 1);
 
@@ -199,7 +199,7 @@ export default function FeedbackDashboard() {
             </div>
           ) : (
             <div className="space-y-3">
-              {feedback.map((f, i) => (
+              {feedback.map((f: any, i: number) => (
                 <motion.div
                   key={f._id}
                   initial={{ opacity: 0, y: 8 }}
