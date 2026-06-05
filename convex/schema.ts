@@ -100,6 +100,7 @@ export default defineSchema({
     evolutionApiKey: v.optional(v.string()),
     evolutionStatus: v.optional(v.string()), // disconnected, connecting, open
     isEvolutionActive: v.optional(v.boolean()),
+    evolutionConnectedPhone: v.optional(v.string()),
     blockedDates: v.optional(v.array(v.number())),
   })
     .index("by_clerk_id", ["clerkId"])

@@ -165,7 +165,12 @@ export function BookingForm({ doctor }: BookingFormProps) {
         date: selectedSlotMs,
       });
       
-      const waPhone = safeDoctor?.clinicPhone?.replace(/[^0-9]/g, "");
+      let waPhone = safeDoctor?.clinicPhone?.replace(/[^0-9]/g, "");
+      if (waPhone) {
+        if (waPhone.startsWith("0")) waPhone = "20" + waPhone.substring(1);
+        else if (waPhone.length === 10 && !waPhone.startsWith("20")) waPhone = "20" + waPhone;
+      }
+      
       const waMessage = encodeURIComponent(`Confirm my appointment on ${
         selectedSlotMs 
           ? new Date(selectedSlotMs).toLocaleString(lang === "ar" ? "ar-EG" : "en-US", {

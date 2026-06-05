@@ -155,9 +155,26 @@ export const getConnectionState = action({
       const state = data.instance?.state || data.state;
 
       if (state === "open") {
+        // Fetch instance details to get the connected phone number
+        let ownerJid = undefined;
+        try {
+          const fetchRes = await fetch(`${EVOLUTION_API_URL}/instance/fetchInstances?instanceName=${args.instanceName}`, {
+            headers: { apikey: GLOBAL_API_KEY }
+          });
+          if (fetchRes.ok) {
+            const arr = await fetchRes.json();
+            if (arr && arr[0] && arr[0].ownerJid) {
+              ownerJid = arr[0].ownerJid.split("@")[0]; // e.g. "201012345678"
+            }
+          }
+        } catch (err) {
+          console.error("Failed to fetch instance ownerJid", err);
+        }
+
         await ctx.runMutation(internal.evolution.updateInstanceStatus, {
           clinicId: args.clinicId,
           evolutionStatus: "open",
+          evolutionConnectedPhone: ownerJid,
         });
         return { status: "open" };
       }
@@ -206,10 +223,12 @@ export const updateInstanceStatus = internalMutation({
   args: {
     clinicId: v.id("users"),
     evolutionStatus: v.string(),
+    evolutionConnectedPhone: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     await ctx.db.patch(args.clinicId, {
       evolutionStatus: args.evolutionStatus,
+      ...(args.evolutionConnectedPhone !== undefined ? { evolutionConnectedPhone: args.evolutionConnectedPhone } : {}),
     });
   },
 });
@@ -222,6 +241,7 @@ export const clearIntegrationState = internalMutation({
       evolutionInstanceName: undefined,
       evolutionApiKey: undefined,
       evolutionStatus: undefined,
+      evolutionConnectedPhone: undefined,
       isEvolutionActive: false,
     });
   },
