@@ -37,6 +37,7 @@ export const sendMessage = internalAction({
 
     const MAX_RETRIES = 3;
     let lastError = "WhatsApp send failed";
+    let connectionClosed = false;
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
@@ -68,10 +69,16 @@ export const sendMessage = internalAction({
         try {
           const parsed = JSON.parse(errText);
           const msg = parsed?.response?.message;
-          // "Connection Closed" is a transient error — worth retrying
+          // "Connection Closed" is a transient Baileys socket drop — reconnect and retry
           if (typeof msg === "string" && msg.toLowerCase().includes("connection closed")) {
             isTransient = true;
+            connectionClosed = true;
             lastError = "خطأ مؤقت في اتصال الواتساب";
+            // Trigger socket reconnect before the next attempt
+            if (attempt < MAX_RETRIES) {
+              console.log(`Connection closed detected, triggering reconnect for ${args.instanceName}...`);
+              await ctx.runAction(internal.evolution.reconnectInstance, { instanceName: args.instanceName });
+            }
           } else if (Array.isArray(msg) && msg.some((m: any) => m.exists === false)) {
             lastError = "هذا الرقم غير مسجل على واتساب";
           } else if (parsed?.error === "Unauthorized" || response.status === 401) {
@@ -80,8 +87,8 @@ export const sendMessage = internalAction({
         } catch { /* keep default */ }
 
         if (isTransient && attempt < MAX_RETRIES) {
-          // Exponential backoff: 3s, 6s
-          await new Promise(r => setTimeout(r, 3000 * attempt));
+          // After triggering a reconnect, wait longer for socket to re-establish (8s, 15s)
+          await new Promise(r => setTimeout(r, 8000 * attempt));
           continue;
         }
 
@@ -96,7 +103,14 @@ export const sendMessage = internalAction({
       }
     }
 
-    // All retries exhausted — log failure
+    // All retries exhausted — log failure and mark instance as disconnected if connection was lost
+    if (connectionClosed && args.doctorId) {
+      // Mark the Evolution instance as disconnected so the UI shows the reconnect popup
+      await ctx.runMutation(internal.evolution.updateInstanceStatus, {
+        clinicId: args.doctorId,
+        evolutionStatus: "disconnected",
+      });
+    }
     if (args.doctorId) {
       await ctx.runMutation(internal.whatsappAutomations.logMessage, {
         doctorId: args.doctorId,

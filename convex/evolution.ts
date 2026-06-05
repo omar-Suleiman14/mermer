@@ -288,3 +288,24 @@ export const resetIntegration = mutation({
     });
   },
 });
+
+// INTERNAL ACTION: Force reconnect a Baileys instance whose socket dropped
+export const reconnectInstance = internalAction({
+  args: { instanceName: v.string() },
+  handler: async (_ctx, args) => {
+    try {
+      // Calling /instance/connect on an existing instance forces Baileys to
+      // re-establish the WebSocket without requiring a new QR scan.
+      const res = await fetch(`${EVOLUTION_API_URL}/instance/connect/${args.instanceName}`, {
+        method: "GET",
+        headers: { apikey: GLOBAL_API_KEY },
+      });
+      const text = await res.text();
+      console.log(`Reconnect attempt for ${args.instanceName}: status=${res.status}`, text.slice(0, 200));
+      return res.ok;
+    } catch (e) {
+      console.error("Reconnect failed:", e);
+      return false;
+    }
+  },
+});

@@ -11,6 +11,7 @@ import { DoctorOnboarding } from "@/components/doctor-onboarding";
 import { useState, useEffect } from "react";
 import { useI18n } from "@/lib/i18n/client";
 import { OnlineBookingNotifier } from "@/components/online-booking-notifier";
+import { WhatsAppReconnectPrompt } from "@/components/whatsapp-reconnect-prompt";
 import { AlertTriangle, X, Building2, UserCheck, UserX, Clock, Loader2 } from "lucide-react";
 import { UserProvider, useCurrentUser } from "@/components/providers/user-provider";
 import { IOSSpinner } from "@/components/ui/spinner";
@@ -108,6 +109,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         <SidebarProvider>
           <UserSync />
           <OnlineBookingNotifier />
+          <WhatsAppReconnectPrompt />
           <AppSidebar side={sidebarSide} />
           <SidebarInset className="bg-background overflow-x-hidden">
             {children}
