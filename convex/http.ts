@@ -24,16 +24,11 @@ http.route({
           // Check if it's an appointment confirmation message
           if (text.toLowerCase().includes("confirm") || text.includes("تأكيد") || text.includes("تاكيد")) {
             const remoteJid = data.key.remoteJid; // e.g. "201012345678@s.whatsapp.net"
-            let phone = remoteJid.split("@")[0];
+            const rawPhone = remoteJid.split("@")[0]; // "201012345678"
             
-            // Normalize phone back to match DB (e.g., 1012345678 instead of 201012345678)
-            if (phone.startsWith("20")) {
-              phone = phone.substring(2);
-            }
-
-            // Fire an internal mutation to confirm the pending appointment
+            // Pass the raw international number — confirmPendingAppointmentByPhone handles matching
             await ctx.runMutation(internal.appointments.confirmPendingAppointmentByPhone, {
-              patientPhone: phone,
+              patientPhone: rawPhone,
               instanceName: payload.instance
             });
           }

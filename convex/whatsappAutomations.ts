@@ -15,8 +15,14 @@ export const sendMessage = internalAction({
     doctorId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
+    // Normalize phone number to international format
     let cleanNumber = args.phoneNumber.replace(/[^0-9]/g, "");
-    if (cleanNumber.length === 10 && cleanNumber.startsWith("1")) {
+    if (cleanNumber.startsWith("0")) {
+      cleanNumber = "20" + cleanNumber.substring(1);
+    } else if (cleanNumber.length === 10 && !cleanNumber.startsWith("20")) {
+      cleanNumber = "20" + cleanNumber;
+    } else if (cleanNumber.length === 11 && cleanNumber.startsWith("1")) {
+      // e.g. 10xxxxxxxx (Egyptian, 11 digits starting with 1)
       cleanNumber = "20" + cleanNumber;
     }
 
@@ -29,70 +35,78 @@ export const sendMessage = internalAction({
       text: args.messageText,
     };
 
-    try {
-      const response = await fetch(`${EVOLUTION_API_URL}/message/sendText/${args.instanceName}`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: process.env.EVOLUTION_API_KEY || "B6D711FCDE4D4FD5936544120E7139D5",
-        },
-        body: JSON.stringify(payload),
-      });
+    const MAX_RETRIES = 3;
+    let lastError = "WhatsApp send failed";
 
-      if (!response.ok) {
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const response = await fetch(`${EVOLUTION_API_URL}/message/sendText/${args.instanceName}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: process.env.EVOLUTION_API_KEY || "B6D711FCDE4D4FD5936544120E7139D5",
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (response.ok) {
+          if (args.doctorId) {
+            await ctx.runMutation(internal.whatsappAutomations.logMessage, {
+              doctorId: args.doctorId,
+              patientPhone: args.phoneNumber,
+              messageText: args.messageText,
+              status: "success",
+            });
+          }
+          return { success: true };
+        }
+
         const errText = await response.text();
-        console.error("Evolution API Send Error:", errText);
-        
-        // Parse common errors into friendly messages
-        let friendlyError = "WhatsApp send failed";
+        console.error(`Evolution API Send Error (attempt ${attempt}/${MAX_RETRIES}):`, errText);
+
+        let isTransient = false;
         try {
           const parsed = JSON.parse(errText);
-          if (parsed?.response?.message) {
-            const msgs = parsed.response.message;
-            if (Array.isArray(msgs) && msgs.some((m: any) => m.exists === false)) {
-              friendlyError = "هذا الرقم غير مسجل على واتساب";
-            }
-          }
-          if (parsed?.error === "Unauthorized" || response.status === 401) {
-            friendlyError = "خطأ في اتصال الواتساب - تحقق من الإعدادات";
+          const msg = parsed?.response?.message;
+          // "Connection Closed" is a transient error — worth retrying
+          if (typeof msg === "string" && msg.toLowerCase().includes("connection closed")) {
+            isTransient = true;
+            lastError = "خطأ مؤقت في اتصال الواتساب";
+          } else if (Array.isArray(msg) && msg.some((m: any) => m.exists === false)) {
+            lastError = "هذا الرقم غير مسجل على واتساب";
+          } else if (parsed?.error === "Unauthorized" || response.status === 401) {
+            lastError = "خطأ في اتصال الواتساب - تحقق من الإعدادات";
           }
         } catch { /* keep default */ }
-        if (args.doctorId) {
-          await ctx.runMutation(internal.whatsappAutomations.logMessage, {
-            doctorId: args.doctorId,
-            patientPhone: args.phoneNumber,
-            messageText: args.messageText,
-            status: "failed",
-            error: friendlyError,
-          });
+
+        if (isTransient && attempt < MAX_RETRIES) {
+          // Exponential backoff: 3s, 6s
+          await new Promise(r => setTimeout(r, 3000 * attempt));
+          continue;
         }
-        
-        return { success: false, error: friendlyError };
-      }
 
-      if (args.doctorId) {
-        await ctx.runMutation(internal.whatsappAutomations.logMessage, {
-          doctorId: args.doctorId,
-          patientPhone: args.phoneNumber,
-          messageText: args.messageText,
-          status: "success",
-        });
+        // Non-transient or final attempt — give up
+        break;
+      } catch (e) {
+        console.error(`Failed to send WhatsApp message (attempt ${attempt}/${MAX_RETRIES}):`, e);
+        lastError = "تعذر الاتصال بخدمة الواتساب";
+        if (attempt < MAX_RETRIES) {
+          await new Promise(r => setTimeout(r, 3000 * attempt));
+        }
       }
-
-      return { success: true };
-    } catch (e) {
-      console.error("Failed to send WhatsApp message:", e);
-      if (args.doctorId) {
-        await ctx.runMutation(internal.whatsappAutomations.logMessage, {
-          doctorId: args.doctorId,
-          patientPhone: args.phoneNumber,
-          messageText: args.messageText,
-          status: "failed",
-          error: "تعذر الاتصال بخدمة الواتساب",
-        });
-      }
-      return { success: false, error: "تعذر الاتصال بخدمة الواتساب" };
     }
+
+    // All retries exhausted — log failure
+    if (args.doctorId) {
+      await ctx.runMutation(internal.whatsappAutomations.logMessage, {
+        doctorId: args.doctorId,
+        patientPhone: args.phoneNumber,
+        messageText: args.messageText,
+        status: "failed",
+        error: lastError,
+      });
+    }
+    return { success: false, error: lastError };
   },
 });
 

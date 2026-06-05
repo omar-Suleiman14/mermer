@@ -188,17 +188,36 @@ export const confirmPendingAppointmentByPhone = internalMutation({
     instanceName: v.string()
   },
   handler: async (ctx, args) => {
-    // 1. Find the latest pending visit for this phone
-    const pendingVisits = await ctx.db
+    // Normalize the incoming phone to ALL possible formats stored in DB
+    const raw = args.patientPhone.replace(/[^0-9]/g, "");
+    // Build candidate formats: e.g. "201012345678", "01012345678", "1012345678"
+    const candidates: string[] = [raw];
+    if (raw.startsWith("20")) {
+      candidates.push("0" + raw.substring(2));  // 201012345678 → 01012345678
+      candidates.push(raw.substring(2));          // 201012345678 → 1012345678
+    } else if (raw.startsWith("0")) {
+      candidates.push("20" + raw.substring(1));  // 01012345678 → 201012345678
+      candidates.push(raw.substring(1));          // 01012345678 → 1012345678
+    } else {
+      candidates.push("20" + raw);               // 1012345678 → 201012345678
+      candidates.push("0" + raw);                // 1012345678 → 01012345678
+    }
+
+    // 1. Find the latest pending visit matching any candidate phone format
+    const allVisits = await ctx.db
       .query("visits")
-      .withIndex("by_patient") // Wait, by_patient requires patientId. I'll use filter.
-      .filter(q => q.and(
-        q.eq(q.field("patientPhone"), args.patientPhone),
-        q.eq(q.field("status"), "pending")
-      ))
+      .withIndex("by_doctor")
+      .filter(q => q.eq(q.field("status"), "pending"))
       .collect();
 
-    if (pendingVisits.length === 0) return;
+    const pendingVisits = allVisits.filter(v =>
+      v.patientPhone && candidates.includes(v.patientPhone.replace(/[^0-9]/g, ""))
+    );
+
+    if (pendingVisits.length === 0) {
+      console.log("No pending visit found for phone candidates:", candidates);
+      return;
+    }
 
     // Sort to get the most recently created one
     pendingVisits.sort((a, b) => b.createdAt - a.createdAt);
@@ -222,10 +241,11 @@ export const confirmPendingAppointmentByPhone = internalMutation({
       clinicAddress: doctor.clinicAddress,
     });
     
+    // Use the raw international number (from the webhook) for sending back
     await ctx.scheduler.runAfter(0, internal.whatsappAutomations.sendMessage, {
       instanceName: args.instanceName,
       evolutionApiKey: doctor.evolutionApiKey || "",
-      phoneNumber: args.patientPhone,
+      phoneNumber: raw,  // already in international format from webhook
       messageText,
       doctorId: doctor._id,
     });
