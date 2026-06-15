@@ -308,22 +308,21 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
   const [selectedDoctorId, setSelectedDoctorId] = useState<Id<"users"> | null>(null);
   const [selectedDoctorName, setSelectedDoctorName] = useState("");
-  const [selectedChatDoctorId, setSelectedChatDoctorId] = useState<Id<"users"> | null>(null);
+  // Init chat drawer directly from ?userId= so it opens immediately on notification click
+  const [selectedChatDoctorId, setSelectedChatDoctorId] = useState<Id<"users"> | null>(
+    () => (searchParams.get("userId") as Id<"users">) || null
+  );
   const [selectedChatDoctorName, setSelectedChatDoctorName] = useState("");
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
   const allDoctors = useQuery(api.users.listAllDoctors, { clerkId });
 
-  // Auto-open chat drawer when page is opened via push notification deep-link (?userId=...)
+  // Fill in the chat doctor name lazily when the list loads
   useEffect(() => {
-    const targetUserId = searchParams.get("userId");
-    if (!targetUserId || !allDoctors || selectedChatDoctorId) return;
-    const doctor = allDoctors.find((d) => d._id === targetUserId);
-    if (doctor) {
-      setSelectedChatDoctorId(doctor._id);
-      setSelectedChatDoctorName(doctor.name);
-    }
-  }, [searchParams, allDoctors]);
+    if (!selectedChatDoctorId || !allDoctors || selectedChatDoctorName) return;
+    const doctor = allDoctors.find((d) => d._id === selectedChatDoctorId);
+    if (doctor) setSelectedChatDoctorName(doctor.name);
+  }, [allDoctors, selectedChatDoctorId, selectedChatDoctorName]);
   const overview = useQuery(api.doctors.getPlatformOverview, { clerkId });
   const banDoctor = useMutation(api.doctors.banDoctor);
   const toggleBlock = useMutation(api.users.toggleBlockUser);

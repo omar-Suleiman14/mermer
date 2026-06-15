@@ -1,4 +1,4 @@
-const CACHE_VERSION = "v2";
+const CACHE_VERSION = "v3";
 const STATIC_CACHE = `mermer-static-${CACHE_VERSION}`;
 const FONT_CACHE = `mermer-fonts-${CACHE_VERSION}`;
 
@@ -137,17 +137,18 @@ self.addEventListener("notificationclick", function (event) {
 
   event.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
+      // Find any existing app window (same origin)
       for (const client of clientList) {
         const clientUrl = new URL(client.url);
-        if (
-          clientUrl.origin === self.location.origin &&
-          `${clientUrl.pathname}${clientUrl.search}${clientUrl.hash}` === targetUrl &&
-          "focus" in client
-        ) {
+        if (clientUrl.origin === self.location.origin && "focus" in client) {
+          // Navigate to the exact target URL (handles ?chat=1, ?userId=..., etc.)
+          if ("navigate" in client) {
+            return client.navigate(targetUrl).then((c) => c && c.focus());
+          }
           return client.focus();
         }
       }
-
+      // No existing window — open a new one
       return clients.openWindow(targetUrl);
     })
   );

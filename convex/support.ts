@@ -108,7 +108,7 @@ export const replyToSupportMessage = mutation({
       userId: args.userId,
       title: `Support Reply`,
       body: args.reply,
-      url: `/dashboard/support`,
+      url: `/dashboard/support?chat=1`,
     });
   },
 });
