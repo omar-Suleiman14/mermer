@@ -46,7 +46,7 @@ export const sendMessageToAdmin = mutation({
         userId: admin._id,
         title: `Support Msg: ${senderName}`,
         body: bodyText,
-        url: `/admin`,
+        url: `/admin?userId=${sender?._id ?? ""}`,
       });
     }
   },

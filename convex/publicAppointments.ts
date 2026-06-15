@@ -27,7 +27,7 @@ export const createAppointment = action({
       userId: doctor._id,
       title: "حجز إلكتروني جديد (قيد الانتظار)",
       body: `${patientName} حجز موعداً الساعة ${apptTime} (رقم ${queueNumber}) بانتظار رسالة التأكيد عبر الواتساب.`,
-      url: "/dashboard",
+      url: `/dashboard/queue?date=${args.date}`,
     }).catch(console.error);
 
     return { visitId, queueNumber };

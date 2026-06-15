@@ -82,13 +82,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     ]
   ];
 
+  // Empty permissions = no restrictions set yet → allow all non-doctorOnly items
+  const hasExplicitPerms = userPerms.length > 0;
+
   const filteredGroups = navGroups.map(group => group.filter(item => {
     // Doctor always sees everything
     if (!isAssistant) return true;
-    // Items marked doctorOnly are hidden for assistants by default unless they have the perm
+    // Items marked doctorOnly are hidden for assistants unless they have the specific perm
     if ("doctorOnly" in item && item.doctorOnly) {
       return item.perm ? userPerms.includes(item.perm) : false;
     }
+    // If no explicit perms configured, allow all non-doctorOnly items
+    if (!hasExplicitPerms) return true;
     // If item requires a perm, check it
     if (item.perm) return userPerms.includes(item.perm);
     return true;

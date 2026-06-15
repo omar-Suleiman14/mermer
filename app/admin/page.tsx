@@ -5,7 +5,8 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Shield,
   Users,
@@ -301,6 +302,7 @@ function AdminSupportChatDrawer({
 // ── Admin Dashboard ───────────────────────────────────────────────────────────
 
 function AdminDashboard({ clerkId }: { clerkId: string }) {
+  const searchParams = useSearchParams();
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<"all" | "active" | "installment" | "blocked">("all");
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
@@ -311,6 +313,17 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
 
   const allDoctors = useQuery(api.users.listAllDoctors, { clerkId });
+
+  // Auto-open chat drawer when page is opened via push notification deep-link (?userId=...)
+  useEffect(() => {
+    const targetUserId = searchParams.get("userId");
+    if (!targetUserId || !allDoctors || selectedChatDoctorId) return;
+    const doctor = allDoctors.find((d) => d._id === targetUserId);
+    if (doctor) {
+      setSelectedChatDoctorId(doctor._id);
+      setSelectedChatDoctorName(doctor.name);
+    }
+  }, [searchParams, allDoctors]);
   const overview = useQuery(api.doctors.getPlatformOverview, { clerkId });
   const banDoctor = useMutation(api.doctors.banDoctor);
   const toggleBlock = useMutation(api.users.toggleBlockUser);
@@ -699,7 +712,11 @@ export default function AdminPage() {
 
   if (adminExists === undefined || currentUser === undefined) return <FullPageSpinner />;
 
-  if (currentUser?.isAdmin) return <AdminDashboard clerkId={clerkId} />;
+  if (currentUser?.isAdmin) return (
+    <Suspense fallback={<FullPageSpinner />}>
+      <AdminDashboard clerkId={clerkId} />
+    </Suspense>
+  );
 
   if (adminExists && !currentUser?.isAdmin) {
     return (

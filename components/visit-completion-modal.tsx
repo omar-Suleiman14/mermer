@@ -1109,6 +1109,14 @@ export function VisitCompletionModal({
 
 
                   {/* Actions */}
+                  {/* For installment visits, block save until next date is chosen */}
+                  {isinstallmentVisit && !nextinstallmentDate && (
+                    <p className="text-xs text-center text-muted-foreground pb-1">
+                      {dir === "rtl"
+                        ? "اختر تاريخ الزيارة التالية لتفعيل الحفظ"
+                        : "Pick the next visit date to enable saving"}
+                    </p>
+                  )}
                   <div className="flex gap-3">
                     <button
                       onClick={handleDismiss}
@@ -1119,8 +1127,8 @@ export function VisitCompletionModal({
                     </button>
                     <button
                       onClick={async () => { await handleSave(false); }}
-                      disabled={isSaving}
-                      className="flex-1 bg-[#007AFF] text-white text-sm font-semibold py-2.5 rounded-2xl hover:bg-[#0062cc] transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+                      disabled={isSaving || (isinstallmentVisit && !nextinstallmentDate)}
+                      className="flex-1 bg-[#007AFF] text-white text-sm font-semibold py-2.5 rounded-2xl hover:bg-[#0062cc] transition-colors disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                       {isSaving ? (
                         <><IOSSpinner size={16} className="text-white" /> {t("onboarding.saving")}</>

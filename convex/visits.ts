@@ -154,12 +154,13 @@ export const createVisit = mutation({
     await logAction(ctx, user, "Created Visit", `Scheduled visit for patient ID: ${args.patientId}`);
     
     if (args.source === "online") {
-      const dateStr = new Date(args.date ?? Date.now()).toLocaleString();
+      const apptDate = args.date ?? Date.now();
+      const dateStr = new Date(apptDate).toLocaleString();
       await ctx.scheduler.runAfter(0, internal.pushActions.sendPushNotification, {
         userId: user._id,
         title: "New Online Appointment",
         body: `${patient.name} has booked an appointment for ${dateStr}`,
-        url: "/dashboard/queue",
+        url: `/dashboard/queue?date=${apptDate}`,
       });
     }
     

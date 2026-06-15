@@ -88,11 +88,12 @@ export default function DashboardPage() {
     clerkId ? { clerkId } : "skip"
   );
 
-  // Permission checks
+  // Permission checks — empty permissions = no explicit restrictions = full access
   const isAssistant = currentUser?.role === "assistant";
   const userPerms: string[] = currentUser?.permissions ?? [];
-  const canReschedule = !isAssistant || userPerms.includes("appointments.reschedule");
-  const canCancel = !isAssistant || userPerms.includes("appointments.cancel");
+  const hasExplicitPerms = userPerms.length > 0;
+  const canReschedule = !isAssistant || !hasExplicitPerms || userPerms.includes("appointments.reschedule");
+  const canCancel = !isAssistant || !hasExplicitPerms || userPerms.includes("appointments.cancel");
 
   const todayAppointments = useQuery(
     api.appointments.getAppointmentsByDate,
