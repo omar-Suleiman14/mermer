@@ -282,11 +282,29 @@ export function PatientIntakeDrawer({
         });
         toast.success(lang === "ar" ? "تم تحديث بيانات المريض" : "Patient data updated");
       } else {
-        const existing = await convex.query(api.patients.findPatientByNameAndPhone, {
+        // Fast path: run lookup while we prepare other data
+        const existingPromise = convex.query(api.patients.findPatientByNameAndPhone, {
           clerkId,
           name: form.name.trim(),
           phone: fullPhone,
         });
+
+        let visitDateMs: number | undefined;
+        if (addVisit && visitDate) {
+          const selectedSlot = timeSlots.find((s) => s.timeStr === visitTime);
+          if (selectedSlot?.isReserved) {
+            toast.error(lang === "ar" ? "هذا الوقت محجوز مسبقاً — اختر وقتاً آخر" : "This time slot is already reserved — choose another");
+            setLoading(false);
+            return;
+          }
+          const [hh, mm] = visitTime.split(":").map(Number);
+          const exactDate = new Date(visitDate);
+          exactDate.setHours(hh ?? 9, mm ?? 0, 0, 0);
+          visitDateMs = exactDate.getTime();
+        }
+
+        // Await the lookup result (was already in-flight)
+        const existing = await existingPromise;
 
         let patientId: Id<"patients">;
         if (existing) {
@@ -302,24 +320,13 @@ export function PatientIntakeDrawer({
           });
         }
 
-        if (addVisit && visitDate) {
-          const selectedSlot = timeSlots.find((s) => s.timeStr === visitTime);
-          if (selectedSlot?.isReserved) {
-            toast.error(lang === "ar" ? "هذا الوقت محجوز مسبقاً — اختر وقتاً آخر" : "This time slot is already reserved — choose another");
-            setLoading(false);
-            return;
-          }
-          const [hh, mm] = visitTime.split(":").map(Number);
-          const exactDate = new Date(visitDate);
-          exactDate.setHours(hh ?? 9, mm ?? 0, 0, 0);
-
+        if (addVisit && visitDateMs !== undefined) {
           await addManualAppointment({
             clerkId,
             patientId,
-            date: exactDate.getTime(),
+            date: visitDateMs,
             notes: form.notes || undefined,
           });
-          
           toast.success(existing ? "مريض مسجل — تمت إضافة الزيارة للتاريخ" : "تم إنشاء المريض وجدولة الزيارة");
         } else {
           toast.success(existing ? "مريض مسجل تم العثور عليه" : "تم إنشاء مريض جديد");
@@ -633,7 +640,7 @@ export function PatientIntakeDrawer({
         ) : isEdit ? (
           t("drawer.saveChanges")
         ) : addVisit ? (
-          t("drawer.submit")
+          dir === "rtl" ? "حفظ" : "Save"
         ) : (
           dir === "rtl" ? "حفظ المريض فقط" : "Save Patient Only"
         )}

@@ -209,6 +209,8 @@ export default function ClinicScreen() {
     return () => clearInterval(timer);
   }, []);
 
+  const clinicScreenShowNames = (currentUser as any)?.clinicScreenShowNames ?? false;
+
   const todayTs = startOfDay(Date.now());
   const todayAppointments = useQuery(
     api.appointments.getAppointmentsByDate,
@@ -221,11 +223,17 @@ export default function ClinicScreen() {
   const now = time.getTime();
   const slotDurationMs = (currentUser?.slotDurationMinutes || 30) * 60000;
 
-  const currentPatient = todayVisits.find(a => a.date <= now && a.date + slotDurationMs > now && a.status !== "completed")
-    || todayVisits.find(a => a.date <= now && a.date + slotDurationMs > now);
+  const currentPatientIdx = todayVisits.findIndex(a => a.date <= now && a.date + slotDurationMs > now && a.status !== "completed");
+  const currentPatient = currentPatientIdx !== -1
+    ? todayVisits[currentPatientIdx]
+    : (() => { const i = todayVisits.findIndex(a => a.date <= now && a.date + slotDurationMs > now); return i !== -1 ? todayVisits[i] : undefined; })();
+  const currentPatientNumber = currentPatient ? (todayVisits.indexOf(currentPatient) + 1) : null;
 
-  const nextPatient = todayVisits.find(a => a.date > now && a.status !== "completed")
-    || todayVisits.find(a => a.date > now);
+  const nextPatientIdx = todayVisits.findIndex(a => a.date > now && a.status !== "completed");
+  const nextPatient = nextPatientIdx !== -1
+    ? todayVisits[nextPatientIdx]
+    : (() => { const i = todayVisits.findIndex(a => a.date > now); return i !== -1 ? todayVisits[i] : undefined; })();
+  const nextPatientNumber = nextPatient ? (todayVisits.indexOf(nextPatient) + 1) : null;
 
   // Generate QR Code
   useEffect(() => {
@@ -338,7 +346,13 @@ export default function ClinicScreen() {
             <div className="flex-1 flex flex-col items-center justify-center text-center pe-8 border-e border-slate-200 dark:border-zinc-700 overflow-hidden">
               <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-extrabold text-foreground tracking-tight mb-8 break-words leading-tight line-clamp-2 max-w-full text-center">
                 {currentPatient ? (
-                  <span className="text-[#007AFF]">{currentPatient.patientName}</span>
+                  clinicScreenShowNames ? (
+                    <span className="text-[#007AFF]">{currentPatient.patientName}</span>
+                  ) : (
+                    <span className="text-[#007AFF]">
+                      {lang === "ar" ? "رقم" : "#"}{currentPatientNumber}
+                    </span>
+                  )
                 ) : (
                   currentUser.clinicName
                 )}
@@ -364,10 +378,12 @@ export default function ClinicScreen() {
               {nextPatient && (
                 <div className="mt-8 flex flex-col items-center justify-center animate-in fade-in zoom-in duration-500">
                   <span className="text-sm md:text-base font-semibold text-muted-foreground uppercase tracking-widest mb-1">
-                    {lang === "ar" ? "المريض التالي" : "Up Next"}
+                    {lang === "ar" ? "التالي" : "Up Next"}
                   </span>
                   <p className="text-2xl md:text-3xl font-bold text-foreground truncate max-w-[90%]">
-                    {nextPatient.patientName}
+                    {clinicScreenShowNames
+                      ? nextPatient.patientName
+                      : `${lang === "ar" ? "رقم" : "#"}${nextPatientNumber}`}
                   </p>
                 </div>
               )}

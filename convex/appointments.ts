@@ -255,7 +255,7 @@ export const confirmPendingAppointmentByPhone = internalMutation({
       userId: doctor._id,
       title: "تأكيد حجز عبر الواتساب",
       body: `قام ${visit.patientName} بتأكيد موعده للساعة ${fmtTimeAr(visit.date)}.`,
-      url: "/dashboard",
+      url: `/dashboard/patients/${visit.patientId}`,
     });
   }
 });

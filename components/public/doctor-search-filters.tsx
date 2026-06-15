@@ -159,18 +159,7 @@ export function DoctorSearchFiltersPanel({
               </div>
 
               <div className="flex flex-col justify-end">
-                <button
-                  type="button"
-                  onClick={() => onChange({ availToday: !filters.availToday })}
-                  className={cn(
-                    "h-10 px-4 rounded-xl border text-sm font-medium transition-colors",
-                    filters.availToday
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : "border-border bg-card hover:bg-muted/50"
-                  )}
-                >
-                  {t("feed.availToday")}
-                </button>
+                {/* Available Today button removed as requested */}
               </div>
 
               <FilterSelect

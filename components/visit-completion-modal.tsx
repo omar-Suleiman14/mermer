@@ -336,8 +336,12 @@ export function VisitCompletionModal({
   const workingDayAbbrs: string[] = (currentUser as { availableDays?: string[] })?.availableDays ?? [];
   const DOW_ABBR: Record<number, string> = { 0: "Sun", 1: "Mon", 2: "Tue", 3: "Wed", 4: "Thu", 5: "Fri", 6: "Sat" };
   const WEEKEND_DAYS = new Set([0, 6]); // Sun & Sat
-  function isNonWorkingDay(): boolean {
-    return false;
+  function isNonWorkingDay(date: Date): boolean {
+    // If no working days are configured, all days are allowed
+    if (!workingDayAbbrs.length) return false;
+    const dow = date.getDay(); // 0=Sun … 6=Sat
+    const abbrev = DOW_ABBR[dow];
+    return !workingDayAbbrs.includes(abbrev);
   }
 
   // Follow-up date for slot availability check
@@ -728,13 +732,13 @@ export function VisitCompletionModal({
                     <div>
                       {(installmentData?.unpaidBalance ?? 0) > 0 && (
                         <p className="text-sm font-bold text-amber-600">
-                          Unpaid balance: {installmentData!.unpaidBalance!.toLocaleString()} {t("installments.currency") || "EGP"}
+                          {t("installments.unpaidBalance") || "Unpaid balance"}: {installmentData!.unpaidBalance!.toLocaleString()} {t("common.currency")}
                         </p>
                       )}
                       {installmentData?.status === "expired" && (
-                        <p className="text-sm font-bold text-amber-600">installment is expired</p>
+                        <p className="text-sm font-bold text-amber-600">{t("installments.expired") || "Installment is expired"}</p>
                       )}
-                      <p className="text-xs text-amber-600/80 mt-0.5">Discuss with patient before proceeding</p>
+                      <p className="text-xs text-amber-600/80 mt-0.5">{t("installments.discussWithPatient") || "Discuss with patient before proceeding"}</p>
                     </div>
                   </div>
                   
@@ -1013,7 +1017,7 @@ export function VisitCompletionModal({
                                   </button>
                                 </PopoverTrigger>
                                 <PopoverContent className="w-auto p-0" align="start">
-                                  <Calendar mode="single" selected={nextinstallmentDate} onSelect={(d) => { if (d) { setNextinstallmentDate(d); setNextinstallmentCalOpen(false); } }} disabled={(d) => d < new Date() || isNonWorkingDay()} />
+                                  <Calendar mode="single" selected={nextinstallmentDate} onSelect={(d) => { if (d) { setNextinstallmentDate(d); setNextinstallmentCalOpen(false); } }} disabled={(d) => d < new Date() || isNonWorkingDay(d)} />
                                 </PopoverContent>
                               </Popover>
                             </div>
@@ -1070,7 +1074,7 @@ export function VisitCompletionModal({
                                     </button>
                                   </PopoverTrigger>
                                   <PopoverContent className="w-auto p-0" align="start">
-                                    <Calendar mode="single" selected={fuDate} onSelect={(d) => { if (d) { setFuDate(d); setFuCalOpen(false); } }} disabled={(d) => d < new Date() || isNonWorkingDay()} />
+                                    <Calendar mode="single" selected={fuDate} onSelect={(d) => { if (d) { setFuDate(d); setFuCalOpen(false); } }} disabled={(d) => d < new Date() || isNonWorkingDay(d)} />
                                   </PopoverContent>
                                 </Popover>
                               </div>

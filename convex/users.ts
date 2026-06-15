@@ -222,6 +222,7 @@ export const updateProfile = mutation({
     workingDays: v.optional(v.array(v.string())),
     feePerVisit: v.optional(v.number()),
     showClinicLocationOnRx: v.optional(v.boolean()),
+    clinicScreenShowNames: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
@@ -242,6 +243,7 @@ export const updateProfile = mutation({
       ...(args.workingDays !== undefined ? { availableDays: args.workingDays } : {}),
       ...(args.feePerVisit !== undefined ? { consultationFee: args.feePerVisit } : {}),
       ...(args.showClinicLocationOnRx !== undefined ? { showClinicLocationOnRx: args.showClinicLocationOnRx } : {}),
+      ...(args.clinicScreenShowNames !== undefined ? { clinicScreenShowNames: args.clinicScreenShowNames } : {}),
     });
   },
 });

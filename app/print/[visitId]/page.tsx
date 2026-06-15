@@ -8,6 +8,7 @@ import { useUser } from "@clerk/nextjs";
 import { useI18n } from "@/lib/i18n/client";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { format } from "date-fns";
+import { arEG } from "date-fns/locale";
 
 export default function PrintPrescriptionPage({
   params,
@@ -101,7 +102,7 @@ export default function PrintPrescriptionPage({
           <div className="text-right">
             <h2 className="text-2xl font-bold text-gray-200 uppercase tracking-widest">{t("print.prescription")}</h2>
             <p className="text-sm text-gray-500 mt-2">
-              {t("print.date")}: {format(new Date(visit.date), "dd/MM/yyyy")}
+              {t("print.date")}: {format(new Date(visit.date), "dd/MM/yyyy", { locale: isArabic ? arEG : undefined })}
             </p>
           </div>
         </div>
@@ -165,7 +166,7 @@ export default function PrintPrescriptionPage({
         {followUp && (
           <div className="mt-8 pt-6 border-t border-gray-200 text-sm text-gray-700 text-center">
             <span className="font-medium text-gray-900">{t("schedule.followUp")}: </span>
-            {format(new Date(followUp.followUpDate), "EEEE, dd MMMM yyyy")} {t("notifications.at")} {followUp.followUpTime}
+            {format(new Date(followUp.followUpDate), "EEEE, dd MMMM yyyy", { locale: isArabic ? arEG : undefined })} {t("notifications.at")} {followUp.followUpTime}
           </div>
         )}
 

@@ -136,6 +136,7 @@ export default function SettingsPage() {
   const [enableVitals, setEnableVitals] = useState(false);
   const [enableNotes, setEnableNotes] = useState(false);
   const [enablePrescription, setEnablePrescription] = useState(true);
+  const [clinicScreenShowNames, setClinicScreenShowNames] = useState(false);
 
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -178,6 +179,7 @@ export default function SettingsPage() {
     setEnableVitals((currentUser as any).enableVitals ?? false);
     setEnableNotes((currentUser as any).enableNotes ?? false);
     setEnablePrescription((currentUser as any).enablePrescription ?? true);
+    setClinicScreenShowNames((currentUser as any).clinicScreenShowNames ?? false);
 
   }, [currentUser]);
 
@@ -202,6 +204,7 @@ export default function SettingsPage() {
         feePerVisit: consultationFee ? Number(consultationFee) : undefined,
         workingDays: workingDays,
         showClinicLocationOnRx: showClinicLocationOnRx,
+        clinicScreenShowNames: clinicScreenShowNames,
       });
       await updateClinicalPreferences({
         clerkId,
@@ -213,7 +216,7 @@ export default function SettingsPage() {
       });
       toast.success(t("toast.settingsSaved"), { id: "settings-save" });
     } catch { toast.error(t("toast.settingsSaveFailed"), { id: "settings-save-error" }); }
-  }, [clerkId, currentUser, name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, publicProfile, consultationFee, updateProfile, updateClinicalPreferences, t, workingDays, showClinicLocationOnRx, enableDiagnosis, enableMeasurements, enableVitals, enableNotes, enablePrescription]);
+  }, [clerkId, currentUser, name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, publicProfile, consultationFee, updateProfile, updateClinicalPreferences, t, workingDays, showClinicLocationOnRx, clinicScreenShowNames, enableDiagnosis, enableMeasurements, enableVitals, enableNotes, enablePrescription]);
   function triggerSave() {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(doSave, 2000);
@@ -223,12 +226,12 @@ export default function SettingsPage() {
   const prevValues = useRef("");
   useEffect(() => {
     if (!initialised.current) return;
-    const key = JSON.stringify({ name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, publicProfile, consultationFee, workingDays, showClinicLocationOnRx, enableDiagnosis, enableMeasurements, enableVitals, enableNotes, enablePrescription });
+    const key = JSON.stringify({ name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, publicProfile, consultationFee, workingDays, showClinicLocationOnRx, clinicScreenShowNames, enableDiagnosis, enableMeasurements, enableVitals, enableNotes, enablePrescription });
     if (prevValues.current && key !== prevValues.current) {
       triggerSave();
     }
     prevValues.current = key;
-  }, [name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, publicProfile, consultationFee, workingDays, showClinicLocationOnRx, enableDiagnosis, enableMeasurements, enableVitals, enableNotes, enablePrescription]);
+  }, [name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, publicProfile, consultationFee, workingDays, showClinicLocationOnRx, clinicScreenShowNames, enableDiagnosis, enableMeasurements, enableVitals, enableNotes, enablePrescription]);
 
   async function handlePhotoUpload(file: File) {
     setUploadingPhoto(true);
@@ -525,9 +528,21 @@ export default function SettingsPage() {
                 />
               </div>
             </div>
+            <div className={rowClass}>
+              <label htmlFor="settings-clinic-screen-names" className={labelClass}>
+                {dir === "rtl" ? "شاشة الانتظار: عرض أسماء المرضى" : "Waiting Screen: Show Patient Names"}
+              </label>
+              <div className="flex-1 flex justify-end">
+                <Switch
+                  id="settings-clinic-screen-names"
+                  checked={clinicScreenShowNames}
+                  onCheckedChange={setClinicScreenShowNames}
+                />
+              </div>
+            </div>
           </div>
           <p className="text-[12px] text-muted-foreground ms-4 -mt-5 mb-8">
-            {dir === "rtl" ? "تخصيص الأقسام التي تظهر أثناء زيارة المريض." : "Customize which sections appear during a patient visit."}
+            {dir === "rtl" ? "تخصيص الأقسام التي تظهر أثناء زيارة المريض. عند تعطيل عرض الأسماء، تُعرض الأرقام فقط على شاشة الانتظار." : "Customize visit sections. When names are off, only queue numbers are shown on the waiting screen."}
           </p>
         </section>
 

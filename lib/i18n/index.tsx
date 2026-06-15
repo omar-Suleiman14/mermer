@@ -50,6 +50,9 @@ export const translations: Record<Lang, Record<string, string>> = {
     "dashboard.followUp": "Follow-up",
     "dashboard.clinicScreenCopied": "Clinic Screen link copied",
     "dashboard.copyClinicLink": "Copy Clinic Link",
+    "dashboard.pastDuePatients": "Past Due Patients",
+    "dashboard.outstandingBalance": "Outstanding Balance",
+    "dashboard.resolve": "Resolve",
 
     // Schedule
     "schedule.title": "Schedule",
@@ -115,6 +118,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "installments.remaining": "remaining",
     "installments.unpaidBalance": "Unpaid Balance",
     "installments.waive": "Waive",
+    "installments.discussWithPatient": "Discuss with patient before proceeding",
     "installments.nextVisit": "Next visit",
     "installments.viewDoc": "View installment Document",
     "installments.started": "Started",
@@ -682,7 +686,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "feed.insurance": "Insurance",
     "feed.noInsurance": "I'll pay for myself",
     "feed.maxFee": "Max Fee (EGP)",
-    "feed.availToday": "Available Today",
+
     "feed.today": "Today",
     "feed.tomorrow": "Tomorrow",
     "feed.checkAvailability": "Check Availability",
@@ -903,6 +907,9 @@ export const translations: Record<Lang, Record<string, string>> = {
     "dashboard.followUp": "متابعة",
     "dashboard.clinicScreenCopied": "تم نسخ رابط شاشة العيادة",
     "dashboard.copyClinicLink": "نسخ رابط العيادة",
+    "dashboard.pastDuePatients": "مرضى متأخرون في السداد",
+    "dashboard.outstandingBalance": "الرصيد المتبقي",
+    "dashboard.resolve": "تسوية",
 
     // Schedule
     "schedule.title": "الجدول",
@@ -968,6 +975,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "installments.remaining": "متبقي",
     "installments.unpaidBalance": "الرصيد غير المدفوع",
     "installments.waive": "تنازل",
+    "installments.discussWithPatient": "يرجى مناقشة الأمر مع المريض قبل المتابعة",
     "installments.nextVisit": "الزيارة القادمة",
     "installments.viewDoc": "عرض وثيقة القسط",
     "installments.started": "بدأ",
@@ -1462,7 +1470,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "feed.insurance": "التأمين",
     "feed.noInsurance": "سأدفع بنفسي",
     "feed.maxFee": "الحد الأقصى (ج.م)",
-    "feed.availToday": "متاح اليوم",
+
     "feed.today": "اليوم",
     "feed.tomorrow": "غداً",
     "feed.checkAvailability": "المواعيد المتاحة",

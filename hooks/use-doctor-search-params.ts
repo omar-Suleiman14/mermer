@@ -12,7 +12,6 @@ export type DoctorSearchFilters = {
   feeMin: string;
   feeMax: string;
   minRating: string;
-  availToday: boolean;
   sort: DoctorSearchSort;
 };
 
@@ -24,7 +23,6 @@ const DEFAULTS: DoctorSearchFilters = {
   feeMin: "",
   feeMax: "",
   minRating: "",
-  availToday: false,
   sort: "relevance",
 };
 
@@ -39,7 +37,6 @@ function parseFilters(params: URLSearchParams): DoctorSearchFilters {
     feeMin: params.get("feeMin") ?? "",
     feeMax: params.get("fee") ?? params.get("feeMax") ?? "",
     minRating: params.get("minRating") ?? "",
-    availToday: params.get("today") === "1",
     sort: validSorts.includes(sort as DoctorSearchSort) ? (sort as DoctorSearchSort) : "relevance",
   };
 }
@@ -53,7 +50,6 @@ function filtersToParams(filters: DoctorSearchFilters): URLSearchParams {
   if (filters.feeMin) p.set("feeMin", filters.feeMin);
   if (filters.feeMax) p.set("fee", filters.feeMax);
   if (filters.minRating) p.set("minRating", filters.minRating);
-  if (filters.availToday) p.set("today", "1");
   if (filters.sort !== "relevance") p.set("sort", filters.sort);
   return p;
 }
@@ -86,8 +82,7 @@ export function useDoctorSearchParams() {
     !!filters.language ||
     !!filters.feeMin ||
     !!filters.feeMax ||
-    !!filters.minRating ||
-    filters.availToday;
+    !!filters.minRating;
 
   return { filters, setFilters, clearFilters, hasActiveFilters, DEFAULTS };
 }

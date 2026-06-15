@@ -67,6 +67,7 @@ export default defineSchema({
     prescriptionPhone: v.optional(v.string()),
     prescriptionWorkingHours: v.optional(v.string()),
     showClinicLocationOnRx: v.optional(v.boolean()),
+    clinicScreenShowNames: v.optional(v.boolean()), // Clinic screen: show patient names (default: false = show numbers)
 
     // Clinical Preferences
     enableDiagnosis: v.optional(v.boolean()),

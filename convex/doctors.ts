@@ -110,13 +110,7 @@ const DAY_FULL = [
   "Saturday",
 ];
 
-function matchesAvailableToday(availableDays: string[]): boolean {
-  if (!availableDays.length) return false;
-  const dow = new Date().getDay();
-  const abbrev = DAY_ABBREVS[dow];
-  const full = DAY_FULL[dow];
-  return availableDays.includes(abbrev) || availableDays.includes(full);
-}
+// Removed matchesAvailableToday function
 
 function doctorSearchBlob(d: {
   name: string;
@@ -152,7 +146,6 @@ export const searchDoctors = query({
     feeMin: v.optional(v.number()),
     feeMax: v.optional(v.number()),
     minRating: v.optional(v.number()),
-    availToday: v.optional(v.boolean()),
     sortBy: v.optional(v.string()),
     limit: v.number(),
   },
@@ -208,11 +201,7 @@ export const searchDoctors = query({
       );
     }
 
-    if (args.availToday) {
-      list = list.filter((d) =>
-        matchesAvailableToday((d.availableDays ?? []) as string[])
-      );
-    }
+    // Removed availToday filter
 
     // Sort
     const sort = args.sortBy ?? "relevance";

@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { MapPin, Building2, ChevronRight } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
-import { formatDoctorTitle, isAvailableToday, translateSpecialty } from "@/lib/doctor-display";
+import { formatDoctorTitle, translateSpecialty } from "@/lib/doctor-display";
 import type { PublicDoctor } from "@/lib/doctor-constants";
 import { StarRating } from "./star-rating";
 import { cn } from "@/lib/utils";
@@ -16,7 +16,6 @@ interface DoctorCardProps {
 
 export function DoctorCard({ doctor, className }: DoctorCardProps) {
   const { t, lang, dir } = useI18n();
-  const availableToday = isAvailableToday(doctor.availableDays);
   const slug = doctor.qrSlug;
   if (!slug) return null;
 
@@ -109,16 +108,9 @@ export function DoctorCard({ doctor, className }: DoctorCardProps) {
           <span /> // spacer
         )}
         
-        {availableToday ? (
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-500/10 text-green-600 dark:text-green-400 text-xs font-semibold">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-            {t("feed.availToday")}
-          </span>
-        ) : (
           <span className="text-xs text-slate-400">
             {lang === "ar" ? "عرض المواعيد المتاحة" : "View available slots"}
           </span>
-        )}
       </div>
     </Link>
   );

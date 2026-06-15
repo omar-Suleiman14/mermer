@@ -59,6 +59,15 @@ export const createFollowUp = mutation({
     // followUpDate is now a full timestamp (with correct time) computed by the client
     const followUpTimestamp = args.followUpDate;
 
+    // Check if the parent visit belongs to an installment plan
+    let installmentId: string | undefined;
+    if (args.parentVisitId) {
+      const parentVisit = await ctx.db.get(args.parentVisitId);
+      if (parentVisit?.installmentId) {
+        installmentId = parentVisit.installmentId as string;
+      }
+    }
+
     // Create a visit for this follow-up so it shows in the schedule
     const visitId = await ctx.db.insert("visits", {
       patientId: args.patientId,
@@ -70,6 +79,7 @@ export const createFollowUp = mutation({
       source: "follow-up",
       status: "confirmed",
       reasonForVisit: `Follow-up${args.note ? ` — ${args.note}` : ""}`,
+      ...(installmentId ? { installmentId: installmentId as any } : {}),
       createdAt: Date.now(),
     });
 
@@ -86,6 +96,11 @@ export const createFollowUp = mutation({
       status: "scheduled",
       createdAt: Date.now(),
     });
+
+    // If the parent visit belongs to an installment plan, update its nextVisitDate
+    if (installmentId) {
+      await ctx.db.patch(installmentId as any, { nextVisitDate: followUpTimestamp });
+    }
 
     return id;
   },
