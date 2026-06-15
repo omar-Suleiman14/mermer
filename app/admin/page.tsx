@@ -304,7 +304,7 @@ function AdminSupportChatDrawer({
 function AdminDashboard({ clerkId }: { clerkId: string }) {
   const searchParams = useSearchParams();
   const [search, setSearch] = useState("");
-  const [filterType, setFilterType] = useState<"all" | "active" | "installment" | "blocked">("all");
+  const [filterType, setFilterType] = useState<"all" | "active" | "installment" | "blocked" | "messages">("all");
   const [sortOrder, setSortOrder] = useState<"desc" | "asc">("desc");
   const [selectedDoctorId, setSelectedDoctorId] = useState<Id<"users"> | null>(null);
   const [selectedDoctorName, setSelectedDoctorName] = useState("");
@@ -323,6 +323,7 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
     const doctor = allDoctors.find((d) => d._id === selectedChatDoctorId);
     if (doctor) setSelectedChatDoctorName(doctor.name);
   }, [allDoctors, selectedChatDoctorId, selectedChatDoctorName]);
+  const unreadCounts = useQuery(api.support.getUnreadCountsByUser) ?? {};
   const overview = useQuery(api.doctors.getPlatformOverview, { clerkId });
   const banDoctor = useMutation(api.doctors.banDoctor);
   const toggleBlock = useMutation(api.users.toggleBlockUser);
@@ -369,7 +370,8 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
       (filterType === "all" ||
         (filterType === "active" && !(d as any).isBanned && !(d as any).isBlocked) ||
         (filterType === "installment" && (d as any).isBanned) ||
-        (filterType === "blocked" && (d as any).isBlocked)) &&
+        (filterType === "blocked" && (d as any).isBlocked) ||
+        (filterType === "messages" && (unreadCounts[d._id] ?? 0) > 0)) &&
       (d.name.toLowerCase().includes(search.toLowerCase()) ||
         d.clinicName.toLowerCase().includes(search.toLowerCase()) ||
         (d.specialty ?? "").toLowerCase().includes(search.toLowerCase()) ||
@@ -448,6 +450,7 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
             <option value="active">Active</option>
             <option value="installment">installment</option>
             <option value="blocked">Pending Approval</option>
+            <option value="messages">Has Messages</option>
           </select>
           <select
             value={sortOrder}
@@ -557,8 +560,11 @@ function AdminDashboard({ clerkId }: { clerkId: string }) {
                           </button>
                           <button
                             onClick={() => { setSelectedChatDoctorId(doc._id); setSelectedChatDoctorName(doc.name); }}
-                            className="text-[10px] font-semibold px-2 py-1 rounded-lg border border-border hover:border-[#34c759]/40 hover:text-[#34c759] transition-colors flex items-center gap-1"
+                            className="relative text-[10px] font-semibold px-2 py-1 rounded-lg border border-border hover:border-[#34c759]/40 hover:text-[#34c759] transition-colors flex items-center gap-1"
                           >
+                            {(unreadCounts[doc._id] ?? 0) > 0 && (
+                              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white dark:border-[#1c1c1a] animate-pulse" />
+                            )}
                             <MessageSquare className="w-3 h-3" /> Chat
                           </button>
                         </>

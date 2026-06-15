@@ -17,4 +17,11 @@ crons.daily(
   internal.whatsappAutomations.scheduleMissedAppointments
 );
 
+// Delete support chat messages older than 30 days at 3:00 AM UTC
+crons.daily(
+  "cleanup old support messages",
+  { hourUTC: 3, minuteUTC: 0 },
+  internal.support.deleteOldMessages
+);
+
 export default crons;

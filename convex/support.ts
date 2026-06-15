@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation } from "./_generated/server";
 import { internal } from "./_generated/api";
 
 export const sendMessageToAdmin = mutation({
@@ -126,3 +126,44 @@ export const markAsRead = mutation({
     await ctx.db.patch(args.messageId, { isRead: true });
   },
 });
+
+// ── Admin: get unread counts per user for red dot indicators ────────────────
+export const getUnreadCountsByUser = query({
+  args: {},
+  handler: async (ctx) => {
+    const unread = await ctx.db
+      .query("supportMessages")
+      .withIndex("by_isRead", (q) => q.eq("isRead", false))
+      .collect();
+
+    // Build a map: userId → unread count (only non-admin messages)
+    const counts: Record<string, number> = {};
+    for (const msg of unread) {
+      if (msg.fromAdmin) continue;
+      counts[msg.userId] = (counts[msg.userId] || 0) + 1;
+    }
+    return counts;
+  },
+});
+
+// ── Cron cleanup: delete support messages older than 30 days ────────────────
+export const deleteOldMessages = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const old = await ctx.db
+      .query("supportMessages")
+      .filter((q) => q.lt(q.field("createdAt"), cutoff))
+      .collect();
+
+    let deleted = 0;
+    for (const msg of old) {
+      await ctx.db.delete(msg._id);
+      deleted++;
+    }
+    if (deleted > 0) {
+      console.log(`Deleted ${deleted} support messages older than 30 days.`);
+    }
+  },
+});
+
