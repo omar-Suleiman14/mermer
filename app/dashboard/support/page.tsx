@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import { useI18n } from "@/lib/i18n/client";
 import { useMutation, useQuery } from "convex/react";
@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { MessageCircle, Phone, Send, Trash2, X } from "lucide-react";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { motion, AnimatePresence } from "framer-motion";
-import { useSearchParams } from "next/navigation";
+
 
 // ── User Support Chat Drawer ───────────────────────────────────────────────────
 
@@ -128,10 +128,8 @@ function SupportPageInner() {
   const isAr = lang === "ar";
   const { user, isLoaded } = useUser();
   const clerkId = user?.id ?? "";
-  const searchParams = useSearchParams();
-
-  // Auto-open chat drawer when navigated from a push notification (?chat=1)
-  const [isChatOpen, setIsChatOpen] = useState(() => searchParams.get("chat") === "1");
+  // Always auto-open the chat drawer — the user is here to chat
+  const [isChatOpen, setIsChatOpen] = useState(true);
 
   return (
     <div className="flex flex-col h-full bg-muted/20" dir={dir}>
@@ -223,9 +221,5 @@ function SupportPageInner() {
 }
 
 export default function SupportPage() {
-  return (
-    <Suspense>
-      <SupportPageInner />
-    </Suspense>
-  );
+  return <SupportPageInner />;
 }
