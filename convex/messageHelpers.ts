@@ -75,9 +75,9 @@ function clinicHeader(clinicName: string, doctorName: string): string {
 
 /** Builds an address footer line if an address/maps link is provided. */
 function addressLine(clinicAddress?: string, clinicAddressLink?: string): string {
-  if (clinicAddressLink && clinicAddress) return `\n\n📍 العنوان: ${clinicAddress}\n🗺️ خريطة العيادة: ${clinicAddressLink}`;
-  if (clinicAddressLink) return `\n\n🗺️ خريطة العيادة: ${clinicAddressLink}`;
-  if (clinicAddress) return `\n\n📍 العنوان: ${clinicAddress}`;
+  if (clinicAddressLink && clinicAddress) return `\n\nالعنوان: ${clinicAddress}\nخريطة العيادة: ${clinicAddressLink}`;
+  if (clinicAddressLink) return `\n\nخريطة العيادة: ${clinicAddressLink}`;
+  if (clinicAddress) return `\n\nالعنوان: ${clinicAddress}`;
   return "";
 }
 
@@ -109,8 +109,8 @@ export function msgBookingConfirmed(args: BookingArgs): string {
     `${clinicHeader(args.clinicName, args.doctorName)}\n\n` +
     `مرحباً ${args.patientName}،\n` +
     `تم تأكيد موعدك بنجاح!\n` +
-    `📅 التاريخ: ${dateStr}\n` +
-    `⏰ الوقت: ${timeStr}` +
+    `التاريخ: ${dateStr}\n` +
+    `الوقت: ${timeStr}` +
     `${slotLine}` +
     `${addr}\n\n` +
     `نراك قريباً.`
