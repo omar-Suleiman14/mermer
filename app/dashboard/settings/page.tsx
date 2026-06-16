@@ -4,7 +4,7 @@ import { useQuery, useMutation, useConvex } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import { Camera, Globe, Palette, AlertTriangle, Bell, Loader2 } from "lucide-react";
 import { IOSSpinner } from "@/components/ui/spinner";
@@ -175,6 +175,63 @@ export default function SettingsPage() {
     setClinicScreenShowNames((currentUser as any).clinicScreenShowNames ?? false);
 
   }, [currentUser]);
+
+  const originalKey = useMemo(() => {
+    if (!currentUser) return "";
+    return JSON.stringify({
+      name: currentUser.name ?? "",
+      phone: normalisePhone(currentUser.phone ?? ""),
+      clinicName: currentUser.clinicName ?? "",
+      specialty: SPECIALTIES.includes(currentUser.specialty ?? "") || (currentUser.specialty === "") ? (currentUser.specialty ?? "") : "Other",
+      credentials: currentUser.credentials ?? "",
+      clinicAddress: (currentUser as any).clinicAddress ?? "",
+      clinicAddressLink: (currentUser as any).clinicAddressLink ?? "",
+      workingHoursStart: String((currentUser as any).workingHoursStart ?? 9),
+      workingHoursEnd: String((currentUser as any).workingHoursEnd ?? 17),
+      isAlwaysOpen: (currentUser as any).workingHoursStart === 0 && (currentUser as any).workingHoursEnd === 24,
+      slotMin: String(currentUser.slotDurationMinutes ?? 30),
+      bio: (currentUser as any).bio ?? "",
+      publicProfile: (currentUser as any).publicProfile ?? false,
+      consultationFee: String((currentUser as any).consultationFee ?? ""),
+      workingDays: (currentUser as any).availableDays ?? [],
+      showClinicLocationOnRx: (currentUser as any).showClinicLocationOnRx ?? true,
+      clinicScreenShowNames: (currentUser as any).clinicScreenShowNames ?? false,
+      enableDiagnosis: (currentUser as any).enableDiagnosis ?? false,
+      enableMeasurements: (currentUser as any).enableMeasurements ?? false,
+      enableVitals: (currentUser as any).enableVitals ?? false,
+      enableNotes: (currentUser as any).enableNotes ?? false,
+      enablePrescription: (currentUser as any).enablePrescription ?? true,
+      customSpecialty: !SPECIALTIES.includes(currentUser.specialty ?? "") && (currentUser.specialty ?? "") !== "" ? (currentUser.specialty ?? "") : ""
+    });
+  }, [currentUser]);
+
+  const currentKey = JSON.stringify({
+    name,
+    phone: normalisePhone(phone),
+    clinicName,
+    specialty,
+    credentials,
+    clinicAddress,
+    clinicAddressLink,
+    workingHoursStart,
+    workingHoursEnd,
+    isAlwaysOpen,
+    slotMin,
+    bio,
+    publicProfile,
+    consultationFee,
+    workingDays,
+    showClinicLocationOnRx,
+    clinicScreenShowNames,
+    enableDiagnosis,
+    enableMeasurements,
+    enableVitals,
+    enableNotes,
+    enablePrescription,
+    customSpecialty: specialty === "Other" ? customSpecialty : ""
+  });
+
+  const hasChanges = currentUser && originalKey !== currentKey;
 
   async function handleSave() {
     if (!currentUser) return;
@@ -611,16 +668,18 @@ export default function SettingsPage() {
 
       </div>
 
-      <div className="sticky bottom-0 border-t border-border bg-background/95 backdrop-blur-md p-4 flex justify-end z-40 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)]">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="bg-[#007AFF] hover:bg-[#0062cc] disabled:opacity-60 text-white px-8 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-sm flex items-center gap-2"
-        >
-          {saving ? <IOSSpinner size={16} className="text-white" /> : null}
-          {dir === "rtl" ? "حفظ التغييرات" : "Save Changes"}
-        </button>
-      </div>
+      {hasChanges && (
+        <div className="sticky bottom-0 border-t border-border bg-background/95 backdrop-blur-md p-4 flex justify-end z-40 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom-2 duration-300">
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="bg-[#007AFF] hover:bg-[#0062cc] disabled:opacity-60 text-white px-8 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-sm flex items-center gap-2"
+          >
+            {saving ? <IOSSpinner size={16} className="text-white" /> : null}
+            {dir === "rtl" ? "حفظ التغييرات" : "Save Changes"}
+          </button>
+        </div>
+      )}
 
       {/* Reschedule Prompt */}
       {reschedulePromptOpen && (

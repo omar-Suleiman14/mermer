@@ -179,6 +179,14 @@ export const getConnectionState = action({
         return { status: "open" };
       }
 
+      // Update the DB status for non-open states so the UI stays in sync
+      if (state !== "connecting") {
+        await ctx.runMutation(internal.evolution.updateInstanceStatus, {
+          clinicId: args.clinicId,
+          evolutionStatus: state,
+        });
+      }
+
       // If connecting, fetch the QR code
       const qrResponse = await fetch(`${EVOLUTION_API_URL}/instance/connect/${args.instanceName}`, {
         method: "GET",
