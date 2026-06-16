@@ -71,8 +71,11 @@ function clinicHeader(clinicName: string, doctorName: string): string {
 }
 
 /** Builds an address footer line if an address/maps link is provided. */
-function addressLine(clinicAddress?: string): string {
-  return clinicAddress ? `\nالعنوان: ${clinicAddress}` : "";
+function addressLine(clinicAddress?: string, clinicAddressLink?: string): string {
+  if (clinicAddressLink && clinicAddress) return `\nالعنوان: ${clinicAddress}\nخريطة العيادة: ${clinicAddressLink}`;
+  if (clinicAddressLink) return `\nخريطة العيادة: ${clinicAddressLink}`;
+  if (clinicAddress) return `\nالعنوان: ${clinicAddress}`;
+  return "";
 }
 
 // ── Message templates ─────────────────────────────────────────────────────────
@@ -84,6 +87,7 @@ interface BookingArgs {
   date: number;
   slotNumber?: number;
   clinicAddress?: string;
+  clinicAddressLink?: string;
 }
 
 /**
@@ -96,7 +100,7 @@ export function msgBookingConfirmed(args: BookingArgs): string {
   const slotLine = args.slotNumber
     ? `\nرقم دورك في الطابور: *${args.slotNumber}*`
     : "";
-  const addr = addressLine(args.clinicAddress);
+  const addr = addressLine(args.clinicAddress, args.clinicAddressLink);
   return (
     `${clinicHeader(args.clinicName, args.doctorName)}\n` +
     `مرحباً ${args.patientName}،\n` +
@@ -132,6 +136,7 @@ interface RescheduleArgs {
   newDate: number;
   slotNumber?: number;
   clinicAddress?: string;
+  clinicAddressLink?: string;
 }
 
 /**
@@ -141,7 +146,7 @@ export function msgRescheduled(args: RescheduleArgs): string {
   const dateStr = fmtDateAr(args.newDate);
   const timeStr = fmtTimeAr(args.newDate);
   const slotLine = args.slotNumber ? `\nرقم الحجز الجديد هو ${args.slotNumber}.` : "";
-  const addr = addressLine(args.clinicAddress);
+  const addr = addressLine(args.clinicAddress, args.clinicAddressLink);
   return `${clinicHeader(args.clinicName, args.doctorName)}\nمرحباً ${args.patientName}،\nتم تعديل موعدك ليصبح بتاريخ ${dateStr} الساعة ${timeStr}.${slotLine}${addr}\nنراك قريباً.`;
 }
 
@@ -167,6 +172,7 @@ interface ReminderArgs {
   date: number;
   slotNumber?: number;
   clinicAddress?: string;
+  clinicAddressLink?: string;
 }
 
 /**
@@ -174,7 +180,7 @@ interface ReminderArgs {
  */
 export function msgReminder(args: ReminderArgs): string {
   const timeStr = fmtTimeAr(args.date);
-  const addr = addressLine(args.clinicAddress);
+  const addr = addressLine(args.clinicAddress, args.clinicAddressLink);
   return `${clinicHeader(args.clinicName, args.doctorName)}\nتذكير بموعدك\nمرحباً ${args.patientName}، موعدك اليوم الساعة ${timeStr}.${addr}\nنتمنى لك الشفاء العاجل.`;
 }
 
@@ -201,6 +207,7 @@ interface InstallmentArgs {
   totalSessions?: number;
   slotNumber?: number;
   clinicAddress?: string;
+  clinicAddressLink?: string;
 }
 
 /**
@@ -210,7 +217,7 @@ export function msgInstallmentCreated(args: InstallmentArgs): string {
   const dateStr = fmtDateAr(args.firstDate);
   const timeStr = fmtTimeAr(args.firstDate);
   const slotLine = args.slotNumber ? `\nرقم الحجز هو ${args.slotNumber}.` : "";
-  const addr = addressLine(args.clinicAddress);
+  const addr = addressLine(args.clinicAddress, args.clinicAddressLink);
   return `${clinicHeader(args.clinicName, args.doctorName)}\nمرحباً ${args.patientName}،\nتم إنشاء خطة تقسيط علاجية خاصة بك.\nموعدك الأول بتاريخ ${dateStr} الساعة ${timeStr}.${slotLine}${addr}\nنراك قريباً.`;
 }
 

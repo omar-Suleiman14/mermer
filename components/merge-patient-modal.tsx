@@ -31,6 +31,7 @@ export function MergePatientModal({
   const [search, setSearch] = useState("");
   const [selectedTarget, setSelectedTarget] = useState<Id<"patients"> | null>(null);
   const [loading, setLoading] = useState(false);
+  const [confirmStep, setConfirmStep] = useState(false);
 
   const searchResults = useQuery(
     api.patients.searchPatients,
@@ -42,13 +43,8 @@ export function MergePatientModal({
   const handleMerge = async () => {
     if (!selectedTarget) return;
 
-    if (
-      !confirm(
-        lang === "ar"
-          ? `هل أنت متأكد من دمج المريض ${sourcePatientName} في المريض المحدد؟ سيتم نقل جميع الزيارات والبيانات وسيتم حذف المريض الحالي.`
-          : `Are you sure you want to merge ${sourcePatientName} into the selected patient? All visits and data will be moved and the current patient will be deleted.`
-      )
-    ) {
+    if (!confirmStep) {
+      setConfirmStep(true);
       return;
     }
 
@@ -71,6 +67,7 @@ export function MergePatientModal({
       toast.error(err.message || "Failed to merge patients");
     } finally {
       setLoading(false);
+      setConfirmStep(false);
     }
   };
 
@@ -154,7 +151,10 @@ export function MergePatientModal({
                     .map((p) => (
                       <button
                         key={p._id}
-                        onClick={() => setSelectedTarget(p._id)}
+                        onClick={() => {
+                          setSelectedTarget(p._id);
+                          setConfirmStep(false);
+                        }}
                         className={`w-full flex items-center justify-between p-3 rounded-xl border text-start transition-colors ${
                           selectedTarget === p._id
                             ? "bg-primary/10 border-primary text-primary"
@@ -175,7 +175,7 @@ export function MergePatientModal({
             </div>
 
             {/* Footer */}
-            <div className="flex-none p-5 border-t border-border flex gap-3">
+            <div className="flex-none p-5 border-t border-border flex flex-col sm:flex-row gap-3">
               <button
                 onClick={() => onOpenChange(false)}
                 className="flex-1 py-2.5 px-4 rounded-xl border border-border text-sm font-medium hover:bg-muted/50 transition-colors"
@@ -185,10 +185,12 @@ export function MergePatientModal({
               <button
                 onClick={handleMerge}
                 disabled={!selectedTarget || loading}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-primary text-primary-foreground text-sm font-bold disabled:opacity-50 flex justify-center items-center gap-2 hover:bg-primary/90 transition-colors"
+                className={`flex-1 py-2.5 px-4 rounded-xl text-white text-sm font-bold disabled:opacity-50 flex justify-center items-center gap-2 transition-colors ${
+                  confirmStep ? "bg-red-500 hover:bg-red-600" : "bg-primary hover:bg-primary/90"
+                }`}
               >
                 {loading && <IOSSpinner size={16} className="text-white" />}
-                {lang === "ar" ? "تأكيد الدمج" : "Confirm Merge"}
+                {!loading && confirmStep ? (lang === "ar" ? "نعم، ادمج الآن" : "Yes, Merge Now") : (lang === "ar" ? "تأكيد الدمج" : "Confirm Merge")}
               </button>
             </div>
           </motion.div>

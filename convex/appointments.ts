@@ -241,6 +241,7 @@ export const confirmPendingAppointmentByPhone = internalMutation({
       date: visit.date,
       slotNumber: slotNum,
       clinicAddress: doctor.clinicAddress,
+      clinicAddressLink: doctor.clinicAddressLink,
     });
     
     // Use the raw international number (from the webhook) for sending back
@@ -325,6 +326,7 @@ export const addManualAppointment = mutation({
         date: args.date,
         slotNumber: slotNum,
         clinicAddress: doctor.clinicAddress,
+        clinicAddressLink: doctor.clinicAddressLink,
       });
       
       await ctx.scheduler.runAfter(0, internal.whatsappAutomations.sendMessage, {
@@ -376,7 +378,7 @@ export const swapAppointments = mutation({
           instanceName: user.evolutionInstanceName,
           evolutionApiKey: user.evolutionApiKey,
           phoneNumber: v1.patientPhone,
-          messageText: msgRescheduled({ patientName: v1.patientName || "", clinicName: user.clinicName || "العيادة", doctorName: user.name, newDate: v2.date, slotNumber: slot1, clinicAddress: user.clinicAddress }),
+          messageText: msgRescheduled({ patientName: v1.patientName || "", clinicName: user.clinicName || "العيادة", doctorName: user.name, newDate: v2.date, slotNumber: slot1, clinicAddress: user.clinicAddress, clinicAddressLink: user.clinicAddressLink }),
           doctorId: user._id,
         });
       }
@@ -386,7 +388,7 @@ export const swapAppointments = mutation({
           instanceName: user.evolutionInstanceName,
           evolutionApiKey: user.evolutionApiKey,
           phoneNumber: v2.patientPhone,
-          messageText: msgRescheduled({ patientName: v2.patientName || "", clinicName: user.clinicName || "العيادة", doctorName: user.name, newDate: v1.date, slotNumber: slot2, clinicAddress: user.clinicAddress }),
+          messageText: msgRescheduled({ patientName: v2.patientName || "", clinicName: user.clinicName || "العيادة", doctorName: user.name, newDate: v1.date, slotNumber: slot2, clinicAddress: user.clinicAddress, clinicAddressLink: user.clinicAddressLink }),
           doctorId: user._id,
         });
       }
@@ -582,7 +584,7 @@ export const updateAppointment = mutation({
           instanceName: user.evolutionInstanceName,
           evolutionApiKey: user.evolutionApiKey,
           phoneNumber: visit.patientPhone,
-          messageText: msgRescheduled({ patientName: visit.patientName || "", clinicName: user.clinicName || "العيادة", doctorName: user.name, newDate, slotNumber: slotNum, clinicAddress: user.clinicAddress }),
+          messageText: msgRescheduled({ patientName: visit.patientName || "", clinicName: user.clinicName || "العيادة", doctorName: user.name, newDate, slotNumber: slotNum, clinicAddress: user.clinicAddress, clinicAddressLink: user.clinicAddressLink }),
           doctorId: user._id,
         });
       }
@@ -597,6 +599,7 @@ export const updateAppointment = mutation({
         date: visit.date,
         slotNumber: slotNum,
         clinicAddress: user.clinicAddress,
+        clinicAddressLink: user.clinicAddressLink,
       });
 
       await ctx.scheduler.runAfter(0, internal.whatsappAutomations.sendMessage, {

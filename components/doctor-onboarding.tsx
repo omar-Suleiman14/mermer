@@ -247,15 +247,33 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
 
               <div>
                 <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("onboarding.specialty")} *</label>
-                <select value={specialty} onChange={(e) => setSpecialty(e.target.value)} className={inputClass}>
-                  <option value="">{t("onboarding.selectSpecialty")}</option>
-                  {SPECIALTIES.map((s) => <option key={s} value={s}>{t("specialty." + s) || s}</option>)}
+                <select 
+                  value={SPECIALTIES.includes(specialty) || specialty === "" ? specialty : (customSpecialty ? "Other" : specialty)} 
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSpecialty(val);
+                    if (val !== "Other") setCustomSpecialty("");
+                  }} 
+                  className={inputClass}
+                >
+                  <option value="" disabled>{t("onboarding.selectSpecialty")}</option>
+                  {SPECIALTIES.map((s) => (
+                    <option key={s} value={s}>{s === "Other" ? (dir === "rtl" ? "تخصص آخر (Other)" : "Other") : (t("specialty." + s) || s)}</option>
+                  ))}
                 </select>
               </div>
 
-              {specialty === "Other" && (
-                <input value={customSpecialty} onChange={(e) => setCustomSpecialty(e.target.value)} placeholder={t("settings.placeholderSpecialty") || "Enter your specialty"} className={inputClass} />
-              )}
+              {(!SPECIALTIES.includes(specialty) && specialty !== "") || specialty === "Other" ? (
+                <input 
+                  value={customSpecialty || (!SPECIALTIES.includes(specialty) && specialty !== "Other" ? specialty : "")} 
+                  onChange={(e) => {
+                    setCustomSpecialty(e.target.value);
+                    setSpecialty("Other");
+                  }} 
+                  placeholder={t("settings.placeholderSpecialty") || "Enter your specialty"} 
+                  className={inputClass} 
+                />
+              ) : null}
 
               <div>
                 <label className="text-xs font-medium text-muted-foreground block mb-1.5">

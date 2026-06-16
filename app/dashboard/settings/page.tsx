@@ -16,13 +16,7 @@ import { LanguageToggle } from "@/components/language-toggle";
 import Image from "next/image";
 import { WhatsAppIntegration } from "@/components/settings/whatsapp-integration";
 
-const MessageTemplatesSection = dynamic(
-  () => import("@/components/message-templates-section").then((m) => m.MessageTemplatesSection),
-  {
-    ssr: false,
-    loading: () => <div className="h-20 rounded-xl bg-muted/40 animate-pulse" />,
-  }
-);
+
 
 
 
@@ -152,12 +146,11 @@ export default function SettingsPage() {
     setClinicName(currentUser.clinicName ?? "");
     
     const dbSpec = currentUser.specialty ?? "";
-    if (SPECIALTIES.includes(dbSpec) || dbSpec === "") {
-      setSpecialty(dbSpec);
-      setCustomSpecialty("");
-    } else {
-      setSpecialty("Other");
+    setSpecialty(dbSpec);
+    if (!SPECIALTIES.includes(dbSpec) && dbSpec !== "") {
       setCustomSpecialty(dbSpec);
+    } else {
+      setCustomSpecialty("");
     }
 
     setCredentials(currentUser.credentials ?? "");
@@ -283,18 +276,31 @@ export default function SettingsPage() {
             <div className={rowClass}>
               <label className={labelClass}>{t("onboarding.specialty")}</label>
               <div className="flex-1 flex flex-col gap-2 min-w-0">
-                <select value={specialty} onChange={(e) => setSpecialty(e.target.value)} className={inputClass}>
+                <select 
+                  value={SPECIALTIES.includes(specialty) || specialty === "" ? specialty : (customSpecialty ? "Other" : specialty)} 
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSpecialty(val);
+                    if (val !== "Other") setCustomSpecialty("");
+                  }} 
+                  className={inputClass}
+                >
                   <option value="" disabled>{t("onboarding.selectSpecialty")}</option>
-                  {SPECIALTIES.map((s) => <option key={s} value={s}>{t("specialty." + s) || s}</option>)}
+                  {SPECIALTIES.map((s) => (
+                    <option key={s} value={s}>{s === "Other" ? (dir === "rtl" ? "تخصص آخر (Other)" : "Other") : (t("specialty." + s) || s)}</option>
+                  ))}
                 </select>
-                {specialty === "Other" && (
+                {(!SPECIALTIES.includes(specialty) && specialty !== "") || specialty === "Other" ? (
                   <input
-                    value={customSpecialty}
-                    onChange={(e) => setCustomSpecialty(e.target.value)}
+                    value={customSpecialty || (!SPECIALTIES.includes(specialty) && specialty !== "Other" ? specialty : "")}
+                    onChange={(e) => {
+                      setCustomSpecialty(e.target.value);
+                      setSpecialty("Other");
+                    }}
                     placeholder={dir === "rtl" ? "اكتب تخصصك..." : "Type your specialty..."}
                     className={inputClass}
                   />
-                )}
+                ) : null}
               </div>
             </div>
 
@@ -532,18 +538,6 @@ export default function SettingsPage() {
               </div>
             )}
 
-            {/* Message Templates */}
-            <div className="p-4 bg-muted/5">
-              <div className="mb-3 flex items-center gap-3">
-                <span className="text-sm font-medium">{t("settings.msgTemplates")}</span>
-              </div>
-              <MessageTemplatesSection clerkId={clerkId} clinicAddressLink={clinicAddressLink} />
-              <p className="text-[11px] text-muted-foreground mt-3">
-                {t("settings.messageTemplatesHint")}{" "}
-                <span className="font-mono bg-card px-1 border border-border rounded text-[#007AFF] text-[10px]">@</span>{" "}
-                {t("settings.messageTemplatesHintAfter")}
-              </p>
-            </div>
           </div>
         </section>
 

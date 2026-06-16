@@ -205,6 +205,7 @@ export const scheduleDailyReminders = internalAction({
           date: appt.date,
           slotNumber: slotNum,
           clinicAddress: clinic.clinicAddress,
+          clinicAddressLink: clinic.clinicAddressLink,
         });
 
         // Stagger every 5 minutes
