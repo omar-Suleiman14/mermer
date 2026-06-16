@@ -611,7 +611,7 @@ export default function SettingsPage() {
 
       </div>
 
-      <div className="shrink-0 border-t border-border bg-background p-4 flex justify-end z-40 relative shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)]">
+      <div className="sticky bottom-0 border-t border-border bg-background/95 backdrop-blur-md p-4 flex justify-end z-40 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)]">
         <button
           onClick={handleSave}
           disabled={saving}

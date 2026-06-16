@@ -28,21 +28,24 @@ export function WhatsAppIntegration({ clinicId }: { clinicId: string }) {
         instanceName: creds.evolutionInstanceName 
       });
       if (res.status === "error") {
-         setError(dir === "rtl" ? "خدمة الواتساب غير متاحة حالياً. يرجى استخدام الرسائل اليدوية." : "WhatsApp service is temporarily unavailable. Please use manual messages.");
-      } else if (res.qrCode) {
-         setQrCodeData(res.qrCode);
+         setError(dir === "rtl" ? "خدمة الواتساب غير متاحة حالياً. يرجى التأكد من عمل الخادم." : "WhatsApp server is unreachable. Please check the server status.");
+      } else {
+         setError("");
+         if (res.qrCode) {
+           setQrCodeData(res.qrCode);
+         }
       }
     } catch (e) {
       setError(dir === "rtl" ? "تعذر الاتصال بخادم الواتساب." : "Could not connect to WhatsApp server.");
     }
   };
 
-  // Poll every 5 seconds if connecting
+  // Check state on mount, poll every 5s if connecting, 15s if connected
   useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (creds?.isEvolutionActive && creds?.evolutionStatus !== "open") {
+    if (creds?.isEvolutionActive) {
       fetchState();
-      interval = setInterval(fetchState, 5000);
+      interval = setInterval(fetchState, creds.evolutionStatus === "open" ? 15000 : 5000);
     }
     return () => clearInterval(interval);
   }, [creds?.isEvolutionActive, creds?.evolutionStatus, creds?.evolutionInstanceName]);
@@ -108,23 +111,6 @@ export function WhatsAppIntegration({ clinicId }: { clinicId: string }) {
         </p>
       </div>
 
-      {error && (
-        <div className="bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 p-4 rounded-xl flex items-start gap-3 text-sm">
-          <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <p>{error}</p>
-            <button
-              onClick={handleActivate}
-              disabled={loading}
-              className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium text-red-700 dark:text-red-300 hover:underline disabled:opacity-50"
-            >
-              {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
-              {dir === "rtl" ? "إعادة المحاولة" : "Try Again"}
-            </button>
-          </div>
-        </div>
-      )}
-
       {!creds.isEvolutionActive ? (
         <div className="bg-muted/30 p-6 rounded-2xl flex flex-col items-center text-center space-y-4">
           <QrCode className="w-12 h-12 text-muted-foreground opacity-50" />
@@ -142,6 +128,36 @@ export function WhatsAppIntegration({ clinicId }: { clinicId: string }) {
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             {dir === "rtl" ? "تفعيل الربط" : "Activate Integration"}
           </button>
+        </div>
+      ) : error ? (
+        <div className="bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900 p-6 rounded-2xl flex flex-col items-center text-center space-y-4">
+          <AlertTriangle className="w-12 h-12 text-red-500" />
+          <div>
+            <h3 className="font-bold text-red-700 dark:text-red-400">
+              {dir === "rtl" ? "تعذر الاتصال بالخادم" : "Server Unreachable"}
+            </h3>
+            <p className="text-sm text-red-600/80 dark:text-red-500/80 mt-1 max-w-sm">
+              {error}
+            </p>
+          </div>
+          <div className="flex items-center gap-3 mt-2">
+            <button
+              onClick={fetchState}
+              disabled={loading}
+              className="px-4 py-2 bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+            >
+              <RotateCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+              {dir === "rtl" ? "تحديث" : "Refresh"}
+            </button>
+            <button
+              onClick={handleReset}
+              disabled={resetting}
+              className="px-4 py-2 bg-transparent border border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-900/20 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+            >
+              {resetting ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCcw className="w-4 h-4" />}
+              {dir === "rtl" ? "إلغاء الربط" : "Disconnect"}
+            </button>
+          </div>
         </div>
       ) : creds.evolutionStatus === "open" ? (
         <div className="bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-100 dark:border-emerald-900 p-6 rounded-2xl flex flex-col items-center text-center space-y-4">
