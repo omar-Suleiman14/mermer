@@ -666,14 +666,12 @@ export default function SettingsPage() {
         </section>
 
 
-      </div>
-
       {hasChanges && (
-        <div className="sticky bottom-0 border-t border-border bg-background/95 backdrop-blur-md p-4 flex justify-end z-40 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom-2 duration-300">
+        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-8 fade-in duration-300">
           <button
             onClick={handleSave}
             disabled={saving}
-            className="bg-[#007AFF] hover:bg-[#0062cc] disabled:opacity-60 text-white px-8 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-sm flex items-center gap-2"
+            className="bg-[#007AFF] hover:bg-[#0062cc] disabled:opacity-60 text-white px-10 py-3.5 rounded-full text-sm font-bold shadow-[0_8px_30px_rgb(0,122,255,0.3)] flex items-center gap-2 border border-white/10"
           >
             {saving ? <IOSSpinner size={16} className="text-white" /> : null}
             {dir === "rtl" ? "حفظ التغييرات" : "Save Changes"}

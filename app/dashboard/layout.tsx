@@ -12,6 +12,7 @@ import { useState, useEffect } from "react";
 import { useI18n } from "@/lib/i18n/client";
 import { OnlineBookingNotifier } from "@/components/online-booking-notifier";
 import { WhatsAppReconnectPrompt } from "@/components/whatsapp-reconnect-prompt";
+import { OfflineWarning } from "@/components/offline-warning";
 import { AlertTriangle, X, Building2, UserCheck, UserX, Clock, Loader2 } from "lucide-react";
 import { UserProvider, useCurrentUser } from "@/components/providers/user-provider";
 import { IOSSpinner } from "@/components/ui/spinner";
@@ -105,6 +106,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
 
   return (
     <TooltipProvider delayDuration={0}>
+      <OfflineWarning />
       <div className="dashboard-font relative flex min-h-screen w-full flex-col overflow-x-hidden">
         <SidebarProvider>
           <UserSync />
