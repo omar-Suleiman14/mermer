@@ -665,6 +665,8 @@ export default function SettingsPage() {
           </div>
         </section>
 
+      </div>
+
 
       {hasChanges && (
         <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-bottom-8 fade-in duration-300">

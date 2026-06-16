@@ -63,18 +63,21 @@ export function calcSlotNumber(
 
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
+const RLM = "\u200F";
+
 /** Builds the clinic header: "عيادة د. سماح علي" */
 function clinicHeader(clinicName: string, doctorName: string): string {
   const clinic = clinicName || "العيادة";
   const doctor = doctorName ? `د. ${doctorName}` : "";
-  return doctor ? `${clinic} - ${doctor}` : clinic;
+  const headerText = doctor ? `${clinic} - ${doctor}` : clinic;
+  return `*${headerText}*`;
 }
 
 /** Builds an address footer line if an address/maps link is provided. */
 function addressLine(clinicAddress?: string, clinicAddressLink?: string): string {
-  if (clinicAddressLink && clinicAddress) return `\nالعنوان: ${clinicAddress}\nخريطة العيادة: ${clinicAddressLink}`;
-  if (clinicAddressLink) return `\nخريطة العيادة: ${clinicAddressLink}`;
-  if (clinicAddress) return `\nالعنوان: ${clinicAddress}`;
+  if (clinicAddressLink && clinicAddress) return `\n\n📍 العنوان: ${clinicAddress}\n🗺️ خريطة العيادة: ${clinicAddressLink}`;
+  if (clinicAddressLink) return `\n\n🗺️ خريطة العيادة: ${clinicAddressLink}`;
+  if (clinicAddress) return `\n\n📍 العنوان: ${clinicAddress}`;
   return "";
 }
 
@@ -102,13 +105,14 @@ export function msgBookingConfirmed(args: BookingArgs): string {
     : "";
   const addr = addressLine(args.clinicAddress, args.clinicAddressLink);
   return (
-    `${clinicHeader(args.clinicName, args.doctorName)}\n` +
+    RLM +
+    `${clinicHeader(args.clinicName, args.doctorName)}\n\n` +
     `مرحباً ${args.patientName}،\n` +
     `تم تأكيد موعدك بنجاح!\n` +
-    `التاريخ: ${dateStr}\n` +
-    `الوقت: ${timeStr}` +
+    `📅 التاريخ: ${dateStr}\n` +
+    `⏰ الوقت: ${timeStr}` +
     `${slotLine}` +
-    `${addr}\n` +
+    `${addr}\n\n` +
     `نراك قريباً.`
   );
 }
@@ -126,7 +130,7 @@ interface CancellationArgs {
  */
 export function msgAppointmentCancelled(args: CancellationArgs): string {
   const dateStr = fmtDateAr(args.date);
-  return `${clinicHeader(args.clinicName, args.doctorName)}\nمرحباً ${args.patientName}،\nنعتذر عن إلغاء موعدك بتاريخ ${dateStr}.\nيسعدنا إعادة الحجز عند اتصالك بنا.`;
+  return RLM + `${clinicHeader(args.clinicName, args.doctorName)}\n\nمرحباً ${args.patientName}،\nنعتذر عن إلغاء موعدك بتاريخ ${dateStr}.\nيسعدنا إعادة الحجز عند اتصالك بنا.`;
 }
 
 interface RescheduleArgs {
@@ -147,7 +151,7 @@ export function msgRescheduled(args: RescheduleArgs): string {
   const timeStr = fmtTimeAr(args.newDate);
   const slotLine = args.slotNumber ? `\nرقم الحجز الجديد هو ${args.slotNumber}.` : "";
   const addr = addressLine(args.clinicAddress, args.clinicAddressLink);
-  return `${clinicHeader(args.clinicName, args.doctorName)}\nمرحباً ${args.patientName}،\nتم تعديل موعدك ليصبح بتاريخ ${dateStr} الساعة ${timeStr}.${slotLine}${addr}\nنراك قريباً.`;
+  return RLM + `${clinicHeader(args.clinicName, args.doctorName)}\n\nمرحباً ${args.patientName}،\nتم تعديل موعدك ليصبح بتاريخ ${dateStr} الساعة ${timeStr}.${slotLine}${addr}\n\nنراك قريباً.`;
 }
 
 interface DayCancelledArgs {
@@ -162,7 +166,7 @@ interface DayCancelledArgs {
  */
 export function msgDayCancelled(args: DayCancelledArgs): string {
   const dateStr = fmtDateAr(args.date);
-  return `${clinicHeader(args.clinicName, args.doctorName)}\nمرحباً ${args.patientName}،\nنعتذر عن إلغاء العيادة بتاريخ ${dateStr} لظروف طارئة.\nسيتم التواصل معك لتحديد موعد بديل. شكراً لتفهمك.`;
+  return RLM + `${clinicHeader(args.clinicName, args.doctorName)}\n\nمرحباً ${args.patientName}،\nنعتذر عن إلغاء العيادة بتاريخ ${dateStr} لظروف طارئة.\nسيتم التواصل معك لتحديد موعد بديل. شكراً لتفهمك.`;
 }
 
 interface ReminderArgs {
@@ -181,7 +185,7 @@ interface ReminderArgs {
 export function msgReminder(args: ReminderArgs): string {
   const timeStr = fmtTimeAr(args.date);
   const addr = addressLine(args.clinicAddress, args.clinicAddressLink);
-  return `${clinicHeader(args.clinicName, args.doctorName)}\nتذكير بموعدك\nمرحباً ${args.patientName}، موعدك اليوم الساعة ${timeStr}.${addr}\nنتمنى لك الشفاء العاجل.`;
+  return RLM + `${clinicHeader(args.clinicName, args.doctorName)}\n\nتذكير بموعدك\nمرحباً ${args.patientName}،\nموعدك اليوم الساعة ${timeStr}.${addr}\n\nنتمنى لك الشفاء العاجل.`;
 }
 
 interface MissedArgs {
@@ -196,7 +200,7 @@ interface MissedArgs {
  */
 export function msgMissed(args: MissedArgs): string {
   const dateStr = fmtDateAr(args.date);
-  return `${clinicHeader(args.clinicName, args.doctorName)}\nمرحباً ${args.patientName}،\nيبدو أنك لم تحضر موعدك بتاريخ ${dateStr}.\nنتمنى أن تكون بخير. يسعدنا إعادة الحجز عند اتصالك بنا.`;
+  return RLM + `${clinicHeader(args.clinicName, args.doctorName)}\n\nمرحباً ${args.patientName}،\nيبدو أنك لم تحضر موعدك بتاريخ ${dateStr}.\nنتمنى أن تكون بخير. يسعدنا إعادة الحجز عند اتصالك بنا.`;
 }
 
 interface InstallmentArgs {
@@ -218,7 +222,7 @@ export function msgInstallmentCreated(args: InstallmentArgs): string {
   const timeStr = fmtTimeAr(args.firstDate);
   const slotLine = args.slotNumber ? `\nرقم الحجز هو ${args.slotNumber}.` : "";
   const addr = addressLine(args.clinicAddress, args.clinicAddressLink);
-  return `${clinicHeader(args.clinicName, args.doctorName)}\nمرحباً ${args.patientName}،\nتم إنشاء خطة تقسيط علاجية خاصة بك.\nموعدك الأول بتاريخ ${dateStr} الساعة ${timeStr}.${slotLine}${addr}\nنراك قريباً.`;
+  return RLM + `${clinicHeader(args.clinicName, args.doctorName)}\n\nمرحباً ${args.patientName}،\nتم إنشاء خطة تقسيط علاجية خاصة بك.\nموعدك الأول بتاريخ ${dateStr} الساعة ${timeStr}.${slotLine}${addr}\n\nنراك قريباً.`;
 }
 
 /**
@@ -233,7 +237,7 @@ export function msgInstallmentRescheduled(args: RescheduleArgs): string {
  */
 export function msgYourTurn(patientName: string, clinicName?: string, doctorName?: string): string {
   const header = (clinicName || doctorName)
-    ? `${clinicHeader(clinicName || "", doctorName || "")}\n`
+    ? `${clinicHeader(clinicName || "", doctorName || "")}\n\n`
     : "";
-  return `${header}مرحباً ${patientName}،\nدورك القادم الآن. يرجى التوجه إلى العيادة في أقرب وقت.`;
+  return RLM + `${header}مرحباً ${patientName}،\nدورك القادم الآن. يرجى التوجه إلى العيادة في أقرب وقت.`;
 }
