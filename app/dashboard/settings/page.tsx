@@ -132,7 +132,7 @@ export default function SettingsPage() {
   const [enablePrescription, setEnablePrescription] = useState(true);
   const [clinicScreenShowNames, setClinicScreenShowNames] = useState(false);
 
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const photoRef = useRef<HTMLInputElement>(null);
   const initialised = useRef(false);
@@ -176,9 +176,9 @@ export default function SettingsPage() {
 
   }, [currentUser]);
 
-  // ── Auto-save (1s debounce) ──
-  const doSave = useCallback(async () => {
+  async function handleSave() {
     if (!currentUser) return;
+    setSaving(true);
     try {
       await updateProfile({
         clerkId,
@@ -207,24 +207,13 @@ export default function SettingsPage() {
         enableNotes,
         enablePrescription,
       });
-      toast.success(t("toast.settingsSaved"), { id: "settings-save" });
-    } catch { toast.error(t("toast.settingsSaveFailed"), { id: "settings-save-error" }); }
-  }, [clerkId, currentUser, name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, publicProfile, consultationFee, updateProfile, updateClinicalPreferences, t, workingDays, showClinicLocationOnRx, clinicScreenShowNames, enableDiagnosis, enableMeasurements, enableVitals, enableNotes, enablePrescription]);
-  function triggerSave() {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(doSave, 2000);
-  }
-
-  // Trigger save on any field change (skip initial load)
-  const prevValues = useRef("");
-  useEffect(() => {
-    if (!initialised.current) return;
-    const key = JSON.stringify({ name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, publicProfile, consultationFee, workingDays, showClinicLocationOnRx, clinicScreenShowNames, enableDiagnosis, enableMeasurements, enableVitals, enableNotes, enablePrescription });
-    if (prevValues.current && key !== prevValues.current) {
-      triggerSave();
+      toast.success(t("toast.settingsSaved") || (dir === "rtl" ? "تم حفظ الإعدادات" : "Settings saved"));
+    } catch { 
+      toast.error(t("toast.settingsSaveFailed") || (dir === "rtl" ? "فشل حفظ الإعدادات" : "Failed to save settings")); 
+    } finally {
+      setSaving(false);
     }
-    prevValues.current = key;
-  }, [name, phone, clinicName, specialty, credentials, clinicAddress, clinicAddressLink, workingHoursStart, workingHoursEnd, isAlwaysOpen, slotMin, bio, publicProfile, consultationFee, workingDays, showClinicLocationOnRx, clinicScreenShowNames, enableDiagnosis, enableMeasurements, enableVitals, enableNotes, enablePrescription]);
+  }
 
   async function handlePhotoUpload(file: File) {
     setUploadingPhoto(true);
@@ -620,6 +609,17 @@ export default function SettingsPage() {
         </section>
 
 
+      </div>
+
+      <div className="shrink-0 border-t border-border bg-background p-4 flex justify-end z-40 relative shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)]">
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="bg-[#007AFF] hover:bg-[#0062cc] disabled:opacity-60 text-white px-8 py-2.5 rounded-xl text-sm font-bold transition-colors shadow-sm flex items-center gap-2"
+        >
+          {saving ? <IOSSpinner size={16} className="text-white" /> : null}
+          {dir === "rtl" ? "حفظ التغييرات" : "Save Changes"}
+        </button>
       </div>
 
       {/* Reschedule Prompt */}

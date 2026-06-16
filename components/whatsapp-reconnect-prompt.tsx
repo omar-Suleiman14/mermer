@@ -1,23 +1,17 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useAction, useQuery } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useUser } from "@clerk/nextjs";
+import { useCurrentUser } from "@/components/providers/user-provider";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, RefreshCcw, X, Wifi, WifiOff } from "lucide-react";
 import Image from "next/image";
 import { useI18n } from "@/lib/i18n/client";
 
 export function WhatsAppReconnectPrompt() {
-  const { user } = useUser();
+  const { currentUser } = useCurrentUser();
   const { dir, lang } = useI18n();
-  const clerkId = user?.id ?? "";
-
-  const currentUser = useQuery(
-    api.users.getCurrentUser,
-    clerkId ? { clerkId } : "skip"
-  );
 
   const getConnectionState = useAction(api.evolution.getConnectionState);
 

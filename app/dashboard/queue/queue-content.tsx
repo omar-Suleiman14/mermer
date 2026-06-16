@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect, memo, useCallback } from "react";
-import { useUser } from "@clerk/nextjs";
+import { useCurrentUser } from "@/components/providers/user-provider";
 import { useMutation, useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -91,15 +91,9 @@ import { Suspense } from "react";
 // ─── Component ────────────────────────────────────────────────────────────────
 
 function SchedulePageInner() {
-  const { user } = useUser();
-  const clerkId = user?.id ?? "";
+  const { currentUser, clerkId } = useCurrentUser();
   const { t, dir, lang } = useI18n();
   const searchParams = useSearchParams();
-
-  const currentUser = useQuery(
-    api.users.getCurrentUser,
-    clerkId ? { clerkId } : "skip"
-  );
 
   // Permission checks — empty permissions = no explicit restrictions = full access
   const isAssistant = currentUser?.role === "assistant";
@@ -107,11 +101,6 @@ function SchedulePageInner() {
   const hasExplicitPerms = userPerms.length > 0;
   const canReschedule = !isAssistant || !hasExplicitPerms || userPerms.includes("appointments.reschedule");
   const canCancel = !isAssistant || !hasExplicitPerms || userPerms.includes("appointments.cancel");
-
-  const messageTemplates = useQuery(
-    api.messageTemplates.listTemplates,
-    clerkId ? { clerkId } : "skip"
-  );
 
   const todayTs = startOfDay(Date.now());
   const initDate = searchParams.get("date");
@@ -180,6 +169,12 @@ function SchedulePageInner() {
     anchorY: number;
   } | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
+
+  // Defer messageTemplates — only subscribe when the template picker is open
+  const messageTemplates = useQuery(
+    api.messageTemplates.listTemplates,
+    templatePicker && clerkId ? { clerkId } : "skip"
+  );
 
   // Close picker on click outside
   useEffect(() => {

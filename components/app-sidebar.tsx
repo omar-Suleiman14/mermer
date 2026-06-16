@@ -6,8 +6,7 @@ import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
 import { UserButton } from "@clerk/nextjs";
 import { dark } from "@clerk/themes";
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
+import { useCurrentUser } from "@/components/providers/user-provider";
 
 import {
   LayoutDashboard,
@@ -53,11 +52,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { t, lang, setLang } = useI18n();
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
-  const clerkId = user?.id ?? "";
-  const currentUser = useQuery(
-    api.users.getCurrentUser,
-    clerkId ? { clerkId } : "skip"
-  );
+  const { currentUser } = useCurrentUser();
 
   const isAdmin = currentUser?.isAdmin ?? false;
   const isAssistant = currentUser?.role === "assistant";

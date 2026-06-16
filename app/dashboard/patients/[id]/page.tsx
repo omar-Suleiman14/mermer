@@ -16,6 +16,16 @@ import { IOSSpinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Phone,
   Edit,
   PlusCircle,
@@ -55,6 +65,7 @@ export default function PatientProfilePage() {
     visitDate: number;
     installmentId?: string;
   } | null>(null);
+  const [waiveConfirm, setWaiveConfirm] = useState<Id<"installments"> | null>(null);
 
   const patient = useQuery(api.patients.getPatient, clerkId ? { patientId, clerkId } : "skip");
   const visits = useQuery(api.visits.getVisitsByPatient, clerkId ? { patientId, clerkId } : "skip");
@@ -67,7 +78,7 @@ export default function PatientProfilePage() {
     clerkId && patient?.phone ? { clerkId, patientPhone: patient.phone } : "skip"
   );
 
-  const waiveBalance = useAction(api.installments.waiveUnpaidBalance as any) || useMutation(api.installments.waiveUnpaidBalance);
+  const waiveBalance = useMutation(api.installments.waiveUnpaidBalance);
   
   const handleWaive = async (installmentId: Id<"installments">) => {
     try {
@@ -295,7 +306,7 @@ export default function PatientProfilePage() {
                             </p>
                           </div>
                           <button
-                            onClick={() => handleWaive(installment._id)}
+                            onClick={() => setWaiveConfirm(installment._id)}
                             className="text-xs font-medium text-red-600 bg-red-500/10 hover:bg-red-500/20 px-2 py-1 rounded transition-colors"
                           >
                             {lang === "ar" ? "إعفاء" : "Waive"}
@@ -599,6 +610,31 @@ export default function PatientProfilePage() {
           onComplete={() => setCompletionTarget(null)}
         />
       )}
+
+      <AlertDialog open={!!waiveConfirm} onOpenChange={(v: boolean) => !v && setWaiveConfirm(null)}>
+        <AlertDialogContent dir={lang === "ar" ? "rtl" : "ltr"}>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-500">{t("installments.waive") || "Waive Balance"}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("installments.waiveConfirm") || "Are you sure you want to waive the unpaid balance? This action cannot be undone."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel") || "Cancel"}</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-500 hover:bg-red-600 text-white"
+              onClick={() => {
+                if (waiveConfirm) {
+                  handleWaive(waiveConfirm);
+                  setWaiveConfirm(null);
+                }
+              }}
+            >
+              {t("installments.waive") || "Waive"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

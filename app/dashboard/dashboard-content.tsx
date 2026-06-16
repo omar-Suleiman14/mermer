@@ -1,6 +1,5 @@
 "use client";
 
-import { useUser } from "@clerk/nextjs";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -74,20 +73,15 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { startOfDay, formatTime, formatFullDate, isNonWorkingDay, useWhatsAppTemplate, openWhatsApp } from "@/lib/scheduling";
+import { useCurrentUser } from "@/components/providers/user-provider";
 
 
 
 export default function DashboardPage() {
-  const { user } = useUser();
-  const clerkId = user?.id ?? "";
+  const { currentUser, clerkId } = useCurrentUser();
   const { t, lang, dir } = useI18n();
 
   const todayTs = startOfDay(Date.now());
-
-  const currentUser = useQuery(
-    api.users.getCurrentUser,
-    clerkId ? { clerkId } : "skip"
-  );
 
   // Permission checks — empty permissions = no explicit restrictions = full access
   const isAssistant = currentUser?.role === "assistant";
@@ -123,11 +117,6 @@ export default function DashboardPage() {
       nextApptId: next?._id || null,
     };
   }, [todayVisits, currentUser]);
-
-  const messageTemplates = useQuery(
-    api.messageTemplates.listTemplates,
-    clerkId ? { clerkId } : "skip"
-  );
 
 
 
@@ -179,6 +168,12 @@ export default function DashboardPage() {
     anchorY: number;
   } | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
+
+  // Defer messageTemplates — only subscribe when the template picker is open
+  const messageTemplates = useQuery(
+    api.messageTemplates.listTemplates,
+    templatePicker && clerkId ? { clerkId } : "skip"
+  );
 
 
   // Close picker on click outside

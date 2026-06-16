@@ -5,11 +5,10 @@ import Link from "next/link";
 import { useI18n } from "@/lib/i18n/client";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useUser } from "@clerk/nextjs";
+import { useCurrentUser } from "@/components/providers/user-provider";
 
 export function PastDueAlerts() {
-  const { user } = useUser();
-  const clerkId = user?.id ?? "";
+  const { clerkId } = useCurrentUser();
   const { t } = useI18n();
 
   const pastDueinstallments = useQuery(

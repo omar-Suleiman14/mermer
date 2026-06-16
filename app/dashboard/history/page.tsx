@@ -4,6 +4,7 @@ import { useUser } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { PageHeader } from "@/components/page-header";
+import { useCurrentUser } from "@/components/providers/user-provider";
 import { useI18n } from "@/lib/i18n/client";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { useState, useMemo, useEffect, useRef } from "react";
@@ -92,8 +93,7 @@ function getAuditIcon(action: string) {
 }
 
 export default function HistoryPage() {
-  const { user } = useUser();
-  const clerkId = user?.id ?? "";
+  const { clerkId } = useCurrentUser();
   const { t, lang } = useI18n();
 
   const rawLogs = useQuery(api.visits.getActivityLog, clerkId ? { clerkId, limit: 500 } : "skip");
