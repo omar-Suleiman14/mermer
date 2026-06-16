@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
@@ -11,8 +11,10 @@ import dynamic from "next/dynamic";
 const PatientIntakeDrawer = dynamic(() => import("@/components/patient-intake-drawer").then(m => m.PatientIntakeDrawer));
 const VisitDrawer = dynamic(() => import("@/components/visit-drawer").then(m => m.VisitDrawer));
 const VisitCompletionModal = dynamic(() => import("@/components/visit-completion-modal").then(m => m.VisitCompletionModal));
+const MergePatientModal = dynamic(() => import("@/components/merge-patient-modal").then(m => m.MergePatientModal));
 import { IOSSpinner } from "@/components/ui/spinner";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import {
   Phone,
   Edit,
@@ -32,6 +34,7 @@ import {
   MessageSquare,
   CheckCircle2,
   XCircle,
+  Merge,
 } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import Link from "next/link";
@@ -45,6 +48,7 @@ export default function PatientProfilePage() {
   const dateLocale = lang === "ar" ? "ar-EG" : "en-US";
 
   const [editOpen, setEditOpen] = useState(false);
+  const [mergeOpen, setMergeOpen] = useState(false);
   const [visitOpen, setVisitOpen] = useState(false);
   const [completionTarget, setCompletionTarget] = useState<{
     visitId: Id<"visits">;
@@ -62,6 +66,17 @@ export default function PatientProfilePage() {
     api.whatsappAutomations.getMessageLogs,
     clerkId && patient?.phone ? { clerkId, patientPhone: patient.phone } : "skip"
   );
+
+  const waiveBalance = useAction(api.installments.waiveUnpaidBalance as any) || useMutation(api.installments.waiveUnpaidBalance);
+  
+  const handleWaive = async (installmentId: Id<"installments">) => {
+    try {
+      await waiveBalance({ clerkId, installmentId });
+      toast.success(lang === "ar" ? "تم إعفاء المبلغ المتبقي" : "Unpaid balance waived");
+    } catch (err) {
+      toast.error(lang === "ar" ? "حدث خطأ أثناء الإعفاء" : "Failed to waive balance");
+    }
+  };
 
   if (patient === undefined) {
     return (
@@ -96,6 +111,13 @@ export default function PatientProfilePage() {
         >
           <Edit className="w-3.5 h-3.5" />
           {t("patient.edit")}
+        </button>
+        <button
+          onClick={() => setMergeOpen(true)}
+          className="flex items-center gap-1.5 text-xs border border-border text-foreground px-3 py-1.5 rounded-lg hover:border-[#FF9500]/40 hover:text-[#FF9500] transition-colors"
+        >
+          <Merge className="w-3.5 h-3.5" />
+          {lang === "ar" ? "دمج" : "Merge"}
         </button>
         {/* <button
           onClick={handleAddToQueue}
@@ -265,11 +287,19 @@ export default function PatientProfilePage() {
 
                       {/* Unpaid balance warning */}
                       {hasUnpaid && (
-                        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/8 border border-red-500/20">
-                          <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
-                          <p className="text-xs font-semibold text-red-500">
-                            {t("installments.unpaidBalance") || "Unpaid balance"}: {installment.unpaidBalance.toLocaleString()} {t("common.currency")}
-                          </p>
+                        <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-red-500/8 border border-red-500/20">
+                          <div className="flex items-center gap-2">
+                            <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
+                            <p className="text-xs font-semibold text-red-500">
+                              {t("installments.unpaidBalance") || "Unpaid balance"}: {installment.unpaidBalance.toLocaleString()} {t("common.currency")}
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => handleWaive(installment._id)}
+                            className="text-xs font-medium text-red-600 bg-red-500/10 hover:bg-red-500/20 px-2 py-1 rounded transition-colors"
+                          >
+                            {lang === "ar" ? "إعفاء" : "Waive"}
+                          </button>
                         </div>
                       )}
 
@@ -517,70 +547,6 @@ export default function PatientProfilePage() {
           )}
         </div>
 
-        {/* Message Logs */}
-        <div>
-          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-            <MessageSquare className="w-4 h-4 text-[#25D366]" />
-            {lang === "ar" ? "سجل رسائل الواتساب" : "WhatsApp Message Logs"}
-            {messageLogs !== undefined && (
-              <span className="text-xs text-muted-foreground font-normal">
-                ({messageLogs.length})
-              </span>
-            )}
-          </h3>
-
-          {messageLogs === undefined ? (
-            <div className="flex items-center justify-center py-10">
-              <IOSSpinner size={24} className="text-[#007AFF]" />
-            </div>
-          ) : messageLogs.length === 0 ? (
-            <div className="bg-card border border-border rounded-xl p-8 text-center">
-              <p className="text-sm text-muted-foreground">{lang === "ar" ? "لا توجد رسائل مسجلة" : "No messages logged yet"}</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {messageLogs.map((log: any) => (
-                <div key={log._id} className="bg-card border border-border rounded-xl p-4 flex gap-3">
-                  <div className="shrink-0 mt-0.5">
-                    {log.status === "success" ? (
-                      <div className="w-6 h-6 rounded-full bg-[#25D366]/10 flex items-center justify-center">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-[#25D366]" />
-                      </div>
-                    ) : (
-                      <div className="w-6 h-6 rounded-full bg-red-500/10 flex items-center justify-center">
-                        <XCircle className="w-3.5 h-3.5 text-red-500" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-3 mb-1">
-                      <span className="text-xs font-semibold">
-                        {log.status === "success" ? (lang === "ar" ? "تم الإرسال" : "Sent") : (lang === "ar" ? "فشل الإرسال" : "Failed")}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground font-mono">
-                        {new Date(log.createdAt).toLocaleDateString(dateLocale, {
-                          month: "short",
-                          day: "numeric",
-                          hour: "numeric",
-                          minute: "2-digit",
-                        })}
-                      </span>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground whitespace-pre-wrap leading-relaxed bg-muted/30 p-2 rounded-lg border border-border/50">
-                      {log.messageText}
-                    </p>
-                    {log.status === "failed" && log.error && (
-                      <p className="text-[10px] text-red-500 mt-1.5 font-medium flex items-center gap-1">
-                        <AlertCircle className="w-3 h-3" />
-                        {log.error}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Drawers */}
@@ -601,6 +567,16 @@ export default function PatientProfilePage() {
             : null
         }
       />
+
+      {patient && (
+        <MergePatientModal
+          open={mergeOpen}
+          onOpenChange={setMergeOpen}
+          clerkId={clerkId}
+          sourcePatientId={patientId}
+          sourcePatientName={patient.name}
+        />
+      )}
 
       <VisitDrawer
         open={visitOpen}

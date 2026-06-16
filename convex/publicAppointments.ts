@@ -9,6 +9,7 @@ export const createAppointment = action({
     patientName: v.string(),
     patientPhone: v.string(),
     patientAge: v.optional(v.number()),
+    patientGender: v.optional(v.union(v.literal("male"), v.literal("female"), v.literal("other"))),
     date: v.number(),
   },
   handler: async (ctx, args): Promise<{ visitId: Id<"visits">; queueNumber: number }> => {

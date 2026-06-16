@@ -357,3 +357,16 @@ export const getMessageLogs = query({
       .take(50);
   },
 });
+
+export const getAllMessageLogs = query({
+  args: { clerkId: v.string(), limit: v.optional(v.number()) },
+  handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx, args.clerkId);
+    
+    return await ctx.db
+      .query("messageLogs")
+      .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+      .order("desc")
+      .take(args.limit ?? 200);
+  },
+});

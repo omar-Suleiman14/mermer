@@ -70,6 +70,7 @@ export const createAppointmentInternal = internalMutation({
     patientName: v.string(),
     patientPhone: v.string(),
     patientAge: v.optional(v.number()),
+    patientGender: v.optional(v.union(v.literal("male"), v.literal("female"), v.literal("other"))),
     date: v.number(),
   },
   handler: async (ctx, args): Promise<{ visitId: Id<"visits">; doctor: any; patientPhone: string; patientName: string; queueNumber: number }> => {
@@ -139,6 +140,7 @@ export const createAppointmentInternal = internalMutation({
         name: patientName,
         age: args.patientAge ?? 0,
         phone: patientPhone,
+        gender: args.patientGender,
         chronicConditions: [],
         createdAt: Date.now(),
       });

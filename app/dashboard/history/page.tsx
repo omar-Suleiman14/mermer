@@ -10,12 +10,13 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { 
   CalendarIcon, Filter, Activity, History, Globe, 
   CheckCircle2, Clock, XCircle, Users, 
-  Trash2, PlusCircle, Edit3, FileEdit, UserPlus, ArrowRightLeft
+  Trash2, PlusCircle, Edit3, FileEdit, UserPlus, ArrowRightLeft,
+  MessageSquare
 } from "lucide-react";
 
 type UnifiedLog = {
   _id: string;
-  type: "visit" | "audit";
+  type: "visit" | "audit" | "message";
   timestamp: number;
   actionBy: string;
   
@@ -29,6 +30,12 @@ type UnifiedLog = {
   // Audit specific
   action?: string;
   details?: string;
+
+  // Message specific
+  patientPhone?: string;
+  messageText?: string;
+  messageStatus?: "success" | "failed";
+  messageError?: string;
 };
 
 function translateAuditLog(action: string, details: string, lang: string) {
@@ -91,6 +98,7 @@ export default function HistoryPage() {
 
   const rawLogs = useQuery(api.visits.getActivityLog, clerkId ? { clerkId, limit: 500 } : "skip");
   const auditLogs = useQuery(api.auditLogs.getAuditLogs, clerkId ? { clerkId, limit: 500 } : "skip");
+  const messageLogs = useQuery(api.whatsappAutomations.getAllMessageLogs, clerkId ? { clerkId, limit: 500 } : "skip");
 
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [dateFilter, setDateFilter] = useState<string>("");
@@ -136,8 +144,24 @@ export default function HistoryPage() {
       });
     });
 
+    // Map message logs
+    if (messageLogs) {
+      messageLogs.forEach(m => {
+        unified.push({
+          _id: m._id,
+          type: "message" as any, // extended type
+          timestamp: m.createdAt,
+          actionBy: "System",
+          patientPhone: m.patientPhone,
+          messageText: m.messageText,
+          messageStatus: m.status,
+          messageError: m.error,
+        });
+      });
+    }
+
     return unified.sort((a, b) => b.timestamp - a.timestamp);
-  }, [rawLogs, auditLogs]);
+  }, [rawLogs, auditLogs, messageLogs]);
 
   // Extract unique staff members
   const staffMembers = useMemo(() => {
@@ -223,6 +247,7 @@ export default function HistoryPage() {
               <option value="all">{lang === "ar" ? "كل الأحداث" : "All Events"}</option>
               <option value="visit">{lang === "ar" ? "الزيارات والحجوزات" : "Visits & Bookings"}</option>
               <option value="audit">{lang === "ar" ? "إجراءات النظام" : "System Actions"}</option>
+              <option value="message">{lang === "ar" ? "رسائل واتساب" : "WhatsApp Messages"}</option>
             </select>
           </div>
           
@@ -340,6 +365,46 @@ export default function HistoryPage() {
                               {log.reasonForVisit}
                             </span>
                           )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                } else if (log.type === "message") {
+                  return (
+                    <div key={log._id} className="p-4 sm:p-5 flex items-start gap-4 hover:bg-muted/5 transition-colors">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                        log.messageStatus === "success" ? "bg-[#25D366]/10 text-[#25D366]" : "bg-red-500/10 text-red-500"
+                      }`}>
+                        <MessageSquare className="w-5 h-5" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold">
+                              {log.messageStatus === "success" 
+                                ? (lang === "ar" ? "تم إرسال رسالة واتساب" : "WhatsApp Message Sent")
+                                : (lang === "ar" ? "فشل إرسال واتساب" : "WhatsApp Message Failed")}
+                            </p>
+                            <p className="text-xs text-foreground mt-0.5">
+                              {lang === "ar" ? "إلى:" : "To:"} <span className="font-medium" dir="ltr">{log.patientPhone}</span>
+                            </p>
+                            {log.messageError && (
+                              <p className="text-xs text-red-500 mt-1">{log.messageError}</p>
+                            )}
+                            <div className="mt-2 text-xs text-muted-foreground bg-muted/30 p-2 rounded-lg max-w-lg border border-border/50">
+                              <pre className="whitespace-pre-wrap font-sans">
+                                {log.messageText}
+                              </pre>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-xs text-muted-foreground flex items-center justify-end gap-1.5">
+                              <Clock className="w-3.5 h-3.5" />
+                              {new Date(log.timestamp).toLocaleString(lang === "ar" ? "ar-EG" : "en-US", {
+                                month: "short", day: "numeric", hour: "numeric", minute: "2-digit"
+                              })}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>

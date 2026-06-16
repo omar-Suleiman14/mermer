@@ -42,9 +42,11 @@ import {
   SidebarMenuItem,
   SidebarRail,
   SidebarSeparator,
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+  const { setOpenMobile } = useSidebar();
   const pathname = usePathname();
   const { user } = useUser();
   const { theme, setTheme } = useTheme();
@@ -149,7 +151,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 return (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton asChild isActive={isActive} tooltip={item.title}>
-                      <Link href={item.href} prefetch={true} target={"target" in item ? item.target as string : undefined} className="flex items-center gap-2 relative">
+                      <Link href={item.href} prefetch={true} target={"target" in item ? item.target as string : undefined} className="flex items-center gap-2 relative" onClick={() => setOpenMobile(false)}>
                         <item.icon className="w-4 h-4 shrink-0" aria-hidden="true" />
                         <span className="flex-1">{item.title}</span>
                       </Link>
@@ -171,7 +173,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   isActive={pathname.startsWith("/admin")}
                   tooltip={t("nav.admin")}
                 >
-                  <Link href="/admin" prefetch={true}>
+                  <Link href="/admin" prefetch={true} onClick={() => setOpenMobile(false)}>
                     <Shield className="w-4 h-4" aria-hidden="true" />
                     <span>{t("nav.admin")}</span>
                   </Link>

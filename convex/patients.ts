@@ -235,6 +235,53 @@ export const deletePatient = mutation({
   },
 });
 
+export const mergePatients = mutation({
+  args: {
+    clerkId: v.string(),
+    sourcePatientId: v.id("patients"),
+    targetPatientId: v.id("patients"),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx, args.clerkId);
+    
+    if (args.sourcePatientId === args.targetPatientId) {
+      throw new ConvexError("Cannot merge a patient into themselves");
+    }
+
+    const source = await ctx.db.get(args.sourcePatientId);
+    const target = await ctx.db.get(args.targetPatientId);
+
+    if (!source || source.doctorId !== user._id) throw new ConvexError("Source patient not found");
+    if (!target || target.doctorId !== user._id) throw new ConvexError("Target patient not found");
+
+    // Fetch related records
+    const [visits, installments, followUps, queueItems] = await Promise.all([
+      ctx.db.query("visits").withIndex("by_patient", (q) => q.eq("patientId", args.sourcePatientId)).collect(),
+      ctx.db.query("installments").withIndex("by_patient", (q) => q.eq("patientId", args.sourcePatientId)).collect(),
+      ctx.db.query("followUps").withIndex("by_patient", (q) => q.eq("patientId", args.sourcePatientId)).collect(),
+      ctx.db.query("queue").withIndex("by_doctor", (q) => q.eq("doctorId", user._id)).collect(),
+    ]);
+
+    // Reassign all related records to target patient
+    await Promise.all([
+      ...visits.map((v) => ctx.db.patch(v._id, { patientId: args.targetPatientId, patientPhone: target.phone, patientName: target.name, patientAge: target.age })),
+      ...installments.map((c) => ctx.db.patch(c._id, { patientId: args.targetPatientId, patientName: target.name })),
+      ...followUps.map((f) => ctx.db.patch(f._id, { patientId: args.targetPatientId, patientName: target.name })),
+      ...queueItems.filter((q) => q.patientId === args.sourcePatientId).map((q) => ctx.db.patch(q._id, { patientId: args.targetPatientId, patientPhone: target.phone, patientName: target.name })),
+    ]);
+
+    const newNotes = target.notes ? `${target.notes}\nMerged from ${source.name} (Phone: ${source.phone})` : `Merged from ${source.name} (Phone: ${source.phone})`;
+    await ctx.db.patch(args.targetPatientId, {
+      notes: newNotes,
+    });
+
+    // Delete source patient
+    await ctx.db.delete(args.sourcePatientId);
+    
+    await logAction(ctx, user, "Merged Patients", `Merged ${source.name} into ${target.name}`, args.targetPatientId);
+  }
+});
+
 // OPTIMIZED: Uses by_doctor_phone compound index for O(1) lookup
 export const findPatientByNameAndPhone = query({
   args: { clerkId: v.string(), name: v.string(), phone: v.string() },

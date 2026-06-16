@@ -259,109 +259,25 @@ export default function SettingsPage() {
 
 
         {/* ═══════════════════════════════════════════════════════════ */}
-        {/* APPEARANCE & LANGUAGE                                       */}
-        {/* ═══════════════════════════════════════════════════════════ */}
-        <section>
-          <h3 className={sectionTitleClass}>{t("settings.appearanceSection")}</h3>
-          <div className={blockClass}>
-            <div className={rowClass}>
-              <label className={labelClass}>
-                <Globe className="w-4 h-4 text-muted-foreground" /> {t("settings.language")}
-              </label>
-              <div className="flex-1 flex justify-end">
-                <LanguageToggle />
-              </div>
-            </div>
-            {mounted && (
-              <div className={rowClass}>
-                <label htmlFor="settings-dark-mode" className={labelClass}>
-                  <Palette className="w-4 h-4 text-muted-foreground" /> {t("settings.darkMode")}
-                </label>
-                <div className="flex-1 flex justify-end">
-                  <Switch
-                    id="settings-dark-mode"
-                    name="darkMode"
-                    checked={theme === "dark"}
-                    onCheckedChange={(c) => setTheme(c ? "dark" : "light")}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-          <p className="text-[12px] text-muted-foreground ms-4 -mt-5 mb-8">
-            {t("settings.appearanceHint")}
-          </p>
-        </section>
-
-        {/* ═══════════════════════════════════════════════════════════ */}
-        {/* NOTIFICATIONS                                             */}
-        {/* ═══════════════════════════════════════════════════════════ */}
-        <section>
-          <h3 className={sectionTitleClass}>{t("settings.notificationsSection") || "Notifications"}</h3>
-          
-          <div className="bg-muted/30 border border-border p-4 rounded-2xl flex items-center gap-4 mb-8">
-            <div className="w-10 h-10 bg-[#007AFF]/10 rounded-full flex items-center justify-center shrink-0">
-              <Bell className="w-5 h-5 text-[#007AFF]" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-semibold">{dir === "rtl" ? "إشعارات المتصفح" : "Browser Notifications"}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {dir === "rtl" ? "احصل على إشعارات فورية عند حجز موعد جديد أو لوجود تحديثات." : "Get instant notifications for new bookings and updates."}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                if ("Notification" in window) {
-                  if (Notification.permission === "granted") {
-                    toast.success(dir === "rtl" ? "الإشعارات مفعلة مسبقاً" : "Notifications already enabled");
-                  } else {
-                    Notification.requestPermission().then((permission) => {
-                      setNotifPerm(permission);
-                      if (permission === "granted") {
-                        toast.success(dir === "rtl" ? "تم تفعيل الإشعارات بنجاح" : "Notifications enabled successfully");
-                        window.dispatchEvent(new Event("subscribe-push"));
-                      } else {
-                        toast.error(dir === "rtl" ? "تم رفض الإشعارات" : "Notifications were denied");
-                      }
-                    });
-                  }
-                } else {
-                  toast.error(dir === "rtl" ? "متصفحك لا يدعم الإشعارات" : "Your browser does not support notifications");
-                }
-              }}
-              className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${
-                notifPerm === "granted"
-                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                  : "bg-[#007AFF] text-white hover:bg-[#007AFF]/90"
-              }`}
-            >
-              {notifPerm === "granted"
-                ? "✓ " + (dir === "rtl" ? "مفعلة" : "Enabled")
-                : (dir === "rtl" ? "تفعيل" : "Enable")}
-            </button>
-          </div>
-        </section>
-
-        {/* ═══════════════════════════════════════════════════════════ */}
-        {/* AUTOMATED WHATSAPP                                        */}
-        {/* ═══════════════════════════════════════════════════════════ */}
-        {currentUser && (
-          <section>
-            <h3 className={sectionTitleClass}>{dir === "rtl" ? "واتساب التلقائي" : "Automated WhatsApp"}</h3>
-            <div className="mb-8">
-              <WhatsAppIntegration clinicId={currentUser._id as string} />
-            </div>
-          </section>
-        )}
-
-        {/* ═══════════════════════════════════════════════════════════ */}
         {/* PROFILE                                                   */}
         {/* ═══════════════════════════════════════════════════════════ */}
         <section>
-
           <h3 className={sectionTitleClass}>{t("settings.profileSection") || "Profile"}</h3>
           <div className={blockClass}>
+            {/* Public Profile */}
+            <div className={rowClass}>
+              <label htmlFor="settings-public-profile" className={labelClass}>
+                <Globe className="w-4 h-4 text-muted-foreground" /> {t("settings.publicProfile") || "Public Profile"}
+              </label>
+              <div className="flex-1 flex justify-end">
+                <Switch
+                  id="settings-public-profile"
+                  name="publicProfile"
+                  checked={publicProfile}
+                  onCheckedChange={setPublicProfile}
+                />
+              </div>
+            </div>
 
             {/* Specialty */}
             <div className={rowClass}>
@@ -382,12 +298,33 @@ export default function SettingsPage() {
               </div>
             </div>
 
+            {/* Bio */}
+            <div className={`${rowClass} flex-col items-start gap-2`}>
+              <label className="text-sm font-medium text-foreground block">
+                {dir === "rtl" ? "نبذة شخصية" : "Short Bio"}
+              </label>
+              <textarea
+                value={bio}
+                onChange={(e) => setBio(e.target.value)}
+                rows={3}
+                placeholder={dir === "rtl" ? "اكتب نبذة مختصرة عن تخصصك وخبرتك..." : "A brief intro about your specialty and experience..."}
+                className="w-full bg-transparent text-sm focus:outline-none placeholder:text-muted-foreground/50 resize-none"
+              />
+            </div>
+
             {/* Photo */}
             <div className={rowClass}>
               <label className={labelClass}>
                 <Camera className="w-4 h-4 text-muted-foreground" /> {dir === "rtl" ? "الصورة الشخصية" : "Profile Photo"}
               </label>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center justify-end gap-3 flex-1">
+                <button
+                  onClick={() => photoRef.current?.click()}
+                  disabled={uploadingPhoto}
+                  className="text-sm font-semibold text-primary hover:underline disabled:opacity-50"
+                >
+                  {dir === "rtl" ? "تغيير الصورة" : "Change Photo"}
+                </button>
                 <div
                   className="w-10 h-10 rounded-full bg-muted border border-border overflow-hidden flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity shrink-0"
                   onClick={() => photoRef.current?.click()}
@@ -400,13 +337,6 @@ export default function SettingsPage() {
                     <Camera className="w-4 h-4 text-muted-foreground/50" />
                   )}
                 </div>
-                <button
-                  onClick={() => photoRef.current?.click()}
-                  disabled={uploadingPhoto}
-                  className="text-sm font-semibold text-primary hover:underline disabled:opacity-50"
-                >
-                  {dir === "rtl" ? "تغيير الصورة" : "Change Photo"}
-                </button>
                 <input
                   ref={photoRef}
                   type="file"
@@ -419,40 +349,8 @@ export default function SettingsPage() {
                 />
               </div>
             </div>
-
-            {/* Public Profile */}
-            <div className={rowClass}>
-              <label htmlFor="settings-public-profile" className={labelClass}>
-                <Globe className="w-4 h-4 text-muted-foreground" /> {t("settings.publicProfile") || "Public Profile"}
-              </label>
-              <div className="flex-1 flex justify-end">
-                <Switch
-                  id="settings-public-profile"
-                  name="publicProfile"
-                  checked={publicProfile}
-                  onCheckedChange={setPublicProfile}
-                />
-              </div>
-            </div>
           </div>
-
-          {/* Bio */}
-          <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden mt-2 mb-2">
-            <div className="p-4">
-              <label className="text-sm font-medium text-foreground block mb-2">
-                {dir === "rtl" ? "نبذة شخصية" : "Short Bio"}
-              </label>
-              <textarea
-                value={bio}
-                onChange={(e) => setBio(e.target.value)}
-                rows={3}
-                placeholder={dir === "rtl" ? "اكتب نبذة مختصرة عن تخصصك وخبرتك..." : "A brief intro about your specialty and experience..."}
-                className="w-full bg-transparent text-sm focus:outline-none placeholder:text-muted-foreground/50 resize-none"
-              />
-            </div>
-          </div>
-
-          <p className="text-[12px] text-muted-foreground ms-4 mb-8">
+          <p className="text-[12px] text-muted-foreground ms-4 -mt-5 mb-8">
             {dir === "rtl" ? "عند التفعيل، سيتمكن المرضى من رؤية ملفك وحجز المواعيد عبر الإنترنت." : "When enabled, patients can view your profile and book online."}
           </p>
         </section>
@@ -469,13 +367,9 @@ export default function SettingsPage() {
             </div>
 
             <div className={rowClass}>
-              <label htmlFor="settings-phone" className={labelClass}>{t("settings.phoneWhatsapp")}</label>
-              <div className="flex items-center justify-end gap-1.5 flex-1 min-w-0" dir="ltr">
-                <span className="text-muted-foreground text-sm shrink-0">+20</span>
-                <input id="settings-phone" name="phone" type="tel" value={phone.replace(/^\+?20/, "").replace(/^0/, "")}
-                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))} placeholder="1023456789"
-                  className="bg-transparent text-sm focus:outline-none placeholder:text-muted-foreground/60 focus:text-[#007AFF] transition-colors w-full max-w-30 text-left" dir="ltr" />
-              </div>
+              <label htmlFor="settings-address" className={labelClass}>{t("settings.addressText")}</label>
+              <input id="settings-address" name="address" value={clinicAddress} onChange={(e) => setClinicAddress(e.target.value)}
+                placeholder={t("settings.placeholderAddress")} className={inputClass} />
             </div>
 
             <div className={rowClass}>
@@ -485,19 +379,12 @@ export default function SettingsPage() {
             </div>
 
             <div className={rowClass}>
-              <label htmlFor="settings-address" className={labelClass}>{t("settings.addressText")}</label>
-              <input id="settings-address" name="address" value={clinicAddress} onChange={(e) => setClinicAddress(e.target.value)}
-                placeholder={t("settings.placeholderAddress")} className={inputClass} />
-            </div>
-
-            <div className={rowClass}>
-              <label htmlFor="settings-show-clinic" className={labelClass}>{dir === "rtl" ? "عرض العنوان في الروشتة" : "Show Address on Prescription"}</label>
-              <div className="flex-1 flex justify-end">
-                <Switch
-                  id="settings-show-clinic"
-                  checked={showClinicLocationOnRx}
-                  onCheckedChange={setShowClinicLocationOnRx}
-                />
+              <label htmlFor="settings-phone" className={labelClass}>{t("settings.phoneWhatsapp")}</label>
+              <div className="flex items-center justify-end gap-1.5 flex-1 min-w-0" dir="ltr">
+                <span className="text-muted-foreground text-sm shrink-0">+20</span>
+                <input id="settings-phone" name="phone" type="tel" value={phone.replace(/^\+?20/, "").replace(/^0/, "")}
+                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))} placeholder="1023456789"
+                  className="bg-transparent text-sm focus:outline-none placeholder:text-muted-foreground/60 focus:text-[#007AFF] transition-colors w-full max-w-30 text-left" dir="ltr" />
               </div>
             </div>
 
@@ -509,40 +396,6 @@ export default function SettingsPage() {
           </div>
           <p className="text-[12px] text-muted-foreground ms-4 -mt-5 mb-8">
             {t("settings.clinicHint")}
-          </p>
-        </section>
-
-        {/* ═══════════════════════════════════════════════════════════ */}
-        {/* CLINICAL PREFERENCES                                      */}
-        {/* ═══════════════════════════════════════════════════════════ */}
-        <section>
-          <h3 className={sectionTitleClass}>{dir === "rtl" ? "الإعدادات الطبية" : "Clinical Preferences"}</h3>
-          <div className={blockClass}>
-            <div className={rowClass}>
-              <label htmlFor="settings-enable-prescription" className={labelClass}>{dir === "rtl" ? "تفعيل الوصفة الطبية" : "Enable Prescription / Medications"}</label>
-              <div className="flex-1 flex justify-end">
-                <Switch
-                  id="settings-enable-prescription"
-                  checked={enablePrescription}
-                  onCheckedChange={setEnablePrescription}
-                />
-              </div>
-            </div>
-            <div className={rowClass}>
-              <label htmlFor="settings-clinic-screen-names" className={labelClass}>
-                {dir === "rtl" ? "شاشة الانتظار: عرض أسماء المرضى" : "Waiting Screen: Show Patient Names"}
-              </label>
-              <div className="flex-1 flex justify-end">
-                <Switch
-                  id="settings-clinic-screen-names"
-                  checked={clinicScreenShowNames}
-                  onCheckedChange={setClinicScreenShowNames}
-                />
-              </div>
-            </div>
-          </div>
-          <p className="text-[12px] text-muted-foreground ms-4 -mt-5 mb-8">
-            {dir === "rtl" ? "تخصيص الأقسام التي تظهر أثناء زيارة المريض. عند تعطيل عرض الأسماء، تُعرض الأرقام فقط على شاشة الانتظار." : "Customize visit sections. When names are off, only queue numbers are shown on the waiting screen."}
           </p>
         </section>
 
@@ -581,14 +434,6 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            <div className={rowClass}>
-              <label htmlFor="settings-slot-duration" className={labelClass}>{t("settings.slotDurationLabel")}</label>
-              <div className="flex items-center justify-end gap-2 flex-1 min-w-0">
-                <input id="settings-slot-duration" name="slotDuration" type="number" value={slotMin} onChange={(e) => setSlotMin(e.target.value)} min={5} max={120} className={`${inputClass} max-w-15`} dir="ltr" />
-                <span className="text-sm text-muted-foreground shrink-0">{t("settings.mins")}</span>
-              </div>
-            </div>
-
             <div className={`${rowClass} flex-col items-start gap-3`}>
               <div className="w-full">
                 <label className="text-sm font-medium text-foreground block mb-2">{t("onboarding.workingDays") || "Working Days"}</label>
@@ -614,27 +459,170 @@ export default function SettingsPage() {
                     );
                   })}
                 </div>
-                <p className="text-[12px] text-muted-foreground mt-2">{dir === "rtl" ? "هذا الخيار يؤثر فقط على الحجوزات الإلكترونية" : "This option only affects online booking."}</p>
               </div>
+            </div>
+
+            <div className={rowClass}>
+              <label htmlFor="settings-slot-duration" className={labelClass}>{t("settings.slotDurationLabel")}</label>
+              <div className="flex items-center justify-end gap-2 flex-1 min-w-0">
+                <input id="settings-slot-duration" name="slotDuration" type="number" value={slotMin} onChange={(e) => setSlotMin(e.target.value)} min={5} max={120} className={`${inputClass} max-w-15`} dir="ltr" />
+                <span className="text-sm text-muted-foreground shrink-0">{t("settings.mins")}</span>
+              </div>
+            </div>
+          </div>
+          <p className="text-[12px] text-muted-foreground ms-4 -mt-5 mb-8">
+            {dir === "rtl" ? "هذا الخيار يؤثر فقط على الحجوزات الإلكترونية" : "This option only affects online booking."}
+          </p>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════════ */}
+        {/* COMMUNICATIONS                                            */}
+        {/* ═══════════════════════════════════════════════════════════ */}
+        <section>
+          <h3 className={sectionTitleClass}>{dir === "rtl" ? "التواصل والإشعارات" : "Communications"}</h3>
+          
+          <div className={blockClass}>
+            {/* Browser Notifications */}
+            <div className={rowClass}>
+              <div className="flex items-center gap-3">
+                <Bell className="w-4 h-4 text-[#007AFF]" />
+                <span className="text-sm font-medium">{dir === "rtl" ? "إشعارات المتصفح" : "Browser Notifications"}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if ("Notification" in window) {
+                    if (Notification.permission === "granted") {
+                      toast.success(dir === "rtl" ? "الإشعارات مفعلة مسبقاً" : "Notifications already enabled");
+                    } else {
+                      Notification.requestPermission().then((permission) => {
+                        setNotifPerm(permission);
+                        if (permission === "granted") {
+                          toast.success(dir === "rtl" ? "تم تفعيل الإشعارات بنجاح" : "Notifications enabled successfully");
+                          window.dispatchEvent(new Event("subscribe-push"));
+                        } else {
+                          toast.error(dir === "rtl" ? "تم رفض الإشعارات" : "Notifications were denied");
+                        }
+                      });
+                    }
+                  } else {
+                    toast.error(dir === "rtl" ? "متصفحك لا يدعم الإشعارات" : "Your browser does not support notifications");
+                  }
+                }}
+                className={`shrink-0 text-xs font-bold px-3 py-1.5 rounded-lg transition-colors ${
+                  notifPerm === "granted"
+                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                    : "bg-[#007AFF] text-white hover:bg-[#007AFF]/90"
+                }`}
+              >
+                {notifPerm === "granted"
+                  ? "✓ " + (dir === "rtl" ? "مفعلة" : "Enabled")
+                  : (dir === "rtl" ? "تفعيل" : "Enable")}
+              </button>
+            </div>
+
+            {/* WhatsApp Integration */}
+            {currentUser && (
+              <div className="p-4">
+                <div className="mb-2 flex items-center gap-3">
+                  <Globe className="w-4 h-4 text-[#25D366]" />
+                  <span className="text-sm font-medium">{dir === "rtl" ? "ربط واتساب" : "WhatsApp Integration"}</span>
+                </div>
+                <WhatsAppIntegration clinicId={currentUser._id as string} />
+              </div>
+            )}
+
+            {/* Message Templates */}
+            <div className="p-4 bg-muted/5">
+              <div className="mb-3 flex items-center gap-3">
+                <span className="text-sm font-medium">{t("settings.msgTemplates")}</span>
+              </div>
+              <MessageTemplatesSection clerkId={clerkId} clinicAddressLink={clinicAddressLink} />
+              <p className="text-[11px] text-muted-foreground mt-3">
+                {t("settings.messageTemplatesHint")}{" "}
+                <span className="font-mono bg-card px-1 border border-border rounded text-[#007AFF] text-[10px]">@</span>{" "}
+                {t("settings.messageTemplatesHintAfter")}
+              </p>
             </div>
           </div>
         </section>
 
         {/* ═══════════════════════════════════════════════════════════ */}
-        {/* MESSAGE TEMPLATES                                         */}
+        {/* CLINICAL PREFERENCES                                      */}
         {/* ═══════════════════════════════════════════════════════════ */}
         <section>
-          <h3 className={sectionTitleClass}>{t("settings.msgTemplates")}</h3>
-          <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden mb-2">
-            <div className="p-4">
-              <MessageTemplatesSection clerkId={clerkId} clinicAddressLink={clinicAddressLink} />
+          <h3 className={sectionTitleClass}>{dir === "rtl" ? "الإعدادات الطبية" : "Clinical Preferences"}</h3>
+          <div className={blockClass}>
+            <div className={rowClass}>
+              <label htmlFor="settings-enable-prescription" className={labelClass}>{dir === "rtl" ? "الوصفات الطبية (Prescriptions)" : "Prescriptions"}</label>
+              <div className="flex-1 flex justify-end">
+                <Switch
+                  id="settings-enable-prescription"
+                  checked={enablePrescription}
+                  onCheckedChange={setEnablePrescription}
+                />
+              </div>
+            </div>
+            
+            <div className={rowClass}>
+              <label htmlFor="settings-show-clinic" className={labelClass}>{dir === "rtl" ? "إظهار عنوان العيادة في الوصفة" : "Show Address on Prescription"}</label>
+              <div className="flex-1 flex justify-end">
+                <Switch
+                  id="settings-show-clinic"
+                  checked={showClinicLocationOnRx}
+                  onCheckedChange={setShowClinicLocationOnRx}
+                />
+              </div>
+            </div>
+
+            <div className={rowClass}>
+              <label htmlFor="settings-clinic-screen-names" className={labelClass}>
+                {dir === "rtl" ? "شاشة الانتظار: عرض أسماء المرضى" : "Waiting Screen: Show Patient Names"}
+              </label>
+              <div className="flex-1 flex justify-end">
+                <Switch
+                  id="settings-clinic-screen-names"
+                  checked={clinicScreenShowNames}
+                  onCheckedChange={setClinicScreenShowNames}
+                />
+              </div>
             </div>
           </div>
-          <p className="text-[12px] text-muted-foreground ms-4 mb-8">
-            {t("settings.messageTemplatesHint")}{" "}
-            <span className="font-mono bg-card px-1 border border-border rounded text-[#007AFF] text-xs">@</span>{" "}
-            {t("settings.messageTemplatesHintAfter")}
+          <p className="text-[12px] text-muted-foreground ms-4 -mt-5 mb-8">
+            {dir === "rtl" ? "تخصيص الأقسام التي تظهر أثناء زيارة المريض." : "Customize visit sections."}
           </p>
+        </section>
+
+        {/* ═══════════════════════════════════════════════════════════ */}
+        {/* APPEARANCE & LANGUAGE                                       */}
+        {/* ═══════════════════════════════════════════════════════════ */}
+        <section>
+          <h3 className={sectionTitleClass}>{t("settings.appearanceSection")}</h3>
+          <div className={blockClass}>
+            <div className={rowClass}>
+              <label className={labelClass}>
+                <Globe className="w-4 h-4 text-muted-foreground" /> {t("settings.language")}
+              </label>
+              <div className="flex-1 flex justify-end">
+                <LanguageToggle />
+              </div>
+            </div>
+            {mounted && (
+              <div className={rowClass}>
+                <label htmlFor="settings-dark-mode" className={labelClass}>
+                  <Palette className="w-4 h-4 text-muted-foreground" /> {t("settings.darkMode")}
+                </label>
+                <div className="flex-1 flex justify-end">
+                  <Switch
+                    id="settings-dark-mode"
+                    name="darkMode"
+                    checked={theme === "dark"}
+                    onCheckedChange={(c) => setTheme(c ? "dark" : "light")}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
         </section>
 
 

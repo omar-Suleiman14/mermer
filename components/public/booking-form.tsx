@@ -32,6 +32,7 @@ export function BookingForm({ doctor }: BookingFormProps) {
 
   const [name, setName] = useState("");
   const [age, setAge] = useState("");
+  const [gender, setGender] = useState<"male" | "female" | "other" | "">("");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -162,6 +163,7 @@ export function BookingForm({ doctor }: BookingFormProps) {
         patientName: name.trim(),
         patientPhone: phone,
         patientAge: parsedAge,
+        patientGender: gender !== "" ? gender : undefined,
         date: selectedSlotMs,
       });
       
@@ -253,6 +255,20 @@ export function BookingForm({ doctor }: BookingFormProps) {
           />
         </div>
         <div>
+          <label className="block text-sm font-medium text-foreground mb-1.5">
+            {dir === "rtl" ? "الجنس" : "Gender"}
+          </label>
+          <select
+            value={gender}
+            onChange={(e) => setGender(e.target.value as any)}
+            className="w-full h-12 px-4 rounded-xl border border-border bg-background outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm"
+          >
+            <option value="" disabled>{dir === "rtl" ? "اختر..." : "Select..."}</option>
+            <option value="male">{dir === "rtl" ? "ذكر" : "Male"}</option>
+            <option value="female">{dir === "rtl" ? "أنثى" : "Female"}</option>
+          </select>
+        </div>
+        <div className="col-span-2">
           <label className="block text-sm font-medium text-foreground mb-1.5">
             {dir === "rtl" ? "رقم الواتساب" : "WhatsApp Number"}
           </label>

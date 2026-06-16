@@ -49,7 +49,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     "dashboard.installment": "installment",
     "dashboard.followUp": "Follow-up",
     "dashboard.clinicScreenCopied": "Clinic Screen link copied",
-    "dashboard.copyClinicLink": "Copy Clinic Link",
+    "dashboard.copyClinicLink": "Copy Clinic Screen",
     "dashboard.pastDuePatients": "Past Due Patients",
     "dashboard.outstandingBalance": "Outstanding Balance",
     "dashboard.resolve": "Resolve",
