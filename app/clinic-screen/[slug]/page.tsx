@@ -219,11 +219,20 @@ export default function ClinicScreen({ params }: { params: Promise<{ slug: strin
   // Active patients in queue order
   const activeVisits = todayVisits.filter(a => a.status === "pending" || a.status === "confirmed");
   
+  function getSlotNumber(appt: any) {
+    if (appt.queueNumber) return appt.queueNumber;
+    const d = new Date(appt.date);
+    const startH = currentUser?.workingHoursStart ?? 9;
+    const slotDurationMinutes = currentUser?.slotDurationMinutes ?? 30;
+    const minutesSinceStart = (d.getHours() - startH) * 60 + d.getMinutes();
+    return Math.max(1, Math.floor(minutesSinceStart / slotDurationMinutes) + 1);
+  }
+
   const currentPatient = activeVisits.length > 0 ? activeVisits[0] : undefined;
-  const currentPatientNumber = currentPatient ? (currentPatient.queueNumber || (todayVisits.indexOf(currentPatient) + 1)) : null;
+  const currentPatientNumber = currentPatient ? getSlotNumber(currentPatient) : null;
 
   const nextPatient = activeVisits.length > 1 ? activeVisits[1] : undefined;
-  const nextPatientNumber = nextPatient ? (nextPatient.queueNumber || (todayVisits.indexOf(nextPatient) + 1)) : null;
+  const nextPatientNumber = nextPatient ? getSlotNumber(nextPatient) : null;
 
   // Generate QR Code
   useEffect(() => {
