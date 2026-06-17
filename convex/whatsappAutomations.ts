@@ -163,7 +163,7 @@ export const sendQueueUpdateMessage = internalAction({
 
     if (!args.patientPhone) return;
 
-    const messageText = msgYourTurn(args.patientName);
+    const messageText = msgYourTurn(args.patientName, clinic.clinicName, clinic.name);
 
     await ctx.runAction(internal.whatsappAutomations.sendMessage, {
       instanceName: clinic.evolutionInstanceName,

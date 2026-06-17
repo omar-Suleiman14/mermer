@@ -9,6 +9,13 @@ const DAY_ABBREVS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 const MAX_PUBLIC_BOOKING_WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
 const PAST_BOOKING_GRACE_MS = 5 * 60 * 1000;
 
+function startOfDay(ts: number): number {
+  const CAIRO_OFFSET = 3 * 60 * 60 * 1000;
+  const cairoTime = ts + CAIRO_OFFSET;
+  const daysSinceEpoch = Math.floor(cairoTime / (24 * 60 * 60 * 1000));
+  return daysSinceEpoch * 24 * 60 * 60 * 1000 - CAIRO_OFFSET;
+}
+
 function normalizeEgyptMobile(raw: string) {
   let digits = raw.replace(/\D/g, "");
   if (digits.startsWith("20")) digits = digits.slice(2);
@@ -625,9 +632,7 @@ export const updateAppointment = mutation({
     
     // Notify the next patient if this visit was completed
     if (args.updates.status === "completed" && visit.status !== "completed") {
-      const d = new Date();
-      d.setHours(0, 0, 0, 0);
-      const todayStart = d.getTime();
+      const todayStart = startOfDay(Date.now());
       const todayEnd = todayStart + 86400000;
 
       const upcoming = await ctx.db

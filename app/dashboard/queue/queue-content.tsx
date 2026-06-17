@@ -305,16 +305,12 @@ function SchedulePageInner() {
       return { currentApptId: null, nextApptId: null };
     }
 
-    const now = Date.now();
-    // We use slotDurationMinutes from the doctor's profile.
-    const slotDurationMs = ((currentUser as any).slotDurationMinutes || 30) * 60000;
-    
-    const incomplete = rawAppointments
-      .filter(a => a.status !== "completed" && a.status !== "cancelled")
+    const activeVisits = rawAppointments
+      .filter(a => a.status === "pending" || a.status === "confirmed")
       .sort((a, b) => a.date - b.date);
 
-    const current = incomplete.find(a => a.date <= now && a.date + slotDurationMs > now);
-    const next = incomplete.find(a => a.date > now);
+    const current = activeVisits.length > 0 ? activeVisits[0] : undefined;
+    const next = activeVisits.length > 1 ? activeVisits[1] : undefined;
 
     return {
       currentApptId: current?._id || null,
