@@ -568,7 +568,6 @@ export const updateAppointment = mutation({
       documentIds: v.optional(v.array(v.id("_storage"))),
       date: v.optional(v.number()),
     }),
-    notifyNextPatientId: v.optional(v.id("visits")),
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
@@ -648,16 +647,41 @@ export const updateAppointment = mutation({
     }
 
     await ctx.db.patch(args.appointmentId, args.updates);
-    
-    // Notify the next patient if requested by the frontend
-    if (args.updates.status === "completed" && args.notifyNextPatientId) {
-      const nextVisit = await ctx.db.get(args.notifyNextPatientId);
-      if (nextVisit && nextVisit.patientPhone && user.evolutionInstanceName && user.evolutionApiKey) {
-        await ctx.scheduler.runAfter(0, internal.whatsappAutomations.sendQueueUpdateMessage, {
-          clinicId: user._id,
-          patientName: nextVisit.patientName || "",
-          patientPhone: nextVisit.patientPhone,
-        });
+
+    // Notify the new NEXT patient in line
+    if (args.updates.status === "completed") {
+      const todayStart = startOfDay(Date.now());
+      const todayEnd = todayStart + 86400000;
+
+      const upcoming = await ctx.db
+        .query("visits")
+        .withIndex("by_doctor_date", (q) =>
+          q.eq("doctorId", user._id).gte("date", todayStart).lt("date", todayEnd)
+        )
+        .collect();
+
+      const activeVisits = upcoming
+        .filter(v => (v.status === "confirmed" || v.status === "pending") && v._id !== args.appointmentId)
+        .sort((a, b) => a.date - b.date);
+
+      // activeVisits[0] is the new CURRENT patient.
+      // activeVisits[1] is the new NEXT patient in line.
+      // We notify the new NEXT patient so they have time to commute.
+      if (activeVisits.length > 1) {
+        const newNextVisit = activeVisits[1];
+        console.log("[updateAppointment] Backend calculated NEW NEXT patient:", newNextVisit._id);
+        if (newNextVisit.patientPhone && user.evolutionInstanceName && user.evolutionApiKey) {
+          console.log(`[updateAppointment] Dispatching sendQueueUpdateMessage for ${newNextVisit.patientPhone}`);
+          await ctx.scheduler.runAfter(0, internal.whatsappAutomations.sendQueueUpdateMessage, {
+            clinicId: user._id,
+            patientName: newNextVisit.patientName || "",
+            patientPhone: newNextVisit.patientPhone,
+          });
+        } else {
+          console.log("[updateAppointment] Not sending queue update. Missing nextVisit, patientPhone, or clinic credentials.");
+        }
+      } else {
+        console.log("[updateAppointment] No NEXT patient in line to notify.");
       }
     }
     

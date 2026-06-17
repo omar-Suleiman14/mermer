@@ -335,7 +335,6 @@ function SchedulePageInner() {
         clerkId,
         appointmentId: completionModal.appointmentId,
         updates: { status: "completed", prescriptionImageId, notes },
-        notifyNextPatientId: nextApptId || undefined,
       });
       toast.success(t("toast.visitMarkedComplete"));
       setCompletionModal(null);

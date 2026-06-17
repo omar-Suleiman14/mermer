@@ -1,3 +1,10 @@
 6/17/2026, 12:00:05 PM [CONVEX H(POST /evolution-webhook)] There are no available workers to process the request
 
 6/17/2026, 12:01:19 PM [CONVEX A(whatsappAutomations:sendQueueUpdateMessage)] [LOG] '[sendQueueUpdateMessage] Sending to 1005519942 for clinic Omar Suleiman'
+6/17/2026, 12:17:30 PM [CONVEX M(appointments:confirmPendingAppointmentByPhone)] [LOG] 'No pending visit found for phone candidates:' [ '201035555282', '01035555282', '1035555282' ]
+6/17/2026, 12:21:29 PM [CONVEX M(appointments:updateAppointment)] [LOG] '[updateAppointment] Backend calculated next patient:' 'jn70endazhcmydtwm2rjv3gfwh88vz6y'
+6/17/2026, 12:21:29 PM [CONVEX M(appointments:updateAppointment)] [LOG] '[updateAppointment] Dispatching sendQueueUpdateMessage for 1142529590'
+6/17/2026, 12:21:29 PM [CONVEX A(whatsappAutomations:sendQueueUpdateMessage)] [LOG] '[sendQueueUpdateMessage] Sending to 1142529590 for clinic Omar Suleiman'
+6/17/2026, 12:22:24 PM [CONVEX M(appointments:updateAppointment)] [LOG] '[updateAppointment] Backend calculated next patient:' 'jn7bymb50mj2zt5a6grfx53qbd88vsxz'
+6/17/2026, 12:22:24 PM [CONVEX M(appointments:updateAppointment)] [LOG] '[updateAppointment] Dispatching sendQueueUpdateMessage for 201012756994'
+6/17/2026, 12:22:24 PM [CONVEX A(whatsappAutomations:sendQueueUpdateMessage)] [LOG] '[sendQueueUpdateMessage] Sending to 201012756994 for clinic Omar Suleiman'
