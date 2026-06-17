@@ -104,13 +104,10 @@ export default function DashboardPage() {
 
   const { currentApptId, nextApptId } = useMemo(() => {
     if (!currentUser || !todayVisits) return { currentApptId: null, nextApptId: null };
-    
-    const now = Date.now();
-    const slotDurationMs = ((currentUser as any).slotDurationMinutes || 30) * 60000;
-    
-    const incomplete = todayVisits.filter(a => a.status !== "completed");
-    const current = incomplete.find(a => a.date <= now && a.date + slotDurationMs > now);
-    const next = incomplete.find(a => a.date > now);
+
+    const activeVisits = todayVisits.filter(a => a.status === "pending" || a.status === "confirmed");
+    const current = activeVisits.length > 0 ? activeVisits[0] : undefined;
+    const next = activeVisits.length > 1 ? activeVisits[1] : undefined;
 
     return {
       currentApptId: current?._id || null,
@@ -383,7 +380,7 @@ export default function DashboardPage() {
                 className="flex items-center gap-1.5 text-xs font-semibold bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-500 px-3 py-1.5 rounded-xl hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors disabled:opacity-50 cursor-pointer"
               >
                 {cancellingDay ? <IOSSpinner size={14} className="text-red-600" /> : <XCircle className="w-3.5 h-3.5" />}
-                {lang === "ar" ? "إلغاء اليوم" : "Cancel Day"}
+                {lang === "ar" ? "إلغاء اليوم" : "Cancel Today"}
               </button>
             )}
             <Link

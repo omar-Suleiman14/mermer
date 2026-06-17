@@ -223,17 +223,14 @@ export default function ClinicScreen() {
   const now = time.getTime();
   const slotDurationMs = (currentUser?.slotDurationMinutes || 30) * 60000;
 
-  const currentPatientIdx = todayVisits.findIndex(a => a.date <= now && a.date + slotDurationMs > now && a.status !== "completed");
-  const currentPatient = currentPatientIdx !== -1
-    ? todayVisits[currentPatientIdx]
-    : (() => { const i = todayVisits.findIndex(a => a.date <= now && a.date + slotDurationMs > now); return i !== -1 ? todayVisits[i] : undefined; })();
-  const currentPatientNumber = currentPatient ? (todayVisits.indexOf(currentPatient) + 1) : null;
+  // Active patients in queue order
+  const activeVisits = todayVisits.filter(a => a.status === "pending" || a.status === "confirmed");
+  
+  const currentPatient = activeVisits.length > 0 ? activeVisits[0] : undefined;
+  const currentPatientNumber = currentPatient ? (currentPatient.queueNumber || (todayVisits.indexOf(currentPatient) + 1)) : null;
 
-  const nextPatientIdx = todayVisits.findIndex(a => a.date > now && a.status !== "completed");
-  const nextPatient = nextPatientIdx !== -1
-    ? todayVisits[nextPatientIdx]
-    : (() => { const i = todayVisits.findIndex(a => a.date > now); return i !== -1 ? todayVisits[i] : undefined; })();
-  const nextPatientNumber = nextPatient ? (todayVisits.indexOf(nextPatient) + 1) : null;
+  const nextPatient = activeVisits.length > 1 ? activeVisits[1] : undefined;
+  const nextPatientNumber = nextPatient ? (nextPatient.queueNumber || (todayVisits.indexOf(nextPatient) + 1)) : null;
 
   // Generate QR Code
   useEffect(() => {
@@ -380,7 +377,7 @@ export default function ClinicScreen() {
                   <span className="text-sm md:text-base font-semibold text-muted-foreground uppercase tracking-widest mb-1">
                     {lang === "ar" ? "التالي" : "Up Next"}
                   </span>
-                  <p className="text-2xl md:text-3xl font-bold text-foreground truncate max-w-[90%]">
+                  <p className="text-2xl md:text-3xl font-bold text-foreground text-center">
                     {clinicScreenShowNames
                       ? nextPatient.patientName
                       : `${lang === "ar" ? "رقم" : "#"}${nextPatientNumber}`}

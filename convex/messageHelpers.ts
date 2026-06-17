@@ -101,7 +101,7 @@ export function msgBookingConfirmed(args: BookingArgs): string {
   const dateStr = fmtDateAr(args.date);
   const timeStr = fmtTimeAr(args.date);
   const slotLine = args.slotNumber
-    ? `\nرقم دورك في الطابور: *${args.slotNumber}*`
+    ? `\nرقمك: *${args.slotNumber}*`
     : "";
   const addr = addressLine(args.clinicAddress, args.clinicAddressLink);
   return (
