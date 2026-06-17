@@ -431,6 +431,10 @@ export const getDoctorBySlug = query({
       bio: doctor.bio,
       qrSlug: doctor.qrSlug,
       profilePhotoUrl,
+      workingHoursStart: doctor.workingHoursStart,
+      workingHoursEnd: doctor.workingHoursEnd,
+      slotDurationMinutes: doctor.slotDurationMinutes,
+      clinicScreenShowNames: (doctor as any).clinicScreenShowNames,
     };
   },
 });

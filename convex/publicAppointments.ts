@@ -1,7 +1,39 @@
-import { action } from "./_generated/server";
+import { action, query } from "./_generated/server";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
+
+export const getPublicScreenVisits = query({
+  args: { slug: v.string(), dayStart: v.number() },
+  handler: async (ctx, args) => {
+    const doctor = await ctx.db
+      .query("users")
+      .withIndex("by_qr_slug", (q) => q.eq("qrSlug", args.slug))
+      .unique();
+    if (!doctor) return [];
+
+    const start = args.dayStart;
+    const end = start + 86400000;
+
+    const visits = await ctx.db
+      .query("visits")
+      .withIndex("by_doctor_date", (q) =>
+        q.eq("doctorId", doctor._id).gte("date", start).lt("date", end)
+      )
+      .collect();
+
+    const clinicScreenShowNames = (doctor as any).clinicScreenShowNames ?? false;
+
+    return visits
+      .filter(v => v.status !== "cancelled")
+      .map(v => ({
+        date: v.date,
+        status: v.status,
+        queueNumber: v.queueNumber,
+        patientName: clinicScreenShowNames ? v.patientName : undefined,
+      }));
+  }
+});
 
 export const createAppointment = action({
   args: {

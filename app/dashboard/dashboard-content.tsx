@@ -365,7 +365,8 @@ export default function DashboardPage() {
 
             <button
               onClick={() => {
-                navigator.clipboard.writeText(`${window.location.origin}/clinic-screen`);
+                const slug = (currentUser as any)?.qrSlug || "";
+                navigator.clipboard.writeText(`${window.location.origin}/clinic-screen/${slug}`);
                 toast.success(lang === "ar" ? "تم نسخ رابط شاشة العيادة" : "Clinic Screen link copied");
               }}
               className="flex items-center gap-1.5 text-xs font-semibold bg-muted text-foreground px-3 py-1.5 rounded-xl hover:bg-muted/80 transition-colors cursor-pointer"

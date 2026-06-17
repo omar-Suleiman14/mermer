@@ -180,10 +180,9 @@
 // }
 "use client";
 
-import { useUser } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { useEffect, useState } from "react";
+import { useEffect, useState, use } from "react";
 import QRCode from "qrcode";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { motion } from "framer-motion";
@@ -191,14 +190,11 @@ import { useI18n } from "@/lib/i18n/client";
 import Image from "next/image";
 import { startOfDay } from "@/lib/scheduling";
 
-export default function ClinicScreen() {
-  const { user, isLoaded } = useUser();
+export default function ClinicScreen({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = use(params);
   const { lang } = useI18n();
 
-  const currentUser = useQuery(
-    api.users.getCurrentUser,
-    isLoaded && user ? { clerkId: user.id } : "skip"
-  );
+  const currentUser = useQuery(api.users.getDoctorBySlug, { slug });
 
   const [time, setTime] = useState(new Date());
   const [qrSrc, setQrSrc] = useState("");
@@ -212,10 +208,7 @@ export default function ClinicScreen() {
   const clinicScreenShowNames = (currentUser as any)?.clinicScreenShowNames ?? false;
 
   const todayTs = startOfDay(Date.now());
-  const todayAppointments = useQuery(
-    api.appointments.getAppointmentsByDate,
-    isLoaded && user ? { clerkId: user.id, dayStart: todayTs } : "skip"
-  );
+  const todayAppointments = useQuery(api.publicAppointments.getPublicScreenVisits, { slug, dayStart: todayTs });
 
   const todayVisits = todayAppointments?.filter((a) => a.status !== "cancelled").sort((a, b) => a.date - b.date) || [];
   
@@ -251,10 +244,18 @@ export default function ClinicScreen() {
     }
   }, [currentUser]);
 
-  if (!isLoaded || currentUser === undefined || currentUser === null) {
+  if (currentUser === undefined || todayAppointments === undefined) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <IOSSpinner size={48} className="text-primary" />
+      </div>
+    );
+  }
+
+  if (currentUser === null) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground text-lg">{lang === "ar" ? "العيادة غير موجودة" : "Clinic not found"}</p>
       </div>
     );
   }
