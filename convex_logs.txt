@@ -1,0 +1,3 @@
+6/17/2026, 12:00:05 PM [CONVEX H(POST /evolution-webhook)] There are no available workers to process the request
+
+6/17/2026, 12:01:19 PM [CONVEX A(whatsappAutomations:sendQueueUpdateMessage)] [LOG] '[sendQueueUpdateMessage] Sending to 1005519942 for clinic Omar Suleiman'

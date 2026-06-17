@@ -335,13 +335,14 @@ function SchedulePageInner() {
         clerkId,
         appointmentId: completionModal.appointmentId,
         updates: { status: "completed", prescriptionImageId, notes },
+        notifyNextPatientId: nextApptId || undefined,
       });
       toast.success(t("toast.visitMarkedComplete"));
       setCompletionModal(null);
     } catch {
       toast.error(t("toast.visitCompleteFailed"));
     }
-  }, [clerkId, completionModal, updateAppointment, t]);
+  }, [clerkId, completionModal, updateAppointment, t, nextApptId]);
 
   const handleCancel = useCallback(async (appointmentId: Id<"visits">) => {
     try {

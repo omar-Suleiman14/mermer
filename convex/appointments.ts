@@ -1,9 +1,27 @@
-import { mutation, query, action, internalMutation } from "./_generated/server";
+import { mutation, query, action, internalMutation, internalQuery } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { getAuthUser, requireAuthUser, logAction } from "./authHelper";
 import { internal } from "./_generated/api";
 import { msgBookingConfirmed, msgAppointmentCancelled, msgRescheduled, calcSlotNumber, fmtTimeAr } from "./messageHelpers";
+
+export const testTrigger = mutation({
+  args: { clinicId: v.id("users"), patientName: v.string(), patientPhone: v.string() },
+  handler: async (ctx, args) => {
+    await ctx.scheduler.runAfter(0, internal.whatsappAutomations.sendQueueUpdateMessage, {
+      clinicId: args.clinicId,
+      patientName: args.patientName,
+      patientPhone: args.patientPhone,
+    });
+  }
+});
+
+export const debugVisits = query({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("messageLogs").order("desc").take(10);
+  }
+});
 
 const DAY_ABBREVS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 const MAX_PUBLIC_BOOKING_WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
@@ -550,6 +568,7 @@ export const updateAppointment = mutation({
       documentIds: v.optional(v.array(v.id("_storage"))),
       date: v.optional(v.number()),
     }),
+    notifyNextPatientId: v.optional(v.id("visits")),
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
@@ -630,31 +649,15 @@ export const updateAppointment = mutation({
 
     await ctx.db.patch(args.appointmentId, args.updates);
     
-    // Notify the next patient if this visit was completed
-    if (args.updates.status === "completed" && visit.status !== "completed") {
-      const todayStart = startOfDay(Date.now());
-      const todayEnd = todayStart + 86400000;
-
-      const upcoming = await ctx.db
-        .query("visits")
-        .withIndex("by_doctor_date", (q) =>
-          q.eq("doctorId", user._id).gte("date", todayStart).lt("date", todayEnd)
-        )
-        .collect();
-
-      const activeVisits = upcoming
-        .filter(v => (v.status === "confirmed" || v.status === "pending") && v._id !== visit._id)
-        .sort((a, b) => a.date - b.date);
-
-      if (activeVisits.length > 0) {
-        const nextVisit = activeVisits[0];
-        if (nextVisit.patientPhone && user.evolutionInstanceName && user.evolutionApiKey) {
-          await ctx.scheduler.runAfter(0, internal.whatsappAutomations.sendQueueUpdateMessage, {
-            clinicId: user._id,
-            patientName: nextVisit.patientName || "",
-            patientPhone: nextVisit.patientPhone,
-          });
-        }
+    // Notify the next patient if requested by the frontend
+    if (args.updates.status === "completed" && args.notifyNextPatientId) {
+      const nextVisit = await ctx.db.get(args.notifyNextPatientId);
+      if (nextVisit && nextVisit.patientPhone && user.evolutionInstanceName && user.evolutionApiKey) {
+        await ctx.scheduler.runAfter(0, internal.whatsappAutomations.sendQueueUpdateMessage, {
+          clinicId: user._id,
+          patientName: nextVisit.patientName || "",
+          patientPhone: nextVisit.patientPhone,
+        });
       }
     }
     
