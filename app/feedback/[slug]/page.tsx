@@ -19,7 +19,8 @@ export default async function FeedbackPage({
   const { dir, lang, t } = await getServerI18n();
 
   // Fetch data on the server
-  const client = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+  const convexUrl = (process.env.NEXT_PUBLIC_CONVEX_URL || "").replace(/\/$/, "");
+  const client = new ConvexHttpClient(convexUrl);
   const doctor = await client.query(api.feedback.getDoctorInfoBySlug, { slug });
 
   if (!doctor) {
