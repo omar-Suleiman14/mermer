@@ -3,97 +3,128 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || "http://localhost:8080";
-const GLOBAL_API_KEY = process.env.EVOLUTION_API_KEY || "B6D711FCDE4D4FD5936544120E7139D5";
+const GLOBAL_API_KEY = process.env.EVOLUTION_API_KEY || "";
+// NOTE: Use CONVEX_SITE_URL (not NEXT_PUBLIC_CONVEX_SITE_URL) — Convex actions
+// cannot read NEXT_PUBLIC_ prefixed env vars. Convex provides this automatically.
+const CONVEX_SITE_URL = process.env.CONVEX_SITE_URL;
+
+// Evolution Go uses the instance token as the apikey header to scope requests to that instance.
+// The GLOBAL_API_KEY is used only for creating/listing instances.
 
 // ACTION: Create an instance for the clinic
 export const activateIntegration = action({
   args: { clinicId: v.id("users") },
   handler: async (ctx, args) => {
     const instanceName = `clinic_${args.clinicId}`;
+    // Use a stable token derived from the instance name (you can also store a random one)
+    const instanceToken = `tok_${args.clinicId}`;
 
     try {
-      let instanceApiKey = "";
+      // --- Step 1: Create the instance ---
+      // Evolution Go /instance/create body: { name, token, instanceId, advancedSettings }
+      let created = false;
       let errorMsg = "";
 
-      for (let attempt = 1; attempt <= 2; attempt++) {
-        try {
-          const response = await fetch(`${EVOLUTION_API_URL}/instance/create`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: GLOBAL_API_KEY,
-            },
-            body: JSON.stringify({
-              instanceName,
-              qrcode: true,
-              integration: "WHATSAPP-BAILEYS",
-            }),
-          });
+      const createRes = await fetch(`${EVOLUTION_API_URL}/instance/create`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: GLOBAL_API_KEY,
+        },
+        body: JSON.stringify({
+          name: instanceName,
+          token: instanceToken,
+        }),
+      });
 
-          if (response.ok) {
-            const data = await response.json();
-            instanceApiKey = data.hash?.apikey || data.apikey;
-            break;
-          }
-
-          const errorText = await response.text();
-          
-          // Whether it's 403 or 502, try to fetch it just in case it was created successfully behind the proxy
-          const fetchRes = await fetch(`${EVOLUTION_API_URL}/instance/fetchInstances?instanceName=${instanceName}`, {
-            method: "GET",
-            headers: { apikey: GLOBAL_API_KEY }
-          });
-          
-          if (fetchRes.ok) {
-            const instances = await fetchRes.json();
-            if (instances && instances.length > 0) {
-              instanceApiKey = instances[0].token || instances[0].hash?.apikey || instances[0].apikey;
-              break;
-            }
-          }
-
-          errorMsg = errorText;
-          if (attempt === 1) await new Promise(r => setTimeout(r, 2000));
-        } catch (e: any) {
-          errorMsg = e.message;
-          if (attempt === 1) await new Promise(r => setTimeout(r, 2000));
+      if (createRes.ok) {
+        created = true;
+      } else {
+        const errText = await createRes.text();
+        // 409 means already exists — that's fine, we'll use the existing token
+        if (createRes.status === 409) {
+          created = true;
+        } else {
+          errorMsg = errText;
+          console.error("Create instance failed:", createRes.status, errText.slice(0, 300));
         }
       }
 
-      if (!instanceApiKey) {
-        return { success: false, error: errorMsg || "Failed to create or retrieve instance" };
+      if (!created) {
+        return { success: false, error: errorMsg || "Failed to create instance" };
       }
 
-      // Configure Webhook for the new/existing instance
-      const CONVEX_SITE_URL = process.env.NEXT_PUBLIC_CONVEX_SITE_URL || process.env.CONVEX_SITE_URL;
-      if (CONVEX_SITE_URL) {
-        await fetch(`${EVOLUTION_API_URL}/webhook/set/${instanceName}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: GLOBAL_API_KEY,
-          },
-          body: JSON.stringify({
-            webhook: {
-              enabled: true,
-              url: `${CONVEX_SITE_URL}/evolution-webhook`,
-              byEvents: false,
-              events: ["MESSAGES_UPSERT"],
-            },
-          }),
-        }).catch(err => console.error("Failed to set webhook:", err));
+      // --- Step 2: Connect + configure webhook ---
+      // POST /instance/connect with { webhookUrl, subscribe, immediate }
+      // The instance token is passed as apikey to scope to this instance
+      const webhookUrl = CONVEX_SITE_URL
+        ? `${CONVEX_SITE_URL}/evolution-webhook`
+        : undefined;
+
+      const connectBody: Record<string, unknown> = {
+        immediate: false,
+        subscribe: ["MESSAGES_UPSERT"],
+      };
+      if (webhookUrl) {
+        connectBody.webhookUrl = webhookUrl;
+        console.log(`Webhook configured: ${webhookUrl}`);
+      } else {
+        console.warn("CONVEX_SITE_URL not set — webhook not configured.");
       }
 
-      // 2. Update user record in Convex
+      let qrCode: string | undefined;
+      const connectRes = await fetch(`${EVOLUTION_API_URL}/instance/connect`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: instanceToken,   // Evolution Go: use instance token to scope
+        },
+        body: JSON.stringify(connectBody),
+      });
+
+      if (connectRes.ok) {
+        const connectData = await connectRes.json();
+        // Response may contain QR directly or point to /instance/qr
+        qrCode =
+          connectData.qrcode?.base64 ||
+          connectData.base64 ||
+          connectData.qr ||
+          undefined;
+      } else {
+        const cErr = await connectRes.text();
+        console.error("Connect instance failed:", connectRes.status, cErr.slice(0, 300));
+      }
+
+      // --- Step 3: If no QR in connect response, fetch it separately ---
+      if (!qrCode) {
+        await new Promise(r => setTimeout(r, 1500));
+        const qrRes = await fetch(`${EVOLUTION_API_URL}/instance/qr`, {
+          method: "GET",
+          headers: { apikey: instanceToken },
+        });
+        if (qrRes.ok) {
+          const qrData = await qrRes.json();
+          qrCode =
+            qrData.qrcode?.base64 ||
+            qrData.base64 ||
+            qrData.qr ||
+            undefined;
+          console.log("QR fetch response keys:", Object.keys(qrData));
+        } else {
+          console.error("QR fetch failed:", qrRes.status, await qrRes.text().catch(() => ""));
+        }
+      }
+
+      // --- Step 4: Update user record in Convex ---
       await ctx.runMutation(internal.evolution.updateInstanceDetails, {
         clinicId: args.clinicId,
         evolutionInstanceName: instanceName,
-        evolutionApiKey: instanceApiKey,
+        evolutionApiKey: instanceToken,   // Store the instance token for later use
         evolutionStatus: "connecting",
         isEvolutionActive: true,
       });
 
-      return { success: true };
+      return { success: true, qrCode };
     } catch (e) {
       console.error("Evolution API unreachable", e);
       return { success: false, error: "Evolution API server is unreachable." };
@@ -105,18 +136,19 @@ export const activateIntegration = action({
 export const getConnectionState = action({
   args: { clinicId: v.id("users"), instanceName: v.string() },
   handler: async (ctx, args) => {
+    // Reconstruct the instance token from the instance name
+    const instanceToken = `tok_${args.clinicId}`;
+
     try {
-      // 1. Check if the instance exists on the Evolution API
-      const response = await fetch(`${EVOLUTION_API_URL}/instance/connectionState/${args.instanceName}`, {
+      // GET /instance/status — scoped to instance via token in apikey header
+      const statusRes = await fetch(`${EVOLUTION_API_URL}/instance/status`, {
         method: "GET",
-        headers: {
-          apikey: GLOBAL_API_KEY,
-        },
+        headers: { apikey: instanceToken },
       });
 
-      // Instance doesn't exist (e.g. after container restart) — recreate it
-      if (!response.ok) {
-        console.log(`Instance ${args.instanceName} not found, recreating...`);
+      // Instance doesn't exist (e.g. after server restart) — recreate it
+      if (!statusRes.ok) {
+        console.log(`Instance ${args.instanceName} not found (${statusRes.status}), recreating...`);
 
         const createRes = await fetch(`${EVOLUTION_API_URL}/instance/create`, {
           method: "POST",
@@ -125,47 +157,64 @@ export const getConnectionState = action({
             apikey: GLOBAL_API_KEY,
           },
           body: JSON.stringify({
-            instanceName: args.instanceName,
-            qrcode: true,
-            integration: "WHATSAPP-BAILEYS",
+            name: args.instanceName,
+            token: instanceToken,
           }),
         });
 
-        if (!createRes.ok) {
+        if (!createRes.ok && createRes.status !== 409) {
           const errText = await createRes.text();
           console.error("Failed to recreate instance:", errText);
           return { status: "error", message: "Failed to recreate WhatsApp instance." };
         }
 
-        // Now fetch the QR code for the newly created instance
-        const qrResponse = await fetch(`${EVOLUTION_API_URL}/instance/connect/${args.instanceName}`, {
-          method: "GET",
-          headers: { apikey: GLOBAL_API_KEY },
+        // Connect to get QR
+        const webhookUrl = CONVEX_SITE_URL ? `${CONVEX_SITE_URL}/evolution-webhook` : undefined;
+        const connectBody: Record<string, unknown> = { immediate: false, subscribe: ["MESSAGES_UPSERT"] };
+        if (webhookUrl) connectBody.webhookUrl = webhookUrl;
+
+        const connectRes = await fetch(`${EVOLUTION_API_URL}/instance/connect`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", apikey: instanceToken },
+          body: JSON.stringify(connectBody),
         });
 
-        if (qrResponse.ok) {
-          const qrData = await qrResponse.json();
-          return { status: "connecting", qrCode: qrData.base64 || qrData.qrcode };
+        if (connectRes.ok) {
+          const d = await connectRes.json();
+          const qr = d.qrcode?.base64 || d.base64 || d.qr;
+          if (qr) return { status: "connecting", qrCode: qr };
+        }
+
+        // Try /instance/qr
+        await new Promise(r => setTimeout(r, 1500));
+        const qrRes = await fetch(`${EVOLUTION_API_URL}/instance/qr`, {
+          headers: { apikey: instanceToken },
+        });
+        if (qrRes.ok) {
+          const qrData = await qrRes.json();
+          const qr = qrData.qrcode?.base64 || qrData.base64 || qrData.qr;
+          return { status: "connecting", qrCode: qr };
         }
 
         return { status: "connecting" };
       }
 
-      const data = await response.json();
-      const state = data.instance?.state || data.state;
+      const data = await statusRes.json();
+      // Evolution Go status response shape: { state: "open"|"connecting"|... }
+      const state = data.state || data.instance?.state || data.status;
 
       if (state === "open") {
         // Fetch instance details to get the connected phone number
-        let ownerJid = undefined;
+        let ownerJid: string | undefined;
         try {
-          const fetchRes = await fetch(`${EVOLUTION_API_URL}/instance/fetchInstances?instanceName=${args.instanceName}`, {
-            headers: { apikey: GLOBAL_API_KEY }
+          // GET /instance/get/{instanceId} — instanceId is the token in Evolution Go
+          const getRes = await fetch(`${EVOLUTION_API_URL}/instance/get/${instanceToken}`, {
+            headers: { apikey: GLOBAL_API_KEY },
           });
-          if (fetchRes.ok) {
-            const arr = await fetchRes.json();
-            if (arr && arr[0] && arr[0].ownerJid) {
-              ownerJid = arr[0].ownerJid.split("@")[0]; // e.g. "201012345678"
-            }
+          if (getRes.ok) {
+            const inst = await getRes.json();
+            const jid = inst.ownerJid || inst.owner || inst.phone;
+            if (jid) ownerJid = jid.split("@")[0]; // e.g. "201012345678"
           }
         } catch (err) {
           console.error("Failed to fetch instance ownerJid", err);
@@ -180,27 +229,26 @@ export const getConnectionState = action({
       }
 
       // Update the DB status for non-open states so the UI stays in sync
-      if (state !== "connecting") {
+      if (state && state !== "connecting") {
         await ctx.runMutation(internal.evolution.updateInstanceStatus, {
           clinicId: args.clinicId,
           evolutionStatus: state,
         });
       }
 
-      // If connecting, fetch the QR code
-      const qrResponse = await fetch(`${EVOLUTION_API_URL}/instance/connect/${args.instanceName}`, {
+      // Fetch QR via GET /instance/qr (scoped by instance token)
+      const qrRes = await fetch(`${EVOLUTION_API_URL}/instance/qr`, {
         method: "GET",
-        headers: {
-          apikey: GLOBAL_API_KEY,
-        },
+        headers: { apikey: instanceToken },
       });
 
-      if (qrResponse.ok) {
-        const qrData = await qrResponse.json();
-        return { status: "connecting", qrCode: qrData.base64 || qrData.qrcode };
+      if (qrRes.ok) {
+        const qrData = await qrRes.json();
+        const qr = qrData.qrcode?.base64 || qrData.base64 || qrData.qr;
+        return { status: "connecting", qrCode: qr };
       }
 
-      return { status: state };
+      return { status: state || "connecting" };
     } catch (e) {
       console.error("Evolution API unreachable", e);
       return { status: "error", message: "Evolution API server is unreachable." };
@@ -255,20 +303,22 @@ export const clearIntegrationState = internalMutation({
   },
 });
 
-// ACTION: Properly disconnect and delete the instance on the Evolution API
+// ACTION: Properly disconnect and delete the instance on Evolution Go
 export const disconnectIntegration = action({
   args: { clinicId: v.id("users"), instanceName: v.optional(v.string()) },
   handler: async (ctx, args) => {
+    const instanceToken = `tok_${args.clinicId}`;
+
     try {
       if (args.instanceName) {
-        // 1. Logout the instance (this signals WhatsApp to unlink the device)
-        await fetch(`${EVOLUTION_API_URL}/instance/logout/${args.instanceName}`, {
+        // 1. Logout: DELETE /instance/logout — scoped to instance via token
+        await fetch(`${EVOLUTION_API_URL}/instance/logout`, {
           method: "DELETE",
-          headers: { apikey: GLOBAL_API_KEY },
+          headers: { apikey: instanceToken },
         }).catch(err => console.error("Logout failed:", err));
 
-        // 2. Delete the instance from Evolution API
-        await fetch(`${EVOLUTION_API_URL}/instance/delete/${args.instanceName}`, {
+        // 2. Delete: DELETE /instance/delete/{instanceId}
+        await fetch(`${EVOLUTION_API_URL}/instance/delete/${instanceToken}`, {
           method: "DELETE",
           headers: { apikey: GLOBAL_API_KEY },
         }).catch(err => console.error("Delete failed:", err));
@@ -297,16 +347,19 @@ export const resetIntegration = mutation({
   },
 });
 
-// INTERNAL ACTION: Force reconnect a Baileys instance whose socket dropped
+// INTERNAL ACTION: Force reconnect a dropped instance socket
 export const reconnectInstance = internalAction({
-  args: { instanceName: v.string() },
+  args: { instanceName: v.string(), clinicId: v.optional(v.id("users")) },
   handler: async (_ctx, args) => {
+    // Reconstruct token — instanceName is "clinic_{clinicId}"
+    const instanceToken = args.clinicId
+      ? `tok_${args.clinicId}`
+      : args.instanceName.replace("clinic_", "tok_");
     try {
-      // Calling /instance/connect on an existing instance forces Baileys to
-      // re-establish the WebSocket without requiring a new QR scan.
-      const res = await fetch(`${EVOLUTION_API_URL}/instance/connect/${args.instanceName}`, {
-        method: "GET",
-        headers: { apikey: GLOBAL_API_KEY },
+      // POST /instance/reconnect — scoped by token
+      const res = await fetch(`${EVOLUTION_API_URL}/instance/reconnect`, {
+        method: "POST",
+        headers: { apikey: instanceToken },
       });
       const text = await res.text();
       console.log(`Reconnect attempt for ${args.instanceName}: status=${res.status}`, text.slice(0, 200));

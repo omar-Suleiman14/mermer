@@ -51,24 +51,22 @@ export function WhatsAppIntegration({ clinicId }: { clinicId: string }) {
   }, [creds?.isEvolutionActive, creds?.evolutionStatus, creds?.evolutionInstanceName]);
 
   const handleActivate = async () => {
+    // Prevent double-clicking from creating duplicate instances
+    if (loading) return;
     try {
       setLoading(true);
       setError("");
-      let res = await activateIntegration({ clinicId: clinicId as any });
-
-      // If first attempt failed, wait 2s and silently retry once
-      // (tunnel can give a 502 even though the instance was created)
-      if (res && res.success === false) {
-        await new Promise(r => setTimeout(r, 2500));
-        try {
-          res = await activateIntegration({ clinicId: clinicId as any });
-        } catch {
-          // ignore – we'll fall through to the error below
-        }
-      }
+      setQrCodeData(null);
+      const res = await activateIntegration({ clinicId: clinicId as any });
 
       if (res && res.success === false) {
         setError(dir === "rtl" ? "فشل تفعيل الخدمة. خادم الواتساب قد يكون غير متصل." : "Failed to activate. The WhatsApp server might be offline.");
+        return;
+      }
+
+      // Use the QR code returned immediately from activation (no need to wait for first poll)
+      if (res && (res as any).qrCode) {
+        setQrCodeData((res as any).qrCode);
       }
     } catch (err: any) {
       setError(dir === "rtl" ? "فشل تفعيل الخدمة. خادم الواتساب قد يكون غير متصل." : "Failed to activate. The WhatsApp server might be offline.");

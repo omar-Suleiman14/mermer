@@ -26,13 +26,11 @@ export const sendMessage = internalAction({
       cleanNumber = "20" + cleanNumber;
     }
 
+    // Evolution Go /send/text TextStruct: { number, text, delay, formatJid? }
     const payload = {
       number: cleanNumber,
-      options: {
-        delay: 1200,
-        presence: "composing",
-      },
       text: args.messageText,
+      delay: 1200,
     };
 
     const MAX_RETRIES = 3;
@@ -41,11 +39,12 @@ export const sendMessage = internalAction({
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
-        const response = await fetch(`${EVOLUTION_API_URL}/message/sendText/${args.instanceName}`, {
+        // Evolution Go: POST /send/text — use instance token (evolutionApiKey) as apikey header to scope to this instance
+        const response = await fetch(`${EVOLUTION_API_URL}/send/text`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            apikey: process.env.EVOLUTION_API_KEY || "B6D711FCDE4D4FD5936544120E7139D5",
+            apikey: args.evolutionApiKey,
           },
           body: JSON.stringify(payload),
         });
