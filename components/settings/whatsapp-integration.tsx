@@ -28,7 +28,8 @@ export function WhatsAppIntegration({ clinicId }: { clinicId: string }) {
         instanceName: creds.evolutionInstanceName 
       });
       if (res.status === "error") {
-         setError(dir === "rtl" ? "خدمة الواتساب غير متاحة حالياً. يرجى التأكد من عمل الخادم." : "WhatsApp server is unreachable. Please check the server status.");
+         const fallback = dir === "rtl" ? "خدمة الواتساب غير متاحة حالياً. يرجى التأكد من عمل الخادم." : "WhatsApp server is unreachable. Please check the server status.";
+         setError(res.message || fallback);
       } else {
          setError("");
          if (res.qrCode) {

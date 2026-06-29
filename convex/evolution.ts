@@ -41,9 +41,32 @@ export const activateIntegration = action({
         created = true;
       } else {
         const errText = await createRes.text();
-        // 409 means already exists — that's fine, we'll use the existing token
-        if (createRes.status === 409) {
-          created = true;
+        
+        // If it already exists (from an older integration attempt), it might have the wrong token.
+        // We force delete it and recreate it with our correct predictable token.
+        if (createRes.status === 409 || errText.includes("already exists")) {
+          console.log(`Instance ${instanceName} exists but we need to ensure correct token. Recreating...`);
+          await fetch(`${EVOLUTION_API_URL}/instance/delete/${instanceName}`, {
+            method: "DELETE",
+            headers: { apikey: GLOBAL_API_KEY },
+          }).catch(() => {});
+          
+          // Retry creation
+          const retryRes = await fetch(`${EVOLUTION_API_URL}/instance/create`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: GLOBAL_API_KEY,
+            },
+            body: JSON.stringify({ name: instanceName, token: instanceToken }),
+          });
+          
+          if (retryRes.ok) {
+            created = true;
+          } else {
+            errorMsg = await retryRes.text();
+            console.error("Retry create instance failed:", retryRes.status, errorMsg.slice(0, 300));
+          }
         } else {
           errorMsg = errText;
           console.error("Create instance failed:", createRes.status, errText.slice(0, 300));
@@ -162,10 +185,30 @@ export const getConnectionState = action({
           }),
         });
 
-        if (!createRes.ok && createRes.status !== 409) {
+        let isCreated = createRes.ok;
+        if (!isCreated) {
           const errText = await createRes.text();
-          console.error("Failed to recreate instance:", errText);
-          return { status: "error", message: "Failed to recreate WhatsApp instance." };
+          if (createRes.status === 409 || errText.includes("already exists")) {
+             console.log(`Instance ${args.instanceName} exists but needs correct token. Deleting and recreating...`);
+             await fetch(`${EVOLUTION_API_URL}/instance/delete/${args.instanceName}`, {
+                method: "DELETE",
+                headers: { apikey: GLOBAL_API_KEY },
+             }).catch(() => {});
+             
+             const retryRes = await fetch(`${EVOLUTION_API_URL}/instance/create`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", apikey: GLOBAL_API_KEY },
+                body: JSON.stringify({ name: args.instanceName, token: instanceToken }),
+             });
+             if (retryRes.ok) isCreated = true;
+             else console.error("Failed to recreate instance on retry:", await retryRes.text());
+          } else {
+             console.error("Failed to recreate instance:", errText);
+          }
+        }
+
+        if (!isCreated) {
+          return { status: "error", message: `Failed to recreate WhatsApp instance. Error: ${errText}` };
         }
 
         // Connect to get QR
@@ -251,7 +294,7 @@ export const getConnectionState = action({
       return { status: state || "connecting" };
     } catch (e) {
       console.error("Evolution API unreachable", e);
-      return { status: "error", message: "Evolution API server is unreachable." };
+      return { status: "error", message: `Evolution API server is unreachable: ${e.message}` };
     }
   },
 });
@@ -311,14 +354,15 @@ export const disconnectIntegration = action({
 
     try {
       if (args.instanceName) {
-        // 1. Logout: DELETE /instance/logout — scoped to instance via token
+        // 1. Logout: DELETE /instance/logout — scoped to instance via token (or use GLOBAL_API_KEY with instance path if Evolution Go supports it)
+        // If the token is wrong, this might fail, but we'll still try to delete it below.
         await fetch(`${EVOLUTION_API_URL}/instance/logout`, {
           method: "DELETE",
           headers: { apikey: instanceToken },
         }).catch(err => console.error("Logout failed:", err));
 
-        // 2. Delete: DELETE /instance/delete/{instanceId}
-        await fetch(`${EVOLUTION_API_URL}/instance/delete/${instanceToken}`, {
+        // 2. Delete: DELETE /instance/delete/{instanceId} — Evolution Go accepts the instanceName here
+        await fetch(`${EVOLUTION_API_URL}/instance/delete/${args.instanceName}`, {
           method: "DELETE",
           headers: { apikey: GLOBAL_API_KEY },
         }).catch(err => console.error("Delete failed:", err));
