@@ -186,9 +186,10 @@ export const getConnectionState = action({
         });
 
         let isCreated = createRes.ok;
+        let finalErrText = "";
         if (!isCreated) {
-          const errText = await createRes.text();
-          if (createRes.status === 409 || errText.includes("already exists")) {
+          finalErrText = await createRes.text();
+          if (createRes.status === 409 || finalErrText.includes("already exists")) {
              console.log(`Instance ${args.instanceName} exists but needs correct token. Deleting and recreating...`);
              await fetch(`${EVOLUTION_API_URL}/instance/delete/${args.instanceName}`, {
                 method: "DELETE",
@@ -201,14 +202,17 @@ export const getConnectionState = action({
                 body: JSON.stringify({ name: args.instanceName, token: instanceToken }),
              });
              if (retryRes.ok) isCreated = true;
-             else console.error("Failed to recreate instance on retry:", await retryRes.text());
+             else {
+               finalErrText = await retryRes.text();
+               console.error("Failed to recreate instance on retry:", finalErrText);
+             }
           } else {
-             console.error("Failed to recreate instance:", errText);
+             console.error("Failed to recreate instance:", finalErrText);
           }
         }
 
         if (!isCreated) {
-          return { status: "error", message: `Failed to recreate WhatsApp instance. Error: ${errText}` };
+          return { status: "error", message: `Failed to recreate WhatsApp instance. Error: ${finalErrText}` };
         }
 
         // Connect to get QR
@@ -292,7 +296,7 @@ export const getConnectionState = action({
       }
 
       return { status: state || "connecting" };
-    } catch (e) {
+    } catch (e: any) {
       console.error("Evolution API unreachable", e);
       return { status: "error", message: `Evolution API server is unreachable: ${e.message}` };
     }
