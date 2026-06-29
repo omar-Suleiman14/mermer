@@ -4,11 +4,23 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Check, X, MessageSquare, Copy } from "lucide-react";
+import { Plus, Pencil, Trash2, Check, X, MessageSquare, Copy, RotateCcw } from "lucide-react";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n/client";
 import { createPortal } from "react-dom";
+
+// ── Default templates — single source of truth for seeding & resetting ────────
+
+export const DEFAULT_TEMPLATES = [
+  { name: "الدور القادم",    body: "مرحباً {patient_name}\nدورك القادم الآن. يرجى التوجه إلى العيادة في أقرب وقت." },
+  { name: "تذكير بالموعد",  body: "تذكير بموعدك\nمرحباً {patient_name}، موعدك اليوم الساعة {time}.\n{clinic_address}\nنتمنى لك الشفاء العاجل." },
+  { name: "موعد فائت",      body: "مرحباً {patient_name}\nيبدو أنك لم تحضر موعدك بتاريخ {date}.\nنتمنى أن تكون بخير. يسعدنا إعادة الحجز عند اتصالك بنا." },
+  { name: "تأكيد حجز",      body: "مرحباً {patient_name}\nتم تأكيد حجزك بتاريخ {date} الساعة {time}.\nنراك قريباً." },
+  { name: "تعديل الموعد",   body: "مرحباً {patient_name}\nتم تعديل موعدك ليصبح بتاريخ {date} الساعة {time}.\nنراك قريباً." },
+  { name: "إلغاء الموعد",   body: "مرحباً {patient_name}\nنعتذر عن إلغاء موعدك بتاريخ {date}.\nyسعدنا إعادة الحجز عند اتصالك بنا." },
+  { name: "خطة علاج",       body: "مرحباً {patient_name}\nتم إنشاء خطة تقسيط علاجية خاصة بك.\nموعدك الأول بتاريخ {date} الساعة {time}.\nنراك قريباً." },
+];
 
 function getTemplateVariables(t: (key: string) => string) {
   return [
@@ -32,23 +44,16 @@ export function MessageTemplatesSection({ clerkId, clinicAddressLink }: { clerkI
   const [body, setBody] = useState("");
   const [saving, setSaving] = useState(false);
   const [seeding, setSeeding] = useState(false);
+  const [resettingAll, setResettingAll] = useState(false);
+  const [resetingId, setResetingId] = useState<Id<"messageTemplates"> | null>(null);
   const seeded = useRef(false);
 
-  // Auto-seed 3 default templates when empty
+  // Auto-seed default templates when empty
   useEffect(() => {
     if (!clerkId || templates === undefined || templates.length > 0 || seeded.current || seeding) return;
     seeded.current = true;
     setSeeding(true);
-    const defaults = [
-      { name: "الدور القادم",    body: "مرحباً {patient_name}\nدورك القادم الآن. يرجى التوجه إلى العيادة في أقرب وقت." },
-      { name: "تذكير بالموعد",  body: "تذكير بموعدك\nمرحباً {patient_name}، موعدك اليوم الساعة {time}.\n{clinic_address}\nنتمنى لك الشفاء العاجل." },
-      { name: "موعد فائت",      body: "مرحباً {patient_name}\nيبدو أنك لم تحضر موعدك بتاريخ {date}.\nنتمنى أن تكون بخير. يسعدنا إعادة الحجز عند اتصالك بنا." },
-      { name: "تأكيد حجز",      body: "مرحباً {patient_name}\nتم تأكيد حجزك بتاريخ {date} الساعة {time}.\nنراك قريباً." },
-      { name: "تعديل الموعد",   body: "مرحباً {patient_name}\nتم تعديل موعدك ليصبح بتاريخ {date} الساعة {time}.\nنراك قريباً." },
-      { name: "إلغاء الموعد",   body: "مرحباً {patient_name}\nنعتذر عن إلغاء موعدك بتاريخ {date}.\nيسعدنا إعادة الحجز عند اتصالك بنا." },
-      { name: "خطة علاج",       body: "مرحباً {patient_name}\nتم إنشاء خطة تقسيط علاجية خاصة بك.\nموعدك الأول بتاريخ {date} الساعة {time}.\nنراك قريباً." },
-    ];
-    Promise.all(defaults.map((d) => createTemplate({ clerkId, name: d.name, body: d.body })))
+    Promise.all(DEFAULT_TEMPLATES.map((d) => createTemplate({ clerkId, name: d.name, body: d.body })))
       .then(() => setSeeding(false))
       .catch(() => setSeeding(false));
   }, [clerkId, templates, createTemplate, seeding]);
@@ -92,8 +97,62 @@ export function MessageTemplatesSection({ clerkId, clinicAddressLink }: { clerkI
     catch { toast.error(t("msgTpl.deleteFailed")); }
   }
 
+  /** Reset a single template to its default body (matched by name). */
+  async function resetOne(tpl: { _id: Id<"messageTemplates">; name: string }) {
+    const def = DEFAULT_TEMPLATES.find((d) => d.name === tpl.name);
+    if (!def) {
+      toast.error("لا يوجد نص افتراضي لهذا القالب");
+      return;
+    }
+    setResetingId(tpl._id);
+    try {
+      await updateTemplate({ clerkId, templateId: tpl._id, name: tpl.name, body: def.body });
+      toast.success("تم إعادة تعيين القالب إلى النص الافتراضي");
+    } catch {
+      toast.error("فشل إعادة التعيين");
+    } finally {
+      setResetingId(null);
+    }
+  }
+
+  /** Reset ALL templates that match a default name back to default bodies. */
+  async function resetAll() {
+    if (!templates || templates.length === 0) return;
+    if (!confirm("هل تريد إعادة تعيين جميع القوالب إلى النصوص الافتراضية؟")) return;
+    setResettingAll(true);
+    try {
+      await Promise.all(
+        templates.map((tpl) => {
+          const def = DEFAULT_TEMPLATES.find((d) => d.name === tpl.name);
+          if (!def) return Promise.resolve();
+          return updateTemplate({ clerkId, templateId: tpl._id, name: tpl.name, body: def.body });
+        })
+      );
+      toast.success("تم إعادة تعيين جميع القوالب إلى النصوص الافتراضية");
+    } catch {
+      toast.error("فشلت إعادة التعيين الكاملة");
+    } finally {
+      setResettingAll(false);
+    }
+  }
+
   return (
     <div className="space-y-3">
+      {/* Header with Reset All */}
+      {templates && templates.length > 0 && !adding && !editId && (
+        <div className="flex items-center justify-end">
+          <button
+            onClick={resetAll}
+            disabled={resettingAll}
+            title="إعادة تعيين جميع القوالب"
+            className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground border border-border px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors disabled:opacity-50"
+          >
+            {resettingAll ? <IOSSpinner size={12} className="text-muted-foreground" /> : <RotateCcw className="w-3 h-3" />}
+            {resettingAll ? "جارٍ الإعادة..." : "إعادة تعيين الكل"}
+          </button>
+        </div>
+      )}
+
       {/* Template list */}
       {templates === undefined ? (
         <div className="h-10 bg-muted/30 rounded-xl animate-pulse" />
@@ -127,16 +186,42 @@ export function MessageTemplatesSection({ clerkId, clinicAddressLink }: { clerkI
                     <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{tpl.body}</p>
                   </div>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => {
-                      navigator.clipboard.writeText(preview(tpl.body));
-                      toast.success(t("msgTpl.copied"));
-                    }} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(preview(tpl.body));
+                        toast.success(t("msgTpl.copied"));
+                      }}
+                      title="نسخ"
+                      className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+                    >
                       <Copy className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={() => startEdit(tpl)} className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground">
+                    <button
+                      onClick={() => startEdit(tpl)}
+                      title="تعديل"
+                      className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
+                    >
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={() => del(tpl._id)} className="p-1.5 rounded-lg hover:bg-red-500/10 hover:text-red-500 transition-colors text-muted-foreground">
+                    {/* Per-template reset button — only shown when a default exists */}
+                    {DEFAULT_TEMPLATES.some((d) => d.name === tpl.name) && (
+                      <button
+                        onClick={() => resetOne(tpl)}
+                        disabled={resetingId === tpl._id}
+                        title="إعادة تعيين إلى الافتراضي"
+                        className="p-1.5 rounded-lg hover:bg-amber-500/10 hover:text-amber-600 transition-colors text-muted-foreground disabled:opacity-50"
+                      >
+                        {resetingId === tpl._id
+                          ? <IOSSpinner size={12} className="text-amber-600" />
+                          : <RotateCcw className="w-3.5 h-3.5" />
+                        }
+                      </button>
+                    )}
+                    <button
+                      onClick={() => del(tpl._id)}
+                      title="حذف"
+                      className="p-1.5 rounded-lg hover:bg-red-500/10 hover:text-red-500 transition-colors text-muted-foreground"
+                    >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -169,7 +254,7 @@ export function MessageTemplatesSection({ clerkId, clinicAddressLink }: { clerkI
   );
 }
 
-// ── Template Editor with @-mention variable picker ──────────────────────────
+// ── Template Editor with @-mention variable picker ───────────────────────────
 
 function EditorForm({ name, setName, body, setBody, onSave, onCancel, preview, saving }: {
   name: string; setName: (v: string) => void;

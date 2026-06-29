@@ -6,7 +6,7 @@ import { Id } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { toast } from "sonner";
-import { Camera, Globe, Palette, AlertTriangle, Bell, Loader2 } from "lucide-react";
+import { Camera, Globe, Palette, AlertTriangle, Bell, Loader2, MessageSquare } from "lucide-react";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import dynamic from "next/dynamic";
@@ -15,6 +15,7 @@ import { useTheme } from "next-themes";
 import { LanguageToggle } from "@/components/language-toggle";
 import Image from "next/image";
 import { WhatsAppIntegration } from "@/components/settings/whatsapp-integration";
+import { MessageTemplatesSection } from "@/components/message-templates-section";
 
 
 
@@ -581,6 +582,29 @@ export default function SettingsPage() {
                   <span className="text-sm font-medium">{dir === "rtl" ? "ربط واتساب" : "WhatsApp Integration"}</span>
                 </div>
                 <WhatsAppIntegration clinicId={currentUser._id as string} />
+              </div>
+            )}
+
+            {/* WhatsApp Message Templates */}
+            {currentUser && (
+              <div className="p-4 border-t border-border/50">
+                <div className="mb-3 flex items-center gap-3">
+                  <MessageSquare className="w-4 h-4 text-[#25D366]" />
+                  <div>
+                    <span className="text-sm font-medium block">
+                      {dir === "rtl" ? "قوالب رسائل الواتساب" : "WhatsApp Message Templates"}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {dir === "rtl"
+                        ? "تعديل هذه القوالب يغيّر الرسائل التلقائية واليدوية في آن واحد"
+                        : "Editing these templates changes both automatic and manual messages"}
+                    </span>
+                  </div>
+                </div>
+                <MessageTemplatesSection
+                  clerkId={clerkId}
+                  clinicAddressLink={currentUser.clinicAddressLink ?? ""}
+                />
               </div>
             )}
 

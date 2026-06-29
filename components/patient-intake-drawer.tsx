@@ -56,7 +56,7 @@ interface FormState {
   age: string;
   phone: string;
   gender: "male" | "female" | "other";
-  patientType?: string;
+  patientType: string | undefined;
   chronicConditions: string[];
   notes: string;
   reasonForVisit: string;
@@ -161,9 +161,9 @@ export function PatientIntakeDrawer({
     return slots;
   }, [currentUser, existingVisitsOnDate, lang]);
 
-  // Auto-select first available working slot
+  // Auto-select first available working slot whenever date changes (visitTime reset to "")
   useEffect(() => {
-    if (timeSlots.length > 0 && visitTime === "10:00") {
+    if (timeSlots.length > 0 && (visitTime === "" || visitTime === "10:00")) {
       const firstAvailable = timeSlots.find((s) => s.isWorkingHour && !s.isReserved);
       if (firstAvailable) {
         setTimeout(() => setVisitTime(firstAvailable.timeStr), 0);
@@ -297,6 +297,11 @@ export function PatientIntakeDrawer({
     e?.preventDefault();
     if (!form.name.trim() || !form.age || !form.phone.trim()) {
       toast.error(lang === "ar" ? "الاسم والعمر ورقم الهاتف مطلوبة" : "الاسم والعمر ورقم الهاتف مطلوبة");
+      return;
+    }
+
+    if (!form.patientType) {
+      toast.error(dir === "rtl" ? "يرجى تحديد نوع المريض" : "Please select a patient type");
       return;
     }
 
@@ -453,7 +458,7 @@ export function PatientIntakeDrawer({
 
       {/* Patient Type */}
       <div ref={patientTypeRef}>
-        <label className="text-xs font-medium text-muted-foreground block mb-1.5">{dir === "rtl" ? "نوع المريض (اختياري)" : "Patient Type (Optional)"}</label>
+        <label className="text-xs font-medium text-muted-foreground block mb-1.5">{dir === "rtl" ? "نوع المريض *" : "Patient Type *"}</label>
         {form.patientType && (
           <div className="flex flex-wrap gap-1.5 mb-2">
             <span className="flex items-center gap-1 bg-[#34c759]/10 text-[#34c759] text-xs font-medium px-2 py-0.5 rounded-full">
@@ -656,7 +661,9 @@ export function PatientIntakeDrawer({
                               if (d) {
                                 setVisitDate(d);
                                 setCalOpen(false);
-                                setVisitTime("10:00");
+                                // Reset to empty so the auto-select effect picks the
+                                // first available slot for the newly selected date
+                                setVisitTime("");
                               }
                             }}
                             disabled={(d) => {

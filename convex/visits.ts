@@ -495,3 +495,51 @@ export const checkWorkingHoursConflict = query({
     };
   },
 });
+
+// ── Past-Due Installment Visits ───────────────────────────────────────────────
+
+/**
+ * Returns installment visits where:
+ * - source === "installment"
+ * - status === "confirmed" (not attended, not cancelled)
+ * - date is strictly before the start of today (Cairo UTC+3 aware)
+ *
+ * Used by the dashboard "Past Due" section to surface missed installment sessions.
+ */
+export const getPastDueInstallmentVisits = query({
+  args: { clerkId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx, args.clerkId);
+    if (!user) return [];
+
+    // Start of today in Cairo (UTC+3)
+    const CAIRO_OFFSET = 3 * 60 * 60 * 1000;
+    const nowCairo = Date.now() + CAIRO_OFFSET;
+    const startOfTodayCairo = Math.floor(nowCairo / 86400000) * 86400000 - CAIRO_OFFSET;
+
+    // Query visits for this doctor that are before today using the date index
+    const visits = await ctx.db
+      .query("visits")
+      .withIndex("by_doctor_date", (q) =>
+        q.eq("doctorId", user._id).lt("date", startOfTodayCairo)
+      )
+      .order("desc")
+      .take(500);
+
+    // Keep only confirmed installment visits (not completed, not cancelled)
+    const pastDue = visits.filter(
+      (v) => v.source === "installment" && v.status === "confirmed"
+    );
+
+    // Enrich with patient info (already denormalized on most visits)
+    return pastDue.map((v) => ({
+      _id: v._id,
+      patientId: v.patientId,
+      patientName: v.patientName ?? "Unknown",
+      patientPhone: v.patientPhone,
+      date: v.date,
+      installmentId: v.installmentId,
+      reasonForVisit: v.reasonForVisit,
+    }));
+  },
+});
