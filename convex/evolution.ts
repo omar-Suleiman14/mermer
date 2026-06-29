@@ -34,6 +34,7 @@ export const activateIntegration = action({
         body: JSON.stringify({
           name: instanceName,
           token: instanceToken,
+          qrcode: true,
         }),
       });
 
@@ -58,7 +59,7 @@ export const activateIntegration = action({
               "Content-Type": "application/json",
               apikey: GLOBAL_API_KEY,
             },
-            body: JSON.stringify({ name: instanceName, token: instanceToken }),
+            body: JSON.stringify({ name: instanceName, token: instanceToken, qrcode: true }),
           });
           
           if (retryRes.ok) {
@@ -106,9 +107,10 @@ export const activateIntegration = action({
       });
 
       if (connectRes.ok) {
-        const connectData = await connectRes.json();
-        // Response may contain QR directly or point to /instance/qr
+        const connectWrapper = await connectRes.json();
+        const connectData = connectWrapper.data || connectWrapper;
         qrCode =
+          connectData.Qrcode ||
           connectData.qrcode?.base64 ||
           connectData.base64 ||
           connectData.qr ||
@@ -182,6 +184,7 @@ export const getConnectionState = action({
           body: JSON.stringify({
             name: args.instanceName,
             token: instanceToken,
+            qrcode: true,
           }),
         });
 
@@ -199,7 +202,7 @@ export const getConnectionState = action({
              const retryRes = await fetch(`${EVOLUTION_API_URL}/instance/create`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", apikey: GLOBAL_API_KEY },
-                body: JSON.stringify({ name: args.instanceName, token: instanceToken }),
+                body: JSON.stringify({ name: args.instanceName, token: instanceToken, qrcode: true }),
              });
              if (retryRes.ok) isCreated = true;
              else {
@@ -227,8 +230,9 @@ export const getConnectionState = action({
         });
 
         if (connectRes.ok) {
-          const d = await connectRes.json();
-          const qr = d.qrcode?.base64 || d.base64 || d.qr;
+          const connectWrapper = await connectRes.json();
+          const d = connectWrapper.data || connectWrapper;
+          const qr = d.Qrcode || d.qrcode?.base64 || d.base64 || d.qr;
           if (qr) return { status: "connecting", qrCode: qr };
         }
 
@@ -238,34 +242,38 @@ export const getConnectionState = action({
           headers: { apikey: instanceToken },
         });
         if (qrRes.ok) {
-          const qrData = await qrRes.json();
-          const qr = qrData.qrcode?.base64 || qrData.base64 || qrData.qr;
-          return { status: "connecting", qrCode: qr };
+          const qrWrapper = await qrRes.json();
+          const qrData = qrWrapper.data || qrWrapper;
+          const qr = qrData.Qrcode || qrData.qrcode?.base64 || qrData.base64 || qrData.qr;
+          if (qr) return { status: "connecting", qrCode: qr };
         }
 
         return { status: "connecting" };
       }
 
       const data = await statusRes.json();
-      // Evolution Go status response shape: { state: "open"|"connecting"|... }
-      const state = data.state || data.instance?.state || data.status;
+      const statusData = data.data || data.instance || data;
+      let state = statusData.state || statusData.status;
+      
+      // Evolution Go v3 envelope mapping
+      if (!state && statusData.Connected !== undefined) {
+         if (statusData.LoggedIn) state = "open";
+         else state = "connecting";
+      }
 
       if (state === "open") {
-        // Fetch instance details to get the connected phone number
         let ownerJid: string | undefined;
         try {
-          // GET /instance/get/{instanceId} — instanceId is the token in Evolution Go
           const getRes = await fetch(`${EVOLUTION_API_URL}/instance/get/${instanceToken}`, {
             headers: { apikey: GLOBAL_API_KEY },
           });
           if (getRes.ok) {
-            const inst = await getRes.json();
+            const instWrapper = await getRes.json();
+            const inst = instWrapper.data || instWrapper;
             const jid = inst.ownerJid || inst.owner || inst.phone;
-            if (jid) ownerJid = jid.split("@")[0]; // e.g. "201012345678"
+            if (jid) ownerJid = jid.split("@")[0];
           }
-        } catch (err) {
-          console.error("Failed to fetch instance ownerJid", err);
-        }
+        } catch (err) {}
 
         await ctx.runMutation(internal.evolution.updateInstanceStatus, {
           clinicId: args.clinicId,
@@ -275,7 +283,6 @@ export const getConnectionState = action({
         return { status: "open" };
       }
 
-      // Update the DB status for non-open states so the UI stays in sync
       if (state && state !== "connecting") {
         await ctx.runMutation(internal.evolution.updateInstanceStatus, {
           clinicId: args.clinicId,
@@ -290,9 +297,10 @@ export const getConnectionState = action({
       });
 
       if (qrRes.ok) {
-        const qrData = await qrRes.json();
-        const qr = qrData.qrcode?.base64 || qrData.base64 || qrData.qr;
-        return { status: "connecting", qrCode: qr };
+        const qrWrapper = await qrRes.json();
+        const qrData = qrWrapper.data || qrWrapper;
+        const qr = qrData.Qrcode || qrData.qrcode?.base64 || qrData.base64 || qrData.qr;
+        if (qr) return { status: "connecting", qrCode: qr };
       }
 
       return { status: state || "connecting" };
