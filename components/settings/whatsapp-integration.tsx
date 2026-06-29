@@ -126,6 +126,13 @@ export function WhatsAppIntegration({ clinicId }: { clinicId: string }) {
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
             {dir === "rtl" ? "تفعيل الربط" : "Activate Integration"}
           </button>
+          
+          {/* Display error if activation fails while service is not active */}
+          {error && (
+            <div className="mt-4 p-3 bg-red-50 text-red-600 rounded-lg text-sm w-full border border-red-100">
+              {error}
+            </div>
+          )}
         </div>
       ) : error ? (
         <div className="bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900 p-6 rounded-2xl flex flex-col items-center text-center space-y-4">
