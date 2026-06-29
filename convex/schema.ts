@@ -137,6 +137,7 @@ export default defineSchema({
     age: v.number(),
     phone: v.string(),
     chronicConditions: v.array(v.string()),
+    patientType: v.optional(v.string()),
     notes: v.optional(v.string()),
     gender: v.optional(v.union(v.literal("male"), v.literal("female"), v.literal("other"))),
     createdAt: v.number(),
@@ -354,6 +355,13 @@ export default defineSchema({
 
   // ── CHRONIC CONDITION OPTIONS ──────────────────────────────────────────────
   chronicConditionOptions: defineTable({
+    doctorId: v.id("users"),
+    name: v.string(),
+  })
+    .index("by_doctor", ["doctorId"]),
+
+  // ── PATIENT TYPE OPTIONS ───────────────────────────────────────────────────
+  patientTypeOptions: defineTable({
     doctorId: v.id("users"),
     name: v.string(),
   })

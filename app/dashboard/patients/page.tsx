@@ -19,11 +19,14 @@ export default function PatientsPage() {
   const clerkId = user?.id ?? "";
   const { t, dir } = useI18n();
   const [search, setSearch] = useState("");
+  const [patientTypeFilter, setPatientTypeFilter] = useState<string | undefined>(undefined);
   const [intakeOpen, setIntakeOpen] = useState(false);
+
+  const patientTypeOptions = useQuery(api.patientTypes.listOptions, clerkId ? { clerkId } : "skip");
 
   const patients = useQuery(
     api.patients.searchPatients,
-    clerkId ? { clerkId, search } : "skip"
+    clerkId ? { clerkId, search, patientType: patientTypeFilter } : "skip"
   );
   const allPatients = useQuery(
     api.patients.searchPatients,
@@ -48,14 +51,29 @@ export default function PatientsPage() {
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="max-w-4xl mx-auto space-y-4">
           <ImportExportSection clerkId={clerkId} />
-          <div className="relative">
-            <Search className={`absolute ${dir === "rtl" ? "right-4" : "left-4"} top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground`} />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={t("patients.search")}
-              className={`w-full ${dir === "rtl" ? "pr-11 pl-4" : "pl-11 pr-4"} py-3 text-sm bg-white dark:bg-[#1c1c1a] border border-black/5 dark:border-white/5 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent`}
-            />
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <Search className={`absolute ${dir === "rtl" ? "right-4" : "left-4"} top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground`} />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder={t("patients.search")}
+                className={`w-full ${dir === "rtl" ? "pr-11 pl-4" : "pl-11 pr-4"} py-3 text-sm bg-white dark:bg-[#1c1c1a] border border-black/5 dark:border-white/5 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent`}
+              />
+            </div>
+            
+            {patientTypeOptions && patientTypeOptions.length > 0 && (
+              <select
+                value={patientTypeFilter || ""}
+                onChange={(e) => setPatientTypeFilter(e.target.value || undefined)}
+                className="w-32 sm:w-48 px-3 py-3 text-sm bg-white dark:bg-[#1c1c1a] border border-black/5 dark:border-white/5 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent"
+              >
+                <option value="">{dir === "rtl" ? "كل الأنواع" : "All Types"}</option>
+                {patientTypeOptions.map((type) => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+            )}
           </div>
 
           {patients === undefined ? (
@@ -133,6 +151,13 @@ export default function PatientsPage() {
                           {patient.chronicConditions.length > 2 && (
                             <span className="text-[10px] bg-muted/60 px-1.5 py-0.5 rounded-full text-muted-foreground">+{patient.chronicConditions.length - 2}</span>
                           )}
+                        </div>
+                      )}
+                      {patient.patientType && (
+                        <div className="mt-1.5">
+                          <span className="text-[10px] bg-[#34c759]/10 text-[#34c759] font-medium px-1.5 py-0.5 rounded-full">
+                            {patient.patientType}
+                          </span>
                         </div>
                       )}
                     </div>

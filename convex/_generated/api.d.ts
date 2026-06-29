@@ -24,6 +24,7 @@ import type * as http from "../http.js";
 import type * as installments from "../installments.js";
 import type * as messageHelpers from "../messageHelpers.js";
 import type * as messageTemplates from "../messageTemplates.js";
+import type * as patientTypes from "../patientTypes.js";
 import type * as patients from "../patients.js";
 import type * as publicAppointments from "../publicAppointments.js";
 import type * as push from "../push.js";
@@ -60,6 +61,7 @@ declare const fullApi: ApiFromModules<{
   installments: typeof installments;
   messageHelpers: typeof messageHelpers;
   messageTemplates: typeof messageTemplates;
+  patientTypes: typeof patientTypes;
   patients: typeof patients;
   publicAppointments: typeof publicAppointments;
   push: typeof push;

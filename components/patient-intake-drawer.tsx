@@ -55,7 +55,9 @@ interface FormState {
   name: string;
   age: string;
   phone: string;
+  phone: string;
   gender: "male" | "female" | "other";
+  patientType?: string;
   chronicConditions: string[];
   notes: string;
   reasonForVisit: string;
@@ -66,6 +68,7 @@ const defaultForm: FormState = {
   age: "",
   phone: "",
   gender: "other",
+  patientType: undefined,
   chronicConditions: [],
   notes: "",
   reasonForVisit: "",
@@ -90,6 +93,7 @@ export function PatientIntakeDrawer({
           age: String(editPatient.age ?? ""),
           phone: stripPrefix(editPatient.phone ?? ""),
           gender: editPatient.gender ?? "other",
+          patientType: (editPatient as any).patientType,
           chronicConditions: editPatient.chronicConditions ?? [],
           notes: "",
           reasonForVisit: "",
@@ -176,6 +180,14 @@ export function PatientIntakeDrawer({
   const [conditionDropdownOpen, setConditionDropdownOpen] = useState(false);
   const conditionRef = useRef<HTMLDivElement>(null);
 
+  // Patient type options
+  const patientTypeOptions = useQuery(api.patientTypes.listOptions, clerkId ? { clerkId } : "skip");
+  const addPatientTypeOption = useMutation(api.patientTypes.addOption);
+
+  const [patientTypeSearch, setPatientTypeSearch] = useState("");
+  const [patientTypeDropdownOpen, setPatientTypeDropdownOpen] = useState(false);
+  const patientTypeRef = useRef<HTMLDivElement>(null);
+
   const filteredConditions = useMemo(() => {
     const opts = conditionOptions ?? [];
     if (!conditionSearch.trim()) return opts.slice(0, 15);
@@ -188,6 +200,18 @@ export function PatientIntakeDrawer({
     !filteredConditions.some((c) => c.toLowerCase() === conditionSearch.trim().toLowerCase()) &&
     !form.chronicConditions.some((c) => c.toLowerCase() === conditionSearch.trim().toLowerCase());
 
+  const filteredPatientTypes = useMemo(() => {
+    const opts = patientTypeOptions ?? [];
+    if (!patientTypeSearch.trim()) return opts.slice(0, 15);
+    const q = patientTypeSearch.toLowerCase();
+    return opts.filter((c) => c.toLowerCase().includes(q));
+  }, [patientTypeOptions, patientTypeSearch]);
+
+  const canAddCustomPatientType =
+    patientTypeSearch.trim().length > 0 &&
+    !filteredPatientTypes.some((c) => c.toLowerCase() === patientTypeSearch.trim().toLowerCase()) &&
+    form.patientType?.toLowerCase() !== patientTypeSearch.trim().toLowerCase();
+
   useEffect(() => {
     if (!conditionDropdownOpen) return;
     function handle(e: MouseEvent) {
@@ -198,6 +222,17 @@ export function PatientIntakeDrawer({
     document.addEventListener("mousedown", handle);
     return () => document.removeEventListener("mousedown", handle);
   }, [conditionDropdownOpen]);
+
+  useEffect(() => {
+    if (!patientTypeDropdownOpen) return;
+    function handle(e: MouseEvent) {
+      if (patientTypeRef.current && !patientTypeRef.current.contains(e.target as Node)) {
+        setPatientTypeDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [patientTypeDropdownOpen]);
 
   const createPatient = useMutation(api.patients.createPatient);
   const updatePatient = useMutation(api.patients.updatePatient);
@@ -214,6 +249,7 @@ export function PatientIntakeDrawer({
           age: String(editPatient.age),
           phone: stripPrefix(editPatient.phone),
           gender: editPatient.gender ?? "other",
+          patientType: (editPatient as any).patientType,
           chronicConditions: editPatient.chronicConditions,
           notes: "",
           reasonForVisit: "",
@@ -249,6 +285,15 @@ export function PatientIntakeDrawer({
     setConditionSearch("");
   }
 
+  async function addCustomPatientType() {
+    const trimmed = patientTypeSearch.trim();
+    if (!trimmed) return;
+    await addPatientTypeOption({ clerkId, name: trimmed });
+    set("patientType", trimmed);
+    setPatientTypeSearch("");
+    setPatientTypeDropdownOpen(false);
+  }
+
   async function handleSubmit(e?: React.FormEvent) {
     e?.preventDefault();
     if (!form.name.trim() || !form.age || !form.phone.trim()) {
@@ -278,6 +323,7 @@ export function PatientIntakeDrawer({
           age: Number(form.age),
           gender: form.gender as "male" | "female" | "other",
           phone: fullPhone,
+          patientType: form.patientType,
           chronicConditions: form.chronicConditions,
         });
         toast.success(lang === "ar" ? "تم تحديث بيانات المريض" : "Patient data updated");
@@ -316,6 +362,7 @@ export function PatientIntakeDrawer({
             age: Number(form.age),
             gender: form.gender as "male" | "female" | "other",
             phone: fullPhone,
+            patientType: form.patientType,
             chronicConditions: form.chronicConditions,
           });
         }
@@ -403,6 +450,80 @@ export function PatientIntakeDrawer({
           <option value="male">{dir === "rtl" ? "ذكر" : "Male"}</option>
           <option value="female">{dir === "rtl" ? "أنثى" : "Female"}</option>
         </select>
+      </div>
+
+      {/* Patient Type */}
+      <div ref={patientTypeRef}>
+        <label className="text-xs font-medium text-muted-foreground block mb-1.5">{dir === "rtl" ? "نوع المريض (اختياري)" : "Patient Type (Optional)"}</label>
+        {form.patientType && (
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            <span className="flex items-center gap-1 bg-[#34c759]/10 text-[#34c759] text-xs font-medium px-2 py-0.5 rounded-full">
+              {form.patientType}
+              <button type="button" onClick={() => set("patientType", undefined)} className="hover:text-[#34c759]/70">
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          </div>
+        )}
+        <div className="relative">
+          <div className="flex items-center border border-border rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-[#007AFF] bg-background">
+            <Search className="w-3.5 h-3.5 text-muted-foreground ml-3 shrink-0" />
+            <input
+              value={patientTypeSearch}
+              onChange={(e) => {
+                setPatientTypeSearch(e.target.value);
+                setPatientTypeDropdownOpen(true);
+              }}
+              onFocus={() => setPatientTypeDropdownOpen(true)}
+              placeholder={dir === "rtl" ? "ابحث أو أضف نوعًا..." : "Search or add type..."}
+              className="flex-1 px-2 py-2.5 text-sm bg-transparent outline-none"
+            />
+          </div>
+          <AnimatePresence>
+            {patientTypeDropdownOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.12 }}
+                className="absolute left-0 right-0 mt-1 bg-background border border-border rounded-xl shadow-lg max-h-40 overflow-y-auto z-30"
+              >
+                {filteredPatientTypes.map((c) => {
+                  const selected = form.patientType === c;
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => {
+                        set("patientType", c);
+                        setPatientTypeDropdownOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center justify-between"
+                    >
+                      <span className={selected ? "font-semibold" : ""}>{c}</span>
+                      {selected && <Check className="w-3.5 h-3.5 text-[#007AFF]" />}
+                    </button>
+                  );
+                })}
+                {canAddCustomPatientType && (
+                  <button
+                    type="button"
+                    onClick={addCustomPatientType}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2 text-[#007AFF]"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    {dir === "rtl" ? "إضافة" : "Add"} "{patientTypeSearch.trim()}"
+                  </button>
+                )}
+                {filteredPatientTypes.length === 0 && !canAddCustomPatientType && (
+                  <div className="px-3 py-3 text-sm text-center text-muted-foreground">
+                    {dir === "rtl" ? "لا توجد نتائج." : "No results found."}
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
       {/* Chronic Conditions */}

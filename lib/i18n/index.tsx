@@ -455,6 +455,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     // Settings
     "settings.title": "Settings",
     "settings.desc": "Manage your profile, templates, and preferences",
+    "settings.clinicalOptions": "Clinical Options",
+    "settings.clinicalOptionsDesc": "Manage medications, diagnoses, measurements and more",
     "settings.publishProfile": "Publish Profile",
     "settings.public": "Public",
     "settings.practiceProfile": "Practice Profile",
@@ -1240,7 +1242,9 @@ export const translations: Record<Lang, Record<string, string>> = {
 
     // Settings
     "settings.title": "الإعدادات",
-    "settings.desc": "إدارة ملفك الشخصي والقوالب والتفضيلات",
+    "settings.desc": "إدارة ملفك الشخصي، القوالب، والتفضيلات",
+    "settings.clinicalOptions": "الخيارات السريرية",
+    "settings.clinicalOptionsDesc": "إدارة الأدوية، التشخيصات، القياسات والمزيد",
     "settings.publishProfile": "نشر الملف الشخصي",
     "settings.public": "عام",
     "settings.practiceProfile": "ملف العيادة",

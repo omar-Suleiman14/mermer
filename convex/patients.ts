@@ -64,9 +64,8 @@ export const getPatient = query({
   },
 });
 
-// OPTIMIZED: Uses searchIndex for name search and by_doctor_phone for phone search
 export const searchPatients = query({
-  args: { clerkId: v.string(), search: v.string() },
+  args: { clerkId: v.string(), search: v.string(), patientType: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return [];
@@ -95,12 +94,17 @@ export const searchPatients = query({
 
     if (!args.search.trim()) {
       // No search term — return recent patients with a cap
-      const recent = await ctx.db
+      let q = ctx.db
         .query("patients")
         .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
-        .order("desc")
-        .take(20);
-      return enrichPatients(recent);
+        .order("desc");
+        
+      const allPatients = await q.take(100);
+      let filtered = allPatients;
+      if (args.patientType) {
+        filtered = filtered.filter(p => p.patientType === args.patientType);
+      }
+      return enrichPatients(filtered.slice(0, 50));
     }
 
     const term = args.search.trim();
@@ -114,10 +118,11 @@ export const searchPatients = query({
         .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
         .order("desc")
         .take(100);
-      const filtered = allPatients
-        .filter((p) => p.phone.includes(term))
-        .slice(0, 20);
-      return enrichPatients(filtered);
+      let filtered = allPatients.filter((p) => p.phone.includes(term));
+      if (args.patientType) {
+        filtered = filtered.filter(p => p.patientType === args.patientType);
+      }
+      return enrichPatients(filtered.slice(0, 20));
     }
 
     // OPTIMIZED: Use searchIndex for name search (full-text search, much faster)
@@ -127,8 +132,13 @@ export const searchPatients = query({
         .withSearchIndex("search_patients", (q) =>
           q.search("name", term).eq("doctorId", user._id)
         )
-        .take(20);
-      return enrichPatients(searchResults);
+        .take(100);
+        
+      let filtered = searchResults;
+      if (args.patientType) {
+        filtered = filtered.filter(p => p.patientType === args.patientType);
+      }
+      return enrichPatients(filtered.slice(0, 20));
     } catch {
       // Fallback to index scan if searchIndex fails
       const allPatients = await ctx.db
@@ -137,14 +147,16 @@ export const searchPatients = query({
         .order("desc")
         .take(100);
       const lowerTerm = term.toLowerCase();
-      const filtered = allPatients
+      let filtered = allPatients
         .filter(
           (p) =>
             p.name.toLowerCase().includes(lowerTerm) ||
             p.phone.includes(term)
-        )
-        .slice(0, 20);
-      return enrichPatients(filtered);
+        );
+      if (args.patientType) {
+        filtered = filtered.filter(p => p.patientType === args.patientType);
+      }
+      return enrichPatients(filtered.slice(0, 20));
     }
   },
 });
@@ -157,6 +169,7 @@ export const createPatient = mutation({
     phone: v.string(),
     gender: v.optional(v.union(v.literal("male"), v.literal("female"), v.literal("other"))),
     chronicConditions: v.array(v.string()),
+    patientType: v.optional(v.string()),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -169,6 +182,7 @@ export const createPatient = mutation({
       gender: args.gender,
       phone: args.phone,
       chronicConditions: args.chronicConditions,
+      patientType: args.patientType,
       notes: args.notes,
       createdAt: Date.now(),
     });
@@ -188,6 +202,7 @@ export const updatePatient = mutation({
     phone: v.string(),
     gender: v.optional(v.union(v.literal("male"), v.literal("female"), v.literal("other"))),
     chronicConditions: v.array(v.string()),
+    patientType: v.optional(v.string()),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -202,6 +217,7 @@ export const updatePatient = mutation({
       gender: args.gender,
       phone: args.phone,
       chronicConditions: args.chronicConditions,
+      patientType: args.patientType,
       notes: args.notes,
     });
     await logAction(ctx, user, "Updated Patient", `Updated details for ${args.name}`, args.patientId);
