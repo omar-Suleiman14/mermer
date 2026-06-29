@@ -128,13 +128,15 @@ export const activateIntegration = action({
           headers: { apikey: instanceToken },
         });
         if (qrRes.ok) {
-          const qrData = await qrRes.json();
+          const qrWrapper = await qrRes.json();
+          const qrData = qrWrapper.data || qrWrapper;
           qrCode =
+            qrData.Qrcode ||
             qrData.qrcode?.base64 ||
             qrData.base64 ||
             qrData.qr ||
             undefined;
-          console.log("QR fetch response keys:", Object.keys(qrData));
+          console.log("QR fetch response keys:", Object.keys(qrWrapper));
         } else {
           console.error("QR fetch failed:", qrRes.status, await qrRes.text().catch(() => ""));
         }
@@ -184,7 +186,6 @@ export const getConnectionState = action({
           body: JSON.stringify({
             name: args.instanceName,
             token: instanceToken,
-            qrcode: true,
           }),
         });
 
@@ -202,7 +203,7 @@ export const getConnectionState = action({
              const retryRes = await fetch(`${EVOLUTION_API_URL}/instance/create`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", apikey: GLOBAL_API_KEY },
-                body: JSON.stringify({ name: args.instanceName, token: instanceToken, qrcode: true }),
+                body: JSON.stringify({ name: args.instanceName, token: instanceToken }),
              });
              if (retryRes.ok) isCreated = true;
              else {
