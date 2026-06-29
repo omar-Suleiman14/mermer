@@ -55,7 +55,6 @@ interface FormState {
   name: string;
   age: string;
   phone: string;
-  phone: string;
   gender: "male" | "female" | "other";
   patientType?: string;
   chronicConditions: string[];
