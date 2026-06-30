@@ -256,6 +256,7 @@ export const mergePatients = mutation({
     clerkId: v.string(),
     sourcePatientId: v.id("patients"),
     targetPatientId: v.id("patients"),
+    primaryPhone: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
@@ -278,17 +279,36 @@ export const mergePatients = mutation({
       ctx.db.query("queue").withIndex("by_doctor", (q) => q.eq("doctorId", user._id)).collect(),
     ]);
 
+    // Determine final phone numbers
+    let finalPhone = target.phone;
+    let additionalPhones = target.additionalPhones || [];
+    
+    if (args.primaryPhone && args.primaryPhone !== target.phone) {
+      // The user chose the source's phone as primary
+      finalPhone = args.primaryPhone;
+      if (!additionalPhones.includes(target.phone)) {
+        additionalPhones.push(target.phone);
+      }
+    } else if (source.phone && source.phone !== target.phone) {
+      // Keep target's phone as primary, save source's phone
+      if (!additionalPhones.includes(source.phone)) {
+        additionalPhones.push(source.phone);
+      }
+    }
+
     // Reassign all related records to target patient
     await Promise.all([
-      ...visits.map((v) => ctx.db.patch(v._id, { patientId: args.targetPatientId, patientPhone: target.phone, patientName: target.name, patientAge: target.age })),
+      ...visits.map((v) => ctx.db.patch(v._id, { patientId: args.targetPatientId, patientPhone: finalPhone, patientName: target.name, patientAge: target.age })),
       ...installments.map((c) => ctx.db.patch(c._id, { patientId: args.targetPatientId, patientName: target.name })),
       ...followUps.map((f) => ctx.db.patch(f._id, { patientId: args.targetPatientId, patientName: target.name })),
-      ...queueItems.filter((q) => q.patientId === args.sourcePatientId).map((q) => ctx.db.patch(q._id, { patientId: args.targetPatientId, patientPhone: target.phone, patientName: target.name })),
+      ...queueItems.filter((q) => q.patientId === args.sourcePatientId).map((q) => ctx.db.patch(q._id, { patientId: args.targetPatientId, patientPhone: finalPhone, patientName: target.name })),
     ]);
 
     const newNotes = target.notes ? `${target.notes}\nMerged from ${source.name} (Phone: ${source.phone})` : `Merged from ${source.name} (Phone: ${source.phone})`;
     await ctx.db.patch(args.targetPatientId, {
       notes: newNotes,
+      phone: finalPhone,
+      additionalPhones,
     });
 
     // Delete source patient

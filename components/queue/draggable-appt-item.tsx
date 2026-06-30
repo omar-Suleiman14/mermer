@@ -150,7 +150,7 @@ export const DraggableApptItem = memo(function DraggableApptItem({
           )}
         </div>
         {appt.patientPhone && (
-          <p className="text-xs text-muted-foreground mt-0.5">{appt.patientPhone}</p>
+          <p className="text-xs text-muted-foreground mt-0.5 truncate max-w-full">{appt.patientPhone}</p>
         )}
       </div>
 

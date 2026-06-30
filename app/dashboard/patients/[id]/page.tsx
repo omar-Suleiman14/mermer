@@ -586,6 +586,7 @@ export default function PatientProfilePage() {
           clerkId={clerkId}
           sourcePatientId={patientId}
           sourcePatientName={patient.name}
+          sourcePatientPhone={patient.phone}
         />
       )}
 

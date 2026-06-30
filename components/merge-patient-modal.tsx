@@ -17,6 +17,7 @@ interface MergePatientModalProps {
   clerkId: string;
   sourcePatientId: Id<"patients">;
   sourcePatientName: string;
+  sourcePatientPhone: string;
 }
 
 export function MergePatientModal({
@@ -25,11 +26,14 @@ export function MergePatientModal({
   clerkId,
   sourcePatientId,
   sourcePatientName,
+  sourcePatientPhone,
 }: MergePatientModalProps) {
   const { dir, lang } = useI18n();
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [selectedTarget, setSelectedTarget] = useState<Id<"patients"> | null>(null);
+  const [selectedTargetPhone, setSelectedTargetPhone] = useState<string>("");
+  const [primaryPhone, setPrimaryPhone] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [confirmStep, setConfirmStep] = useState(false);
 
@@ -44,6 +48,12 @@ export function MergePatientModal({
     if (!selectedTarget) return;
 
     if (!confirmStep) {
+      // Default to target phone if they differ
+      if (selectedTargetPhone && selectedTargetPhone !== sourcePatientPhone) {
+        setPrimaryPhone(selectedTargetPhone);
+      } else {
+        setPrimaryPhone("");
+      }
       setConfirmStep(true);
       return;
     }
@@ -54,6 +64,7 @@ export function MergePatientModal({
         clerkId,
         sourcePatientId,
         targetPatientId: selectedTarget,
+        primaryPhone: primaryPhone || undefined,
       });
       toast.success(
         lang === "ar"
@@ -136,7 +147,50 @@ export function MergePatientModal({
                 </div>
               </div>
 
-              <div className="space-y-2 mt-4">
+              {confirmStep && selectedTargetPhone && selectedTargetPhone !== sourcePatientPhone && (
+                <div className="mt-4 p-4 bg-muted/30 border border-border rounded-xl">
+                  <h3 className="text-sm font-semibold mb-2">
+                    {lang === "ar" ? "اختر رقم الهاتف الأساسي" : "Select Primary Phone"}
+                  </h3>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    {lang === "ar" 
+                      ? "بما أن المريضين لديهما أرقام مختلفة، اختر الرقم الأساسي الذي سيستخدم للواتساب والتواصل. سيتم الاحتفاظ بالرقم الآخر كإضافي." 
+                      : "Since the patients have different phone numbers, select the primary one for WhatsApp and communication. The other will be kept as additional."}
+                  </p>
+                  <div className="space-y-2">
+                    <label className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${primaryPhone === selectedTargetPhone ? "bg-primary/5 border-primary" : "bg-background border-border hover:border-primary/40"}`}>
+                      <input 
+                        type="radio" 
+                        name="primaryPhone" 
+                        value={selectedTargetPhone} 
+                        checked={primaryPhone === selectedTargetPhone} 
+                        onChange={() => setPrimaryPhone(selectedTargetPhone)}
+                        className="w-4 h-4 text-primary focus:ring-primary"
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{selectedTargetPhone}</p>
+                        <p className="text-xs text-muted-foreground">{lang === "ar" ? "الرقم الحالي للمريض المستهدف" : "Target patient's current number"}</p>
+                      </div>
+                    </label>
+                    <label className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${primaryPhone === sourcePatientPhone ? "bg-primary/5 border-primary" : "bg-background border-border hover:border-primary/40"}`}>
+                      <input 
+                        type="radio" 
+                        name="primaryPhone" 
+                        value={sourcePatientPhone} 
+                        checked={primaryPhone === sourcePatientPhone} 
+                        onChange={() => setPrimaryPhone(sourcePatientPhone)}
+                        className="w-4 h-4 text-primary focus:ring-primary"
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{sourcePatientPhone}</p>
+                        <p className="text-xs text-muted-foreground">{lang === "ar" ? "رقم المريض المدمج" : "Merged patient's number"}</p>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              <div className={`space-y-2 mt-4 ${confirmStep ? "hidden" : "block"}`}>
                 {searchResults === undefined ? (
                   <div className="flex justify-center py-4">
                     <IOSSpinner size={20} />
@@ -153,6 +207,7 @@ export function MergePatientModal({
                         key={p._id}
                         onClick={() => {
                           setSelectedTarget(p._id);
+                          setSelectedTargetPhone(p.phone);
                           setConfirmStep(false);
                         }}
                         className={`w-full flex items-center justify-between p-3 rounded-xl border text-start transition-colors ${

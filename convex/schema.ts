@@ -136,6 +136,7 @@ export default defineSchema({
     name: v.string(),
     age: v.number(),
     phone: v.string(),
+    additionalPhones: v.optional(v.array(v.string())),
     chronicConditions: v.array(v.string()),
     patientType: v.optional(v.string()),
     notes: v.optional(v.string()),
