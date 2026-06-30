@@ -72,7 +72,7 @@ export function WhatsAppIntegration({ clinicId }: { clinicId: string }) {
       const res = await activateIntegration({ clinicId: clinicId as any });
 
       if (res && res.success === false) {
-        setError(dir === "rtl" ? "فشل تفعيل الخدمة. خادم الواتساب قد يكون غير متصل." : "Failed to activate. The WhatsApp server might be offline.");
+        setError(dir === "rtl" ? "فشل التفعيل. النسخة القديمة لا تزال معلقة، يرجى التواصل مع الدعم الفني لإعادة الربط." : "Failed to activate. The old instance is stuck. Please contact support to reconnect.");
         return;
       }
 
@@ -81,7 +81,7 @@ export function WhatsAppIntegration({ clinicId }: { clinicId: string }) {
         setQrCodeData((res as any).qrCode);
       }
     } catch (err: any) {
-      setError(dir === "rtl" ? "فشل تفعيل الخدمة. خادم الواتساب قد يكون غير متصل." : "Failed to activate. The WhatsApp server might be offline.");
+      setError(dir === "rtl" ? "فشل التفعيل. يرجى التواصل مع الدعم الفني لإعادة الربط." : "Failed to activate. Please contact support to reconnect.");
     } finally {
       setLoading(false);
     }
@@ -249,8 +249,8 @@ export function WhatsAppIntegration({ clinicId }: { clinicId: string }) {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {dir === "rtl"
-                ? "هل أنت متأكد من إلغاء ربط الواتساب؟ سيتوقف الإرسال الآلي للرسائل، ويجب مسح رمز QR من جديد لإعادة الربط."
-                : "Are you sure you want to disconnect WhatsApp? Automated messages will stop, and you'll need to scan a new QR code to reconnect."}
+                ? "هل أنت متأكد من إلغاء ربط الواتساب؟ سيتوقف الإرسال الآلي للرسائل. ملاحظة الهامة: لإعادة الربط مرة أخرى ستحتاج إلى التواصل مع الدعم الفني."
+                : "Are you sure you want to disconnect WhatsApp? Automated messages will stop. IMPORTANT: To reconnect later, you will need to contact support."}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
