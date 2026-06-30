@@ -416,7 +416,7 @@ export const getDoctorBySlug = query({
       .query("users")
       .withIndex("by_qr_slug", (q) => q.eq("qrSlug", args.slug))
       .unique();
-    if (!doctor || !doctor.publicProfile || (doctor as { isBanned?: boolean }).isBanned) return null;
+    if (!doctor || (doctor as { isBanned?: boolean }).isBanned) return null;
     const profilePhotoUrl = doctor.profilePhotoId
       ? await ctx.storage.getUrl(doctor.profilePhotoId)
       : null;
