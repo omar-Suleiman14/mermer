@@ -18,6 +18,7 @@ import {
   RefreshCw,
   XCircle,
   MoreHorizontal,
+  ArrowUpDown,
 } from "lucide-react";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
@@ -34,6 +35,7 @@ export interface DraggableApptItemProps {
   onReminder: (e: React.MouseEvent) => void;
   onCancel: () => void;
   onReschedule: () => void;
+  onMove?: () => void;
   tag?: "current" | "next";
   canReschedule?: boolean;
   canCancel?: boolean;
@@ -50,6 +52,7 @@ export const DraggableApptItem = memo(function DraggableApptItem({
   onReminder,
   onCancel,
   onReschedule,
+  onMove,
   tag,
   canReschedule = true,
   canCancel = true,
@@ -250,6 +253,12 @@ export const DraggableApptItem = memo(function DraggableApptItem({
                       <DropdownMenuItem onClick={onReschedule} className={`gap-2 cursor-pointer font-medium ${isinstallmentVisit ? "text-[#AF52DE] focus:text-[#AF52DE] focus:bg-[#AF52DE]/10" : "text-[#007AFF] focus:text-[#007AFF] focus:bg-[#007AFF]/10"}`}>
                         <RefreshCw className="w-4 h-4" />
                         <span>{t("schedule.reschedule") || "Reschedule"}</span>
+                      </DropdownMenuItem>
+                    )}
+                    {onMove && (
+                      <DropdownMenuItem onClick={onMove} className="gap-2 cursor-pointer font-medium text-[#FF9500] focus:text-[#FF9500] focus:bg-[#FF9500]/10">
+                        <ArrowUpDown className="w-4 h-4" />
+                        <span>{lang === "ar" ? "نقل إلى موعد" : "Move to slot"}</span>
                       </DropdownMenuItem>
                     )}
                     {canCancel && !isinstallmentVisit && (

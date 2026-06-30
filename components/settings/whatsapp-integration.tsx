@@ -6,6 +6,16 @@ import { api } from "@/convex/_generated/api";
 import { Loader2, QrCode, CheckCircle2, RefreshCcw, RotateCcw, Smartphone, AlertTriangle } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
 import Image from "next/image";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export function WhatsAppIntegration({ clinicId }: { clinicId: string }) {
   const { dir } = useI18n();
@@ -19,6 +29,7 @@ export function WhatsAppIntegration({ clinicId }: { clinicId: string }) {
   const getConnectionState = useAction(api.evolution.getConnectionState);
   const disconnectIntegration = useAction(api.evolution.disconnectIntegration);
   const [resetting, setResetting] = useState(false);
+  const [disconnectConfirmOpen, setDisconnectConfirmOpen] = useState(false);
 
   const fetchState = async () => {
     if (!creds?.evolutionInstanceName) return;
@@ -96,6 +107,19 @@ export function WhatsAppIntegration({ clinicId }: { clinicId: string }) {
     return <div className="p-8 flex justify-center"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
   }
 
+  // Reusable disconnect button that opens confirmation dialog first
+  function DisconnectButton({ className, children }: { className: string; children: React.ReactNode }) {
+    return (
+      <button
+        onClick={() => setDisconnectConfirmOpen(true)}
+        disabled={resetting}
+        className={className}
+      >
+        {children}
+      </button>
+    );
+  }
+
   return (
     <div className="bg-card border border-border p-6 rounded-3xl space-y-6" dir={dir}>
       <div>
@@ -155,14 +179,10 @@ export function WhatsAppIntegration({ clinicId }: { clinicId: string }) {
               <RotateCcw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
               {dir === "rtl" ? "تحديث" : "Refresh"}
             </button>
-            <button
-              onClick={handleReset}
-              disabled={resetting}
-              className="px-4 py-2 bg-transparent border border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-900/20 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
-            >
+            <DisconnectButton className="px-4 py-2 bg-transparent border border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900/50 dark:text-red-400 dark:hover:bg-red-900/20 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50">
               {resetting ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCcw className="w-4 h-4" />}
               {dir === "rtl" ? "إلغاء الربط" : "Disconnect"}
-            </button>
+            </DisconnectButton>
           </div>
         </div>
       ) : creds.evolutionStatus === "open" ? (
@@ -176,14 +196,10 @@ export function WhatsAppIntegration({ clinicId }: { clinicId: string }) {
               {dir === "rtl" ? "العيادة الآن ترسل الرسائل الآلية بنجاح." : "The clinic is now sending automated messages."}
             </p>
           </div>
-          <button
-            onClick={handleReset}
-            disabled={resetting}
-            className="mt-2 px-4 py-2 bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
-          >
+          <DisconnectButton className="mt-2 px-4 py-2 bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50">
             {resetting ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
             {dir === "rtl" ? "إلغاء الربط" : "Disconnect"}
-          </button>
+          </DisconnectButton>
         </div>
       ) : (
         <div className="bg-white dark:bg-zinc-900 border border-border p-6 rounded-2xl flex flex-col items-center text-center space-y-6">
@@ -215,17 +231,44 @@ export function WhatsAppIntegration({ clinicId }: { clinicId: string }) {
               {dir === "rtl" ? "تحديث الرمز" : "Refresh Code"}
             </button>
             <span className="text-border">|</span>
-            <button
-              onClick={handleReset}
-              disabled={resetting}
-              className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:underline disabled:opacity-50 transition-colors"
-            >
+            <DisconnectButton className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:underline disabled:opacity-50 transition-colors">
               {resetting ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
               {dir === "rtl" ? "إعادة المحاولة" : "Start Over"}
-            </button>
+            </DisconnectButton>
           </div>
         </div>
       )}
+
+      {/* Disconnect Confirmation Dialog */}
+      <AlertDialog open={disconnectConfirmOpen} onOpenChange={setDisconnectConfirmOpen}>
+        <AlertDialogContent dir={dir}>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-red-500 flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5" />
+              {dir === "rtl" ? "تأكيد إلغاء الربط" : "Confirm Disconnect"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {dir === "rtl"
+                ? "هل أنت متأكد من إلغاء ربط الواتساب؟ سيتوقف الإرسال الآلي للرسائل، ويجب مسح رمز QR من جديد لإعادة الربط."
+                : "Are you sure you want to disconnect WhatsApp? Automated messages will stop, and you'll need to scan a new QR code to reconnect."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {dir === "rtl" ? "إلغاء" : "Cancel"}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-500 hover:bg-red-600 text-white"
+              onClick={() => {
+                setDisconnectConfirmOpen(false);
+                handleReset();
+              }}
+            >
+              {dir === "rtl" ? "تأكيد الإلغاء" : "Yes, Disconnect"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

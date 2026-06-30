@@ -29,6 +29,7 @@ import {
   X,
   MoreHorizontal,
   FolderOpen,
+  ArrowUpDown,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -159,6 +160,8 @@ function SchedulePageInner() {
     installmentId?: Id<"installments">;
     tag?: "current" | "next";
   } | null>(null);
+
+  const [moveModal, setMoveModal] = useState<{ visitId: Id<"visits">; patientName: string } | null>(null);
 
   // Template picker state
   const [templatePicker, setTemplatePicker] = useState<{
@@ -672,6 +675,7 @@ function SchedulePageInner() {
                                   onReminder={(e: React.MouseEvent) => appt.patientPhone && openTemplatePicker(appt.patientName, appt.patientPhone, appt.date, e)}
                                   onCancel={() => setCancelModal(appt._id)}
                                   onReschedule={() => setRescheduleModal({ visitId: appt._id, patientName: appt.patientName, isinstallment: appt.source === "installment" })}
+                                  onMove={!isSelectedDayPast && !isDone ? () => setMoveModal({ visitId: appt._id, patientName: appt.patientName }) : undefined}
                                 />
                               );
                             })}
@@ -871,6 +875,116 @@ function SchedulePageInner() {
           setCompletionModal(null);
         }}
       />
+
+      {/* Move to slot bottom sheet */}
+      <AnimatePresence>
+        {moveModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setMoveModal(null)}
+            />
+            <motion.div
+              initial={{ y: 40, opacity: 0, scale: 0.97 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: 40, opacity: 0, scale: 0.97 }}
+              transition={{ type: "spring", stiffness: 380, damping: 30 }}
+              className="relative z-10 w-full sm:max-w-md bg-background rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
+            >
+              <div className="sm:hidden w-12 h-1 rounded-full bg-border mx-auto mt-3 mb-1" />
+              <div className="px-6 py-4 border-b border-border">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#FF9500]/10 flex items-center justify-center">
+                    <ArrowUpDown className="w-5 h-5 text-[#FF9500]" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-semibold">
+                      {lang === "ar" ? "نقل إلى موعد" : "Move to slot"}
+                    </h2>
+                    <p className="text-xs text-muted-foreground mt-0.5">{moveModal.patientName}</p>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-3 bg-[#FF9500]/5 border border-[#FF9500]/20 rounded-lg px-3 py-2">
+                  {lang === "ar"
+                    ? "اختر موعداً لنقل هذه الزيارة إليه. إذا كان الموعد محجوزاً، سيتم التبديل تلقائياً."
+                    : "Pick a slot to move this visit. If the slot is occupied, the visits will be swapped automatically."}
+                </p>
+              </div>
+              <div className="p-4 max-h-[55vh] overflow-y-auto space-y-1.5">
+                {daySlots.map((slotTs) => {
+                  const slotAppts = appointmentsBySlot.get(slotTs)?.filter(a => a.status !== "cancelled") ?? [];
+                  const occupant = slotAppts.find(a => a._id !== moveModal.visitId);
+                  const isCurrent = slotAppts.some(a => a._id === moveModal.visitId);
+                  if (isCurrent) return null; // skip the slot the visit is already in
+                  return (
+                    <button
+                      key={slotTs}
+                      onClick={async () => {
+                        setMoveModal(null);
+                        try {
+                          if (occupant) {
+                            await swapAppointments({ clerkId, appointmentId1: moveModal.visitId, appointmentId2: occupant._id });
+                            toast.success(lang === "ar" ? "تم التبديل بنجاح" : "Appointments swapped");
+                          } else {
+                            await updateAppointment({ clerkId, appointmentId: moveModal.visitId, updates: { date: slotTs } });
+                            toast.success(lang === "ar" ? "تم النقل بنجاح" : "Appointment moved");
+                          }
+                        } catch {
+                          toast.error(lang === "ar" ? "تعذّر التنفيذ" : "Operation failed");
+                        }
+                      }}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-all text-left ${
+                        occupant
+                          ? "border-[#007AFF]/20 bg-[#007AFF]/5 hover:bg-[#007AFF]/10"
+                          : "border-dashed border-border/60 hover:border-[#FF9500]/40 hover:bg-[#FF9500]/5"
+                      }`}
+                    >
+                      <span className="text-xs font-bold w-14 shrink-0 text-muted-foreground">
+                        {formatTime(slotTs, lang)}
+                      </span>
+                      {occupant ? (
+                        <>
+                          <div className="w-6 h-6 rounded-full bg-[#007AFF]/10 flex items-center justify-center shrink-0">
+                            <span className="text-[9px] font-bold text-[#007AFF]">
+                              {(occupant.patientName ?? "?").split(" ").map((n: string) => n[0]).join("").toUpperCase().slice(0, 2)}
+                            </span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{occupant.patientName}</p>
+                            <p className="text-[10px] text-[#007AFF] font-medium">
+                              {lang === "ar" ? "سيتم التبديل" : "Will swap"}
+                            </p>
+                          </div>
+                        </>
+                      ) : (
+                        <span className="text-xs text-muted-foreground/60 italic flex-1">
+                          {lang === "ar" ? "فارغ" : "Available"}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="border-t border-border px-6 py-3">
+                <button
+                  onClick={() => setMoveModal(null)}
+                  className="w-full border border-border text-sm font-medium py-2.5 rounded-xl hover:bg-muted/40 transition-colors"
+                >
+                  {lang === "ar" ? "إلغاء" : "Cancel"}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Template Picker Popover */}
       <AnimatePresence>

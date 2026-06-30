@@ -367,24 +367,37 @@ export const disconnectIntegration = action({
 
     try {
       if (args.instanceName) {
-        // 1. Logout: DELETE /instance/logout — scoped to instance via token (or use GLOBAL_API_KEY with instance path if Evolution Go supports it)
-        // If the token is wrong, this might fail, but we'll still try to delete it below.
+        // 1. Logout — Evolution Go requires instanceName in the JSON body
         await fetch(`${EVOLUTION_API_URL}/instance/logout`, {
           method: "DELETE",
-          headers: { apikey: instanceToken },
+          headers: {
+            "Content-Type": "application/json",
+            apikey: instanceToken,
+          },
+          body: JSON.stringify({ instanceName: args.instanceName }),
         }).catch(err => console.error("Logout failed:", err));
 
-        // 2. Delete: DELETE /instance/delete/{instanceId} — Evolution Go accepts the instanceName here
-        await fetch(`${EVOLUTION_API_URL}/instance/delete/${args.instanceName}`, {
+        // 2. Delete — Evolution Go requires instanceName in the JSON body AND in the path
+        const deleteRes = await fetch(`${EVOLUTION_API_URL}/instance/delete/${args.instanceName}`, {
           method: "DELETE",
-          headers: { apikey: GLOBAL_API_KEY },
-        }).catch(err => console.error("Delete failed:", err));
+          headers: {
+            "Content-Type": "application/json",
+            apikey: GLOBAL_API_KEY,
+          },
+          body: JSON.stringify({ instanceName: args.instanceName }),
+        }).catch(err => { console.error("Delete failed:", err); return null; });
+
+        if (deleteRes) {
+          const status = deleteRes.status;
+          const text = await deleteRes.text().catch(() => "");
+          console.log(`Instance delete response: ${status}`, text.slice(0, 200));
+        }
       }
     } catch (e) {
       console.error("Evolution API unreachable during disconnect", e);
     }
 
-    // 3. Clear database state
+    // 3. Always clear database state so the user can reconnect
     await ctx.runMutation(internal.evolution.clearIntegrationState, {
       clinicId: args.clinicId,
     });
