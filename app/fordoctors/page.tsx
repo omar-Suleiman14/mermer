@@ -64,6 +64,13 @@ export default async function ForDoctorsLandingPage() {
                     <ArrowRight className={`w-4 h-4 transition-transform group-hover:translate-x-1 ${dir === "rtl" ? "rotate-180 group-hover:-translate-x-1" : ""}`} />
                   </Link>
                   <Link
+                    href="/fordoctors/features"
+                    className="inline-flex h-14 items-center justify-center gap-2 rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-black px-8 text-base font-medium text-slate-900 dark:text-white transition-all hover:bg-slate-50 dark:hover:bg-zinc-900 hover:scale-[0.98] active:scale-95"
+                  >
+                    {dir === "rtl" ? "كل المميزات" : "See All Features"}
+                    <ArrowRight className={`w-4 h-4 ${dir === "rtl" ? "rotate-180" : ""}`} />
+                  </Link>
+                  <Link
                     href="tel:+201035555282"
                     className="inline-flex h-14 items-center justify-center gap-2 rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-black px-8 text-base font-medium text-slate-900 dark:text-white transition-all hover:bg-slate-50 dark:hover:bg-zinc-900 hover:scale-[0.98] active:scale-95"
                   >
@@ -264,13 +271,22 @@ export default async function ForDoctorsLandingPage() {
                   ? "انضم إلى الأطباء الرائدين الذين يثقون في مرمر لإدارة سمعتهم وحجوزاتهم."
                   : "Join leading doctors who trust mermer to manage their reputation and bookings."}
               </p>
-              <Link
-                href="/sign-in"
-                prefetch={true}
-                className="inline-flex h-14 items-center justify-center rounded-full bg-slate-900 dark:bg-white px-10 text-base font-medium text-white dark:text-black transition-transform hover:scale-[0.98] active:scale-95"
-              >
-                {dir === "rtl" ? "سجل كطبيب الآن" : "Register as a Doctor"}
-              </Link>
+              <div className="flex flex-wrap gap-4 justify-center">
+                <Link
+                  href="/sign-in"
+                  prefetch={true}
+                  className="inline-flex h-14 items-center justify-center gap-2 rounded-full bg-slate-900 dark:bg-white px-10 text-base font-medium text-white dark:text-black transition-transform hover:scale-[0.98] active:scale-95"
+                >
+                  {dir === "rtl" ? "سجل كطبيب الآن" : "Register as a Doctor"}
+                </Link>
+                <Link
+                  href="/fordoctors/features"
+                  className="inline-flex h-14 items-center justify-center gap-2 rounded-full border border-slate-200 dark:border-white/10 bg-white dark:bg-black px-10 text-base font-medium text-slate-700 dark:text-zinc-300 transition-all hover:bg-slate-50 dark:hover:bg-zinc-900 hover:scale-[0.98] active:scale-95"
+                >
+                  {dir === "rtl" ? "كل المميزات" : "See All Features"}
+                  <ArrowRight className={`w-4 h-4 ${dir === "rtl" ? "rotate-180" : ""}`} />
+                </Link>
+              </div>
             </div>
           </AnimatedReveal>
         </section>
@@ -285,6 +301,7 @@ export default async function ForDoctorsLandingPage() {
             <span className="font-semibold text-lg tracking-tight">mermer</span>
           </div>
           <div className="flex items-center gap-6 text-sm font-medium text-slate-500 dark:text-zinc-500">
+            <Link href="/fordoctors/features" className="hover:text-primary transition-colors">{dir === "rtl" ? "المميزات" : "Features"}</Link>
             <Link href="/privacy" className="hover:text-primary transition-colors">{t("landing.privacy")}</Link>
             <Link href="/terms" className="hover:text-primary transition-colors">{t("landing.terms")}</Link>
             <span>© {new Date().getFullYear()} {dir === "rtl" ? "جميع الحقوق محفوظة." : "All rights reserved."}</span>
