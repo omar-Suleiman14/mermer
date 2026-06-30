@@ -47,7 +47,7 @@ export const activateIntegration = action({
         // We force delete it and recreate it with our correct predictable token.
         if (createRes.status === 409 || errText.includes("already exists")) {
           console.log(`Instance ${instanceName} exists but we need to ensure correct token. Recreating...`);
-          await fetch(`${EVOLUTION_API_URL}/instance/delete/${instanceName}`, {
+          await fetch(`${EVOLUTION_API_URL}/instance/delete/${encodeURIComponent(instanceName)}`, {
             method: "DELETE",
             headers: { apikey: GLOBAL_API_KEY },
           }).catch(() => {});
@@ -367,11 +367,13 @@ export const disconnectIntegration = action({
 
     try {
       if (args.instanceName) {
-        const instanceName = args.instanceName.trim();
+        // Evolution API is strict about trailing spaces. If an instance was created with one,
+        // we MUST pass the exact string, properly URL encoded. Do NOT use .trim() here.
+        const encodedName = encodeURIComponent(args.instanceName);
         
         // Delete: DELETE /instance/delete/{instanceName}
         // Deleting the instance automatically logs it out and removes all files.
-        const deleteRes = await fetch(`${EVOLUTION_API_URL}/instance/delete/${instanceName}`, {
+        const deleteRes = await fetch(`${EVOLUTION_API_URL}/instance/delete/${encodedName}`, {
           method: "DELETE",
           headers: { apikey: GLOBAL_API_KEY },
         }).catch(err => { console.error("Delete failed:", err); return null; });
