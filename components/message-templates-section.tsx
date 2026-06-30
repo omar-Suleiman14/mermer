@@ -23,7 +23,7 @@ export const DEFAULT_TEMPLATES = [
   { name: "قسط متأخر",      body: "مرحباً {patient_name}\nنود تذكيركم بوجود قسط متأخر بقيمة {amount} مستحق الدفع بتاريخ {date}.\nنتمنى لكم دوام الصحة والعافية." },
 ];
 
-function getTemplateVariables(t: (key: string) => string) {
+function getTemplateVariables(t: (key: string) => string, dir: string) {
   return [
     { key: "{patient_name}", label: t("msgTpl.varPatientName"), preview: "Ahmed Mohamed" },
     { key: "{date}", label: t("msgTpl.varDate"), preview: "May 13" },
@@ -264,7 +264,7 @@ function EditorForm({ name, setName, body, setBody, onSave, onCancel, preview, s
   onSave: () => void; onCancel: () => void;
   preview: string; saving: boolean;
 }) {
-  const { t } = useI18n();
+  const { t, dir } = useI18n();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [showMention, setShowMention] = useState(false);
   const [mentionFilter, setMentionFilter] = useState("");
@@ -273,7 +273,7 @@ function EditorForm({ name, setName, body, setBody, onSave, onCancel, preview, s
   // Fixed position for the popup (escapes overflow:hidden parents)
   const [popupPos, setPopupPos] = useState<{ top: number; left: number; width: number } | null>(null);
 
-  const variables = useMemo(() => getTemplateVariables(t), [t]);
+  const variables = useMemo(() => getTemplateVariables(t, dir), [t, dir]);
 
   const filtered = variables.filter((v) =>
     v.label.toLowerCase().includes(mentionFilter.toLowerCase()) ||
