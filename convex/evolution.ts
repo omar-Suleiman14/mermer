@@ -367,24 +367,13 @@ export const disconnectIntegration = action({
 
     try {
       if (args.instanceName) {
-        // 1. Logout — Evolution Go requires instanceName in the JSON body
-        await fetch(`${EVOLUTION_API_URL}/instance/logout`, {
+        const instanceName = args.instanceName.trim();
+        
+        // Delete: DELETE /instance/delete/{instanceName}
+        // Deleting the instance automatically logs it out and removes all files.
+        const deleteRes = await fetch(`${EVOLUTION_API_URL}/instance/delete/${instanceName}`, {
           method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: instanceToken,
-          },
-          body: JSON.stringify({ instanceName: args.instanceName }),
-        }).catch(err => console.error("Logout failed:", err));
-
-        // 2. Delete — Evolution Go requires instanceName in the JSON body AND in the path
-        const deleteRes = await fetch(`${EVOLUTION_API_URL}/instance/delete/${args.instanceName}`, {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: GLOBAL_API_KEY,
-          },
-          body: JSON.stringify({ instanceName: args.instanceName }),
+          headers: { apikey: GLOBAL_API_KEY },
         }).catch(err => { console.error("Delete failed:", err); return null; });
 
         if (deleteRes) {
