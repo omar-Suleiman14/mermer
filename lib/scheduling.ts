@@ -59,7 +59,8 @@ export function useWhatsAppTemplate(lang: Lang) {
       patientName: string,
       patientPhone: string,
       appointmentDate: number,
-      clinicAddressLink?: string
+      clinicAddressLink?: string,
+      amount?: string
     ) => {
       const firstName = patientName.split(" ")[0];
       const now = new Date(appointmentDate);
@@ -75,7 +76,8 @@ export function useWhatsAppTemplate(lang: Lang) {
         )
         .replace(/\{time\}/g, formatTime(appointmentDate, lang))
         .replace(/\{clinic_address\}/g, clinicAddressLink || "")
-        .replace(/\{\{name\}\}/g, firstName);
+        .replace(/\{\{name\}\}/g, firstName)
+        .replace(/\{amount\}/g, amount || "");
 
       let num = patientPhone.replace(/[\s\-\(\)]/g, "");
       if (num.startsWith("+")) num = num.slice(1);

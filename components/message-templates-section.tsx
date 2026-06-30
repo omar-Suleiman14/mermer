@@ -18,8 +18,9 @@ export const DEFAULT_TEMPLATES = [
   { name: "موعد فائت",      body: "مرحباً {patient_name}\nيبدو أنك لم تحضر موعدك بتاريخ {date}.\nنتمنى أن تكون بخير. يسعدنا إعادة الحجز عند اتصالك بنا." },
   { name: "تأكيد حجز",      body: "مرحباً {patient_name}\nتم تأكيد حجزك بتاريخ {date} الساعة {time}.\nنراك قريباً." },
   { name: "تعديل الموعد",   body: "مرحباً {patient_name}\nتم تعديل موعدك ليصبح بتاريخ {date} الساعة {time}.\nنراك قريباً." },
-  { name: "إلغاء الموعد",   body: "مرحباً {patient_name}\nنعتذر عن إلغاء موعدك بتاريخ {date}.\nyسعدنا إعادة الحجز عند اتصالك بنا." },
+  { name: "إلغاء الموعد",   body: "مرحباً {patient_name}\nنعتذر عن إلغاء موعدك بتاريخ {date}.\nيسعدنا إعادة الحجز عند اتصالك بنا." },
   { name: "خطة علاج",       body: "مرحباً {patient_name}\nتم إنشاء خطة تقسيط علاجية خاصة بك.\nموعدك الأول بتاريخ {date} الساعة {time}.\nنراك قريباً." },
+  { name: "قسط متأخر",      body: "مرحباً {patient_name}\nنود تذكيركم بوجود قسط متأخر بقيمة {amount} مستحق الدفع بتاريخ {date}.\nنتمنى لكم دوام الصحة والعافية." },
 ];
 
 function getTemplateVariables(t: (key: string) => string) {
@@ -28,11 +29,12 @@ function getTemplateVariables(t: (key: string) => string) {
     { key: "{date}", label: t("msgTpl.varDate"), preview: "May 13" },
     { key: "{time}", label: t("msgTpl.varTime"), preview: "2:30 PM" },
     { key: "{clinic_address}", label: t("msgTpl.varClinicAddress"), preview: "123 Street, Cairo" },
+    { key: "{amount}", label: dir === "rtl" ? "المبلغ المستحق" : "Due Amount", preview: "500 EGP" },
   ];
 }
 
 export function MessageTemplatesSection({ clerkId, clinicAddressLink }: { clerkId: string; clinicAddressLink: string }) {
-  const { t, lang } = useI18n();
+  const { t, lang, dir } = useI18n();
   const templates = useQuery(api.messageTemplates.listTemplates, clerkId ? { clerkId } : "skip");
   const createTemplate = useMutation(api.messageTemplates.createTemplate);
   const updateTemplate = useMutation(api.messageTemplates.updateTemplate);

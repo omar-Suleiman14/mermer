@@ -24,4 +24,11 @@ crons.daily(
   internal.support.deleteOldMessages
 );
 
+// Check for past due installments at 16:00 UTC (19:00 Egypt time)
+crons.daily(
+  "past due installments",
+  { hourUTC: 16, minuteUTC: 0 },
+  internal.whatsappAutomations.schedulePastDueInstallments
+);
+
 export default crons;

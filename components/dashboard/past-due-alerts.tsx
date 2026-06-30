@@ -6,6 +6,8 @@ import { useI18n } from "@/lib/i18n/client";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useCurrentUser } from "@/components/providers/user-provider";
+import { useWhatsAppTemplate } from "@/lib/scheduling";
+import { MessageCircle } from "lucide-react";
 
 export function PastDueAlerts() {
   const { clerkId } = useCurrentUser();
@@ -20,6 +22,11 @@ export function PastDueAlerts() {
     api.visits.getPastDueInstallmentVisits,
     clerkId ? { clerkId } : "skip"
   );
+
+  const templates = useQuery(api.messageTemplates.listTemplates, clerkId ? { clerkId } : "skip");
+  const pastDueTemplate = templates?.find(t => t.name === "قسط متأخر")?.body || "مرحباً {patient_name}\nنود تذكيركم بوجود قسط متأخر بقيمة {amount} مستحق الدفع بتاريخ {date}.\nنتمنى لكم دوام الصحة والعافية.";
+  
+  const generateWhatsApp = useWhatsAppTemplate(lang);
 
   const hasInstallments = pastDueInstallments && pastDueInstallments.length > 0;
   const hasVisits = pastDueVisits && pastDueVisits.length > 0;
@@ -134,13 +141,28 @@ export function PastDueAlerts() {
                     </span>
                   </p>
                 </div>
-                <Link
-                  href={`/dashboard/patients/${installment.patientId}?tab=installments`}
-                  prefetch={true}
-                  className="shrink-0 inline-flex items-center justify-center text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-xl transition-colors"
-                >
-                  {t("dashboard.resolve") || "Resolve"}
-                </Link>
+                <div className="flex items-center gap-2 shrink-0">
+                  {installment.patientPhone && (
+                    <button
+                      onClick={() => {
+                        const date = installment.nextVisitDate || Date.now();
+                        const amountStr = `${installment.unpaidBalance} ${t("common.currency")}`;
+                        generateWhatsApp(pastDueTemplate, installment.patientName, installment.patientPhone, date, undefined, amountStr);
+                      }}
+                      className="shrink-0 inline-flex items-center justify-center text-xs font-semibold bg-green-500/10 hover:bg-green-500/20 text-green-600 px-3 py-2 rounded-xl transition-colors"
+                      title={dir === "rtl" ? "إرسال تذكير واتساب" : "Send WhatsApp Reminder"}
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                    </button>
+                  )}
+                  <Link
+                    href={`/dashboard/patients/${installment.patientId}?tab=installments`}
+                    prefetch={true}
+                    className="shrink-0 inline-flex items-center justify-center text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-xl transition-colors"
+                  >
+                    {t("dashboard.resolve") || "Resolve"}
+                  </Link>
+                </div>
               </div>
             ))}
           </div>

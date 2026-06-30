@@ -94,7 +94,17 @@ export const listPastDueinstallments = query({
       .order("desc")
       .take(500);
 
-    return installments.filter((c) => (c.unpaidBalance ?? 0) > 0 && c.status === "active");
+    const pastDue = installments.filter((c) => (c.unpaidBalance ?? 0) > 0 && c.status === "active");
+
+    return await Promise.all(
+      pastDue.map(async (c) => {
+        const patient = await ctx.db.get(c.patientId);
+        return {
+          ...c,
+          patientPhone: patient?.phone,
+        };
+      })
+    );
   },
 });
 

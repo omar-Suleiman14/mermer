@@ -514,24 +514,19 @@ export const getPastDueInstallmentVisits = query({
 
     // Start of today in Cairo (UTC+3)
     const CAIRO_OFFSET = 3 * 60 * 60 * 1000;
-    const nowCairo = Date.now() + CAIRO_OFFSET;
-    const startOfTodayCairo = Math.floor(nowCairo / 86400000) * 86400000 - CAIRO_OFFSET;
+    const startOfTodayCairo = Math.floor((Date.now() + CAIRO_OFFSET) / 86400000) * 86400000 - CAIRO_OFFSET;
 
-    // Query visits for this doctor that are before today using the date index
+    // Use by_doctor index and filter in memory to avoid any withIndex inequality issues
     const visits = await ctx.db
       .query("visits")
-      .withIndex("by_doctor_date", (q) =>
-        q.eq("doctorId", user._id).lt("date", startOfTodayCairo)
-      )
+      .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
       .order("desc")
-      .take(500);
+      .take(1000);
 
-    // Keep only confirmed installment visits (not completed, not cancelled)
     const pastDue = visits.filter(
-      (v) => v.source === "installment" && v.status === "confirmed"
+      (v) => v.date < startOfTodayCairo && v.source === "installment" && v.status === "confirmed"
     );
 
-    // Enrich with patient info (already denormalized on most visits)
     return pastDue.map((v) => ({
       _id: v._id,
       patientId: v.patientId,

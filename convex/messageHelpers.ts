@@ -241,3 +241,19 @@ export function msgYourTurn(patientName: string, clinicName?: string, doctorName
     : "";
   return RLM + `${header}مرحباً ${patientName}،\nدورك القادم الآن. يرجى التوجه إلى العيادة في أقرب وقت.`;
 }
+
+interface PastDueInstallmentArgs {
+  patientName: string;
+  clinicName: string;
+  doctorName: string;
+  date: number;
+  amount: number;
+}
+
+/**
+ * Sent when an installment payment is past due.
+ */
+export function msgPastDueInstallment(args: PastDueInstallmentArgs): string {
+  const dateStr = fmtDateAr(args.date);
+  return RLM + `${clinicHeader(args.clinicName, args.doctorName)}\n\nمرحباً ${args.patientName}،\nنود تذكيركم بوجود قسط متأخر بقيمة ${args.amount} مستحق الدفع بتاريخ ${dateStr}.\nنتمنى لكم دوام الصحة والعافية.`;
+}

@@ -2,7 +2,7 @@ import { action, internalAction, internalMutation, query } from "./_generated/se
 import { v } from "convex/values";
 import { requireAuthUser } from "./authHelper";
 import { internal, api } from "./_generated/api";
-import { msgBookingConfirmed, msgDayCancelled, msgReminder, msgMissed, msgYourTurn, calcSlotNumber } from "./messageHelpers";
+import { msgBookingConfirmed, msgDayCancelled, msgReminder, msgMissed, msgYourTurn, calcSlotNumber, msgPastDueInstallment } from "./messageHelpers";
 
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || "http://localhost:8080";
 
@@ -251,6 +251,49 @@ export const scheduleMissedAppointments = internalAction({
           instanceName: clinic.evolutionInstanceName,
           evolutionApiKey: clinic.evolutionApiKey,
           phoneNumber: appt.patientPhone,
+          messageText,
+        });
+
+        totalDelay += FIVE_MINUTES_MS;
+      }
+    }
+  },
+});
+
+export const schedulePastDueInstallments = internalAction({
+  args: {},
+  handler: async (ctx) => {
+    const clinics = await ctx.runQuery(internal.whatsappQueries.getActiveEvolutionClinics, {});
+    
+    let totalDelay = 0;
+    const FIVE_MINUTES_MS = 5 * 60 * 1000;
+
+    for (const clinic of clinics) {
+      if (clinic.evolutionStatus !== "open" || !clinic.evolutionInstanceName || !clinic.evolutionApiKey) continue;
+
+      // Ensure clinic has a clerkId field or we fetch it.
+      // Wait, `getActiveEvolutionClinics` returns the user object, so `clinic.clerkId` exists!
+      if (!clinic.clerkId) continue;
+
+      const pastDueInstallments = await ctx.runQuery(api.installments.listPastDueinstallments, {
+        clerkId: clinic.clerkId,
+      });
+
+      for (const inst of pastDueInstallments) {
+        if (!inst.patientPhone) continue;
+
+        const messageText = msgPastDueInstallment({
+          patientName: inst.patientName || "",
+          clinicName: clinic.clinicName || "العيادة",
+          doctorName: clinic.name,
+          date: inst.nextVisitDate || Date.now(),
+          amount: inst.unpaidBalance || 0,
+        });
+
+        await ctx.scheduler.runAfter(totalDelay, internal.whatsappAutomations.sendMessage, {
+          instanceName: clinic.evolutionInstanceName,
+          evolutionApiKey: clinic.evolutionApiKey,
+          phoneNumber: inst.patientPhone,
           messageText,
         });
 
