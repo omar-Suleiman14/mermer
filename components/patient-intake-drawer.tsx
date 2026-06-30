@@ -635,7 +635,7 @@ export function PatientIntakeDrawer({
                       <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1">
                         <CalendarIcon className="w-3 h-3" /> {t("visit.date") || "Date"} *
                       </p>
-                      <Popover open={calOpen} onOpenChange={setCalOpen}>
+                      <Popover open={calOpen} onOpenChange={setCalOpen} modal={true}>
                         <PopoverTrigger asChild>
                           <button
                             type="button"
@@ -653,7 +653,7 @@ export function PatientIntakeDrawer({
                             </span>
                           </button>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
+                        <PopoverContent className="w-auto p-0 z-[100]" align="start">
                           <Calendar
                             mode="single"
                             selected={visitDate}
@@ -667,9 +667,7 @@ export function PatientIntakeDrawer({
                               }
                             }}
                             disabled={(d) => {
-                              const today = new Date();
-                              today.setHours(0, 0, 0, 0);
-                              return d < today || isNonWorkingDay();
+                              return isNonWorkingDay();
                             }}
                           />
                         </PopoverContent>
