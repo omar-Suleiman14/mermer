@@ -2,7 +2,7 @@ import { action, internalAction, internalMutation, query } from "./_generated/se
 import { v } from "convex/values";
 import { requireAuthUser } from "./authHelper";
 import { internal, api } from "./_generated/api";
-import { msgBookingConfirmed, msgDayCancelled, msgReminder, msgMissed, msgYourTurn, calcSlotNumber, msgPastDueInstallment } from "./messageHelpers";
+import { msgBookingConfirmed, msgDayCancelled, msgReminder, msgMissed, msgYourTurn, calcSlotNumber, msgPastDueInstallment, fmtDateAr, fmtTimeAr } from "./messageHelpers";
 
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || "http://localhost:8080";
 
@@ -13,6 +13,8 @@ export const sendMessage = internalAction({
     phoneNumber: v.string(),
     messageText: v.string(),
     doctorId: v.optional(v.id("users")),
+    templateName: v.optional(v.string()),
+    templateVariables: v.optional(v.record(v.string(), v.union(v.string(), v.number()))),
   },
   handler: async (ctx, args) => {
     // Normalize phone number to international format
@@ -26,10 +28,27 @@ export const sendMessage = internalAction({
       cleanNumber = "20" + cleanNumber;
     }
 
+    let textToSend = args.messageText;
+
+    if (args.doctorId && args.templateName && args.templateVariables) {
+      const customTemplate = await ctx.runQuery(internal.whatsappQueries.getDoctorTemplateByName, {
+        clinicId: args.doctorId,
+        templateName: args.templateName,
+      });
+
+      if (customTemplate && customTemplate.body) {
+        let body = customTemplate.body;
+        for (const [key, value] of Object.entries(args.templateVariables)) {
+          body = body.replace(new RegExp(`\\{\\s*${key}\\s*\\}`, "g"), String(value));
+        }
+        textToSend = body;
+      }
+    }
+
     // Evolution Go /send/text TextStruct: { number, text, delay, formatJid? }
     const payload = {
       number: cleanNumber,
-      text: args.messageText,
+      text: textToSend,
       delay: 1200,
     };
 
@@ -171,6 +190,8 @@ export const sendQueueUpdateMessage = internalAction({
       phoneNumber: args.patientPhone,
       messageText,
       doctorId: args.clinicId,
+      templateName: "الدور القادم",
+      templateVariables: { patient_name: args.patientName },
     });
   },
 });
@@ -214,8 +235,16 @@ export const scheduleDailyReminders = internalAction({
           evolutionApiKey: clinic.evolutionApiKey,
           phoneNumber: appt.patientPhone,
           messageText,
+          doctorId: clinic._id,
+          templateName: "تذكير بالموعد",
+          templateVariables: {
+            patient_name: appt.patientName || "",
+            date: appt.date ? fmtDateAr(appt.date) : "",
+            time: appt.date ? fmtTimeAr(appt.date) : "",
+            clinic_address: clinic.clinicAddressLink || clinic.clinicAddress || "",
+          },
         });
-
+        
         totalDelay += FIVE_MINUTES_MS;
       }
     }
@@ -252,6 +281,12 @@ export const scheduleMissedAppointments = internalAction({
           evolutionApiKey: clinic.evolutionApiKey,
           phoneNumber: appt.patientPhone,
           messageText,
+          doctorId: clinic._id,
+          templateName: "موعد فائت",
+          templateVariables: {
+            patient_name: appt.patientName || "",
+            date: appt.queueDate ? fmtDateAr(appt.queueDate) : "",
+          },
         });
 
         totalDelay += FIVE_MINUTES_MS;
@@ -295,6 +330,13 @@ export const schedulePastDueInstallments = internalAction({
           evolutionApiKey: clinic.evolutionApiKey,
           phoneNumber: inst.patientPhone,
           messageText,
+          doctorId: clinic._id,
+          templateName: "قسط متأخر",
+          templateVariables: {
+            patient_name: inst.patientName || "",
+            date: inst.nextVisitDate ? fmtDateAr(inst.nextVisitDate) : "",
+            amount: inst.unpaidBalance || 0,
+          },
         });
 
         totalDelay += FIVE_MINUTES_MS;
@@ -342,6 +384,12 @@ export const cancelDayAction = action({
           evolutionApiKey: clinic!.evolutionApiKey!,
           phoneNumber: appt.patientPhone,
           messageText,
+          doctorId: args.clinicId,
+          templateName: "إلغاء الموعد",
+          templateVariables: {
+            patient_name: appt.patientName,
+            date: fmtDateAr(appt.date),
+          },
         });
 
         totalDelay += FIVE_MINUTES_MS;

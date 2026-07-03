@@ -3,7 +3,7 @@ import { v, ConvexError } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { getAuthUser, requireAuthUser, logAction } from "./authHelper";
 import { internal } from "./_generated/api";
-import { msgBookingConfirmed, msgAppointmentCancelled, msgRescheduled, calcSlotNumber, fmtTimeAr } from "./messageHelpers";
+import { msgBookingConfirmed, msgAppointmentCancelled, msgRescheduled, calcSlotNumber, fmtTimeAr, fmtDateAr } from "./messageHelpers";
 
 export const testTrigger = mutation({
   args: { clinicId: v.id("users"), patientName: v.string(), patientPhone: v.string() },
@@ -276,6 +276,12 @@ export const confirmPendingAppointmentByPhone = internalMutation({
       phoneNumber: raw,  // already in international format from webhook
       messageText,
       doctorId: doctor._id,
+      templateName: "تأكيد حجز",
+      templateVariables: {
+        patient_name: visit.patientName || "",
+        date: fmtDateAr(visit.date),
+        time: fmtTimeAr(visit.date),
+      },
     });
 
     // 5. Notify doctor that it's confirmed
@@ -360,6 +366,12 @@ export const addManualAppointment = mutation({
         phoneNumber: patient.phone,
         messageText,
         doctorId: doctor._id,
+        templateName: "تأكيد حجز",
+        templateVariables: {
+          patient_name: patient.name,
+          date: fmtDateAr(args.date),
+          time: fmtTimeAr(args.date),
+        },
       });
     }
 
@@ -405,6 +417,12 @@ export const swapAppointments = mutation({
           phoneNumber: v1.patientPhone,
           messageText: msgRescheduled({ patientName: v1.patientName || "", clinicName: user.clinicName || "العيادة", doctorName: user.name, newDate: v2.date, slotNumber: slot1, clinicAddress: user.clinicAddress, clinicAddressLink: user.clinicAddressLink }),
           doctorId: user._id,
+          templateName: "تعديل الموعد",
+          templateVariables: {
+            patient_name: v1.patientName || "",
+            date: fmtDateAr(v2.date),
+            time: fmtTimeAr(v2.date),
+          },
         });
       }
       if (v2.patientPhone) {
@@ -415,6 +433,12 @@ export const swapAppointments = mutation({
           phoneNumber: v2.patientPhone,
           messageText: msgRescheduled({ patientName: v2.patientName || "", clinicName: user.clinicName || "العيادة", doctorName: user.name, newDate: v1.date, slotNumber: slot2, clinicAddress: user.clinicAddress, clinicAddressLink: user.clinicAddressLink }),
           doctorId: user._id,
+          templateName: "تعديل الموعد",
+          templateVariables: {
+            patient_name: v2.patientName || "",
+            date: fmtDateAr(v1.date),
+            time: fmtTimeAr(v1.date),
+          },
         });
       }
     }
@@ -611,6 +635,12 @@ export const updateAppointment = mutation({
           phoneNumber: visit.patientPhone,
           messageText: msgRescheduled({ patientName: visit.patientName || "", clinicName: user.clinicName || "العيادة", doctorName: user.name, newDate, slotNumber: slotNum, clinicAddress: user.clinicAddress, clinicAddressLink: user.clinicAddressLink }),
           doctorId: user._id,
+          templateName: "تعديل الموعد",
+          templateVariables: {
+            patient_name: visit.patientName || "",
+            date: fmtDateAr(newDate),
+            time: fmtTimeAr(newDate),
+          },
         });
       }
     }
@@ -633,6 +663,12 @@ export const updateAppointment = mutation({
         phoneNumber: visit.patientPhone,
         messageText,
         doctorId: user._id,
+        templateName: "تأكيد حجز",
+        templateVariables: {
+          patient_name: visit.patientName || "",
+          date: fmtDateAr(visit.date),
+          time: fmtTimeAr(visit.date),
+        },
       });
     }
 
@@ -643,6 +679,11 @@ export const updateAppointment = mutation({
         phoneNumber: visit.patientPhone,
         messageText: msgAppointmentCancelled({ patientName: visit.patientName || "", clinicName: user.clinicName || "العيادة", doctorName: user.name, date: visit.date }),
         doctorId: user._id,
+        templateName: "إلغاء الموعد",
+        templateVariables: {
+          patient_name: visit.patientName || "",
+          date: fmtDateAr(visit.date),
+        },
       });
     }
 
@@ -734,6 +775,11 @@ export const cancelAppointmentByPhone = mutation({
         phoneNumber: visit.patientPhone,
         messageText: msgAppointmentCancelled({ patientName: visit.patientName || "", clinicName: user.clinicName || "العيادة", doctorName: user.name, date: visit.date }),
         doctorId: user._id,
+        templateName: "إلغاء الموعد",
+        templateVariables: {
+          patient_name: visit.patientName || "",
+          date: fmtDateAr(visit.date),
+        },
       });
     }
 

@@ -74,3 +74,14 @@ export const getYesterdayMissedAppointments = internalQuery({
     return queue.filter(q => q.status !== "done" && q.patientPhone);
   },
 });
+
+export const getDoctorTemplateByName = internalQuery({
+  args: { clinicId: v.id("users"), templateName: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("messageTemplates")
+      .withIndex("by_doctor", (q) => q.eq("doctorId", args.clinicId))
+      .filter((q) => q.eq(q.field("name"), args.templateName))
+      .first();
+  },
+});

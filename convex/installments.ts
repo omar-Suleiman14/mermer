@@ -2,7 +2,7 @@ import { mutation, query, action, internalMutation } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { getAuthUser, requireAuthUser } from "./authHelper";
 import { internal } from "./_generated/api";
-import { msgInstallmentCreated, calcSlotNumber } from "./messageHelpers";
+import { msgInstallmentCreated, calcSlotNumber, fmtTimeAr, fmtDateAr } from "./messageHelpers";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -235,6 +235,12 @@ export const createinstallment = mutation({
         phoneNumber: patient.phone,
         messageText,
         doctorId: user._id,
+        templateName: "خطة علاج",
+        templateVariables: {
+          patient_name: patient.name,
+          date: fmtDateAr(firstVisitDate),
+          time: fmtTimeAr(firstVisitDate),
+        },
       };
       if (payload) {
         await ctx.scheduler.runAfter(0, internal.whatsappAutomations.sendMessage, payload);
