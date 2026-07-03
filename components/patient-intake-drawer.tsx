@@ -1,19 +1,17 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
-import { useMutation, useConvex, useQuery, useAction } from "convex/react";
+import { useMutation, useConvex, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { toast } from "sonner";
-import { Clock, X, Search, Plus, Check, CalendarIcon, CheckCircle2 } from "lucide-react";
+import { Clock, X, Search, Plus, Check, CalendarIcon, CheckCircle2, Phone, MapPin, MessageCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { IOSSpinner } from "@/components/ui/spinner";
-// Removed vaul drawer imports
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import { useI18n } from "@/lib/i18n/client";
-import { openWhatsApp } from "@/lib/scheduling";
 
 interface PatientIntakeDrawerProps {
   open: boolean;
@@ -51,26 +49,33 @@ function sanitisePhoneInput(raw: string): string {
   return raw.replace(/\D/g, "").replace(/^0+/, "").slice(0, 10);
 }
 
+interface PhoneEntry {
+  value: string;  // stored without prefix (10 digits like 1XXXXXXXXX)
+  isWhatsApp: boolean;
+}
+
 interface FormState {
   name: string;
   age: string;
-  phone: string;
+  phones: PhoneEntry[];
   gender: "male" | "female" | "other";
   patientType: string | undefined;
   chronicConditions: string[];
   notes: string;
   reasonForVisit: string;
+  address: string;
 }
 
 const defaultForm: FormState = {
   name: "",
   age: "",
-  phone: "",
+  phones: [{ value: "", isWhatsApp: true }],
   gender: "other",
   patientType: undefined,
   chronicConditions: [],
   notes: "",
   reasonForVisit: "",
+  address: "",
 };
 
 const inputClass =
@@ -85,20 +90,36 @@ export function PatientIntakeDrawer({
   const isEdit = !!editPatient;
   const { t, lang, dir } = useI18n();
 
-  const [form, setForm] = useState<FormState>(() =>
-    isEdit && editPatient
-      ? {
-          name: editPatient.name,
-          age: String(editPatient.age ?? ""),
-          phone: stripPrefix(editPatient.phone ?? ""),
-          gender: editPatient.gender ?? "other",
-          patientType: (editPatient as any).patientType,
-          chronicConditions: editPatient.chronicConditions ?? [],
-          notes: "",
-          reasonForVisit: "",
-        }
-      : defaultForm
-  );
+  const [form, setForm] = useState<FormState>(() => {
+    if (isEdit && editPatient) {
+      const ep = editPatient as any;
+      const primaryPhone = stripPrefix(ep.phone ?? "");
+      const additionalRaw: string[] = ep.additionalPhones ?? [];
+      const waPhone: string | undefined = ep.whatsappPhone ? stripPrefix(ep.whatsappPhone) : undefined;
+      const phones: PhoneEntry[] = [
+        { value: primaryPhone, isWhatsApp: !waPhone || waPhone === primaryPhone },
+        ...additionalRaw.map((p: string) => ({
+          value: stripPrefix(p),
+          isWhatsApp: waPhone === stripPrefix(p),
+        })),
+      ];
+      // ensure exactly one is whatsapp
+      const hasWa = phones.some((p) => p.isWhatsApp);
+      if (!hasWa && phones.length > 0) phones[0].isWhatsApp = true;
+      return {
+        name: ep.name,
+        age: String(ep.age ?? ""),
+        phones,
+        gender: ep.gender ?? "other",
+        patientType: ep.patientType,
+        chronicConditions: ep.chronicConditions ?? [],
+        notes: "",
+        reasonForVisit: "",
+        address: ep.address ?? "",
+      };
+    }
+    return defaultForm;
+  });
   const [loading, setLoading] = useState(false);
 
   // Optional visit toggle
@@ -242,14 +263,27 @@ export function PatientIntakeDrawer({
   useEffect(() => {
     setTimeout(() => {
       if (open && isEdit && editPatient) {
+        const ep = editPatient as any;
+        const primaryPhone = stripPrefix(ep.phone ?? "");
+        const additionalRaw: string[] = ep.additionalPhones ?? [];
+        const waPhone: string | undefined = ep.whatsappPhone ? stripPrefix(ep.whatsappPhone) : undefined;
+        const phones: PhoneEntry[] = [
+          { value: primaryPhone, isWhatsApp: !waPhone || waPhone === primaryPhone },
+          ...additionalRaw.map((p: string) => ({
+            value: stripPrefix(p),
+            isWhatsApp: waPhone === stripPrefix(p),
+          })),
+        ];
+        if (!phones.some((p) => p.isWhatsApp) && phones.length > 0) phones[0].isWhatsApp = true;
         setForm({
           ...defaultForm,
-          name: editPatient.name,
-          age: String(editPatient.age),
-          phone: stripPrefix(editPatient.phone),
-          gender: editPatient.gender ?? "other",
-          patientType: (editPatient as any).patientType,
-          chronicConditions: editPatient.chronicConditions,
+          name: ep.name,
+          age: String(ep.age),
+          phones,
+          gender: ep.gender ?? "other",
+          patientType: ep.patientType,
+          chronicConditions: ep.chronicConditions ?? [],
+          address: ep.address ?? "",
           notes: "",
           reasonForVisit: "",
         });
@@ -264,6 +298,36 @@ export function PatientIntakeDrawer({
 
   function set(field: string, value: unknown) {
     setForm((f) => ({ ...f, [field]: value }));
+  }
+
+  // ── Multi-phone helpers ───────────────────────────────────────────────────
+  function setPhone(idx: number, value: string) {
+    setForm((f) => {
+      const phones = f.phones.map((p, i) => i === idx ? { ...p, value: sanitisePhoneInput(value) } : p);
+      return { ...f, phones };
+    });
+  }
+
+  function addPhone() {
+    setForm((f) => ({ ...f, phones: [...f.phones, { value: "", isWhatsApp: false }] }));
+  }
+
+  function removePhone(idx: number) {
+    setForm((f) => {
+      const phones = f.phones.filter((_, i) => i !== idx);
+      // ensure exactly one whatsApp
+      if (!phones.some((p) => p.isWhatsApp) && phones.length > 0) {
+        phones[0] = { ...phones[0], isWhatsApp: true };
+      }
+      return { ...f, phones };
+    });
+  }
+
+  function setWhatsApp(idx: number) {
+    setForm((f) => ({
+      ...f,
+      phones: f.phones.map((p, i) => ({ ...p, isWhatsApp: i === idx })),
+    }));
   }
 
   function toggleCondition(c: string) {
@@ -295,8 +359,10 @@ export function PatientIntakeDrawer({
 
   async function handleSubmit(e?: React.FormEvent) {
     e?.preventDefault();
-    if (!form.name.trim() || !form.age || !form.phone.trim()) {
-      toast.error(lang === "ar" ? "الاسم والعمر ورقم الهاتف مطلوبة" : "الاسم والعمر ورقم الهاتف مطلوبة");
+
+    const primaryPhone = form.phones[0]?.value ?? "";
+    if (!form.name.trim() || !form.age || !primaryPhone.trim()) {
+      toast.error(dir === "rtl" ? "الاسم والعمر ورقم الهاتف مطلوبة" : "Name, age and phone are required");
       return;
     }
 
@@ -306,9 +372,11 @@ export function PatientIntakeDrawer({
     }
 
     const phoneRegex = /^1[0125][0-9]{8}$/;
-    if (!phoneRegex.test(form.phone)) {
-      toast.error(lang === "ar" ? "رقم الهاتف غير صالح." : "Invalid phone number.");
-      return;
+    for (const ph of form.phones) {
+      if (ph.value && !phoneRegex.test(ph.value)) {
+        toast.error(dir === "rtl" ? `رقم هاتف غير صالح: ${ph.value}` : `Invalid phone: ${ph.value}`);
+        return;
+      }
     }
 
     if (!isEdit && addVisit && !visitDate) {
@@ -316,7 +384,13 @@ export function PatientIntakeDrawer({
       return;
     }
 
-    const fullPhone = normaliseForStorage(form.phone);
+    // Build phone data from form.phones
+    const validPhones = form.phones.filter((p) => p.value.trim().length > 0);
+    const fullPhone = normaliseForStorage(validPhones[0]?.value ?? "");
+    const additionalPhones = validPhones.slice(1).map((p) => normaliseForStorage(p.value));
+    const waEntry = validPhones.find((p) => p.isWhatsApp);
+    const whatsappPhone = waEntry ? normaliseForStorage(waEntry.value) : fullPhone;
+
     setLoading(true);
     try {
       if (isEdit && editPatient) {
@@ -327,10 +401,13 @@ export function PatientIntakeDrawer({
           age: Number(form.age),
           gender: form.gender as "male" | "female" | "other",
           phone: fullPhone,
+          additionalPhones: additionalPhones.length > 0 ? additionalPhones : undefined,
+          whatsappPhone,
+          address: form.address.trim() || undefined,
           patientType: form.patientType,
           chronicConditions: form.chronicConditions,
         });
-        toast.success(lang === "ar" ? "تم تحديث بيانات المريض" : "Patient data updated");
+        toast.success(dir === "rtl" ? "تم تحديث بيانات المريض" : "Patient data updated");
       } else {
         // Fast path: run lookup while we prepare other data
         const existingPromise = convex.query(api.patients.findPatientByNameAndPhone, {
@@ -343,7 +420,7 @@ export function PatientIntakeDrawer({
         if (addVisit && visitDate) {
           const selectedSlot = timeSlots.find((s) => s.timeStr === visitTime);
           if (selectedSlot?.isReserved) {
-            toast.error(lang === "ar" ? "هذا الوقت محجوز مسبقاً — اختر وقتاً آخر" : "This time slot is already reserved — choose another");
+            toast.error(dir === "rtl" ? "هذا الوقت محجوز مسبقاً — اختر وقتاً آخر" : "This time slot is already reserved — choose another");
             setLoading(false);
             return;
           }
@@ -366,6 +443,9 @@ export function PatientIntakeDrawer({
             age: Number(form.age),
             gender: form.gender as "male" | "female" | "other",
             phone: fullPhone,
+            additionalPhones: additionalPhones.length > 0 ? additionalPhones : undefined,
+            whatsappPhone,
+            address: form.address.trim() || undefined,
             patientType: form.patientType,
             chronicConditions: form.chronicConditions,
           });
@@ -411,36 +491,97 @@ export function PatientIntakeDrawer({
         />
       </div>
 
-      {/* Age + Phone */}
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("drawer.age")} *</label>
-          <input
-            type="number"
-            value={form.age}
-            onChange={(e) => set("age", e.target.value)}
-            placeholder={dir === "rtl" ? "مثال: 45" : "45"}
-            className={inputClass}
-            min={0}
-            max={150}
-            required
-          />
+      {/* Age */}
+      <div>
+        <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("drawer.age")} *</label>
+        <input
+          type="number"
+          value={form.age}
+          onChange={(e) => set("age", e.target.value)}
+          placeholder={dir === "rtl" ? "مثال: 45" : "45"}
+          className={inputClass}
+          min={0}
+          max={150}
+          required
+        />
+      </div>
+
+      {/* Multi-phone */}
+      <div>
+        <label className="text-xs font-medium text-muted-foreground block mb-1.5 flex items-center gap-1">
+          <Phone className="w-3 h-3" />
+          {dir === "rtl" ? "أرقام الهاتف *" : "Phone Numbers *"}
+        </label>
+        <div className="space-y-2">
+          {form.phones.map((ph, idx) => (
+            <div key={idx} className="flex items-center gap-2" dir="ltr">
+              {/* WhatsApp toggle */}
+              <button
+                type="button"
+                title={ph.isWhatsApp ? "Main WhatsApp" : "Set as WhatsApp"}
+                onClick={() => setWhatsApp(idx)}
+                className={`shrink-0 w-7 h-7 flex items-center justify-center rounded-lg border transition-colors ${
+                  ph.isWhatsApp
+                    ? "bg-[#25D366]/15 border-[#25D366] text-[#25D366]"
+                    : "border-border text-muted-foreground hover:border-[#25D366]/60 hover:text-[#25D366]/60"
+                }`}
+              >
+                <MessageCircle className="w-3.5 h-3.5" />
+              </button>
+              {/* +20 prefix */}
+              <span className="flex items-center px-2.5 bg-muted/60 border border-border border-r-0 rounded-l-xl text-sm text-muted-foreground font-mono shrink-0 h-10">+20</span>
+              <input
+                type="tel"
+                value={ph.value}
+                onChange={(e) => setPhone(idx, e.target.value)}
+                placeholder="1023456789"
+                className={`flex-1 ${inputClass} rounded-l-none h-10 py-0`}
+                maxLength={10}
+              />
+              {/* Remove — only when there are more than 1 */}
+              {form.phones.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => removePhone(idx)}
+                  className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          ))}
         </div>
-        <div>
-          <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("drawer.phone")} *</label>
-          <div className="flex" dir="ltr">
-            <span className="flex items-center px-3 bg-muted/60 border border-border border-r-0 rounded-l-xl text-sm text-muted-foreground font-mono shrink-0">+20</span>
-            <input
-              type="tel"
-              value={form.phone}
-              onChange={(e) => set("phone", sanitisePhoneInput(e.target.value))}
-              placeholder={dir === "rtl" ? "1023456789" : "1023456789"}
-              className={`flex-1 ${inputClass} rounded-l-none`}
-              maxLength={10}
-              required
-            />
-          </div>
-        </div>
+        {/* WhatsApp hint */}
+        <p className="text-[11px] text-muted-foreground mt-1.5 flex items-center gap-1">
+          <MessageCircle className="w-3 h-3 text-[#25D366]" />
+          {dir === "rtl" ? "الأيقونة الخضراء = الرقم الرئيسي للواتساب" : "Green icon = main WhatsApp number"}
+        </p>
+        {/* Add phone */}
+        {form.phones.length < 5 && (
+          <button
+            type="button"
+            onClick={addPhone}
+            className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-[#007AFF] hover:underline"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            {dir === "rtl" ? "إضافة رقم آخر" : "Add another number"}
+          </button>
+        )}
+      </div>
+
+      {/* Address (optional) */}
+      <div>
+        <label className="text-xs font-medium text-muted-foreground block mb-1.5 flex items-center gap-1">
+          <MapPin className="w-3 h-3" />
+          {dir === "rtl" ? "العنوان (اختياري)" : "Address (optional)"}
+        </label>
+        <input
+          type="text"
+          value={form.address}
+          onChange={(e) => set("address", e.target.value)}
+          placeholder={dir === "rtl" ? "مثال: شارع الجمهورية، المعادي، القاهرة" : "e.g. 12 Main St, Cairo"}
+          className={inputClass}
+        />
       </div>
 
       {/* Gender */}

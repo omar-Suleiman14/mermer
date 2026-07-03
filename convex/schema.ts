@@ -137,6 +137,8 @@ export default defineSchema({
     age: v.number(),
     phone: v.string(),
     additionalPhones: v.optional(v.array(v.string())),
+    whatsappPhone: v.optional(v.string()),
+    address: v.optional(v.string()),
     chronicConditions: v.array(v.string()),
     patientType: v.optional(v.string()),
     notes: v.optional(v.string()),

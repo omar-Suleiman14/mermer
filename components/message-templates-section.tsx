@@ -187,7 +187,7 @@ export function MessageTemplatesSection({ clerkId, clinicAddressLink }: { clerkI
                     <p className="text-sm font-semibold">{tpl.name}</p>
                     <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{tpl.body}</p>
                   </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => {
                         navigator.clipboard.writeText(preview(tpl.body));
