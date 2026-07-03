@@ -397,7 +397,8 @@ export function VisitCompletionModal({
       }
     }
     return slots;
-  }, [currentUser, existingVisitsOnDate]);
+  // PERF: added `lang` dep — AM/PM labels must update when language changes
+  }, [currentUser, existingVisitsOnDate, lang]);
 
 
   // Prescription & docs
@@ -531,30 +532,36 @@ export function VisitCompletionModal({
 
     setIsSaving(true);
     try {
-      // ── Save any new medication/frequency/note options to DB ──
+      // ── Save any new medication/frequency/note options to DB (parallelized) ──
+      // PERF: Collect all new-option writes and fire them in one Promise.all
+      // instead of 3 sequential awaits per medication row.
+      const savedNames = (medOptions ?? []).map((o: { name: string }) => o.name);
+      const savedFreqs = (freqOptions ?? []).map((o: { name: string }) => o.name);
+      const savedNotes = (noteOptions ?? []).map((o: { name: string }) => o.name);
+      const translatedFreqs = DEFAULT_FREQUENCIES.map((k) => t(k as string) || k);
+      const translatedNotes = DEFAULT_NOTES.map((k) => t(k as string) || k);
+
+      const optionInserts: Promise<unknown>[] = [];
       for (const med of medications) {
-        if (med.name.trim()) {
-          // Only save if it's not already in the saved options
-          const savedNames = (medOptions ?? []).map((o: { name: string }) => o.name);
-          if (!savedNames.includes(med.name.trim())) {
-            await addMedicationOption({ clerkId, name: med.name.trim() });
-          }
+        if (med.name.trim() && !savedNames.includes(med.name.trim())) {
+          optionInserts.push(addMedicationOption({ clerkId, name: med.name.trim() }));
         }
-        if (med.frequency.trim()) {
-          const savedFreqs = (freqOptions ?? []).map((o: { name: string }) => o.name);
-          const translatedFreqs = DEFAULT_FREQUENCIES.map((k) => t(k as string) || k);
-          if (!savedFreqs.includes(med.frequency.trim()) && !translatedFreqs.includes(med.frequency.trim())) {
-            await addFrequencyOption({ clerkId, name: med.frequency.trim() });
-          }
+        if (
+          med.frequency.trim() &&
+          !savedFreqs.includes(med.frequency.trim()) &&
+          !translatedFreqs.includes(med.frequency.trim())
+        ) {
+          optionInserts.push(addFrequencyOption({ clerkId, name: med.frequency.trim() }));
         }
-        if (med.notes.trim()) {
-          const savedNotes = (noteOptions ?? []).map((o: { name: string }) => o.name);
-          const translatedNotes = DEFAULT_NOTES.map((k) => t(k as string) || k);
-          if (!savedNotes.includes(med.notes.trim()) && !translatedNotes.includes(med.notes.trim())) {
-            await addNoteOption({ clerkId, name: med.notes.trim() });
-          }
+        if (
+          med.notes.trim() &&
+          !savedNotes.includes(med.notes.trim()) &&
+          !translatedNotes.includes(med.notes.trim())
+        ) {
+          optionInserts.push(addNoteOption({ clerkId, name: med.notes.trim() }));
         }
       }
+      await Promise.all(optionInserts);
 
       // Build structured medication payload (only include rows that have at least a name)
       const prescribedMedications = medications
@@ -574,11 +581,18 @@ export function VisitCompletionModal({
         const { storageId } = await rxRes.json();
         prescriptionImageId = storageId as Id<"_storage">;
       }
-      for (const docFile of extraFiles) {
-        const url = await generateUploadUrl({ clerkId });
-        const res = await fetch(url, { method: "POST", headers: { "Content-Type": docFile.type }, body: docFile });
-        const { storageId } = await res.json();
-        documentIds.push(storageId as Id<"_storage">);
+      // PERF: Upload all extra files in parallel instead of a serial for-loop.
+      // For N docs this cuts upload time from N×latency to max(1 upload).
+      if (extraFiles.length > 0) {
+        const uploadedIds = await Promise.all(
+          extraFiles.map(async (docFile) => {
+            const url = await generateUploadUrl({ clerkId });
+            const res = await fetch(url, { method: "POST", headers: { "Content-Type": docFile.type }, body: docFile });
+            const { storageId } = await res.json();
+            return storageId as Id<"_storage">;
+          })
+        );
+        documentIds.push(...uploadedIds);
       }
 
       if (isinstallmentVisit && installmentId) {

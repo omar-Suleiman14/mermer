@@ -315,9 +315,9 @@ export default function DashboardPage() {
 
   const sendWhatsAppTemplate = useWhatsAppTemplate(lang);
 
-  function openTemplatePicker(patientName: string, patientPhone: string, appointmentDate: number, e: React.MouseEvent) {
+  const openTemplatePicker = useCallback(function openTemplatePicker(patientName: string, patientPhone: string, appointmentDate: number, e: React.MouseEvent) {
     setTemplatePicker({ patientName, patientPhone, appointmentDate, anchorX: e.clientX, anchorY: e.clientY });
-  }
+  }, []);
 
   function sendWithTemplate(templateBody: string) {
     if (!templatePicker) return;
@@ -431,17 +431,19 @@ export default function DashboardPage() {
                   const apptTag = isCurrent ? "current" : isNext ? "next" : undefined;
 
                   return (
-                    <SortableApptItem
+                    <MemoizedApptItem
                       key={appt._id}
                       appt={appt}
                       tag={apptTag}
                       canReschedule={canReschedule}
                       canCancel={canCancel}
-                      onComplete={() => setCompletionModal({ appointmentId: appt._id, patientId: appt.patientId ?? undefined, patientName: appt.patientName, patientAge: appt.patientAge, installmentId: appt.installmentId ?? undefined, tag: apptTag })}
-                      onConfirm={() => handleConfirmVisit(appt._id)}
-                      onReminder={(e: React.MouseEvent) => openTemplatePicker(appt.patientName, appt.patientPhone, appt.date, e)}
-                      onCancel={() => setCancelModal(appt._id)}
-                      onReschedule={() => setRescheduleModal({ visitId: appt._id, patientName: appt.patientName, isinstallment: appt.source === "installment" })}
+                      clerkId={clerkId}
+                      lang={lang}
+                      onSetCompletionModal={setCompletionModal}
+                      onSetCancelModal={setCancelModal}
+                      onSetRescheduleModal={setRescheduleModal}
+                      onConfirmVisit={handleConfirmVisit}
+                      onOpenTemplatePicker={openTemplatePicker}
                     />
                   );
                 })}
@@ -697,3 +699,68 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+// ── MemoizedApptItem ──────────────────────────────────────────────────────────
+// Stable wrapper around SortableApptItem that accepts setter props (never
+// re-created) and memoizes the per-item handlers so SortableApptItem's
+// React.memo actually prevents unnecessary re-renders on every Convex update.
+const MemoizedApptItem = memo(function MemoizedApptItem({
+  appt,
+  tag,
+  canReschedule,
+  canCancel,
+  onSetCompletionModal,
+  onSetCancelModal,
+  onSetRescheduleModal,
+  onConfirmVisit,
+  onOpenTemplatePicker,
+}: {
+  appt: any;
+  tag?: "current" | "next";
+  canReschedule?: boolean;
+  canCancel?: boolean;
+  clerkId: string;
+  lang: string;
+  onSetCompletionModal: (v: { appointmentId: any; patientId?: any; patientName: string; patientAge?: number; installmentId?: any; tag?: "current" | "next" } | null) => void;
+  onSetCancelModal: (id: any) => void;
+  onSetRescheduleModal: (v: { visitId: any; patientName: string; isinstallment?: boolean } | null) => void;
+  onConfirmVisit: (id: any) => void;
+  onOpenTemplatePicker: (name: string, phone: string, date: number, e: React.MouseEvent) => void;
+}) {
+  // useCallback inside memo: these handlers only change if appt identity or
+  // setters change — setters from useState are always stable so this is safe.
+  const handleComplete = useCallback(
+    () => onSetCompletionModal({ appointmentId: appt._id, patientId: appt.patientId ?? undefined, patientName: appt.patientName, patientAge: appt.patientAge, installmentId: appt.installmentId ?? undefined, tag }),
+    [appt._id, appt.patientId, appt.patientName, appt.patientAge, appt.installmentId, tag, onSetCompletionModal]
+  );
+  const handleConfirm = useCallback(
+    () => onConfirmVisit(appt._id),
+    [appt._id, onConfirmVisit]
+  );
+  const handleReminder = useCallback(
+    (e: React.MouseEvent) => onOpenTemplatePicker(appt.patientName, appt.patientPhone, appt.date, e),
+    [appt.patientName, appt.patientPhone, appt.date, onOpenTemplatePicker]
+  );
+  const handleCancel = useCallback(
+    () => onSetCancelModal(appt._id),
+    [appt._id, onSetCancelModal]
+  );
+  const handleReschedule = useCallback(
+    () => onSetRescheduleModal({ visitId: appt._id, patientName: appt.patientName, isinstallment: appt.source === "installment" }),
+    [appt._id, appt.patientName, appt.source, onSetRescheduleModal]
+  );
+
+  return (
+    <SortableApptItem
+      appt={appt}
+      tag={tag}
+      canReschedule={canReschedule}
+      canCancel={canCancel}
+      onComplete={handleComplete}
+      onConfirm={handleConfirm}
+      onReminder={handleReminder}
+      onCancel={handleCancel}
+      onReschedule={handleReschedule}
+    />
+  );
+});

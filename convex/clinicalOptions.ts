@@ -248,35 +248,34 @@ export const getAllClinicalOptions = query({
     const user = await getAuthUser(ctx, args.clerkId);
     if (!user) return { medications: [], frequencies: [], notes: [] };
 
-    const dbMeds = await ctx.db
-      .query("medicationOptions")
-      .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
-      .collect();
-      
-    const frequencies = await ctx.db
-      .query("medicationFrequencyOptions")
-      .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
-      .collect();
-
-    const notes = await ctx.db
-      .query("medicationNoteOptions")
-      .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
-      .collect();
-
-    const diagnoses = await ctx.db
-      .query("diagnosisOptions")
-      .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
-      .collect();
-
-    const measurements = await ctx.db
-      .query("measurementOptions")
-      .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
-      .collect();
-
-    const vitals = await ctx.db
-      .query("vitalsOptions")
-      .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
-      .collect();
+    // PERF: Run all 6 table reads in parallel instead of sequentially
+    const [dbMeds, frequencies, notes, diagnoses, measurements, vitals] =
+      await Promise.all([
+        ctx.db
+          .query("medicationOptions")
+          .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+          .collect(),
+        ctx.db
+          .query("medicationFrequencyOptions")
+          .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+          .collect(),
+        ctx.db
+          .query("medicationNoteOptions")
+          .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+          .collect(),
+        ctx.db
+          .query("diagnosisOptions")
+          .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+          .collect(),
+        ctx.db
+          .query("measurementOptions")
+          .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+          .collect(),
+        ctx.db
+          .query("vitalsOptions")
+          .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+          .collect(),
+      ]);
 
     return { medications: dbMeds, frequencies, notes, diagnoses, measurements, vitals };
   },

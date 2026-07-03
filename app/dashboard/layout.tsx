@@ -13,7 +13,7 @@ import { useI18n } from "@/lib/i18n/client";
 import { OnlineBookingNotifier } from "@/components/online-booking-notifier";
 import { WhatsAppReconnectPrompt } from "@/components/whatsapp-reconnect-prompt";
 import { OfflineWarning } from "@/components/offline-warning";
-import { AlertTriangle, X, Building2, UserCheck, UserX, Clock, Loader2 } from "lucide-react";
+import { AlertTriangle, X, Building2, UserCheck, UserX, Clock } from "lucide-react";
 import { UserProvider, useCurrentUser } from "@/components/providers/user-provider";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
