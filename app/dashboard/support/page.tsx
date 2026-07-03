@@ -77,7 +77,7 @@ function UserSupportChatDrawer({
                   {!msg.fromAdmin && (
                     <button 
                       onClick={() => deleteMutation({ messageId: msg._id })}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-primary-foreground/20 text-primary-foreground"
+                      className="sm:opacity-0 sm:group-hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-primary-foreground/20 text-primary-foreground"
                       title={isAr ? "حذف" : "Delete"}
                     >
                       <Trash2 className="w-3 h-3" />

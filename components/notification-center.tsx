@@ -400,7 +400,7 @@ export function NotificationCenter() {
                     {/* Delete button */}
                     <button
                       onClick={(e) => handleDelete(noti._id, e)}
-                      className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg hover:bg-muted/60 transition-all text-muted-foreground hover:text-red-500 absolute top-3 inset-e-3"
+                      className="sm:opacity-0 sm:group-hover:opacity-100 p-1.5 rounded-lg hover:bg-muted/60 transition-all text-muted-foreground hover:text-red-500 absolute top-3 inset-e-3"
                     >
                       <X className="w-4 h-4" />
                     </button>

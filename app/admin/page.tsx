@@ -253,7 +253,7 @@ function AdminSupportChatDrawer({
                   <span className="text-[10px]">{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                   <button 
                     onClick={() => deleteMutation({ messageId: msg._id })}
-                    className={`opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md ${msg.fromAdmin ? 'hover:bg-white/20 text-white' : 'hover:bg-red-50 text-red-500'}`}
+                    className={`sm:opacity-0 sm:group-hover:opacity-100 transition-opacity p-1 rounded-md ${msg.fromAdmin ? 'hover:bg-white/20 text-white' : 'hover:bg-red-50 text-red-500'}`}
                     title="Delete message"
                   >
                     <Trash2 className="w-3 h-3" />
