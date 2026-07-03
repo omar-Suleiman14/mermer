@@ -4,8 +4,7 @@ import { getAuthUser, requireAuthUser } from "./authHelper";
 
 // Default types that are always available
 const DEFAULTS = [
-  "Regular",
-  "Follow-up",
+  "عادي",
 ];
 
 export const listOptions = query({
