@@ -42,7 +42,7 @@ export default defineSchema({
     // Admin controls
     isBanned: v.optional(v.boolean()),
     isBlocked: v.optional(v.boolean()),
-    
+
     // Legacy fields (kept only to prevent schema validation crashes on old records)
     telegramId: v.optional(v.string()),
 
@@ -188,7 +188,7 @@ export default defineSchema({
 
     // Links
     installmentId: v.optional(v.id("installments")),
-    
+
     // Who created/modified this visit (for history display)
     actionBy: v.optional(v.string()),
 
