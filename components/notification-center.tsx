@@ -4,114 +4,135 @@ import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useUser } from "@clerk/nextjs";
-import { Bell, Calendar, Clock, X, Trash2, MessageCircle, UserCheck, UserX, Building2 } from "lucide-react";
+import { X, Search, Clock, CalendarIcon, CheckCircle2, MoreVertical, MessageCircle, AlertCircle, RefreshCw } from "lucide-react";
+import { msgBookingConfirmed, msgReminder, msgRescheduled, msgAppointmentCancelled, msgYourTurn, msgMissed } from "@/convex/messageHelpers";
+import { Bell, Calendar, Trash2, UserCheck, UserX, Building2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AnimatePresence, motion } from "framer-motion";
 import { useI18n } from "@/lib/i18n/client";
 import { formatDistanceToNow } from "date-fns";
 import { arEG, enUS } from "date-fns/locale";
 import { toast } from "sonner";
+import { formatTime } from "@/lib/scheduling";
 
 // ── Template picker popup (self-contained mini version) ──────────────────────
 function TemplatePicker({
   noti,
   currentUser,
-  messageTemplates,
   lang,
   t,
   onClose,
 }: {
   noti: { patientName?: string; date: number; patientPhone?: string };
-  currentUser: { clinicAddressLink?: string } | undefined | null;
-  messageTemplates: { _id: string; name: string; body: string }[] | undefined;
+  currentUser: any;
   lang: string;
   t: (k: string) => string;
   onClose: () => void;
 }) {
   const pickerRef = useRef<HTMLDivElement>(null);
 
-  function formatTime(ts: number) {
-    return new Date(ts).toLocaleTimeString(lang === "ar" ? "ar-EG" : "en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-    });
-  }
-
   function send(body: string) {
     const firstName = noti.patientName?.split(" ")[0] || "";
-    const apptDate = new Date(noti.date);
-    const message = body
-      .replace(/\{patient_name\}/g, noti.patientName || "")
-      .replace(/\{date\}/g, apptDate.toLocaleDateString(lang === "ar" ? "ar-EG" : "en-US", { month: "short", day: "numeric" }))
-      .replace(/\{time\}/g, formatTime(noti.date))
-      .replace(/\{clinic_address\}/g, currentUser?.clinicAddressLink || "")
-      .replace(/\{\{name\}\}/g, firstName)
-      .replace(/\{name\}/g, firstName);
-
     let num = (noti.patientPhone || "").replace(/[\s\-\(\)]/g, "");
     if (num.startsWith("+")) num = num.slice(1);
     if (num.startsWith("0")) num = "20" + num.slice(1);
     else if (!num.startsWith("20")) num = "20" + num;
 
-    window.open(`https://wa.me/${num}?text=${encodeURIComponent(message)}`, "_blank");
+    window.open(`https://wa.me/${num}?text=${encodeURIComponent(body)}`, "_blank");
     toast.success(`Opening WhatsApp for ${firstName}`);
     onClose();
   }
 
+  const templates = [
+    {
+      name: "تأكيد حجز",
+      body: msgBookingConfirmed({
+        patientName: noti.patientName || "",
+        clinicName: currentUser?.clinicName || "العيادة",
+        doctorName: currentUser?.name || "",
+        date: noti.date,
+        clinicAddress: currentUser?.clinicAddress,
+        clinicAddressLink: currentUser?.clinicAddressLink
+      })
+    },
+    {
+      name: "تذكير بموعد",
+      body: msgReminder({
+        patientName: noti.patientName || "",
+        clinicName: currentUser?.clinicName || "العيادة",
+        doctorName: currentUser?.name || "",
+        date: noti.date,
+        clinicAddress: currentUser?.clinicAddress,
+        clinicAddressLink: currentUser?.clinicAddressLink
+      })
+    },
+    {
+      name: "تعديل موعد",
+      body: msgRescheduled({
+        patientName: noti.patientName || "",
+        clinicName: currentUser?.clinicName || "العيادة",
+        doctorName: currentUser?.name || "",
+        newDate: noti.date,
+        clinicAddress: currentUser?.clinicAddress,
+        clinicAddressLink: currentUser?.clinicAddressLink
+      })
+    },
+    {
+      name: "إلغاء موعد",
+      body: msgAppointmentCancelled({
+        patientName: noti.patientName || "",
+        clinicName: currentUser?.clinicName || "العيادة",
+        doctorName: currentUser?.name || "",
+        date: noti.date
+      })
+    },
+    {
+      name: "دورك الآن",
+      body: msgYourTurn(
+        noti.patientName || "",
+        currentUser?.clinicName,
+        currentUser?.name
+      )
+    },
+    {
+      name: "موعد فائت",
+      body: msgMissed({
+        patientName: noti.patientName || "",
+        clinicName: currentUser?.clinicName || "العيادة",
+        doctorName: currentUser?.name || "",
+        date: noti.date
+      })
+    }
+  ];
+
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-200 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+      transition={{ duration: 0.15 }}
+      className="absolute left-0 bottom-full mb-2 w-64 bg-background border border-border shadow-xl rounded-2xl overflow-hidden z-50"
     >
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <motion.div
-        ref={pickerRef}
-        initial={{ y: 40, opacity: 0, scale: 0.95 }}
-        animate={{ y: 0, opacity: 1, scale: 1 }}
-        exit={{ y: 40, opacity: 0, scale: 0.95 }}
-        transition={{ type: "spring", stiffness: 400, damping: 30 }}
-        className="relative z-10 w-full sm:max-w-sm bg-background rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
-      >
-        <div className="sm:hidden w-10 h-1 rounded-full bg-border mx-auto mt-2.5 mb-1" />
-        <div className="px-5 pt-4 pb-2">
-          <div className="flex items-center justify-between mb-1">
-            <p className="text-sm font-semibold">
-              {t("templates.sendTo") || "Send to"} {noti.patientName?.split(" ")[0]}
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border/50">
+        <p className="text-[11px] font-medium text-muted-foreground">{t("templates.chooseTemplate") || "Choose a template"}</p>
+        <button onClick={onClose} className="p-1 hover:bg-muted/80 rounded-md">
+          <X className="w-3 h-3 text-muted-foreground" />
+        </button>
+      </div>
+      <div className="max-h-[250px] overflow-y-auto p-1.5 space-y-0.5">
+        {templates.map((tpl) => (
+          <button
+            key={tpl.name}
+            onClick={() => send(tpl.body)}
+            className="w-full flex flex-col px-2.5 py-2 hover:bg-muted/50 rounded-xl transition-colors text-start"
+          >
+            <p className="text-sm font-medium">{tpl.name}</p>
+            <p className="text-[10px] text-muted-foreground line-clamp-2 mt-0.5 leading-snug">
+              {tpl.body}
             </p>
-            <button onClick={onClose} className="p-1 rounded-lg hover:bg-muted/60 transition-colors">
-              <X className="w-3.5 h-3.5 text-muted-foreground" />
-            </button>
-          </div>
-          <p className="text-[11px] text-muted-foreground">{t("templates.chooseTemplate") || "Choose a template"}</p>
-        </div>
-
-        <div className="px-3 pb-3 space-y-1 max-h-[50vh] overflow-y-auto">
-          {/* Saved templates */}
-          {(messageTemplates ?? []).map((tpl) => (
-            <button
-              key={tpl._id}
-              onClick={() => send(tpl.body)}
-              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#007AFF]/8 transition-colors text-left group"
-            >
-              <div className="w-8 h-8 rounded-full bg-[#007AFF]/10 flex items-center justify-center shrink-0">
-                <MessageCircle className="w-4 h-4 text-[#007AFF]" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium">{tpl.name}</p>
-                <p className="text-[11px] text-muted-foreground truncate">{tpl.body}</p>
-              </div>
-            </button>
-          ))}
-
-          {(messageTemplates ?? []).length === 0 && (
-            <div className="flex flex-col items-center gap-2 px-3 py-4 text-center">
-              <p className="text-xs text-muted-foreground">{t("templates.createInSettings") || "Create templates in Settings"}</p>
-            </div>
-          )}
-        </div>
-      </motion.div>
+          </button>
+        ))}
+      </div>
     </motion.div>
   );
 }
@@ -125,7 +146,6 @@ export function NotificationCenter() {
   const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
   const onlineAppointments = useQuery(api.appointments.listOnlineAppointments, clerkId ? { clerkId } : "skip");
   const supportMsgs = useQuery(api.support.listUserSupportMessages, clerkId ? { clerkId } : "skip");
-  const messageTemplates = useQuery(api.messageTemplates.listTemplates, clerkId ? { clerkId } : "skip");
   const pendingInvite = useQuery(api.users.getPendingInvitation, clerkId ? { clerkId } : "skip");
 
   const acceptInvite = useMutation(api.users.acceptInvitation);
@@ -417,8 +437,7 @@ export function NotificationCenter() {
         {reminderFor && (
           <TemplatePicker
             noti={reminderFor}
-            currentUser={currentUser as { clinicAddressLink?: string }}
-            messageTemplates={messageTemplates as { _id: string; name: string; body: string }[]}
+            currentUser={currentUser}
             lang={lang}
             t={t}
             onClose={() => setReminderFor(null)}

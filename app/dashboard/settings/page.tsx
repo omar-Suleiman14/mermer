@@ -584,30 +584,6 @@ export default function SettingsPage() {
                 <WhatsAppIntegration clinicId={currentUser._id as string} />
               </div>
             )}
-
-            {/* WhatsApp Message Templates */}
-            {currentUser && (
-              <div className="p-4 border-t border-border/50">
-                <div className="mb-3 flex items-center gap-3">
-                  <MessageSquare className="w-4 h-4 text-[#25D366]" />
-                  <div>
-                    <span className="text-sm font-medium block">
-                      {dir === "rtl" ? "قوالب رسائل الواتساب" : "WhatsApp Message Templates"}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {dir === "rtl"
-                        ? "تعديل هذه القوالب يغيّر الرسائل التلقائية واليدوية في آن واحد"
-                        : "Editing these templates changes both automatic and manual messages"}
-                    </span>
-                  </div>
-                </div>
-                <MessageTemplatesSection
-                  clerkId={clerkId}
-                  clinicAddressLink={currentUser.clinicAddressLink ?? ""}
-                />
-              </div>
-            )}
-
           </div>
         </section>
 

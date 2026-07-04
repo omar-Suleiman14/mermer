@@ -73,6 +73,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { startOfDay, formatTime, formatFullDate, isNonWorkingDay, useWhatsAppTemplate, openWhatsApp } from "@/lib/scheduling";
+import { msgBookingConfirmed, msgReminder, msgRescheduled, msgAppointmentCancelled, msgYourTurn, msgMissed } from "@/convex/messageHelpers";
 import { useCurrentUser } from "@/components/providers/user-provider";
 
 
@@ -165,13 +166,6 @@ export default function DashboardPage() {
     anchorY: number;
   } | null>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
-
-  // Defer messageTemplates — only subscribe when the template picker is open
-  const messageTemplates = useQuery(
-    api.messageTemplates.listTemplates,
-    templatePicker && clerkId ? { clerkId } : "skip"
-  );
-
 
   // Close picker on click outside
   useEffect(() => {
@@ -658,10 +652,69 @@ export default function DashboardPage() {
                 <p className="text-[11px] text-muted-foreground">{t("templates.chooseTemplate")}</p>
               </div>
               <div className="px-3 pb-3 space-y-1 max-h-[50vh] overflow-y-auto">
-                {/* Saved templates */}
-                {(messageTemplates ?? []).map((tpl) => (
+                {[
+                  {
+                    name: "تأكيد حجز",
+                    body: msgBookingConfirmed({
+                      patientName: templatePicker.patientName,
+                      clinicName: (currentUser as any)?.clinicName || "العيادة",
+                      doctorName: (currentUser as any)?.name || "",
+                      date: templatePicker.appointmentDate,
+                      clinicAddress: (currentUser as any)?.clinicAddress,
+                      clinicAddressLink: (currentUser as any)?.clinicAddressLink
+                    })
+                  },
+                  {
+                    name: "تذكير بموعد",
+                    body: msgReminder({
+                      patientName: templatePicker.patientName,
+                      clinicName: (currentUser as any)?.clinicName || "العيادة",
+                      doctorName: (currentUser as any)?.name || "",
+                      date: templatePicker.appointmentDate,
+                      clinicAddress: (currentUser as any)?.clinicAddress,
+                      clinicAddressLink: (currentUser as any)?.clinicAddressLink
+                    })
+                  },
+                  {
+                    name: "تعديل موعد",
+                    body: msgRescheduled({
+                      patientName: templatePicker.patientName,
+                      clinicName: (currentUser as any)?.clinicName || "العيادة",
+                      doctorName: (currentUser as any)?.name || "",
+                      newDate: templatePicker.appointmentDate,
+                      clinicAddress: (currentUser as any)?.clinicAddress,
+                      clinicAddressLink: (currentUser as any)?.clinicAddressLink
+                    })
+                  },
+                  {
+                    name: "إلغاء موعد",
+                    body: msgAppointmentCancelled({
+                      patientName: templatePicker.patientName,
+                      clinicName: (currentUser as any)?.clinicName || "العيادة",
+                      doctorName: (currentUser as any)?.name || "",
+                      date: templatePicker.appointmentDate
+                    })
+                  },
+                  {
+                    name: "دورك الآن",
+                    body: msgYourTurn(
+                      templatePicker.patientName,
+                      (currentUser as any)?.clinicName,
+                      (currentUser as any)?.name
+                    )
+                  },
+                  {
+                    name: "موعد فائت",
+                    body: msgMissed({
+                      patientName: templatePicker.patientName,
+                      clinicName: (currentUser as any)?.clinicName || "العيادة",
+                      doctorName: (currentUser as any)?.name || "",
+                      date: templatePicker.appointmentDate
+                    })
+                  }
+                ].map((tpl) => (
                   <button
-                    key={tpl._id}
+                    key={tpl.name}
                     onClick={() => sendWithTemplate(tpl.body)}
                     className="w-full flex items-center gap-3 px-3 py-3 rounded-2xl hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left"
                   >
@@ -670,16 +723,10 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium">{tpl.name}</p>
-                      <p className="text-[11px] text-muted-foreground truncate">{tpl.body}</p>
+                      <p className="text-[11px] text-muted-foreground truncate">{tpl.body.replace(/\n/g, " ")}</p>
                     </div>
                   </button>
                 ))}
-
-                {(messageTemplates ?? []).length === 0 && (
-                  <div className="px-3 py-2">
-                    <p className="text-[11px] text-muted-foreground">{t("templates.createInSettings")}</p>
-                  </div>
-                )}
               </div>
 
               {/* Subtle separator + settings link */}
