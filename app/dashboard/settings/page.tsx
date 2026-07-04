@@ -15,7 +15,6 @@ import { useTheme } from "next-themes";
 import { LanguageToggle } from "@/components/language-toggle";
 import Image from "next/image";
 import { WhatsAppIntegration } from "@/components/settings/whatsapp-integration";
-import { MessageTemplatesSection } from "@/components/message-templates-section";
 
 
 
