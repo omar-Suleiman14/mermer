@@ -30,6 +30,7 @@ import type * as publicAppointments from "../publicAppointments.js";
 import type * as push from "../push.js";
 import type * as pushActions from "../pushActions.js";
 import type * as queue from "../queue.js";
+import type * as seed from "../seed.js";
 import type * as support from "../support.js";
 import type * as temp_query from "../temp_query.js";
 import type * as topEgyptianMeds from "../topEgyptianMeds.js";
@@ -67,6 +68,7 @@ declare const fullApi: ApiFromModules<{
   push: typeof push;
   pushActions: typeof pushActions;
   queue: typeof queue;
+  seed: typeof seed;
   support: typeof support;
   temp_query: typeof temp_query;
   topEgyptianMeds: typeof topEgyptianMeds;
