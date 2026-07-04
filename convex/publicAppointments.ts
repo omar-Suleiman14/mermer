@@ -58,8 +58,8 @@ export const createAppointment = action({
     // Fire and forget
     await ctx.runAction(internal.pushActions.sendPushNotification, {
       userId: doctor._id,
-      title: "حجز إلكتروني جديد (قيد الانتظار)",
-      body: `${patientName} حجز موعداً الساعة ${apptTime} (رقم ${queueNumber}) بانتظار رسالة التأكيد عبر الواتساب.`,
+      title: "حجز إلكتروني جديد",
+      body: `${patientName} حجز موعداً الساعة ${apptTime} (رقم ${queueNumber}). تم إرسال رسالة التأكيد التلقائية.`,
       url: `/dashboard/queue?date=${args.date}`,
     }).catch(console.error);
 

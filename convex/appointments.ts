@@ -179,14 +179,41 @@ export const createAppointmentInternal = internalMutation({
       patientPhone,
       patientAge: args.patientAge,
       date: args.date,
-      status: "pending",
+      status: "confirmed",
       source: "online",
       queueNumber,
       createdAt: Date.now(),
     });
 
-    // Schedule auto-cancel after 15 minutes if not confirmed
-    await ctx.scheduler.runAfter(15 * 60 * 1000, internal.appointments.autoCancelPendingAppointment, { visitId });
+    // Send WhatsApp confirmation immediately
+    if (doctor.evolutionApiKey && doctor.evolutionInstanceName && doctor.isEvolutionActive) {
+      const slotNum = calcSlotNumber(args.date, doctor.workingHoursStart ?? 9, doctor.slotDurationMinutes ?? 30);
+      const messageText = msgBookingConfirmed({
+        patientName: args.patientName,
+        clinicName: doctor.clinicName || "العيادة",
+        doctorName: doctor.name,
+        date: args.date,
+        slotNumber: slotNum,
+        clinicAddress: doctor.clinicAddress,
+        clinicAddressLink: doctor.clinicAddressLink,
+      });
+
+      const intlPhone = "20" + patientPhone;
+
+      await ctx.scheduler.runAfter(0, internal.whatsappAutomations.sendMessage, {
+        instanceName: doctor.evolutionInstanceName,
+        evolutionApiKey: doctor.evolutionApiKey,
+        phoneNumber: intlPhone,
+        messageText,
+        doctorId: doctor._id,
+        templateName: "تأكيد حجز",
+        templateVariables: {
+          patient_name: args.patientName,
+          date: fmtDateAr(args.date),
+          time: fmtTimeAr(args.date),
+        },
+      });
+    }
 
     return { visitId, doctor, patientPhone, patientName: args.patientName, queueNumber };
   },
