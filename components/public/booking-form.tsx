@@ -40,7 +40,6 @@ export function BookingForm({ doctor }: BookingFormProps) {
   const [queueNumber, setQueueNumber] = useState<number | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedSlotMs, setSelectedSlotMs] = useState<number | null>(null);
-  const [pendingWaLink, setPendingWaLink] = useState<string | null>(null);
   const [bookedSlotMs, setBookedSlotMs] = useState<number | null>(null);
   const [bookedName, setBookedName] = useState("");
   
@@ -167,35 +166,10 @@ export function BookingForm({ doctor }: BookingFormProps) {
         date: selectedSlotMs,
       });
       
-      let waPhone = safeDoctor?.clinicPhone?.replace(/[^0-9]/g, "");
-      if (waPhone) {
-        if (waPhone.startsWith("0")) waPhone = "20" + waPhone.substring(1);
-        else if (waPhone.length === 10 && !waPhone.startsWith("20")) waPhone = "20" + waPhone;
-      }
-      
-      const dateStr = selectedSlotMs 
-        ? new Date(selectedSlotMs).toLocaleString(lang === "ar" ? "ar-EG" : "en-US", {
-            weekday: "short",
-            month: "short",
-            day: "numeric",
-            hour: "numeric",
-            minute: "2-digit",
-            hour12: true,
-          }) 
-        : "";
-        
-      const waMessage = encodeURIComponent(
-        dir === "rtl"
-          ? `تأكيد موعدي يوم ${dateStr} باسم ${name}${result.queueNumber ? ` (رقم الدور: ${result.queueNumber})` : ""}`
-          : `Confirm my appointment on ${dateStr} for ${name}${result.queueNumber ? ` (Slot Number: ${result.queueNumber})` : ""}`
-      );
-      const waLink = waPhone ? `https://wa.me/${waPhone}?text=${waMessage}` : null;
-
       // Store data for the success screen
       setBookedSlotMs(selectedSlotMs);
       setBookedName(name.trim());
       setQueueNumber(result.queueNumber ?? null);
-      setPendingWaLink(waLink);
       setSuccess(true);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -430,7 +404,7 @@ export function BookingForm({ doctor }: BookingFormProps) {
                     </div>
                     <div>
                       <h2 className="text-xl font-bold text-foreground">
-                        {dir === "rtl" ? "تم الحجز بنجاح!" : "Booking Submitted!"}
+                        {dir === "rtl" ? "تم تأكيد الحجز بنجاح!" : "Booking Confirmed!"}
                       </h2>
                       <p className="text-sm text-muted-foreground mt-1.5">
                         {bookedSlotMs
@@ -446,33 +420,20 @@ export function BookingForm({ doctor }: BookingFormProps) {
                       </p>
                     </div>
 
-                    <div className="w-full bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 text-start">
-                      <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
-                        {dir === "rtl" ? "⚠️ مهم: أكّد الحجز عبر الواتساب" : "⚠️ Important: Confirm via WhatsApp"}
+                    <div className="w-full bg-[#007AFF]/10 border border-[#007AFF]/20 rounded-2xl p-4 text-start">
+                      <p className="text-sm font-semibold text-[#007AFF]">
+                        {dir === "rtl" ? "سيتم إرسال رسالة تأكيد قريباً" : "Confirmation message will be sent"}
                       </p>
-                      <p className="text-xs text-amber-600/80 dark:text-amber-400/70 mt-1">
+                      <p className="text-xs text-[#007AFF]/80 mt-1">
                         {dir === "rtl"
-                          ? "حجزك قيد الانتظار. يرجى إرسال رسالة تأكيد عبر الواتساب خلال 15 دقيقة وإلا سيتم إلغاء الحجز تلقائياً."
-                          : "Your booking is pending. Please send a confirmation message via WhatsApp within 15 minutes or it will be automatically cancelled."}
+                          ? "تم تسجيل موعدك. ستصلك رسالة عبر الواتساب بتفاصيل الموعد."
+                          : "Your appointment is booked. You will receive a WhatsApp message with the details."}
                       </p>
                     </div>
-
-                    {pendingWaLink && (
-                      <button
-                        onClick={() => {
-                          window.open(pendingWaLink!, "_blank");
-                        }}
-                        className="w-full flex items-center justify-center gap-2.5 bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold py-3.5 rounded-2xl transition-colors text-base shadow-lg shadow-[#25D366]/20"
-                      >
-                        <MessageSquare className="w-5 h-5" />
-                        {dir === "rtl" ? "أكّد عبر الواتساب" : "Confirm via WhatsApp"}
-                      </button>
-                    )}
 
                     <button
                       onClick={() => {
                         setSuccess(false);
-                        setPendingWaLink(null);
                         setBookedSlotMs(null);
                         setBookedName("");
                         setName("");
