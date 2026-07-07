@@ -22,22 +22,19 @@ export default function PatientsPage() {
   const [patientTypeFilter, setPatientTypeFilter] = useState<string | undefined>(undefined);
   const [intakeOpen, setIntakeOpen] = useState(false);
 
+  const patientCount = useQuery(api.patients.countPatients, clerkId ? { clerkId } : "skip");
   const patientTypeOptions = useQuery(api.patientTypes.listOptions, clerkId ? { clerkId } : "skip");
 
   const patients = useQuery(
     api.patients.searchPatients,
     clerkId ? { clerkId, search, patientType: patientTypeFilter } : "skip"
   );
-  const allPatients = useQuery(
-    api.patients.searchPatients,
-    clerkId ? { clerkId, search: "" } : "skip"
-  );
 
   return (
     <div className="flex flex-col h-full">
       <PageHeader
         title={t("patients.title")}
-        description={`${allPatients?.length ?? "…"} ${t("patients.registered")}`}
+        description={`${patientCount ?? "…"} ${t("patients.registered")}`}
       >
         <button
           onClick={() => setIntakeOpen(true)}
@@ -66,7 +63,7 @@ export default function PatientsPage() {
               <select
                 value={patientTypeFilter || ""}
                 onChange={(e) => setPatientTypeFilter(e.target.value || undefined)}
-                className="w-32 sm:w-48 px-3 py-3 text-sm bg-white dark:bg-[#1c1c1a] border border-black/5 dark:border-white/5 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent"
+                className="w-32 sm:w-48 ps-3 pe-8 py-3 text-sm bg-white dark:bg-[#1c1c1a] border border-black/5 dark:border-white/5 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent"
               >
                 <option value="">{dir === "rtl" ? "كل الأنواع" : "All Types"}</option>
                 {patientTypeOptions.map((type) => (

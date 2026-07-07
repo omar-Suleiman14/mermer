@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Check, X, MessageSquare, Copy, RotateCcw } from "lucide-react";
+import { Plus, Pencil, Trash2, Check, X, MessageSquare, Copy, RotateCcw, ChevronDown, ChevronUp } from "lucide-react";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { motion, AnimatePresence } from "framer-motion";
 import { useI18n } from "@/lib/i18n/client";
@@ -49,6 +49,7 @@ export function MessageTemplatesSection({ clerkId, clinicAddressLink }: { clerkI
   const [seeding, setSeeding] = useState(false);
   const [resettingAll, setResettingAll] = useState(false);
   const [resetingId, setResetingId] = useState<Id<"messageTemplates"> | null>(null);
+  const [expandedId, setExpandedId] = useState<Id<"messageTemplates"> | null>(null);
   const seeded = useRef(false);
 
   // Auto-seed default templates when empty
@@ -62,9 +63,9 @@ export function MessageTemplatesSection({ clerkId, clinicAddressLink }: { clerkI
   }, [clerkId, templates, createTemplate, seeding]);
 
   function startEdit(row: { _id: Id<"messageTemplates">; name: string; body: string }) {
-    setEditId(row._id); setName(row.name); setBody(row.body); setAdding(false);
+    setEditId(row._id); setName(row.name); setBody(row.body); setAdding(false); setExpandedId(null);
   }
-  function startNew() { setEditId(null); setName(""); setBody(""); setAdding(true); }
+  function startNew() { setEditId(null); setName(""); setBody(""); setAdding(true); setExpandedId(null); }
   function cancel() { setAdding(false); setEditId(null); }
 
   function preview(b: string) {
@@ -74,7 +75,8 @@ export function MessageTemplatesSection({ clerkId, clinicAddressLink }: { clerkI
       .replace(/\{patient_name\}/g, "Ahmed Mohamed")
       .replace(/\{date\}/g, now.toLocaleDateString(loc, { month: "short", day: "numeric" }))
       .replace(/\{time\}/g, now.toLocaleTimeString(loc, { hour: "numeric", minute: "2-digit", hour12: true }))
-      .replace(/\{clinic_address\}/g, clinicAddressLink || t("msgTpl.previewClinicFallback"));
+      .replace(/\{clinic_address\}/g, clinicAddressLink || t("msgTpl.previewClinicFallback"))
+      .replace(/\{amount\}/g, "500");
   }
 
   async function save() {
@@ -100,25 +102,17 @@ export function MessageTemplatesSection({ clerkId, clinicAddressLink }: { clerkI
     catch { toast.error(t("msgTpl.deleteFailed")); }
   }
 
-  /** Reset a single template to its default body (matched by name). */
   async function resetOne(tpl: { _id: Id<"messageTemplates">; name: string }) {
     const def = DEFAULT_TEMPLATES.find((d) => d.name === tpl.name);
-    if (!def) {
-      toast.error("لا يوجد نص افتراضي لهذا القالب");
-      return;
-    }
+    if (!def) { toast.error("لا يوجد نص افتراضي لهذا القالب"); return; }
     setResetingId(tpl._id);
     try {
       await updateTemplate({ clerkId, templateId: tpl._id, name: tpl.name, body: def.body });
-      toast.success("تم إعادة تعيين القالب إلى النص الافتراضي");
-    } catch {
-      toast.error("فشل إعادة التعيين");
-    } finally {
-      setResetingId(null);
-    }
+      toast.success("تم إعادة تعيين القالب");
+    } catch { toast.error("فشل إعادة التعيين"); }
+    finally { setResetingId(null); }
   }
 
-  /** Reset ALL templates that match a default name back to default bodies. */
   async function resetAll() {
     if (!templates || templates.length === 0) return;
     if (!confirm("هل تريد إعادة تعيين جميع القوالب إلى النصوص الافتراضية؟")) return;
@@ -131,127 +125,200 @@ export function MessageTemplatesSection({ clerkId, clinicAddressLink }: { clerkI
           return updateTemplate({ clerkId, templateId: tpl._id, name: tpl.name, body: def.body });
         })
       );
-      toast.success("تم إعادة تعيين جميع القوالب إلى النصوص الافتراضية");
-    } catch {
-      toast.error("فشلت إعادة التعيين الكاملة");
-    } finally {
-      setResettingAll(false);
-    }
+      toast.success("تم إعادة تعيين جميع القوالب");
+    } catch { toast.error("فشلت إعادة التعيين الكاملة"); }
+    finally { setResettingAll(false); }
+  }
+
+  if (templates === undefined || seeding) {
+    return (
+      <div className="p-4 space-y-2">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="h-14 bg-muted/40 rounded-2xl animate-pulse" style={{ opacity: 1 - i * 0.15 }} />
+        ))}
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-3">
-      {/* Header with Reset All */}
-      {templates && templates.length > 0 && !adding && !editId && (
-        <div className="flex items-center justify-end">
+    <div className="divide-y divide-border">
+      {/* Header row */}
+      <div className="px-4 py-3 flex items-center justify-between">
+        <p className="text-xs text-muted-foreground">
+          {dir === "rtl"
+            ? `${templates.length} قالب · اكتب @ لإدراج متغير`
+            : `${templates.length} templates · Type @ to insert a variable`}
+        </p>
+        {templates.length > 0 && !adding && !editId && (
           <button
             onClick={resetAll}
             disabled={resettingAll}
-            title="إعادة تعيين جميع القوالب"
-            className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground border border-border px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-amber-600 transition-colors disabled:opacity-50"
           >
-            {resettingAll ? <IOSSpinner size={12} className="text-muted-foreground" /> : <RotateCcw className="w-3 h-3" />}
-            {resettingAll ? "جارٍ الإعادة..." : "إعادة تعيين الكل"}
+            {resettingAll ? <IOSSpinner size={11} className="text-amber-600" /> : <RotateCcw className="w-3 h-3" />}
+            {dir === "rtl" ? "إعادة تعيين الكل" : "Reset all"}
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Template list */}
-      {templates === undefined ? (
-        <div className="h-10 bg-muted/30 rounded-xl animate-pulse" />
-      ) : templates.length === 0 && !adding ? (
-        <div className="text-center py-6">
-          <MessageSquare className="w-8 h-8 text-muted-foreground/30 mx-auto mb-2" />
-          <p className="text-xs text-muted-foreground mb-3">{t("msgTpl.empty")}</p>
+      {templates.length === 0 && !adding ? (
+        <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-[#007AFF]/10 flex items-center justify-center mb-3">
+            <MessageSquare className="w-6 h-6 text-[#007AFF]" />
+          </div>
+          <p className="text-sm font-semibold mb-1">{t("msgTpl.empty")}</p>
+          <p className="text-xs text-muted-foreground mb-4">{dir === "rtl" ? "ابدأ بإضافة قالب رسالة واتساب" : "Add your first WhatsApp message template"}</p>
           <button
             onClick={startNew}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#007AFF] hover:underline"
+            className="flex items-center gap-1.5 text-sm font-semibold text-white bg-[#007AFF] hover:bg-[#0062cc] px-4 py-2 rounded-xl transition-colors shadow-sm"
           >
-            <Plus className="w-3.5 h-3.5" /> {t("msgTpl.createFirst")}
+            <Plus className="w-4 h-4" /> {t("msgTpl.createFirst")}
           </button>
         </div>
       ) : (
-        <div className="space-y-2">
-          {templates.map((tpl) => (
-            <div key={tpl._id}>
+        <AnimatePresence initial={false}>
+          {templates.map((tpl, idx) => (
+            <motion.div
+              key={tpl._id}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.18 }}
+              className="overflow-hidden"
+            >
               {editId === tpl._id ? (
-                <EditorForm
-                  name={name} setName={setName}
-                  body={body} setBody={setBody}
-                  onSave={save} onCancel={cancel}
-                  preview={preview(body)} saving={saving}
-                />
+                <div className="p-4 bg-[#007AFF]/3 border-b border-[#007AFF]/10">
+                  <EditorForm
+                    name={name} setName={setName}
+                    body={body} setBody={setBody}
+                    onSave={save} onCancel={cancel}
+                    preview={preview(body)} saving={saving}
+                  />
+                </div>
               ) : (
-                <div className="flex items-start gap-3 p-3 rounded-xl border border-border bg-card group hover:border-[#007AFF]/20 transition-colors">
-                  <MessageSquare className="w-4 h-4 text-[#007AFF] mt-0.5 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold">{tpl.name}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{tpl.body}</p>
-                  </div>
-                  <div className="flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(preview(tpl.body));
-                        toast.success(t("msgTpl.copied"));
-                      }}
-                      title="نسخ"
-                      className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => startEdit(tpl)}
-                      title="تعديل"
-                      className="p-1.5 rounded-lg hover:bg-muted transition-colors text-muted-foreground"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
-                    {/* Per-template reset button — only shown when a default exists */}
-                    {DEFAULT_TEMPLATES.some((d) => d.name === tpl.name) && (
-                      <button
-                        onClick={() => resetOne(tpl)}
-                        disabled={resetingId === tpl._id}
-                        title="إعادة تعيين إلى الافتراضي"
-                        className="p-1.5 rounded-lg hover:bg-amber-500/10 hover:text-amber-600 transition-colors text-muted-foreground disabled:opacity-50"
+                <div className={`group transition-colors ${expandedId === tpl._id ? "bg-muted/20" : "hover:bg-muted/10"}`}>
+                  {/* Row header — always visible */}
+                  <button
+                    className="w-full flex items-center gap-3 px-4 py-3.5 text-start"
+                    onClick={() => setExpandedId(expandedId === tpl._id ? null : tpl._id)}
+                  >
+                    <div className="w-8 h-8 rounded-xl bg-[#007AFF]/10 flex items-center justify-center shrink-0">
+                      <MessageSquare className="w-4 h-4 text-[#007AFF]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold truncate">{tpl.name}</p>
+                      <p className="text-[11px] text-muted-foreground truncate mt-0.5">{tpl.body.split("\n")[0]}</p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {expandedId === tpl._id
+                        ? <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                        : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                    </div>
+                  </button>
+
+                  {/* Expanded body + actions */}
+                  <AnimatePresence>
+                    {expandedId === tpl._id && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.15 }}
+                        className="overflow-hidden"
                       >
-                        {resetingId === tpl._id
-                          ? <IOSSpinner size={12} className="text-amber-600" />
-                          : <RotateCcw className="w-3.5 h-3.5" />
-                        }
-                      </button>
+                        <div className="px-4 pb-4 space-y-3">
+                          {/* Body preview */}
+                          <div className="bg-background rounded-2xl border border-border p-3">
+                            <p className="text-xs text-muted-foreground font-medium mb-1.5">{dir === "rtl" ? "نص الرسالة" : "Message text"}</p>
+                            <p className="text-sm whitespace-pre-wrap leading-relaxed">{tpl.body}</p>
+                          </div>
+                          {/* Live preview */}
+                          <div className="bg-[#25D366]/5 border border-[#25D366]/20 rounded-2xl p-3">
+                            <p className="text-[10px] text-[#25D366] font-semibold uppercase tracking-wider mb-1.5">
+                              {dir === "rtl" ? "معاينة واتساب" : "WhatsApp Preview"}
+                            </p>
+                            <p className="text-sm whitespace-pre-wrap leading-relaxed text-foreground/90">{preview(tpl.body)}</p>
+                          </div>
+                          {/* Action buttons */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <button
+                              onClick={() => { navigator.clipboard.writeText(preview(tpl.body)); toast.success(t("msgTpl.copied")); }}
+                              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-xl border border-border bg-background hover:bg-muted/60 transition-colors text-muted-foreground"
+                            >
+                              <Copy className="w-3.5 h-3.5" />
+                              {dir === "rtl" ? "نسخ" : "Copy"}
+                            </button>
+                            <button
+                              onClick={() => startEdit(tpl)}
+                              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-xl border border-[#007AFF]/30 bg-[#007AFF]/5 hover:bg-[#007AFF]/10 transition-colors text-[#007AFF]"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                              {dir === "rtl" ? "تعديل" : "Edit"}
+                            </button>
+                            {DEFAULT_TEMPLATES.some((d) => d.name === tpl.name) && (
+                              <button
+                                onClick={() => resetOne(tpl)}
+                                disabled={resetingId === tpl._id}
+                                className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-xl border border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10 transition-colors text-amber-600 disabled:opacity-50"
+                              >
+                                {resetingId === tpl._id ? <IOSSpinner size={12} className="text-amber-600" /> : <RotateCcw className="w-3.5 h-3.5" />}
+                                {dir === "rtl" ? "إعادة تعيين" : "Reset"}
+                              </button>
+                            )}
+                            <button
+                              onClick={() => del(tpl._id)}
+                              className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-xl border border-red-500/30 bg-red-500/5 hover:bg-red-500/10 transition-colors text-red-500 ms-auto"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              {dir === "rtl" ? "حذف" : "Delete"}
+                            </button>
+                          </div>
+                        </div>
+                      </motion.div>
                     )}
-                    <button
-                      onClick={() => del(tpl._id)}
-                      title="حذف"
-                      className="p-1.5 rounded-lg hover:bg-red-500/10 hover:text-red-500 transition-colors text-muted-foreground"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                  </AnimatePresence>
                 </div>
               )}
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </AnimatePresence>
       )}
 
       {/* New template form */}
-      {adding && (
-        <EditorForm
-          name={name} setName={setName}
-          body={body} setBody={setBody}
-          onSave={save} onCancel={cancel}
-          preview={preview(body)} saving={saving}
-        />
-      )}
+      <AnimatePresence>
+        {adding && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.18 }}
+            className="overflow-hidden"
+          >
+            <div className="p-4 bg-[#007AFF]/3">
+              <p className="text-xs font-semibold text-[#007AFF] mb-3">{dir === "rtl" ? "قالب جديد" : "New Template"}</p>
+              <EditorForm
+                name={name} setName={setName}
+                body={body} setBody={setBody}
+                onSave={save} onCancel={cancel}
+                preview={preview(body)} saving={saving}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {!adding && !editId && templates && templates.length > 0 && (
-        <button
-          onClick={startNew}
-          className="flex items-center gap-2 text-sm font-semibold text-[#007AFF] hover:underline"
-        >
-          <Plus className="w-4 h-4" /> {t("msgTpl.addTemplate")}
-        </button>
+      {/* Add button */}
+      {!adding && !editId && templates !== undefined && (
+        <div className="px-4 py-3">
+          <button
+            onClick={startNew}
+            className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-[#007AFF] hover:bg-[#007AFF]/5 py-2.5 rounded-xl transition-colors border border-dashed border-[#007AFF]/30"
+          >
+            <Plus className="w-4 h-4" />
+            {t("msgTpl.addTemplate")}
+          </button>
+        </div>
       )}
     </div>
   );
@@ -271,7 +338,6 @@ function EditorForm({ name, setName, body, setBody, onSave, onCancel, preview, s
   const [mentionFilter, setMentionFilter] = useState("");
   const [mentionIdx, setMentionIdx] = useState(0);
   const [mentionStart, setMentionStart] = useState(-1);
-  // Fixed position for the popup (escapes overflow:hidden parents)
   const [popupPos, setPopupPos] = useState<{ top: number; left: number; width: number } | null>(null);
 
   const variables = useMemo(() => getTemplateVariables(t, dir), [t, dir]);
@@ -281,11 +347,15 @@ function EditorForm({ name, setName, body, setBody, onSave, onCancel, preview, s
     v.key.toLowerCase().includes(mentionFilter.toLowerCase())
   );
 
-  // Recompute popup position whenever the mention opens
   useEffect(() => {
     if (!showMention || !textareaRef.current) { setPopupPos(null); return; }
     const rect = textareaRef.current.getBoundingClientRect();
-    setPopupPos({ top: rect.top - 8, left: rect.left, width: rect.width });
+    const spaceBelow = window.innerHeight - rect.bottom;
+    if (spaceBelow < 220) {
+      setPopupPos({ top: rect.top - 8, left: rect.left, width: rect.width });
+    } else {
+      setPopupPos({ top: rect.bottom + 4, left: rect.left, width: rect.width });
+    }
   }, [showMention]);
 
   const handleBodyChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -329,46 +399,38 @@ function EditorForm({ name, setName, body, setBody, onSave, onCancel, preview, s
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (!showMention || filtered.length === 0) return;
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setMentionIdx((i) => Math.min(i + 1, filtered.length - 1));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setMentionIdx((i) => Math.max(i - 1, 0));
-    } else if (e.key === "Enter" || e.key === "Tab") {
-      e.preventDefault();
-      insertVariable(filtered[mentionIdx]);
-    } else if (e.key === "Escape") {
-      setShowMention(false);
-    }
+    if (e.key === "ArrowDown") { e.preventDefault(); setMentionIdx((i) => Math.min(i + 1, filtered.length - 1)); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); setMentionIdx((i) => Math.max(i - 1, 0)); }
+    else if (e.key === "Enter" || e.key === "Tab") { e.preventDefault(); insertVariable(filtered[mentionIdx]); }
+    else if (e.key === "Escape") { setShowMention(false); }
   }
 
   return (
-    <div className="border border-[#007AFF]/30 bg-[#007AFF]/3 rounded-xl p-4 space-y-3">
+    <div className="space-y-3">
       <input
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder={t("msgTpl.namePlaceholder")}
-        className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007AFF]"
+        className="w-full px-4 py-2.5 text-sm bg-background border border-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] font-semibold"
       />
 
       <div className="relative">
-        <div className="flex items-center gap-1 mb-1.5 text-[10px] text-muted-foreground">
-          <span>{t("msgTpl.typeAtPart1")}</span>
-          <span className="font-mono bg-muted/60 px-1.5 py-0.5 rounded text-[#007AFF] font-bold">@</span>
-          <span>{t("msgTpl.typeAtPart2")}</span>
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <span className="text-[11px] text-muted-foreground">{t("msgTpl.typeAtPart1")}</span>
+          <span className="font-mono bg-[#007AFF]/10 text-[#007AFF] text-[11px] font-bold px-1.5 py-0.5 rounded-md">@</span>
+          <span className="text-[11px] text-muted-foreground">{t("msgTpl.typeAtPart2")}</span>
         </div>
         <textarea
           ref={textareaRef}
           value={body}
           onChange={handleBodyChange}
           onKeyDown={handleKeyDown}
-          rows={3}
+          rows={4}
           placeholder={t("msgTpl.bodyPlaceholder")}
-          className="w-full px-3 py-2 text-sm bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#007AFF] resize-none font-mono"
+          className="w-full px-4 py-3 text-sm bg-background border border-border rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] resize-none leading-relaxed"
         />
 
-        {/* @-mention dropdown — rendered via portal to escape overflow:hidden parents */}
+        {/* @-mention portal */}
         {showMention && filtered.length > 0 && popupPos && typeof window !== "undefined" && createPortal(
           <AnimatePresence>
             <motion.div
@@ -381,22 +443,25 @@ function EditorForm({ name, setName, body, setBody, onSave, onCancel, preview, s
                 position: "fixed",
                 top: popupPos.top,
                 left: popupPos.left,
-                width: popupPos.width,
+                width: Math.max(popupPos.width, 260),
                 transform: "translateY(-100%)",
                 zIndex: 9999,
               }}
-              className="bg-background border border-border rounded-xl shadow-2xl overflow-hidden"
+              className="bg-background border border-border rounded-2xl shadow-2xl overflow-hidden"
             >
+              <div className="px-3 py-2 border-b border-border">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                  {dir === "rtl" ? "اختر متغير" : "Insert variable"}
+                </p>
+              </div>
               {filtered.map((v, i) => (
                 <button
                   key={v.key}
                   onMouseDown={(e) => { e.preventDefault(); insertVariable(v); }}
                   onMouseEnter={() => setMentionIdx(i)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors ${
-                    i === mentionIdx ? "bg-[#007AFF]/10" : "hover:bg-muted/40"
-                  }`}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 text-start transition-colors ${i === mentionIdx ? "bg-[#007AFF]/10" : "hover:bg-muted/40"}`}
                 >
-                  <span className="text-[10px] font-mono font-bold text-[#007AFF] bg-[#007AFF]/10 px-2 py-0.5 rounded-md shrink-0">
+                  <span className="text-[10px] font-mono font-bold text-[#007AFF] bg-[#007AFF]/10 px-2 py-0.5 rounded-lg shrink-0">
                     {v.key}
                   </span>
                   <div className="flex-1 min-w-0">
@@ -411,19 +476,30 @@ function EditorForm({ name, setName, body, setBody, onSave, onCancel, preview, s
         )}
       </div>
 
-      {/* Live preview */}
+      {/* WhatsApp preview */}
       {body && (
-        <div className="text-xs text-muted-foreground bg-muted/40 rounded-lg p-2.5 leading-relaxed">
-          <span className="font-semibold">{t("msgTpl.preview")} </span>{preview}
+        <div className="bg-[#25D366]/5 border border-[#25D366]/20 rounded-2xl p-3">
+          <p className="text-[10px] text-[#25D366] font-semibold uppercase tracking-wider mb-1.5">
+            {dir === "rtl" ? "معاينة واتساب" : "WhatsApp Preview"}
+          </p>
+          <p className="text-sm whitespace-pre-wrap leading-relaxed">{preview}</p>
         </div>
       )}
 
-      <div className="flex gap-2">
-        <button onClick={onCancel} className="flex items-center gap-1 text-xs border border-border px-3 py-1.5 rounded-lg hover:bg-muted/40 transition-colors">
-          <X className="w-3 h-3" /> {t("common.cancel")}
+      <div className="flex gap-2 pt-1">
+        <button
+          onClick={onCancel}
+          className="flex items-center gap-1.5 text-sm font-medium px-4 py-2.5 rounded-2xl border border-border hover:bg-muted/60 transition-colors flex-1 justify-center"
+        >
+          <X className="w-3.5 h-3.5" /> {t("common.cancel")}
         </button>
-        <button onClick={onSave} disabled={saving} className="flex items-center gap-1 text-xs bg-[#007AFF] text-white px-3 py-1.5 rounded-lg hover:bg-[#0062cc] transition-colors disabled:opacity-60">
-          {saving ? <IOSSpinner size={12} className="text-white" /> : <Check className="w-3 h-3" />} {t("common.save")}
+        <button
+          onClick={onSave}
+          disabled={saving}
+          className="flex items-center gap-1.5 text-sm font-semibold px-4 py-2.5 rounded-2xl bg-[#007AFF] text-white hover:bg-[#0062cc] transition-colors disabled:opacity-60 flex-1 justify-center shadow-sm"
+        >
+          {saving ? <IOSSpinner size={14} className="text-white" /> : <Check className="w-3.5 h-3.5" />}
+          {t("common.save")}
         </button>
       </div>
     </div>

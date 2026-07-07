@@ -52,6 +52,20 @@ export const listPatients = query({
   },
 });
 
+// Lightweight count — no installment join, no N+1
+export const countPatients = query({
+  args: { clerkId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await getAuthUser(ctx, args.clerkId);
+    if (!user) return 0;
+    const rows = await ctx.db
+      .query("patients")
+      .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+      .take(5000);
+    return rows.length;
+  },
+});
+
 export const getPatient = query({
   args: { patientId: v.id("patients"), clerkId: v.string() },
   handler: async (ctx, args) => {
