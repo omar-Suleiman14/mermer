@@ -6,7 +6,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { PageHeader } from "@/components/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, UserPlus, Phone, Clock, ChevronRight } from "lucide-react";
+import { Search, UserPlus, Phone, Clock, ChevronRight, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 const PatientIntakeDrawer = dynamic(() => import("@/components/patient-intake-drawer").then(m => m.PatientIntakeDrawer));
@@ -63,17 +63,20 @@ export default function PatientsPage() {
             </div>
             
             {patientTypeOptions && patientTypeOptions.length > 0 && (
-              <select
-                value={patientTypeFilter || ""}
-                onChange={(e) => setPatientTypeFilter(e.target.value || undefined)}
-                dir={dir === "rtl" ? "rtl" : "ltr"}
-                className={`w-32 sm:w-48 py-3 text-sm bg-white dark:bg-[#1c1c1a] border border-black/5 dark:border-white/5 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent ${dir === "rtl" ? "pr-3 pl-8" : "pl-3 pr-8"}`}
-              >
-                <option value="">{dir === "rtl" ? "كل الأنواع" : "All Types"}</option>
-                {patientTypeOptions.map((type) => (
-                  <option key={type} value={type}>{type}</option>
-                ))}
-              </select>
+              <div className="relative">
+                <select
+                  value={patientTypeFilter || ""}
+                  onChange={(e) => setPatientTypeFilter(e.target.value || undefined)}
+                  dir={dir === "rtl" ? "rtl" : "ltr"}
+                  className={`appearance-none w-32 sm:w-48 py-3 text-sm bg-white dark:bg-[#1c1c1a] border border-black/5 dark:border-white/5 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent ${dir === "rtl" ? "pr-3 pl-7" : "pl-3 pr-7"}`}
+                >
+                  <option value="">{dir === "rtl" ? "كل الأنواع" : "All Types"}</option>
+                  {patientTypeOptions.map((type) => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+                <ChevronDown className={`pointer-events-none absolute top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground ${dir === "rtl" ? "left-2" : "right-2"}`} />
+              </div>
             )}
           </div>
 
@@ -142,7 +145,16 @@ export default function PatientsPage() {
                       </div>
                       <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{patient.age}y</span>
-                        <span className="flex items-center gap-1 truncate"><Phone className="w-3 h-3" />{patient.phone}</span>
+                        <span className="flex items-center gap-1 min-w-0">
+                          <Phone className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{patient.phone}</span>
+                          {patient.additionalPhones?.[0] && (
+                            <>
+                              <span className="text-muted-foreground/40 shrink-0">·</span>
+                              <span className="truncate text-muted-foreground/50 text-[10px]">{patient.additionalPhones[0]}</span>
+                            </>
+                          )}
+                        </span>
                       </div>
                       {patient.chronicConditions.length > 0 && (
                         <div className="flex gap-1 mt-1.5 flex-wrap">

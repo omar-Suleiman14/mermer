@@ -12,7 +12,7 @@ import {
   CalendarIcon, Filter, Activity, History, Globe, 
   CheckCircle2, Clock, XCircle, Users, 
   Trash2, PlusCircle, Edit3, FileEdit, UserPlus, ArrowRightLeft,
-  MessageSquare
+  MessageSquare, ChevronDown
 } from "lucide-react";
 
 type UnifiedLog = {
@@ -239,33 +239,39 @@ export default function HistoryPage() {
         <div className="bg-card border border-border rounded-xl p-4 mb-6 flex flex-col sm:flex-row gap-4 items-center justify-between shadow-sm flex-wrap">
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              dir={lang === "ar" ? "rtl" : "ltr"}
-              className={`bg-background border border-border rounded-lg py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#007AFF] transition-shadow w-full sm:w-auto ${lang === "ar" ? "pr-3 pl-8" : "pl-3 pr-8"}`}
-            >
-              <option value="all">{lang === "ar" ? "كل الأحداث" : "All Events"}</option>
-              <option value="visit">{lang === "ar" ? "الزيارات والحجوزات" : "Visits & Bookings"}</option>
-              <option value="audit">{lang === "ar" ? "إجراءات النظام" : "System Actions"}</option>
-              <option value="message">{lang === "ar" ? "رسائل واتساب" : "WhatsApp Messages"}</option>
-            </select>
+            <div className="relative">
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                dir={lang === "ar" ? "rtl" : "ltr"}
+                className={`appearance-none bg-background border border-border rounded-lg py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#007AFF] transition-shadow w-full sm:w-auto ${lang === "ar" ? "pr-3 pl-6" : "pl-3 pr-6"}`}
+              >
+                <option value="all">{lang === "ar" ? "كل الأحداث" : "All Events"}</option>
+                <option value="visit">{lang === "ar" ? "الزيارات والحجوزات" : "Visits & Bookings"}</option>
+                <option value="audit">{lang === "ar" ? "إجراءات النظام" : "System Actions"}</option>
+                <option value="message">{lang === "ar" ? "رسائل واتساب" : "WhatsApp Messages"}</option>
+              </select>
+              <ChevronDown className={`pointer-events-none absolute top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground ${lang === "ar" ? "left-1.5" : "right-1.5"}`} />
+            </div>
           </div>
           
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <Users className="w-4 h-4 text-muted-foreground shrink-0" />
-            <select
-              value={staffFilter}
-              onChange={(e) => setStaffFilter(e.target.value)}
-              dir={lang === "ar" ? "rtl" : "ltr"}
-              className={`bg-background border border-border rounded-lg py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#007AFF] transition-shadow w-full sm:w-auto ${lang === "ar" ? "pr-3 pl-8" : "pl-3 pr-8"}`}
-            >
-              <option value="all">{lang === "ar" ? "كل الموظفين" : "All Staff"}</option>
-              <option value="Online Booking">{lang === "ar" ? "حجز عبر الإنترنت" : "Online Bookings"}</option>
-              {staffMembers.map(staff => (
-                <option key={staff} value={staff}>{staff}</option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                value={staffFilter}
+                onChange={(e) => setStaffFilter(e.target.value)}
+                dir={lang === "ar" ? "rtl" : "ltr"}
+                className={`appearance-none bg-background border border-border rounded-lg py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#007AFF] transition-shadow w-full sm:w-auto ${lang === "ar" ? "pr-3 pl-6" : "pl-3 pr-6"}`}
+              >
+                <option value="all">{lang === "ar" ? "كل الموظفين" : "All Staff"}</option>
+                <option value="Online Booking">{lang === "ar" ? "حجز عبر الإنترنت" : "Online Bookings"}</option>
+                {staffMembers.map(staff => (
+                  <option key={staff} value={staff}>{staff}</option>
+                ))}
+              </select>
+              <ChevronDown className={`pointer-events-none absolute top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground ${lang === "ar" ? "left-1.5" : "right-1.5"}`} />
+            </div>
           </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto">
