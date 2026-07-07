@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/page-header";
 import { useCurrentUser } from "@/components/providers/user-provider";
 import { useI18n } from "@/lib/i18n/client";
 import { IOSSpinner } from "@/components/ui/spinner";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { 
   CalendarIcon, Filter, Activity, History, Globe, 
@@ -239,39 +240,62 @@ export default function HistoryPage() {
         <div className="bg-card border border-border rounded-xl p-4 mb-6 flex flex-col sm:flex-row gap-4 items-center justify-between shadow-sm flex-wrap">
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <Filter className="w-4 h-4 text-muted-foreground shrink-0" />
-            <div className="relative">
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                dir={lang === "ar" ? "rtl" : "ltr"}
-                className={`appearance-none bg-background border border-border rounded-lg py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#007AFF] transition-shadow w-full sm:w-auto ${lang === "ar" ? "pr-3 pl-6" : "pl-3 pr-6"}`}
-              >
-                <option value="all">{lang === "ar" ? "كل الأحداث" : "All Events"}</option>
-                <option value="visit">{lang === "ar" ? "الزيارات والحجوزات" : "Visits & Bookings"}</option>
-                <option value="audit">{lang === "ar" ? "إجراءات النظام" : "System Actions"}</option>
-                <option value="message">{lang === "ar" ? "رسائل واتساب" : "WhatsApp Messages"}</option>
-              </select>
-              <ChevronDown className={`pointer-events-none absolute top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground ${lang === "ar" ? "left-1.5" : "right-1.5"}`} />
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center justify-between gap-2.5 px-3.5 py-1.5 text-sm bg-background border border-border rounded-lg shadow-sm hover:border-[#007AFF]/40 focus:outline-none focus:ring-2 focus:ring-[#007AFF] transition-all w-full sm:w-auto min-w-[150px]">
+                  <span className="truncate">
+                    {typeFilter === "all" ? (lang === "ar" ? "كل الأحداث" : "All Events") :
+                     typeFilter === "visit" ? (lang === "ar" ? "الزيارات والحجوزات" : "Visits & Bookings") :
+                     typeFilter === "audit" ? (lang === "ar" ? "إجراءات النظام" : "System Actions") :
+                     (lang === "ar" ? "رسائل واتساب" : "WhatsApp Messages")}
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align={lang === "ar" ? "start" : "end"} className="w-52 rounded-xl p-1.5 shadow-xl">
+                <DropdownMenuItem onClick={() => setTypeFilter("all")} className="rounded-lg cursor-pointer py-2 px-3 text-sm">
+                  {lang === "ar" ? "كل الأحداث" : "All Events"}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTypeFilter("visit")} className="rounded-lg cursor-pointer py-2 px-3 text-sm">
+                  {lang === "ar" ? "الزيارات والحجوزات" : "Visits & Bookings"}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTypeFilter("audit")} className="rounded-lg cursor-pointer py-2 px-3 text-sm">
+                  {lang === "ar" ? "إجراءات النظام" : "System Actions"}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setTypeFilter("message")} className="rounded-lg cursor-pointer py-2 px-3 text-sm">
+                  {lang === "ar" ? "رسائل واتساب" : "WhatsApp Messages"}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
           
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <Users className="w-4 h-4 text-muted-foreground shrink-0" />
-            <div className="relative">
-              <select
-                value={staffFilter}
-                onChange={(e) => setStaffFilter(e.target.value)}
-                dir={lang === "ar" ? "rtl" : "ltr"}
-                className={`appearance-none bg-background border border-border rounded-lg py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#007AFF] transition-shadow w-full sm:w-auto ${lang === "ar" ? "pr-3 pl-6" : "pl-3 pr-6"}`}
-              >
-                <option value="all">{lang === "ar" ? "كل الموظفين" : "All Staff"}</option>
-                <option value="Online Booking">{lang === "ar" ? "حجز عبر الإنترنت" : "Online Bookings"}</option>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center justify-between gap-2.5 px-3.5 py-1.5 text-sm bg-background border border-border rounded-lg shadow-sm hover:border-[#007AFF]/40 focus:outline-none focus:ring-2 focus:ring-[#007AFF] transition-all w-full sm:w-auto min-w-[150px]">
+                  <span className="truncate">
+                    {staffFilter === "all" ? (lang === "ar" ? "كل الموظفين" : "All Staff") :
+                     staffFilter === "Online Booking" ? (lang === "ar" ? "حجز عبر الإنترنت" : "Online Bookings") :
+                     staffFilter}
+                  </span>
+                  <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align={lang === "ar" ? "start" : "end"} className="w-52 rounded-xl p-1.5 shadow-xl max-h-60 overflow-y-auto">
+                <DropdownMenuItem onClick={() => setStaffFilter("all")} className="rounded-lg cursor-pointer py-2 px-3 text-sm">
+                  {lang === "ar" ? "كل الموظفين" : "All Staff"}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStaffFilter("Online Booking")} className="rounded-lg cursor-pointer py-2 px-3 text-sm">
+                  {lang === "ar" ? "حجز عبر الإنترنت" : "Online Bookings"}
+                </DropdownMenuItem>
                 {staffMembers.map(staff => (
-                  <option key={staff} value={staff}>{staff}</option>
+                  <DropdownMenuItem key={staff} onClick={() => setStaffFilter(staff)} className="rounded-lg cursor-pointer py-2 px-3 text-sm">
+                    {staff}
+                  </DropdownMenuItem>
                 ))}
-              </select>
-              <ChevronDown className={`pointer-events-none absolute top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground ${lang === "ar" ? "left-1.5" : "right-1.5"}`} />
-            </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto">

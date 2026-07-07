@@ -11,8 +11,8 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 const PatientIntakeDrawer = dynamic(() => import("@/components/patient-intake-drawer").then(m => m.PatientIntakeDrawer));
 import { useI18n } from "@/lib/i18n/client";
-import { ImportExportSection } from "@/components/import-export-section";
 import { IOSSpinner } from "@/components/ui/spinner";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 export default function PatientsPage() {
   const { user } = useUser();
@@ -63,20 +63,24 @@ export default function PatientsPage() {
             </div>
             
             {patientTypeOptions && patientTypeOptions.length > 0 && (
-              <div className="relative">
-                <select
-                  value={patientTypeFilter || ""}
-                  onChange={(e) => setPatientTypeFilter(e.target.value || undefined)}
-                  dir={dir === "rtl" ? "rtl" : "ltr"}
-                  className={`appearance-none w-32 sm:w-48 py-3 text-sm bg-white dark:bg-[#1c1c1a] border border-black/5 dark:border-white/5 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-[#007AFF] focus:border-transparent ${dir === "rtl" ? "pr-3 pl-7" : "pl-3 pr-7"}`}
-                >
-                  <option value="">{dir === "rtl" ? "كل الأنواع" : "All Types"}</option>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center justify-between gap-2.5 px-4 py-3 text-sm bg-white dark:bg-[#1c1c1a] border border-black/5 dark:border-white/5 rounded-2xl shadow-sm hover:border-[#007AFF]/30 focus:outline-none focus:ring-2 focus:ring-[#007AFF] transition-all min-w-[140px] max-w-[200px]">
+                    <span className="truncate">{patientTypeFilter || (dir === "rtl" ? "كل الأنواع" : "All Types")}</span>
+                    <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align={dir === "rtl" ? "start" : "end"} className="w-48 rounded-2xl p-1.5 bg-white dark:bg-[#1c1c1a] border border-black/5 dark:border-white/5 shadow-xl">
+                  <DropdownMenuItem onClick={() => setPatientTypeFilter(undefined)} className="rounded-xl cursor-pointer py-2 px-3 text-sm font-medium">
+                    {dir === "rtl" ? "كل الأنواع" : "All Types"}
+                  </DropdownMenuItem>
                   {patientTypeOptions.map((type) => (
-                    <option key={type} value={type}>{type}</option>
+                    <DropdownMenuItem key={type} onClick={() => setPatientTypeFilter(type)} className="rounded-xl cursor-pointer py-2 px-3 text-sm">
+                      {type}
+                    </DropdownMenuItem>
                   ))}
-                </select>
-                <ChevronDown className={`pointer-events-none absolute top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground ${dir === "rtl" ? "left-2" : "right-2"}`} />
-              </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
 
@@ -143,18 +147,18 @@ export default function PatientsPage() {
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
                         <span className="flex items-center gap-1"><Clock className="w-3 h-3" />{patient.age}y</span>
                         <span className="flex items-center gap-1 min-w-0">
                           <Phone className="w-3 h-3 shrink-0" />
                           <span className="truncate">{patient.phone}</span>
-                          {patient.additionalPhones?.[0] && (
-                            <>
-                              <span className="text-muted-foreground/40 shrink-0">·</span>
-                              <span className="truncate text-muted-foreground/50 text-[10px]">{patient.additionalPhones[0]}</span>
-                            </>
-                          )}
                         </span>
+                        {patient.additionalPhones?.[0] && (
+                          <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-[#8E8E93]/10 text-[#8E8E93] dark:bg-white/10 dark:text-gray-300 px-2 py-0.5 rounded-md border border-[#8E8E93]/20">
+                            <Phone className="w-2.5 h-2.5 shrink-0" />
+                            <span>{dir === "rtl" ? "ثانوي:" : "Secondary:"} {patient.additionalPhones[0]}</span>
+                          </span>
+                        )}
                       </div>
                       {patient.chronicConditions.length > 0 && (
                         <div className="flex gap-1 mt-1.5 flex-wrap">

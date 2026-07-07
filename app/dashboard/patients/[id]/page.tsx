@@ -186,6 +186,16 @@ export default function PatientProfilePage() {
                   <Phone className="w-3.5 h-3.5" />
                   {patient.phone}
                 </a>
+                {patient.additionalPhones?.map((phone: string, idx: number) => (
+                  <a
+                    key={idx}
+                    href={`tel:${phone}`}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold bg-[#8E8E93]/10 text-[#8E8E93] dark:bg-white/10 dark:text-gray-300 px-2 py-0.5 rounded-md border border-[#8E8E93]/20 hover:bg-[#8E8E93]/20 transition-colors"
+                  >
+                    <Phone className="w-3 h-3" />
+                    <span>{lang === "ar" ? "ثانوي:" : "Secondary:"} {phone}</span>
+                  </a>
+                ))}
               </div>
               {patient.chronicConditions.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-3">
