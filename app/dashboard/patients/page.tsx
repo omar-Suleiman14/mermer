@@ -11,6 +11,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 const PatientIntakeDrawer = dynamic(() => import("@/components/patient-intake-drawer").then(m => m.PatientIntakeDrawer));
 import { useI18n } from "@/lib/i18n/client";
+import { ImportExportSection } from "@/components/import-export-section";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
