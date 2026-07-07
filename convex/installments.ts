@@ -35,9 +35,10 @@ export const listinstallments = query({
         
         let nextVisitId: string | undefined;
         if (c.nextVisitDate) {
+          const nextDate = c.nextVisitDate;
           const nextVisit = await ctx.db
             .query("visits")
-            .withIndex("by_doctor_date", (q) => q.eq("doctorId", user._id).eq("date", c.nextVisitDate))
+            .withIndex("by_doctor_date", (q) => q.eq("doctorId", user._id).eq("date", nextDate))
             .filter((q) => q.and(
               q.eq(q.field("installmentId"), c._id),
               q.neq(q.field("status"), "cancelled"),
