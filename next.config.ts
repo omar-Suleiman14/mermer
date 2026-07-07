@@ -173,6 +173,10 @@ const nextConfig: NextConfig = {
     ],
     // Preload linked pages when they enter viewport
     optimisticClientCache: true,
+    staleTimes: {
+      dynamic: 30, // seconds
+      static: 180, // seconds
+    },
   },
   compiler: {
     removeConsole: isProduction ? { exclude: ["error"] } : false,

@@ -90,13 +90,26 @@ function CreatableCombobox({
   const updatePosition = useCallback(() => {
     if (!triggerRef.current) return;
     const rect = triggerRef.current.getBoundingClientRect();
-    setDropdownStyle({
-      position: "fixed",
-      top: rect.bottom + 4,
-      left: rect.left,
-      width: rect.width,
-      zIndex: 9999,
-    });
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const dropdownHeight = 200; // max-h-44 is ~176px + padding
+    
+    if (spaceBelow < dropdownHeight && rect.top > spaceBelow) {
+      setDropdownStyle({
+        position: "fixed",
+        bottom: window.innerHeight - rect.top + 4,
+        left: rect.left,
+        width: rect.width,
+        zIndex: 9999,
+      });
+    } else {
+      setDropdownStyle({
+        position: "fixed",
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+        zIndex: 9999,
+      });
+    }
   }, []);
 
   // Close on outside click
@@ -987,9 +1000,16 @@ export function VisitCompletionModal({
                       <div className="border border-border rounded-2xl p-4 flex items-center justify-between">
                         <div>
                           <p className="text-sm font-semibold">{t("visit.payment")}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">
+                          <p className="text-xs text-muted-foreground mt-0.5 mb-1.5">
                             {isPaid ? t("visit.paidNote") : t("visit.unpaidNote")}
                           </p>
+                          {installmentData && installmentData.numVisits && (
+                            <div className="flex items-center gap-2 text-[10px] font-medium bg-muted/40 w-fit px-2 py-1 rounded-md border border-border">
+                              <span className="text-[#007AFF]">{installmentData.completedVisits ?? 0}/{installmentData.numVisits} {dir === "rtl" ? "زيارة مكتملة" : "completed"}</span>
+                              <span className="text-muted-foreground">•</span>
+                              <span className="text-[#34c759]">{installmentData.paidVisits ?? 0} {dir === "rtl" ? "مدفوعة" : "paid"}</span>
+                            </div>
+                          )}
                         </div>
                         <Switch
                           checked={isPaid}

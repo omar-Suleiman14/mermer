@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { toWesternDigits } from "@/lib/arabicNumerals";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -344,7 +345,7 @@ export function PublishProfileSection({ clerkId, currentUser, profilePhotoUrl }:
             <div>
               <label className="text-xs font-medium text-muted-foreground block mb-1.5">Consultation Fee (EGP) *</label>
               <input
-                type="number" value={fee} onChange={(e) => setFee(e.target.value)}
+                type="text" inputMode="numeric" pattern="[0-9٠-٩]*" value={fee} onChange={(e) => setFee(toWesternDigits(e.target.value))}
                 placeholder="350"
                 className="w-full px-3 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF]"
               />

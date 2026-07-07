@@ -441,7 +441,7 @@ export default async function ForDoctorsLandingPage() {
                     <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center font-bold text-primary">د</div>
                     <div>
                       <div className="font-semibold text-slate-900 dark:text-white text-sm">Dashboard</div>
-                      <div className="text-xs text-slate-500 dark:text-zinc-400">Dr. Sarah Mansour</div>
+                      <div className="text-xs text-slate-500 dark:text-zinc-400">Dr.Issa</div>
                     </div>
                   </div>
                 </div>
@@ -667,11 +667,10 @@ export default async function ForDoctorsLandingPage() {
                         className={isHighlight ? "md:col-span-2" : ""}
                       >
                         <div
-                          className={`relative h-full rounded-2xl border p-6 flex flex-col gap-4 transition-all hover:-translate-y-0.5 hover:shadow-lg ${
-                            isHighlight
+                          className={`relative h-full rounded-2xl border p-6 flex flex-col gap-4 transition-all hover:-translate-y-0.5 hover:shadow-lg ${isHighlight
                               ? "bg-slate-900 dark:bg-zinc-950 border-slate-800 dark:border-white/10"
                               : `${c.bg} ${c.border}`
-                          }`}
+                            }`}
                         >
                           {badge && (
                             <span className="absolute top-4 end-4 text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full bg-green-500/15 text-green-600 dark:text-green-400 border border-green-500/20">
@@ -680,9 +679,8 @@ export default async function ForDoctorsLandingPage() {
                           )}
 
                           <div
-                            className={`w-11 h-11 rounded-xl border flex items-center justify-center ${
-                              isHighlight ? "bg-white/10 border-white/10" : `${c.iconBg}`
-                            }`}
+                            className={`w-11 h-11 rounded-xl border flex items-center justify-center ${isHighlight ? "bg-white/10 border-white/10" : `${c.iconBg}`
+                              }`}
                           >
                             <Icon className={`w-5 h-5 ${isHighlight ? "text-white" : c.text}`} />
                           </div>

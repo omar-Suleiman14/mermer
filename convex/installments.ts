@@ -35,11 +35,15 @@ export const listinstallments = query({
         
         let nextVisitId: string | undefined;
         if (c.nextVisitDate) {
-          const upcomingVisits = await ctx.db
+          const nextVisit = await ctx.db
             .query("visits")
-            .withIndex("by_installment", (q) => q.eq("installmentId", c._id))
-            .collect();
-          const nextVisit = upcomingVisits.find(v => v.date === c.nextVisitDate && v.status !== "cancelled" && v.status !== "completed");
+            .withIndex("by_doctor_date", (q) => q.eq("doctorId", user._id).eq("date", c.nextVisitDate))
+            .filter((q) => q.and(
+              q.eq(q.field("installmentId"), c._id),
+              q.neq(q.field("status"), "cancelled"),
+              q.neq(q.field("status"), "completed")
+            ))
+            .first();
           if (nextVisit) nextVisitId = nextVisit._id;
         }
 

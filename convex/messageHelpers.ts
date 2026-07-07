@@ -107,13 +107,12 @@ export function msgBookingConfirmed(args: BookingArgs): string {
   return (
     RLM +
     `${clinicHeader(args.clinicName, args.doctorName)}\n\n` +
-    `مرحباً ${args.patientName}،\n` +
-    `تم تأكيد موعدك بنجاح!\n` +
+    `${args.patientName}، الحجز اتأكد.\n` +
     `التاريخ: ${dateStr}\n` +
     `الوقت: ${timeStr}` +
     `${slotLine}` +
     `${addr}\n\n` +
-    `نراك قريباً.`
+    `هنشوفك قريب.`
   );
 }
 
@@ -130,7 +129,7 @@ interface CancellationArgs {
  */
 export function msgAppointmentCancelled(args: CancellationArgs): string {
   const dateStr = fmtDateAr(args.date);
-  return RLM + `${clinicHeader(args.clinicName, args.doctorName)}\n\nمرحباً ${args.patientName}،\nنعتذر عن إلغاء موعدك بتاريخ ${dateStr}.\nيسعدنا إعادة الحجز عند اتصالك بنا.`;
+  return RLM + `${clinicHeader(args.clinicName, args.doctorName)}\n\n${args.patientName}، بنعتذر إن موعدك بتاريخ ${dateStr} اتلغى.\nلو حبيت تحجز تاني، ابعتلنا أو اتصل بينا.`;
 }
 
 interface RescheduleArgs {
@@ -149,9 +148,9 @@ interface RescheduleArgs {
 export function msgRescheduled(args: RescheduleArgs): string {
   const dateStr = fmtDateAr(args.newDate);
   const timeStr = fmtTimeAr(args.newDate);
-  const slotLine = args.slotNumber ? `\nرقم الحجز الجديد هو ${args.slotNumber}.` : "";
+  const slotLine = args.slotNumber ? `\nرقم الحجز الجديد: ${args.slotNumber}.` : "";
   const addr = addressLine(args.clinicAddress, args.clinicAddressLink);
-  return RLM + `${clinicHeader(args.clinicName, args.doctorName)}\n\nمرحباً ${args.patientName}،\nتم تعديل موعدك ليصبح بتاريخ ${dateStr} الساعة ${timeStr}.${slotLine}${addr}\n\nنراك قريباً.`;
+  return RLM + `${clinicHeader(args.clinicName, args.doctorName)}\n\n${args.patientName}، اتغير موعدك لـ ${dateStr} الساعة ${timeStr}.${slotLine}${addr}\n\nهنشوفك قريب.`;
 }
 
 interface DayCancelledArgs {
@@ -166,7 +165,7 @@ interface DayCancelledArgs {
  */
 export function msgDayCancelled(args: DayCancelledArgs): string {
   const dateStr = fmtDateAr(args.date);
-  return RLM + `${clinicHeader(args.clinicName, args.doctorName)}\n\nمرحباً ${args.patientName}،\nنعتذر عن إلغاء العيادة بتاريخ ${dateStr} لظروف طارئة.\nسيتم التواصل معك لتحديد موعد بديل. شكراً لتفهمك.`;
+  return RLM + `${clinicHeader(args.clinicName, args.doctorName)}\n\n${args.patientName}، بنعتذر إن العيادة هتكون مغلوقة بتاريخ ${dateStr} لظروف طارئة.\nهنتواصل معاك لتحديد موعد بديل. شكراً لتفهمك.`;
 }
 
 interface ReminderArgs {
@@ -185,7 +184,7 @@ interface ReminderArgs {
 export function msgReminder(args: ReminderArgs): string {
   const timeStr = fmtTimeAr(args.date);
   const addr = addressLine(args.clinicAddress, args.clinicAddressLink);
-  return RLM + `${clinicHeader(args.clinicName, args.doctorName)}\n\nتذكير بموعدك\nمرحباً ${args.patientName}،\nموعدك اليوم الساعة ${timeStr}.${addr}\n\nنتمنى لك الشفاء العاجل.`;
+  return RLM + `${clinicHeader(args.clinicName, args.doctorName)}\n\nتذكير بموعدك\n${args.patientName}، موعدك النهارده الساعة ${timeStr}.${addr}\n\nنتمنالك الشفاء.`;
 }
 
 interface MissedArgs {
@@ -200,7 +199,7 @@ interface MissedArgs {
  */
 export function msgMissed(args: MissedArgs): string {
   const dateStr = fmtDateAr(args.date);
-  return RLM + `${clinicHeader(args.clinicName, args.doctorName)}\n\nمرحباً ${args.patientName}،\nيبدو أنك لم تحضر موعدك بتاريخ ${dateStr}.\nنتمنى أن تكون بخير. يسعدنا إعادة الحجز عند اتصالك بنا.`;
+  return RLM + `${clinicHeader(args.clinicName, args.doctorName)}\n\n${args.patientName}، يبدو إنك ما جيتش في موعدك بتاريخ ${dateStr}.\nنتمنى تكون بخير. لو حبيت تحجز تاني، ابعتلنا.`;
 }
 
 interface InstallmentArgs {
@@ -220,9 +219,9 @@ interface InstallmentArgs {
 export function msgInstallmentCreated(args: InstallmentArgs): string {
   const dateStr = fmtDateAr(args.firstDate);
   const timeStr = fmtTimeAr(args.firstDate);
-  const slotLine = args.slotNumber ? `\nرقم الحجز هو ${args.slotNumber}.` : "";
+  const slotLine = args.slotNumber ? `\nرقم الحجز: ${args.slotNumber}.` : "";
   const addr = addressLine(args.clinicAddress, args.clinicAddressLink);
-  return RLM + `${clinicHeader(args.clinicName, args.doctorName)}\n\nمرحباً ${args.patientName}،\nتم إنشاء خطة تقسيط علاجية خاصة بك.\nموعدك الأول بتاريخ ${dateStr} الساعة ${timeStr}.${slotLine}${addr}\n\nنراك قريباً.`;
+  return RLM + `${clinicHeader(args.clinicName, args.doctorName)}\n\n${args.patientName}، اتعمل ليك خطة علاج بالتقسيط.\nأول موعد بتاريخ ${dateStr} الساعة ${timeStr}.${slotLine}${addr}\n\nهنشوفك قريب.`;
 }
 
 /**
@@ -239,7 +238,7 @@ export function msgYourTurn(patientName: string, clinicName?: string, doctorName
   const header = (clinicName || doctorName)
     ? `${clinicHeader(clinicName || "", doctorName || "")}\n\n`
     : "";
-  return RLM + `${header}مرحباً ${patientName}،\nدورك القادم الآن. يرجى التوجه إلى العيادة في أقرب وقت.`;
+  return RLM + `${header}${patientName}، دورك وصل دلوقتي. تعال للعيادة في أقرب وقت.`;
 }
 
 interface PastDueInstallmentArgs {

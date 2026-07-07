@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
+import { toWesternDigits } from "@/lib/arabicNumerals";
 import { createPortal } from "react-dom";
 import { useAction, useQuery } from "convex/react";
 import { Loader2, CheckCircle2, CalendarDays, X, MessageSquare } from "lucide-react";
@@ -220,9 +221,11 @@ export function BookingForm({ doctor }: BookingFormProps) {
             {dir === "rtl" ? "العمر" : "Age"}
           </label>
           <input
-            type="number"
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9٠-٩]*"
             value={age}
-            onChange={(e) => setAge(e.target.value)}
+            onChange={(e) => setAge(toWesternDigits(e.target.value))}
             className="w-full h-12 px-4 rounded-xl border border-border bg-background outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-sm text-left"
             placeholder="30"
             dir="ltr"

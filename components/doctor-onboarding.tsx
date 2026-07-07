@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { toWesternDigits } from "@/lib/arabicNumerals";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -395,10 +396,11 @@ export function DoctorOnboarding({ clerkId, defaultName, onComplete }: DoctorOnb
                 </label>
                 <div className="relative flex items-center">
                   <input
-                    type="number"
-                    min="0"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9٠-٩]*"
                     value={feePerVisit}
-                    onChange={(e) => setFeePerVisit(e.target.value)}
+                    onChange={(e) => setFeePerVisit(toWesternDigits(e.target.value))}
                     placeholder="350"
                     className={`${inputClass} pe-12`}
                   />

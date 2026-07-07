@@ -13,15 +13,16 @@ import { createPortal } from "react-dom";
 // ── Default templates — single source of truth for seeding & resetting ────────
 
 export const DEFAULT_TEMPLATES = [
-  { name: "الدور القادم",    body: "مرحباً {patient_name}\nدورك القادم الآن. يرجى التوجه إلى العيادة في أقرب وقت." },
-  { name: "تذكير بالموعد",  body: "تذكير بموعدك\nمرحباً {patient_name}، موعدك اليوم الساعة {time}.\n{clinic_address}\nنتمنى لك الشفاء العاجل." },
-  { name: "موعد فائت",      body: "مرحباً {patient_name}\nيبدو أنك لم تحضر موعدك بتاريخ {date}.\nنتمنى أن تكون بخير. يسعدنا إعادة الحجز عند اتصالك بنا." },
-  { name: "تأكيد حجز",      body: "مرحباً {patient_name}\nتم تأكيد حجزك بتاريخ {date} الساعة {time}.\nنراك قريباً." },
-  { name: "تعديل الموعد",   body: "مرحباً {patient_name}\nتم تعديل موعدك ليصبح بتاريخ {date} الساعة {time}.\nنراك قريباً." },
-  { name: "إلغاء الموعد",   body: "مرحباً {patient_name}\nنعتذر عن إلغاء موعدك بتاريخ {date}.\nيسعدنا إعادة الحجز عند اتصالك بنا." },
-  { name: "خطة علاج",       body: "مرحباً {patient_name}\nتم إنشاء خطة تقسيط علاجية خاصة بك.\nموعدك الأول بتاريخ {date} الساعة {time}.\nنراك قريباً." },
-  { name: "قسط متأخر",      body: "مرحباً {patient_name}\nنود تذكيركم بوجود قسط متأخر بقيمة {amount} مستحق الدفع بتاريخ {date}.\nنتمنى لكم دوام الصحة والعافية." },
+  { name: "الدور القادم",    body: "{patient_name}، دورك وصل دلوقتي. تعال للعيادة في أقرب وقت." },
+  { name: "تذكير بالموعد",  body: "تذكير بموعدك\n{patient_name}، موعدك النهارده الساعة {time}.\n{clinic_address}\nنتمنالك الشفاء." },
+  { name: "موعد فائت",      body: "{patient_name}، يبدو إنك ما جيتش في موعدك بتاريخ {date}.\nنتمنى تكون بخير. لو حبيت تحجز تاني، ابعتلنا." },
+  { name: "تأكيد حجز",      body: "{patient_name}، الحجز اتأكد.\nالتاريخ: {date}\nالوقت: {time}\nهنشوفك قريب." },
+  { name: "تعديل الموعد",   body: "{patient_name}، اتغير موعدك لـ {date} الساعة {time}.\nهنشوفك قريب." },
+  { name: "إلغاء الموعد",   body: "{patient_name}، بنعتذر إن موعدك بتاريخ {date} اتلغى.\nلو حبيت تحجز تاني، ابعتلنا أو اتصل بينا." },
+  { name: "خطة علاج",       body: "{patient_name}، اتعمل ليك خطة علاج بالتقسيط.\nأول موعد بتاريخ {date} الساعة {time}.\nهنشوفك قريب." },
+  { name: "قسط متأخر",      body: "{patient_name}، عايزين نذكرك إن فيه قسط بقيمة {amount} جنيه متأخر من تاريخ {date}.\nنتمنالك دوام الصحة." },
 ];
+
 
 function getTemplateVariables(t: (key: string) => string, dir: string) {
   return [

@@ -9,6 +9,14 @@ http.route({
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     try {
+      const secret = request.headers.get("x-evolution-webhook-secret");
+      const expectedSecret = process.env.EVOLUTION_WEBHOOK_SECRET;
+      
+      if (expectedSecret && secret !== expectedSecret) {
+        console.warn("Unauthorized webhook access attempt");
+        return new Response("Unauthorized", { status: 401 });
+      }
+
       const payload = await request.json();
 
       // Only process incoming messages

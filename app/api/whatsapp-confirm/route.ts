@@ -36,6 +36,10 @@ export async function POST(req: NextRequest) {
   const { userId } = await auth();
   if (!userId) return jsonError("Unauthorized", 401);
 
+  if (req.headers.get("content-type") !== "application/json") {
+    return jsonError("Unsupported Media Type", 415);
+  }
+
   const waToken = process.env.WHATSAPP_BUSINESS_API;
   if (!waToken) {
     return jsonError("WhatsApp integration is not configured", 503);

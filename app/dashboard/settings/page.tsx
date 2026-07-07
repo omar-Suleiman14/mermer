@@ -3,6 +3,7 @@ import { useUser } from "@clerk/nextjs";
 import { useQuery, useMutation, useConvex } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
+import { toWesternDigits } from "@/lib/arabicNumerals";
 import { PageHeader } from "@/components/page-header";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { toast } from "sonner";
@@ -442,7 +443,7 @@ export default function SettingsPage() {
 
             <div className={rowClass}>
               <label htmlFor="settings-fee" className={labelClass}>{t("settings.feeEgp")}</label>
-              <input id="settings-fee" name="fee" type="number" value={consultationFee} onChange={(e) => setConsultationFee(e.target.value)}
+              <input id="settings-fee" name="fee" type="text" inputMode="numeric" pattern="[0-9٠-٩]*" value={consultationFee} onChange={(e) => setConsultationFee(toWesternDigits(e.target.value))}
                 placeholder="350" className={inputClass} />
             </div>
           </div>
@@ -517,7 +518,7 @@ export default function SettingsPage() {
             <div className={rowClass}>
               <label htmlFor="settings-slot-duration" className={labelClass}>{t("settings.slotDurationLabel")}</label>
               <div className="flex items-center justify-end gap-2 flex-1 min-w-0">
-                <input id="settings-slot-duration" name="slotDuration" type="number" value={slotMin} onChange={(e) => setSlotMin(e.target.value)} min={5} max={120} className={`${inputClass} max-w-15`} dir="ltr" />
+                <input id="settings-slot-duration" name="slotDuration" type="text" inputMode="numeric" pattern="[0-9٠-٩]*" value={slotMin} onChange={(e) => setSlotMin(toWesternDigits(e.target.value))} className={`${inputClass} max-w-15`} dir="ltr" />
                 <span className="text-sm text-muted-foreground shrink-0">{t("settings.mins")}</span>
               </div>
             </div>

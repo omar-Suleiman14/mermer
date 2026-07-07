@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
+import { toWesternDigits } from "@/lib/arabicNumerals";
 import { useUser } from "@clerk/nextjs";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -409,13 +410,13 @@ function InstallmentForm({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">{t("installments.totalAmount")}</label>
-              <input type="number" value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} placeholder="5000"
+              <input type="text" inputMode="numeric" pattern="[0-9٠-٩]*" value={totalAmount} onChange={(e) => setTotalAmount(toWesternDigits(e.target.value))} placeholder="5000"
                 className="w-full px-4 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF]" />
             </div>
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">{t("installments.downPayment")}</label>
               <div className="flex gap-2">
-                <input type="number" value={downPayment} onChange={(e) => setDownPayment(e.target.value)} placeholder="500"
+                <input type="text" inputMode="numeric" pattern="[0-9٠-٩]*" value={downPayment} onChange={(e) => setDownPayment(toWesternDigits(e.target.value))} placeholder="500"
                   className="flex-1 px-4 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] min-w-0" />
                 <select value={downPaymentType} onChange={(e) => setDownPaymentType(e.target.value as "fixed" | "percentage")}
                   className="px-2 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF]">
@@ -430,7 +431,7 @@ function InstallmentForm({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">{t("installments.costPerVisit")}</label>
-              <input type="number" value={costPerVisit} onChange={(e) => setCostPerVisit(e.target.value)} placeholder="500"
+              <input type="text" inputMode="numeric" pattern="[0-9٠-٩]*" value={costPerVisit} onChange={(e) => setCostPerVisit(toWesternDigits(e.target.value))} placeholder="500"
                 className="w-full px-4 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF]" />
             </div>
             <div className="flex flex-col justify-end">

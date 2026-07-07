@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useRef, useEffect } from "react";
+import { toWesternDigits } from "@/lib/arabicNumerals";
 import { useMutation, useConvex, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -495,13 +496,13 @@ export function PatientIntakeDrawer({
       <div>
         <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("drawer.age")} *</label>
         <input
-          type="number"
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9٠-٩]*"
           value={form.age}
-          onChange={(e) => set("age", e.target.value)}
+          onChange={(e) => set("age", toWesternDigits(e.target.value))}
           placeholder={dir === "rtl" ? "مثال: 45" : "45"}
           className={inputClass}
-          min={0}
-          max={150}
           required
         />
       </div>
