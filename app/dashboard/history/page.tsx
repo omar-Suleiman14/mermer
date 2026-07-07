@@ -242,7 +242,7 @@ export default function HistoryPage() {
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
-              className="bg-background border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#007AFF] transition-shadow w-full sm:w-auto"
+              className="bg-background border border-border rounded-lg ps-3 pe-8 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#007AFF] transition-shadow w-full sm:w-auto"
             >
               <option value="all">{lang === "ar" ? "كل الأحداث" : "All Events"}</option>
               <option value="visit">{lang === "ar" ? "الزيارات والحجوزات" : "Visits & Bookings"}</option>
@@ -256,7 +256,7 @@ export default function HistoryPage() {
             <select
               value={staffFilter}
               onChange={(e) => setStaffFilter(e.target.value)}
-              className="bg-background border border-border rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#007AFF] transition-shadow w-full sm:w-auto"
+              className="bg-background border border-border rounded-lg ps-3 pe-8 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#007AFF] transition-shadow w-full sm:w-auto"
             >
               <option value="all">{lang === "ar" ? "كل الموظفين" : "All Staff"}</option>
               <option value="Online Booking">{lang === "ar" ? "حجز عبر الإنترنت" : "Online Bookings"}</option>

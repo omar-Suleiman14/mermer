@@ -532,9 +532,11 @@ export function PatientIntakeDrawer({
               {/* +20 prefix */}
               <span className="flex items-center px-2.5 bg-muted/60 border border-border border-r-0 rounded-l-xl text-sm text-muted-foreground font-mono shrink-0 h-10">+20</span>
               <input
-                type="tel"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9٠-٩]*"
                 value={ph.value}
-                onChange={(e) => setPhone(idx, e.target.value)}
+                onChange={(e) => setPhone(idx, toWesternDigits(e.target.value))}
                 placeholder="1023456789"
                 className={`flex-1 ${inputClass} rounded-l-none h-10 py-0`}
                 maxLength={10}

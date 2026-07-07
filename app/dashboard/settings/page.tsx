@@ -16,6 +16,7 @@ import { useTheme } from "next-themes";
 import { LanguageToggle } from "@/components/language-toggle";
 import Image from "next/image";
 import { WhatsAppIntegration } from "@/components/settings/whatsapp-integration";
+import { MessageTemplatesSection } from "@/components/message-templates-section";
 
 
 
@@ -632,6 +633,21 @@ export default function SettingsPage() {
             {dir === "rtl" ? "تخصيص الأقسام التي تظهر أثناء زيارة المريض." : "Customize visit sections."}
           </p>
         </section>
+
+        {/* ═══════════════════════════════════════════════════════════ */}
+        {/* MESSAGE TEMPLATES                                           */}
+        {/* ═══════════════════════════════════════════════════════════ */}
+        {currentUser && clerkId && (
+          <section>
+            <h3 className={sectionTitleClass}>{dir === "rtl" ? "قوالب الرسائل" : "Message Templates"}</h3>
+            <div className={blockClass}>
+              <MessageTemplatesSection
+                clerkId={clerkId}
+                clinicAddressLink={(currentUser as any).clinicAddressLink ?? ""}
+              />
+            </div>
+          </section>
+        )}
 
         {/* ═══════════════════════════════════════════════════════════ */}
         {/* APPEARANCE & LANGUAGE                                       */}
