@@ -21,7 +21,7 @@ const cairo = Cairo({
   weight: ["400", "500", "600", "700", "800"],
   display: "swap",
   variable: "--font-cairo",
-  preload: true,
+  preload: false, // let Next.js handle font loading without eager preloading all weights
 });
 
 export const metadata: Metadata = {
