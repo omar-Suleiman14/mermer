@@ -11,6 +11,8 @@ import {
  * Add an operation to the sync queue.
  * Returns the idempotency key for tracking.
  */
+import { isLocalId } from "./idRemap";
+
 export async function enqueueSyncOp(opts: {
   table: SyncQueueEntry["table"];
   operation: SyncOperation;
@@ -20,6 +22,37 @@ export async function enqueueSyncOp(opts: {
   dependsOnIdempotencyKey?: string;
 }): Promise<string> {
   const idempotencyKey = crypto.randomUUID();
+  let dependsOnIdempotencyKey = opts.dependsOnIdempotencyKey;
+
+  // Auto-detect dependencies if not explicitly provided
+  if (!dependsOnIdempotencyKey) {
+    const foreignKeyMap: Record<string, string> = {
+      patientId: "patients",
+      visitId: "visits",
+      appointmentId: "visits",
+      appointmentId1: "visits",
+      appointmentId2: "visits",
+      parentVisitId: "visits",
+      installmentId: "installments",
+    };
+
+    for (const [field, sourceTable] of Object.entries(foreignKeyMap)) {
+      const val = opts.payload[field];
+      if (typeof val === "string" && isLocalId(val)) {
+        // Find the operation that created this local ID
+        const dependency = await offlineDb.syncQueue
+          .where("table")
+          .equals(sourceTable)
+          .filter((e) => e.localId === val && e.operation === "create")
+          .first();
+
+        if (dependency && dependency.status !== "completed") {
+          dependsOnIdempotencyKey = dependency.idempotencyKey;
+          break; // Usually one dependency is enough as they form a chain
+        }
+      }
+    }
+  }
 
   await offlineDb.syncQueue.add({
     idempotencyKey,
@@ -31,7 +64,7 @@ export async function enqueueSyncOp(opts: {
     createdAt: Date.now(),
     status: "pending",
     retryCount: 0,
-    dependsOnIdempotencyKey: opts.dependsOnIdempotencyKey,
+    dependsOnIdempotencyKey,
   });
 
   return idempotencyKey;
