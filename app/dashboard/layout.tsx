@@ -18,6 +18,7 @@ import { UserProvider, useCurrentUser } from "@/components/providers/user-provid
 import { IOSSpinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import { DataHydrator } from "@/lib/offline/dataHydrator";
+import { FailedMessageNotifier } from "@/components/providers/failed-message-notifier";
 
 function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const { user, isLoaded } = useUser();
@@ -235,6 +236,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
         </div>
       )}
       <DataHydrator clerkId={clerkId} />
+      <FailedMessageNotifier />
     </TooltipProvider>
   );
 }

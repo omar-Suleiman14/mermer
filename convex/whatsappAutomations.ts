@@ -462,3 +462,18 @@ export const getAllMessageLogs = query({
       .take(args.limit ?? 200);
   },
 });
+
+export const getRecentFailedMessages = query({
+  args: { clerkId: v.string(), since: v.number() },
+  handler: async (ctx, args) => {
+    const user = await requireAuthUser(ctx, args.clerkId);
+    
+    const recentLogs = await ctx.db
+      .query("messageLogs")
+      .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+      .order("desc")
+      .take(50);
+      
+    return recentLogs.filter(log => log.status === "failed" && log.createdAt >= args.since);
+  },
+});
