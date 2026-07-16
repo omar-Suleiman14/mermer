@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useQuery, useAction } from "convex/react";
+import { useAction } from "convex/react";
+import { useOfflineQuery } from "@/hooks/use-offline-query";
 import { useOfflineMutation } from "@/hooks/use-offline-mutation";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -60,13 +61,26 @@ export function AddToQueueDrawer({
 
   // 
 
-  const patients = useQuery(
+  const patients = useOfflineQuery(
     api.patients.searchPatients,
-    clerkId ? { clerkId, search } : "skip"
+    clerkId ? { clerkId, search } : "skip",
+    {
+      table: "patients",
+      filter: (records) => {
+        const needle = search.trim().toLocaleLowerCase();
+        if (!needle) return records;
+        return records.filter((patient) =>
+          [patient.name, patient.phone, ...(Array.isArray(patient.additionalPhones) ? patient.additionalPhones : [])]
+            .some((value) => String(value ?? "").toLocaleLowerCase().includes(needle))
+        );
+      },
+      sort: (a, b) => Number(b.createdAt ?? 0) - Number(a.createdAt ?? 0),
+    }
   );
   const addManualAppointment = useOfflineMutation(api.appointments.addManualAppointment, {
     table: "visits",
     operation: "create",
+    syncOperation: "addManualAppointment",
     toLocalRecord: (args) => ({
       ...args,
       status: "confirmed",

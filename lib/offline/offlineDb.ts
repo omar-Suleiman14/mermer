@@ -88,9 +88,32 @@ export interface OfflineFollowUp extends OfflineMeta {
   createdAt: number;
 }
 
+/** Cached installment plans. These are read offline; mutations remain server-backed. */
+export interface OfflineInstallment extends OfflineMeta {
+  doctorId: string;
+  patientId: string;
+  status?: "active" | "completed" | "expired" | "cancelled";
+  totalAmount?: number;
+  downPayment?: number;
+  costPerVisit?: number;
+  numVisits?: number;
+  completedVisits?: number;
+  paidVisits?: number;
+  unpaidBalance?: number;
+  nextVisitDate?: number;
+  createdAt?: number;
+  [key: string]: unknown;
+}
+
 // ─── Sync Queue ─────────────────────────────────────────────────────────────
 
-export type SyncOperation = "create" | "update" | "delete";
+export type SyncOperation =
+  | "create"
+  | "update"
+  | "delete"
+  | "addManualAppointment"
+  | "updateAppointment"
+  | "swapAppointments";
 export type SyncEntryStatus = "pending" | "in-flight" | "failed" | "completed";
 
 export interface SyncQueueEntry {
@@ -144,6 +167,7 @@ export class MermerOfflineDB extends Dexie {
   visits!: Table<OfflineVisit, string>;
   queue!: Table<OfflineQueue, string>;
   followUps!: Table<OfflineFollowUp, string>;
+  installments!: Table<OfflineInstallment, string>;
   syncQueue!: Table<SyncQueueEntry, number>;
   idRemap!: Table<IdRemapEntry, string>;
   syncMeta!: Table<SyncMetaEntry, string>;
@@ -165,6 +189,18 @@ export class MermerOfflineDB extends Dexie {
       idRemap: "key, table, localId, serverId",
 
       // Key-value store for sync metadata
+      syncMeta: "key",
+    });
+
+    // Versioned separately so existing clients upgrade their cache in place.
+    this.version(2).stores({
+      patients: "_localId, _serverId, _syncStatus, doctorId, phone, name",
+      visits: "_localId, _serverId, _syncStatus, doctorId, patientId, date",
+      queue: "_localId, _serverId, _syncStatus, doctorId, queueDate",
+      followUps: "_localId, _serverId, _syncStatus, doctorId, patientId, followUpDate",
+      installments: "_localId, _serverId, _syncStatus, doctorId, patientId, status, nextVisitDate",
+      syncQueue: "++id, status, table, idempotencyKey, createdAt",
+      idRemap: "key, table, localId, serverId",
       syncMeta: "key",
     });
   }

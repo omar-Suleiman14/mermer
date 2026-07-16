@@ -294,12 +294,13 @@ export class SyncEngine {
       const result = await registration.mutationFn(payload);
 
       // If this was a create operation, register the ID mapping
-      if (entry.operation === "create" && result) {
+      if ((entry.operation === "create" || entry.operation === "addManualAppointment") && result) {
         const serverId =
           typeof result === "string"
             ? result
             : (result as Record<string, unknown>)?._id as string ??
-              (result as Record<string, unknown>)?.id as string;
+              (result as Record<string, unknown>)?.id as string ??
+              (result as Record<string, unknown>)?.visitId as string;
 
         if (serverId && isLocalId(entry.localId)) {
           await registerIdMapping(entry.table, entry.localId, serverId);
@@ -327,7 +328,7 @@ export class SyncEngine {
       }
 
       // If this was an update, mark as synced
-      if (entry.operation === "update") {
+      if (entry.operation === "update" || entry.operation === "updateAppointment" || entry.operation === "swapAppointments") {
         const dexieTable = offlineDb[entry.table as keyof typeof offlineDb] as
           import("dexie").Table<Record<string, unknown>, string>;
         const localRecord = await dexieTable.get(entry.localId);

@@ -30,6 +30,8 @@ function SyncEngineInitializer() {
   const addVisitFilesMutation = useMutation(api.visits.addVisitFiles);
   const createFollowUpMutation = useMutation(api.followUps.createFollowUp);
   const addManualAppointmentMutation = useMutation(api.appointments.addManualAppointment);
+  const updateAppointmentMutation = useMutation(api.appointments.updateAppointment);
+  const swapAppointmentsMutation = useMutation(api.appointments.swapAppointments);
   const addToQueueMutation = useMutation(api.queue.addToQueue);
 
   useEffect(() => {
@@ -52,9 +54,14 @@ function SyncEngineInitializer() {
     registerMutation("followUps", "create", (args) =>
       createFollowUpMutation(args as Parameters<typeof createFollowUpMutation>[0])
     );
-    // addManualAppointment also creates visits
     registerMutation("visits", "addManualAppointment", (args) =>
       addManualAppointmentMutation(args as Parameters<typeof addManualAppointmentMutation>[0])
+    );
+    registerMutation("visits", "updateAppointment", (args) =>
+      updateAppointmentMutation(args as Parameters<typeof updateAppointmentMutation>[0])
+    );
+    registerMutation("visits", "swapAppointments", (args) =>
+      swapAppointmentsMutation(args as Parameters<typeof swapAppointmentsMutation>[0])
     );
     registerMutation("queue", "create", (args) =>
       addToQueueMutation(args as Parameters<typeof addToQueueMutation>[0])

@@ -1,151 +1,159 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery } from "convex/react";
+import { liveQuery } from "dexie";
 import { useConnectionStatus } from "@/components/providers/ConnectionProvider";
 import { offlineDb, type OfflineMeta } from "@/lib/offline/offlineDb";
-import type { FunctionReference, FunctionArgs, FunctionReturnType } from "convex/server";
+import type {
+  FunctionReference,
+  FunctionArgs,
+  FunctionReturnType,
+} from "convex/server";
 
-type OfflineTable = "patients" | "visits" | "queue" | "followUps";
+type OfflineTable =
+  | "patients"
+  | "visits"
+  | "queue"
+  | "followUps"
+  | "installments";
+type OfflineRecord = OfflineMeta & { [key: string]: any };
 
 interface UseOfflineQueryOptions {
-  /** Which Dexie table to read from when offline */
+  /** Which Dexie table to read from when Convex is unavailable. */
   table: OfflineTable;
-  /**
-   * Optional filter function applied to Dexie results.
-   * Receives all records from the table and should return the filtered set.
-   */
-  filter?: (records: (OfflineMeta & Record<string, unknown>)[]) => (OfflineMeta & Record<string, unknown>)[];
-  /**
-   * Optional sort function applied to Dexie results.
-   */
-  sort?: (
-    a: OfflineMeta & Record<string, unknown>,
-    b: OfflineMeta & Record<string, unknown>
-  ) => number;
-  /** Max number of records to return from Dexie (default: 500) */
+  /** Filter applied to locally cached records. */
+  filter?: (records: OfflineRecord[]) => OfflineRecord[];
+  /** Sort applied to locally cached records. */
+  sort?: (a: OfflineRecord, b: OfflineRecord) => number;
+  /** Max number of local records returned (default: 500). */
   limit?: number;
-  /** If true, skip the Convex query entirely (useful during initial hydration) */
+  /** Skip the Convex query while still reading Dexie. */
   skipConvex?: boolean;
+  /** Transform local records for queries that return a single value rather than a list. */
+  select?: (records: OfflineRecord[]) => unknown;
+  /** Value to return before Dexie has completed its first read. Defaults to an empty list. */
+  initialLocalValue?: unknown;
 }
 
 /**
- * Offline-aware query hook. Drop-in companion to `useQuery` from convex/react.
+ * A live, offline-aware companion to Convex's useQuery.
  *
- * Online:  Returns Convex data (primary) and mirrors it to Dexie in the background.
- * Offline: Returns data from Dexie (local cache).
- * Reconnecting: Returns Dexie data until Convex catches up.
- *
- * Usage:
- * ```tsx
- * const patients = useOfflineQuery(
- *   api.patients.listPatients,
- *   { clerkId },
- *   {
- *     table: "patients",
- *     filter: (records) => records.filter(r => r.doctorId === doctorId),
- *   }
- * );
- * ```
+ * Local records are normalized with `_id`, using their server ID when available
+ * and their local UUID otherwise. This lets UI components safely render and pass
+ * offline-created entities to offline mutations without asking Convex to validate
+ * a UUID as a server ID.
  */
-export function useOfflineQuery<
-  Query extends FunctionReference<"query">,
->(
+export function useOfflineQuery<Query extends FunctionReference<"query">>(
   query: Query,
   args: FunctionArgs<Query> | "skip",
-  options: UseOfflineQueryOptions
+  options: UseOfflineQueryOptions,
 ): FunctionReturnType<Query> | undefined {
   const connectionStatus = useConnectionStatus();
   const isOnline = connectionStatus === "online";
   const isOffline = connectionStatus === "offline";
-
-  // Run the Convex query when online (or reconnecting to catch up)
   const shouldSkipConvex = args === "skip" || options.skipConvex || isOffline;
   const convexData = useQuery(query, (shouldSkipConvex ? "skip" : args) as any);
-
-  // Local Dexie data state
-  const [localData, setLocalData] = useState<FunctionReturnType<Query> | undefined>(undefined);
+  const [localRecords, setLocalRecords] = useState<OfflineRecord[]>([]);
+  const [hasLoadedLocal, setHasLoadedLocal] = useState(false);
+  const [lastConvexData, setLastConvexData] = useState<
+    FunctionReturnType<Query> | undefined
+  >(undefined);
   const mirrorInProgress = useRef(false);
+  const {
+    table,
+    filter,
+    sort,
+    limit = 500,
+    select,
+    initialLocalValue = [],
+  } = options;
 
-  const { table, filter, sort, limit = 500 } = options;
-
-  // ── Read from Dexie when offline ──────────────────────────────────────
   useEffect(() => {
-    if (!isOffline && convexData !== undefined) return;
+    if (convexData !== undefined) setLastConvexData(convexData);
+  }, [convexData]);
 
-    let cancelled = false;
-
-    async function loadFromDexie() {
-      try {
-        const dexieTable = offlineDb[table];
-        let records = await dexieTable.toArray();
-
-        // Apply filter
-        if (filter) {
-          records = filter(records as any) as any;
-        }
-
-        // Apply sort
-        if (sort) {
-          records.sort(sort as any);
-        }
-
-        // Apply limit
-        records = records.slice(0, limit);
-
-        if (!cancelled) {
-          setLocalData(records as FunctionReturnType<Query>);
-        }
-      } catch (err) {
-        console.error(`[useOfflineQuery] Failed to read from Dexie table '${table}':`, err);
-      }
-    }
-
-    void loadFromDexie();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [isOffline, convexData, table, limit]); // intentionally exclude filter/sort to avoid re-renders
-
-  // ── Mirror Convex data to Dexie when online ───────────────────────────
+  // Subscribe to Dexie instead of taking a one-time snapshot. Local creates and
+  // updates must be reflected immediately while the device is offline.
   useEffect(() => {
-    if (!isOnline || convexData === undefined || convexData === null) return;
-    if (mirrorInProgress.current) return;
-
-    mirrorInProgress.current = true;
-
-    void mirrorToDexie(table, convexData as Record<string, unknown>[]).finally(() => {
-      mirrorInProgress.current = false;
+    const subscription = liveQuery<OfflineRecord[]>(() =>
+      (offlineDb[table] as any).toArray(),
+    ).subscribe({
+      next(records) {
+        setLocalRecords(records);
+        setHasLoadedLocal(true);
+      },
+      error(error) {
+        console.error(
+          `[useOfflineQuery] Failed to read Dexie table '${table}':`,
+          error,
+        );
+        setHasLoadedLocal(true);
+      },
     });
+
+    return () => subscription.unsubscribe();
+  }, [table]);
+
+  const localData = useMemo(() => {
+    let records = [...localRecords];
+    if (filter) records = filter(records);
+    if (sort) records.sort(sort);
+    records = records.slice(0, limit);
+
+    const normalized = records.map((record) => ({
+      ...record,
+      _id: record._serverId ?? record._localId,
+    }));
+    return (
+      select ? select(normalized) : normalized
+    ) as FunctionReturnType<Query>;
+  }, [localRecords, filter, sort, limit, select]);
+
+  // Mirror list queries when online. Single-record queries are expected to be
+  // backed by the corresponding list hydration/query cache.
+  useEffect(() => {
+    if (!isOnline || !Array.isArray(convexData) || mirrorInProgress.current)
+      return;
+    mirrorInProgress.current = true;
+    void mirrorToDexie(table, convexData as Record<string, unknown>[]).finally(
+      () => {
+        mirrorInProgress.current = false;
+      },
+    );
   }, [isOnline, convexData, table]);
 
-  // ── Return the right data source ──────────────────────────────────────
   if (isOffline) {
+    // Preserve visible server data through the offline transition until Dexie has
+    // produced its first snapshot, avoiding a transient loading spinner.
+    if (!hasLoadedLocal) {
+      return lastConvexData ?? (initialLocalValue as FunctionReturnType<Query>);
+    }
     return localData;
   }
 
-  // While reconnecting, prefer Convex if available, fall back to Dexie
   if (connectionStatus === "reconnecting") {
-    return convexData !== undefined ? convexData : localData;
+    return (
+      convexData ??
+      (hasLoadedLocal
+        ? localData
+        : (lastConvexData ?? (initialLocalValue as FunctionReturnType<Query>)))
+    );
   }
 
-  // Online: use Convex data, fall back to Dexie during initial load
-  return convexData !== undefined ? convexData : localData;
+  return (
+    convexData ??
+    (hasLoadedLocal
+      ? localData
+      : (lastConvexData ?? (initialLocalValue as FunctionReturnType<Query>)))
+  );
 }
 
-// ─── Mirror Logic ─────────────────────────────────────────────────────────
-
-/**
- * Mirror an array of Convex records to Dexie.
- * Upserts by server ID — existing records with pending local changes are skipped.
- */
 async function mirrorToDexie(
   table: OfflineTable,
-  records: Record<string, unknown>[]
+  records: Record<string, unknown>[],
 ): Promise<void> {
-  if (!Array.isArray(records) || records.length === 0) return;
-
+  if (records.length === 0) return;
   const dexieTable = offlineDb[table];
 
   try {
@@ -153,18 +161,13 @@ async function mirrorToDexie(
       for (const record of records) {
         const serverId = (record._id as string) ?? (record.id as string);
         if (!serverId) continue;
-
-        // Check if we already have this record locally
         const existing = await dexieTable
           .where("_serverId")
           .equals(serverId)
           .first();
 
         if (existing) {
-          // Don't overwrite records with pending local changes
           if (existing._syncStatus === "pending") continue;
-
-          // Update the existing record with fresh server data
           await dexieTable.update(existing._localId, {
             ...stripConvexMeta(record),
             _serverId: serverId,
@@ -173,7 +176,6 @@ async function mirrorToDexie(
             _version: existing._version + 1,
           });
         } else {
-          // New record from server — insert into Dexie
           await (dexieTable as any).put({
             ...stripConvexMeta(record),
             _localId: crypto.randomUUID(),
@@ -186,16 +188,13 @@ async function mirrorToDexie(
         }
       }
     });
-  } catch (err) {
-    console.error(`[mirrorToDexie] Failed for table '${table}':`, err);
+  } catch (error) {
+    console.error(`[mirrorToDexie] Failed for table '${table}':`, error);
   }
 }
 
-/**
- * Strip Convex-specific metadata fields from a record before storing in Dexie.
- */
 function stripConvexMeta(
-  record: Record<string, unknown>
+  record: Record<string, unknown>,
 ): Record<string, unknown> {
   const stripped = { ...record };
   delete stripped._id;

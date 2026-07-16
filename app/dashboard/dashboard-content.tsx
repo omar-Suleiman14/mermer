@@ -1,7 +1,8 @@
 "use client";
 
-import { useQuery, useMutation, useAction } from "convex/react";
+import { useQuery, useAction } from "convex/react";
 import { useOfflineQuery } from "@/hooks/use-offline-query";
+import { useOfflineMutation } from "@/hooks/use-offline-mutation";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
@@ -129,8 +130,19 @@ export default function DashboardPage() {
 
 
 
-  const updateAppointment = useMutation(api.appointments.updateAppointment);
-  const swapAppointments = useMutation(api.appointments.swapAppointments);
+  const updateAppointment = useOfflineMutation(api.appointments.updateAppointment, {
+    table: "visits",
+    operation: "update",
+    syncOperation: "updateAppointment",
+    toLocalRecord: (args) => (args.updates as Record<string, unknown>) ?? {},
+  });
+  const swapAppointments = useOfflineMutation(api.appointments.swapAppointments, {
+    table: "visits",
+    operation: "update",
+    syncOperation: "swapAppointments",
+    // The server replay performs the atomic swap after reconnecting.
+    toLocalRecord: () => ({}),
+  });
   const cancelDayAutomations = useAction(api.whatsappAutomations.cancelDayAction);
   const [cancellingDay, setCancellingDay] = useState(false);
   const [cancelDayModalOpen, setCancelDayModalOpen] = useState(false);

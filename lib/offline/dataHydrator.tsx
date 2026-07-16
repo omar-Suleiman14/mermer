@@ -4,7 +4,7 @@
  * DataHydrator — Pre-populates Dexie with server data for offline access.
  *
  * Runs on app startup when online:
- * 1. First load: Full hydration (all patients, recent visits, today's queue)
+ * 1. First load: Full hydration (patients, recent visits, queue, follow-ups, installments)
  * 2. Subsequent loads: Incremental sync (only changes since last hydration)
  *
  * Data is stored in Dexie so it's available immediately when going offline.
@@ -57,6 +57,7 @@ async function hydrateFromServer(data: {
   visits: Record<string, unknown>[];
   queue: Record<string, unknown>[];
   followUps: Record<string, unknown>[];
+  installments: Record<string, unknown>[];
   hydratedAt: number;
 }): Promise<void> {
   try {
@@ -67,6 +68,7 @@ async function hydrateFromServer(data: {
       hydrateTable("visits", data.visits),
       hydrateTable("queue", data.queue),
       hydrateTable("followUps", data.followUps),
+      hydrateTable("installments", data.installments),
     ]);
 
     // Store hydration timestamp
@@ -80,10 +82,11 @@ async function hydrateFromServer(data: {
       data.patients.length +
       data.visits.length +
       data.queue.length +
-      data.followUps.length;
+      data.followUps.length +
+      data.installments.length;
 
     console.log(
-      `[DataHydrator] Hydrated ${totalRecords} records across 4 tables in ${elapsed}ms`
+      `[DataHydrator] Hydrated ${totalRecords} records across 5 tables in ${elapsed}ms`
     );
   } catch (err) {
     console.error("[DataHydrator] Hydration failed:", err);
@@ -95,7 +98,7 @@ async function hydrateFromServer(data: {
  * Existing records with pending local changes are preserved.
  */
 async function hydrateTable(
-  tableName: "patients" | "visits" | "queue" | "followUps",
+  tableName: "patients" | "visits" | "queue" | "followUps" | "installments",
   records: Record<string, unknown>[]
 ): Promise<void> {
   if (!records || records.length === 0) return;

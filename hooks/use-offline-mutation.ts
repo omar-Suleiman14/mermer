@@ -1,15 +1,17 @@
 "use client";
 
-import { useCallback, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useMutation } from "convex/react";
 import { useConnectionStatus } from "@/components/providers/ConnectionProvider";
 import {
   offlineDb,
   createOfflineMeta,
   type OfflineMeta,
+  type SyncOperation,
 } from "@/lib/offline/offlineDb";
 import { enqueueSyncOp } from "@/lib/offline/syncQueue";
-import type { FunctionReference, FunctionArgs, FunctionReturnType } from "convex/server";
+import { isLocalId } from "@/lib/offline/idRemap";
+import type { FunctionReference, FunctionArgs } from "convex/server";
 
 type OfflineTable = "patients" | "visits" | "queue" | "followUps";
 
@@ -23,13 +25,13 @@ interface UseOfflineMutationOptions {
    * - "delete": removes a record
    */
   operation: "create" | "update" | "delete";
+  /** Mutation registry key used when replaying this operation after reconnecting. */
+  syncOperation?: SyncOperation;
   /**
    * Optional function to extract/transform the mutation args into a Dexie record.
    * If not provided, the raw args are used directly.
    */
-  toLocalRecord?: (
-    args: Record<string, unknown>
-  ) => Record<string, unknown>;
+  toLocalRecord?: (args: Record<string, unknown>) => Record<string, unknown>;
   /**
    * If this mutation depends on a previously-queued offline mutation,
    * provide the idempotency key of the dependency.
@@ -45,7 +47,9 @@ interface UseOfflineMutationOptions {
   /**
    * Called after a successful offline write with the local record.
    */
-  onOfflineSuccess?: (localRecord: OfflineMeta & Record<string, unknown>) => void | Promise<void>;
+  onOfflineSuccess?: (
+    localRecord: OfflineMeta & Record<string, unknown>,
+  ) => void | Promise<void>;
 }
 
 export interface OfflineMutationResult {
@@ -91,40 +95,49 @@ export function useOfflineMutation<
   Mutation extends FunctionReference<"mutation">,
 >(
   mutation: Mutation,
-  options: UseOfflineMutationOptions
+  options: UseOfflineMutationOptions,
 ): (args: FunctionArgs<Mutation>) => Promise<OfflineMutationResult> {
   const connectionStatus = useConnectionStatus();
   const convexMutation = useMutation(mutation);
 
-  const { table, operation, toLocalRecord, dependsOnIdempotencyKey, onOnlineSuccess, onOfflineSuccess } = options;
+  const {
+    table,
+    operation,
+    syncOperation = operation,
+    toLocalRecord,
+    dependsOnIdempotencyKey,
+    onOnlineSuccess,
+    onOfflineSuccess,
+  } = options;
 
   // Use ref to avoid stale closure over connectionStatus
   const statusRef = useRef(connectionStatus);
-  statusRef.current = connectionStatus;
+  useEffect(() => {
+    statusRef.current = connectionStatus;
+  }, [connectionStatus]);
 
-  const execute = useCallback(
-    async (args: FunctionArgs<Mutation>): Promise<OfflineMutationResult> => {
-      const isOnline = statusRef.current === "online";
-
-      if (isOnline) {
-        return executeOnline(args);
-      }
-      return executeOffline(args);
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [convexMutation, table, operation]
-  );
+  const execute = async (
+    args: FunctionArgs<Mutation>,
+  ): Promise<OfflineMutationResult> => {
+    const isOnline =
+      statusRef.current === "online" &&
+      !hasLocalEntityId(args as Record<string, unknown>);
+    return isOnline ? executeOnline(args) : executeOffline(args);
+  };
 
   // ── Online path: Convex mutation + mirror to Dexie ────────────────────
   async function executeOnline(
-    args: FunctionArgs<Mutation>
+    args: FunctionArgs<Mutation>,
   ): Promise<OfflineMutationResult> {
     try {
       const result = await convexMutation(args);
 
       // Mirror to Dexie for offline cache
       if (operation === "create" && result) {
-        const serverRecord = typeof result === "object" ? result as Record<string, unknown> : { _id: result };
+        const serverRecord =
+          typeof result === "object"
+            ? (result as Record<string, unknown>)
+            : { _id: result };
         const serverId = (serverRecord._id as string) ?? (result as string);
 
         const localRecord = toLocalRecord
@@ -145,11 +158,8 @@ export function useOfflineMutation<
         return { id: serverId, isOffline: false, idempotencyKey: null };
       }
 
-      if (operation === "update" && result) {
-        const serverId = (args as Record<string, unknown>).id as string
-          ?? (args as Record<string, unknown>)._id as string
-          ?? (args as Record<string, unknown>).patientId as string
-          ?? (args as Record<string, unknown>).visitId as string;
+      if (operation === "update") {
+        const serverId = getTargetId(args as Record<string, unknown>);
 
         if (serverId) {
           const existing = await offlineDb[table]
@@ -176,8 +186,9 @@ export function useOfflineMutation<
       }
 
       if (operation === "delete") {
-        const serverId = (args as Record<string, unknown>).id as string
-          ?? (args as Record<string, unknown>)._id as string;
+        const serverId =
+          ((args as Record<string, unknown>).id as string) ??
+          ((args as Record<string, unknown>)._id as string);
 
         if (serverId) {
           const existing = await offlineDb[table]
@@ -199,7 +210,10 @@ export function useOfflineMutation<
     } catch (err) {
       // If the online mutation fails due to network error, fall back to offline
       if (isNetworkError(err)) {
-        console.warn("[useOfflineMutation] Network error, falling back to offline:", err);
+        console.warn(
+          "[useOfflineMutation] Network error, falling back to offline:",
+          err,
+        );
         return executeOffline(args);
       }
       throw err; // Re-throw validation errors, etc.
@@ -208,7 +222,7 @@ export function useOfflineMutation<
 
   // ── Offline path: Write to Dexie + enqueue sync ───────────────────────
   async function executeOffline(
-    args: FunctionArgs<Mutation>
+    args: FunctionArgs<Mutation>,
   ): Promise<OfflineMutationResult> {
     const dexieTable = offlineDb[table];
 
@@ -227,7 +241,7 @@ export function useOfflineMutation<
 
       const idempotencyKey = await enqueueSyncOp({
         table,
-        operation: "create",
+        operation: syncOperation,
         localId: meta._localId,
         serverId: null,
         payload: args as Record<string, unknown>,
@@ -240,18 +254,70 @@ export function useOfflineMutation<
     }
 
     if (operation === "update") {
+      if (syncOperation === "swapAppointments") {
+        const firstId = (args as Record<string, unknown>).appointmentId1 as
+          | string
+          | undefined;
+        const secondId = (args as Record<string, unknown>).appointmentId2 as
+          | string
+          | undefined;
+        if (!firstId || !secondId) {
+          throw new Error(
+            "[useOfflineMutation] A swap requires two appointment IDs",
+          );
+        }
+
+        const first = await findOfflineRecord(dexieTable as any, firstId);
+        const second = await findOfflineRecord(dexieTable as any, secondId);
+        if (!first || !second) {
+          throw new Error(
+            "[useOfflineMutation] Both appointments must be available locally to swap offline",
+          );
+        }
+
+        const now = Date.now();
+        await offlineDb.transaction("rw", dexieTable, async () => {
+          await dexieTable.update(first._localId, {
+            date: second.date,
+            _syncStatus: "pending",
+            _updatedAt: now,
+            _version: first._version + 1,
+          });
+          await dexieTable.update(second._localId, {
+            date: first.date,
+            _syncStatus: "synced",
+            _updatedAt: now,
+            _version: second._version + 1,
+          });
+        });
+
+        const idempotencyKey = await enqueueSyncOp({
+          table,
+          operation: syncOperation,
+          localId: first._localId,
+          serverId: first._serverId,
+          payload: args as Record<string, unknown>,
+          dependsOnIdempotencyKey,
+        });
+        return {
+          id: first._serverId ?? first._localId,
+          isOffline: true,
+          idempotencyKey,
+        };
+      }
+
       // Find the local record by server ID or local ID
-      const targetId = (args as Record<string, unknown>).id as string
-        ?? (args as Record<string, unknown>)._id as string
-        ?? (args as Record<string, unknown>).patientId as string
-        ?? (args as Record<string, unknown>).visitId as string;
+      const targetId = getTargetId(args as Record<string, unknown>);
+
+      if (!targetId) {
+        throw new Error(
+          "[useOfflineMutation] Unable to identify the record to update",
+        );
+      }
 
       let existing = await dexieTable.get(targetId);
       if (!existing) {
-        existing = await dexieTable
-          .where("_serverId")
-          .equals(targetId)
-          .first();
+        existing = await dexieTable.where("_serverId").equals(targetId).first();
       }
 
       if (existing) {
@@ -268,7 +334,7 @@ export function useOfflineMutation<
 
         const idempotencyKey = await enqueueSyncOp({
           table,
-          operation: "update",
+          operation: syncOperation,
           localId: existing._localId,
           serverId: existing._serverId,
           payload: args as Record<string, unknown>,
@@ -287,7 +353,7 @@ export function useOfflineMutation<
       // Record not found locally — queue the update anyway
       const idempotencyKey = await enqueueSyncOp({
         table,
-        operation: "update",
+        operation: syncOperation,
         localId: targetId,
         serverId: targetId,
         payload: args as Record<string, unknown>,
@@ -298,15 +364,13 @@ export function useOfflineMutation<
     }
 
     if (operation === "delete") {
-      const targetId = (args as Record<string, unknown>).id as string
-        ?? (args as Record<string, unknown>)._id as string;
+      const targetId =
+        ((args as Record<string, unknown>).id as string) ??
+        ((args as Record<string, unknown>)._id as string);
 
       let existing = await dexieTable.get(targetId);
       if (!existing) {
-        existing = await dexieTable
-          .where("_serverId")
-          .equals(targetId)
-          .first();
+        existing = await dexieTable.where("_serverId").equals(targetId).first();
       }
 
       if (existing) {
@@ -369,4 +433,38 @@ function isNetworkError(err: unknown): boolean {
     );
   }
   return false;
+}
+
+function getTargetId(args: Record<string, unknown>): string | undefined {
+  const candidates = [
+    args.id,
+    args._id,
+    args.patientId,
+    args.visitId,
+    args.appointmentId,
+  ];
+  return candidates.find((id): id is string => typeof id === "string");
+}
+
+/** Local UUIDs must never be sent through Convex's ID validators. */
+function hasLocalEntityId(args: Record<string, unknown>): boolean {
+  return [
+    args.patientId,
+    args.visitId,
+    args.appointmentId,
+    args.appointmentId1,
+    args.appointmentId2,
+    args.installmentId,
+    args.parentVisitId,
+  ].some((id) => typeof id === "string" && isLocalId(id));
+}
+
+async function findOfflineRecord(
+  table: {
+    get(id: string): Promise<any>;
+    where(index: string): { equals(id: string): { first(): Promise<any> } };
+  },
+  id: string,
+): Promise<any> {
+  return (await table.get(id)) ?? table.where("_serverId").equals(id).first();
 }

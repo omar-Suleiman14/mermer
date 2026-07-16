@@ -34,9 +34,9 @@ export const getChangesSince = query({
   },
   handler: async (ctx, args) => {
     const user = await getAuthUser(ctx, args.clerkId);
-    if (!user) return { patients: [], visits: [], queue: [], followUps: [] };
+    if (!user) return { patients: [], visits: [], queue: [], followUps: [], installments: [] };
 
-    const tables = args.tables ?? ["patients", "visits", "queue", "followUps"];
+    const tables = args.tables ?? ["patients", "visits", "queue", "followUps", "installments"];
     const result: Record<string, unknown[]> = {};
 
     // Patients — filter by createdAt since we don't have an updatedAt field
@@ -88,6 +88,15 @@ export const getChangesSince = query({
       );
     }
 
+    if (tables.includes("installments")) {
+      const installments = await ctx.db
+        .query("installments")
+        .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+        .order("desc")
+        .take(200);
+      result.installments = installments.filter((i) => i._creationTime >= args.since);
+    }
+
     return result;
   },
 });
@@ -102,7 +111,7 @@ export const getFullHydrationData = query({
   },
   handler: async (ctx, args) => {
     const user = await getAuthUser(ctx, args.clerkId);
-    if (!user) return { patients: [], visits: [], queue: [], followUps: [] };
+    if (!user) return { patients: [], visits: [], queue: [], followUps: [], installments: [], hydratedAt: Date.now() };
 
     // Get today's start for queue filtering
     const todayStart = new Date();
@@ -110,7 +119,7 @@ export const getFullHydrationData = query({
 
     const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
 
-    const [patients, visits, queue, followUps] = await Promise.all([
+    const [patients, visits, queue, followUps, installments] = await Promise.all([
       // All patients (capped)
       ctx.db
         .query("patients")
@@ -140,6 +149,12 @@ export const getFullHydrationData = query({
           q.eq("doctorId", user._id).gte("followUpDate", todayStart.getTime())
         )
         .take(200),
+
+      ctx.db
+        .query("installments")
+        .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+        .order("desc")
+        .take(200),
     ]);
 
     return {
@@ -147,6 +162,7 @@ export const getFullHydrationData = query({
       visits,
       queue,
       followUps,
+      installments,
       hydratedAt: Date.now(),
     };
   },

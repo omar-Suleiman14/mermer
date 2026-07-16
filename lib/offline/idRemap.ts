@@ -70,6 +70,9 @@ export async function resolvePayloadIds(
   const foreignKeyMap: Record<string, string> = {
     patientId: "patients",
     visitId: "visits",
+    appointmentId: "visits",
+    appointmentId1: "visits",
+    appointmentId2: "visits",
     parentVisitId: "visits",
     installmentId: "installments",
   };

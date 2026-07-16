@@ -4,6 +4,7 @@ import { useState, useMemo, useRef, useEffect } from "react";
 import { toWesternDigits } from "@/lib/arabicNumerals";
 import { useConvex, useQuery, useMutation } from "convex/react";
 import { useOfflineMutation } from "@/hooks/use-offline-mutation";
+import { useOfflineQuery } from "@/hooks/use-offline-query";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { toast } from "sonner";
@@ -147,9 +148,14 @@ export function PatientIntakeDrawer({
     ? new Date(visitDate.getFullYear(), visitDate.getMonth(), visitDate.getDate(), 23, 59, 59, 999).getTime()
     : 0;
 
-  const existingVisitsOnDate = useQuery(
+  const existingVisitsOnDate = useOfflineQuery(
     api.visits.getVisitsByDateRange,
-    clerkId && visitDate ? { clerkId, startDate: activeDateStart, endDate: activeDateEnd } : "skip"
+    clerkId && visitDate ? { clerkId, startDate: activeDateStart, endDate: activeDateEnd } : "skip",
+    {
+      table: "visits",
+      filter: (records) => records.filter((visit) => Number(visit.date) >= activeDateStart && Number(visit.date) <= activeDateEnd),
+      sort: (a, b) => Number(a.date) - Number(b.date),
+    }
   );
 
   const timeSlots = useMemo(() => {
@@ -273,6 +279,7 @@ export function PatientIntakeDrawer({
   const addManualAppointment = useOfflineMutation(api.appointments.addManualAppointment, {
     table: "visits",
     operation: "create",
+    syncOperation: "addManualAppointment",
     toLocalRecord: (args) => ({
       ...args,
       status: "confirmed",
@@ -958,38 +965,3 @@ export function PatientIntakeDrawer({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => onOpenChange(false)}
-          />
-          {/* Panel */}
-          <motion.div
-            initial={{ y: 20, opacity: 0, scale: 0.97 }}
-            animate={{ y: 0, opacity: 1, scale: 1 }}
-            exit={{ y: 20, opacity: 0, scale: 0.97 }}
-            transition={{ type: "spring", stiffness: 380, damping: 30 }}
-            className="relative z-10 w-full max-w-lg bg-background rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
-          >
-            {/* Header */}
-            <div className="flex-none flex items-center justify-between px-6 py-4 border-b border-border">
-              <div>
-                <h2 className="text-base font-semibold">{isEdit ? t("drawer.editPatient") : t("drawer.patientIntake")}</h2>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {isEdit ? t("drawer.updatePatient") : t("drawer.registerPatient")}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => onOpenChange(false)}
-                className="p-2 rounded-xl hover:bg-muted/50 transition-colors text-muted-foreground"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            {formContent}
-            {footerContent}
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
