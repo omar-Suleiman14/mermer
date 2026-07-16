@@ -9,7 +9,7 @@ import { Id } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
 import { AddToQueueDrawer } from "@/components/add-to-queue-drawer";
 import dynamic from "next/dynamic";
-const VisitCompletionModal = dynamic(() => import("@/components/visit-completion-modal").then(m => m.VisitCompletionModal));
+const VisitCompletionModal: any = dynamic(() => import("@/components/visit-completion-modal").then(m => m.VisitCompletionModal));
 import { DraggableApptItem } from "@/components/queue/draggable-appt-item";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -746,13 +746,13 @@ function SchedulePageInner() {
 
       <AddToQueueDrawer
         open={addOpen}
-        onOpenChange={(v) => { setAddOpen(v); if (!v) setPreselectedSlot(null); }}
+        onOpenChange={(v: boolean) => { setAddOpen(v); if (!v) setPreselectedSlot(null); }}
         selectedDate={selectedDay}
         preselectedSlot={preselectedSlot}
         clerkId={clerkId}
       />
 
-      <AlertDialog open={!!cancelModal} onOpenChange={(v) => !v && setCancelModal(null)}>
+      <AlertDialog open={!!cancelModal} onOpenChange={(v: boolean) => !v && setCancelModal(null)}>
         <AlertDialogContent dir={dir}>
           <AlertDialogHeader>
             <AlertDialogTitle className="text-red-500">{t("dialog.deleteVisitTitle")}</AlertDialogTitle>
@@ -878,7 +878,7 @@ function SchedulePageInner() {
 
       <VisitCompletionModal
         open={!!completionModal}
-        onOpenChange={(v) => !v && setCompletionModal(null)}
+        onOpenChange={(v: boolean) => !v && setCompletionModal(null)}
         clerkId={clerkId}
         visitId={completionModal?.appointmentId as any}
         patientId={completionModal?.patientId}
