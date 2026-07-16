@@ -32,6 +32,7 @@ import type * as pushActions from "../pushActions.js";
 import type * as queue from "../queue.js";
 import type * as seed from "../seed.js";
 import type * as support from "../support.js";
+import type * as sync from "../sync.js";
 import type * as temp_query from "../temp_query.js";
 import type * as topEgyptianMeds from "../topEgyptianMeds.js";
 import type * as users from "../users.js";
@@ -70,6 +71,7 @@ declare const fullApi: ApiFromModules<{
   queue: typeof queue;
   seed: typeof seed;
   support: typeof support;
+  sync: typeof sync;
   temp_query: typeof temp_query;
   topEgyptianMeds: typeof topEgyptianMeds;
   users: typeof users;

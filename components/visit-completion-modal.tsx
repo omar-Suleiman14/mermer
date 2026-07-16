@@ -2,7 +2,8 @@
 
 import { useState, useRef, useCallback, useMemo, useEffect, CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import { useMutation, useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
+import { useOfflineMutation } from "@/hooks/use-offline-mutation";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { motion, AnimatePresence } from "framer-motion";
@@ -302,8 +303,14 @@ export function VisitCompletionModal({
   tag,
 }: VisitCompletionModalProps) {
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
-  const addVisitFiles = useMutation(api.visits.addVisitFiles);
-  const createFollowUp = useMutation(api.followUps.createFollowUp);
+  const addVisitFiles = useOfflineMutation(api.visits.addVisitFiles, {
+    table: "visits",
+    operation: "update",
+  });
+  const createFollowUp = useOfflineMutation(api.followUps.createFollowUp, {
+    table: "followUps",
+    operation: "create",
+  });
   const completeinstallmentVisit = useMutation(api.installments.completeinstallmentVisit);
   const waiveUnpaidBalance = useMutation(api.installments.waiveUnpaidBalance);
 

@@ -48,6 +48,8 @@ export const createFollowUp = mutation({
     ),
     note: v.optional(v.string()),
     parentVisitId: v.optional(v.id("visits")),
+    // Offline sync: idempotency key to prevent duplicate follow-ups
+    _idempotencyKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
@@ -55,6 +57,16 @@ export const createFollowUp = mutation({
     const patient = await ctx.db.get(args.patientId);
     if (!patient || patient.doctorId !== user._id)
       throw new ConvexError("Patient not found");
+
+    // Idempotency check: if a follow-up exists for this parent visit
+    if (args._idempotencyKey && args.parentVisitId) {
+      const existing = await ctx.db
+        .query("followUps")
+        .withIndex("by_doctor", (q) => q.eq("doctorId", user._id))
+        .filter((q) => q.eq(q.field("parentVisitId"), args.parentVisitId))
+        .first();
+      if (existing) return existing._id;
+    }
 
     // followUpDate is now a full timestamp (with correct time) computed by the client
     const followUpTimestamp = args.followUpDate;

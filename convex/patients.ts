@@ -188,9 +188,23 @@ export const createPatient = mutation({
     chronicConditions: v.array(v.string()),
     patientType: v.optional(v.string()),
     notes: v.optional(v.string()),
+    // Offline sync: idempotency key to prevent duplicate creates during retry
+    _idempotencyKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
+
+    // Idempotency check: if this patient already exists (same doctor + phone),
+    // return the existing ID instead of creating a duplicate.
+    if (args._idempotencyKey) {
+      const existing = await ctx.db
+        .query("patients")
+        .withIndex("by_doctor_phone", (q) =>
+          q.eq("doctorId", user._id).eq("phone", args.phone)
+        )
+        .first();
+      if (existing) return existing._id;
+    }
 
     const patientId = await ctx.db.insert("patients", {
       doctorId: user._id,
@@ -227,6 +241,8 @@ export const updatePatient = mutation({
     chronicConditions: v.array(v.string()),
     patientType: v.optional(v.string()),
     notes: v.optional(v.string()),
+    // Offline sync: idempotency key (updates are inherently idempotent via patch)
+    _idempotencyKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);

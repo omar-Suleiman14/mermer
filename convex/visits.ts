@@ -114,6 +114,8 @@ export const createVisit = mutation({
     prescribedMedications: v.optional(v.array(v.string())),
     analysisRequested: v.optional(v.array(v.string())),
     notes: v.optional(v.string()),
+    // Offline sync: idempotency key to prevent duplicate visit creates during retry
+    _idempotencyKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
@@ -121,6 +123,20 @@ export const createVisit = mutation({
     // Denormalize patient info for display
     const patient = await ctx.db.get(args.patientId);
     if (!patient || patient.doctorId !== user._id) throw new ConvexError("Patient not found");
+
+    // Idempotency check: if a visit already exists for this patient on the same date
+    if (args._idempotencyKey && args.date) {
+      const existingVisits = await ctx.db
+        .query("visits")
+        .withIndex("by_doctor_date", (q) =>
+          q.eq("doctorId", user._id).eq("date", args.date!)
+        )
+        .take(50);
+      const duplicate = existingVisits.find(
+        (v) => v.patientId === args.patientId
+      );
+      if (duplicate) return duplicate._id;
+    }
 
     if (args.date) {
       const doctorOffsetMinutes = user.timezoneOffset ?? -180;

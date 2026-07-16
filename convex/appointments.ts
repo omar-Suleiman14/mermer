@@ -331,6 +331,8 @@ export const addManualAppointment = mutation({
     patientId: v.id("patients"),
     date: v.number(),
     notes: v.optional(v.string()),
+    // Offline sync: idempotency key to prevent duplicate visit creates during retry
+    _idempotencyKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const doctor = await requireAuthUser(ctx, args.clerkId);
@@ -338,6 +340,20 @@ export const addManualAppointment = mutation({
     const patient = await ctx.db.get(args.patientId);
     if (!patient) throw new ConvexError("Patient not found");
     if (patient.doctorId !== doctor._id) throw new ConvexError("Access denied");
+
+    // Idempotency check: if a visit already exists for this patient on the same date
+    if (args._idempotencyKey) {
+      const existingVisits = await ctx.db
+        .query("visits")
+        .withIndex("by_doctor_date", (q) =>
+          q.eq("doctorId", doctor._id).eq("date", args.date)
+        )
+        .take(50);
+      const duplicate = existingVisits.find(
+        (v) => v.patientId === args.patientId
+      );
+      if (duplicate) return { visitId: duplicate._id };
+    }
 
     // Working hours validation
     const doctorOffsetMinutes = doctor.timezoneOffset ?? -180;

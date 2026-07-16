@@ -17,6 +17,7 @@ import { AlertTriangle, X, Building2, UserCheck, UserX, Clock } from "lucide-rea
 import { UserProvider, useCurrentUser } from "@/components/providers/user-provider";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
+import { DataHydrator } from "@/lib/offline/dataHydrator";
 
 function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const { user, isLoaded } = useUser();
@@ -233,6 +234,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       )}
+      <DataHydrator clerkId={clerkId} />
     </TooltipProvider>
   );
 }

@@ -2,7 +2,8 @@
 
 import { useState, useMemo, useRef, useEffect } from "react";
 import { toWesternDigits } from "@/lib/arabicNumerals";
-import { useMutation, useConvex, useQuery } from "convex/react";
+import { useConvex, useQuery, useMutation } from "convex/react";
+import { useOfflineMutation } from "@/hooks/use-offline-mutation";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { toast } from "sonner";
@@ -255,9 +256,33 @@ export function PatientIntakeDrawer({
     return () => document.removeEventListener("mousedown", handle);
   }, [patientTypeDropdownOpen]);
 
-  const createPatient = useMutation(api.patients.createPatient);
-  const updatePatient = useMutation(api.patients.updatePatient);
-  const addManualAppointment = useMutation(api.appointments.addManualAppointment);
+  const createPatient = useOfflineMutation(api.patients.createPatient, {
+    table: "patients",
+    operation: "create",
+    toLocalRecord: (args) => ({
+      ...args,
+      createdAt: Date.now(),
+    }),
+  });
+  
+  const updatePatient = useOfflineMutation(api.patients.updatePatient, {
+    table: "patients",
+    operation: "update",
+  });
+  
+  const addManualAppointment = useOfflineMutation(api.appointments.addManualAppointment, {
+    table: "visits",
+    operation: "create",
+    toLocalRecord: (args) => ({
+      ...args,
+      status: "confirmed",
+      source: "manual",
+      createdAt: Date.now(),
+      // We don't have patient name/phone in args here (they are denormalized on server),
+      // but the offline DB will resolve them when syncing. For the local UI,
+      // the patient row exists in the patient table so joined queries will work.
+    }),
+  });
   const convex = useConvex();
 
   // Sync form when editPatient changes
@@ -434,11 +459,11 @@ export function PatientIntakeDrawer({
         // Await the lookup result (was already in-flight)
         const existing = await existingPromise;
 
-        let patientId: Id<"patients">;
+        let patientId: string;
         if (existing) {
           patientId = existing._id;
         } else {
-          patientId = await createPatient({
+          const res = await createPatient({
             clerkId,
             name: form.name,
             age: Number(form.age),
@@ -450,12 +475,13 @@ export function PatientIntakeDrawer({
             patientType: form.patientType,
             chronicConditions: form.chronicConditions,
           });
+          patientId = res.id;
         }
 
         if (addVisit && visitDateMs !== undefined) {
           await addManualAppointment({
             clerkId,
-            patientId,
+            patientId: patientId as Id<"patients">,
             date: visitDateMs,
             notes: form.notes || undefined,
           });

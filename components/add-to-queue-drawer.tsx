@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useQuery, useMutation, useAction } from "convex/react";
+import { useQuery, useAction } from "convex/react";
+import { useOfflineMutation } from "@/hooks/use-offline-mutation";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 // Removed vaul drawer imports
@@ -63,7 +64,16 @@ export function AddToQueueDrawer({
     api.patients.searchPatients,
     clerkId ? { clerkId, search } : "skip"
   );
-  const addManualAppointment = useMutation(api.appointments.addManualAppointment);
+  const addManualAppointment = useOfflineMutation(api.appointments.addManualAppointment, {
+    table: "visits",
+    operation: "create",
+    toLocalRecord: (args) => ({
+      ...args,
+      status: "confirmed",
+      source: "manual",
+      createdAt: Date.now(),
+    }),
+  });
 
   // Focus search after the sheet has animated in (avoids keyboard popping mid-animation)
   useEffect(() => {

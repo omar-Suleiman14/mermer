@@ -101,6 +101,8 @@ export const addToQueue = mutation({
     patientId: v.id("patients"),
     scheduledTime: v.optional(v.number()),
     queueDate: v.optional(v.number()), // defaults to today if not provided
+    // Offline sync: idempotency key (addToQueue already has built-in duplicate detection)
+    _idempotencyKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);

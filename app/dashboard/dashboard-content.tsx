@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useAction } from "convex/react";
+import { useOfflineQuery } from "@/hooks/use-offline-query";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
@@ -91,9 +92,19 @@ export default function DashboardPage() {
   const canReschedule = !isAssistant || !hasExplicitPerms || userPerms.includes("appointments.reschedule");
   const canCancel = !isAssistant || !hasExplicitPerms || userPerms.includes("appointments.cancel");
 
-  const todayAppointments = useQuery(
+  const todayAppointments = useOfflineQuery(
     api.appointments.getAppointmentsByDate,
-    clerkId ? { clerkId, dayStart: todayTs } : "skip"
+    clerkId ? { clerkId, dayStart: todayTs } : "skip",
+    {
+      table: "visits",
+      filter: (records: any[]) => {
+        const dayEnd = todayTs + 86400000 - 1;
+        return records.filter(
+          (r: any) => r.date >= todayTs && r.date <= dayEnd
+        );
+      },
+      sort: (a: any, b: any) => (a.date as number) - (b.date as number),
+    }
   );
 
   const todayVisits = useMemo(() => {

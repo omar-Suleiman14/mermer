@@ -3,6 +3,7 @@
 import { useState, useMemo, useRef, useEffect, memo, useCallback } from "react";
 import { useCurrentUser } from "@/components/providers/user-provider";
 import { useMutation, useQuery, useAction } from "convex/react";
+import { useOfflineQuery } from "@/hooks/use-offline-query";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
@@ -207,9 +208,18 @@ function SchedulePageInner() {
   // Fetch all appointments for the currently visible week
   const weekStartMs = weekAnchor;
   const weekEndMs = weekAnchor + daysInView * 86400000 - 1;
-  const rangeAppointments = useQuery(
+  const rangeAppointments = useOfflineQuery(
     api.appointments.getAppointmentsByRange,
-    clerkId ? { clerkId, startMs: weekStartMs, endMs: weekEndMs } : "skip"
+    clerkId ? { clerkId, startMs: weekStartMs, endMs: weekEndMs } : "skip",
+    {
+      table: "visits",
+      filter: (records: any[]) => {
+        return records.filter(
+          (r: any) => r.date >= weekStartMs && r.date <= weekEndMs
+        );
+      },
+      sort: (a: any, b: any) => (a.date as number) - (b.date as number),
+    }
   );
 
   // Filter the fetched range to only show appointments for the currently selected day
@@ -242,9 +252,17 @@ function SchedulePageInner() {
     return d.getTime();
   }, [rescheduleDate]);
 
-  const rescheduleDateAppointments = useQuery(
+  const rescheduleDateAppointments = useOfflineQuery(
     api.appointments.getAppointmentsByDate,
-    clerkId && rescheduleDateStart ? { clerkId, dayStart: rescheduleDateStart } : "skip"
+    clerkId && rescheduleDateStart ? { clerkId, dayStart: rescheduleDateStart } : "skip",
+    {
+      table: "visits",
+      filter: (records: any[]) => {
+        if (!rescheduleDateStart) return [];
+        const dayEnd = rescheduleDateStart + 86400000 - 1;
+        return records.filter((r: any) => r.date >= rescheduleDateStart && r.date <= dayEnd);
+      }
+    }
   );
 
   // Build time slots from doctor settings

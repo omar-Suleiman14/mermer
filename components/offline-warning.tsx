@@ -1,63 +1,95 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { WifiOff, AlertTriangle } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { WifiOff, Cloud, CloudOff, Check, Loader2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n/client";
+import { useConnection } from "@/components/providers/ConnectionProvider";
 import { motion, AnimatePresence } from "framer-motion";
 
+/**
+ * Redesigned offline indicator — replaces the scary red banner with
+ * a subtle, non-alarming status pill.
+ *
+ * States:
+ * - Online + synced:    hidden (nothing to show)
+ * - Offline:            Amber pill — "Working offline"
+ * - Reconnecting/syncing: Blue pulsing pill — "Syncing N changes..."
+ * - Just synced:        Brief green flash — "All synced ✓"
+ */
 export function OfflineWarning() {
-  const [isOffline, setIsOffline] = useState(false);
+  const { status, pendingSyncCount } = useConnection();
   const { lang, dir } = useI18n();
+  const [showSyncComplete, setShowSyncComplete] = useState(false);
+  const prevStatusRef = useRef(status);
+  const prevCountRef = useRef(pendingSyncCount);
 
+  // Show "All synced" briefly after reconnecting → online transition
   useEffect(() => {
-    // Check initial state
-    if (typeof window !== "undefined") {
-      setIsOffline(!navigator.onLine);
+    if (
+      prevStatusRef.current === "reconnecting" &&
+      status === "online" &&
+      pendingSyncCount === 0
+    ) {
+      setShowSyncComplete(true);
+      const timer = setTimeout(() => setShowSyncComplete(false), 3000);
+      return () => clearTimeout(timer);
     }
+    prevStatusRef.current = status;
+    prevCountRef.current = pendingSyncCount;
+  }, [status, pendingSyncCount]);
 
-    const handleOnline = () => setIsOffline(false);
-    const handleOffline = () => setIsOffline(true);
-
-    window.addEventListener("online", handleOnline);
-    window.addEventListener("offline", handleOffline);
-
-    return () => {
-      window.removeEventListener("online", handleOnline);
-      window.removeEventListener("offline", handleOffline);
-    };
-  }, []);
+  const isOffline = status === "offline";
+  const isReconnecting = status === "reconnecting" || pendingSyncCount > 0;
+  const showIndicator = isOffline || isReconnecting || showSyncComplete;
 
   return (
     <AnimatePresence>
-      {isOffline && (
+      {showIndicator && (
         <motion.div
-          initial={{ y: -100, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          exit={{ y: -100, opacity: 0 }}
-          transition={{ type: "spring", stiffness: 300, damping: 25 }}
-          className="fixed top-0 left-0 right-0 z-[9999] bg-red-500 text-white shadow-xl flex items-center justify-center p-3 sm:p-4 gap-3 border-b-4 border-red-700"
+          initial={{ y: -40, opacity: 0, scale: 0.95 }}
+          animate={{ y: 0, opacity: 1, scale: 1 }}
+          exit={{ y: -40, opacity: 0, scale: 0.95 }}
+          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+          className="fixed top-3 left-1/2 z-[9999] -translate-x-1/2"
           dir={dir}
         >
-          <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-            <WifiOff className="w-5 h-5 shrink-0" />
-          </div>
-          <div className="text-sm font-medium flex-1 max-w-4xl">
-            {lang === "ar" ? (
-              <p className="leading-relaxed">
-                <strong className="text-base block mb-1">انقطع الاتصال بالإنترنت! ⚡️</strong>
-                التطبيق يعمل الآن في وضع عدم الاتصال (Offline). يمكنك الاستمرار في العمل وإضافة المرضى والمواعيد بشكل طبيعي، وسيتم حفظ كل شيء. 
-                <span className="font-bold underline bg-red-700 px-1.5 py-0.5 rounded mx-1 text-white">الرجاء عدم تحديث أو إغلاق الصفحة</span> 
-                حتى يعود الإنترنت لضمان مزامنة البيانات بنجاح.
-              </p>
-            ) : (
-              <p className="leading-relaxed">
-                <strong className="text-base block mb-1">Connection Lost! ⚡️</strong>
-                The app is now running in Offline mode. You can continue working, adding patients, and scheduling normally, and everything will be queued. 
-                <span className="font-bold underline bg-red-700 px-1.5 py-0.5 rounded mx-1 text-white">Please DO NOT refresh or close the page</span> 
-                until the connection is restored to sync your data.
-              </p>
-            )}
-          </div>
+          {isOffline && (
+            <div className="flex items-center gap-2 rounded-full bg-amber-500/90 px-4 py-2 text-white shadow-lg backdrop-blur-sm border border-amber-400/30">
+              <CloudOff className="w-4 h-4 shrink-0" />
+              <span className="text-sm font-medium whitespace-nowrap">
+                {lang === "ar" ? "يعمل بدون إنترنت" : "Working offline"}
+              </span>
+              {pendingSyncCount > 0 && (
+                <span className="bg-white/20 text-xs rounded-full px-2 py-0.5 font-semibold tabular-nums">
+                  {pendingSyncCount}
+                </span>
+              )}
+            </div>
+          )}
+
+          {isReconnecting && !isOffline && (
+            <div className="flex items-center gap-2 rounded-full bg-blue-500/90 px-4 py-2 text-white shadow-lg backdrop-blur-sm border border-blue-400/30">
+              <Loader2 className="w-4 h-4 shrink-0 animate-spin" />
+              <span className="text-sm font-medium whitespace-nowrap">
+                {lang === "ar"
+                  ? `جاري المزامنة${pendingSyncCount > 0 ? ` (${pendingSyncCount})` : ""}...`
+                  : `Syncing${pendingSyncCount > 0 ? ` ${pendingSyncCount} change${pendingSyncCount !== 1 ? "s" : ""}` : ""}...`}
+              </span>
+            </div>
+          )}
+
+          {showSyncComplete && !isOffline && !isReconnecting && (
+            <motion.div
+              initial={{ scale: 0.9 }}
+              animate={{ scale: 1 }}
+              className="flex items-center gap-2 rounded-full bg-emerald-500/90 px-4 py-2 text-white shadow-lg backdrop-blur-sm border border-emerald-400/30"
+            >
+              <Check className="w-4 h-4 shrink-0" />
+              <span className="text-sm font-medium whitespace-nowrap">
+                {lang === "ar" ? "تمت المزامنة ✓" : "All synced ✓"}
+              </span>
+            </motion.div>
+          )}
         </motion.div>
       )}
     </AnimatePresence>
