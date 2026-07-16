@@ -5,6 +5,8 @@ import { createPortal } from "react-dom";
 import { useQuery, useMutation } from "convex/react";
 import { useOfflineMutation } from "@/hooks/use-offline-mutation";
 import { useOfflineQuery } from "@/hooks/use-offline-query";
+import { useCurrentUser } from "@/components/providers/user-provider";
+import { useConnectionStatus } from "@/components/providers/ConnectionProvider";
 import { isLocalId } from "@/lib/offline/idRemap";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -321,8 +323,31 @@ export function VisitCompletionModal({
   const addFrequencyOption = useMutation(api.clinicalOptions.addFrequencyOption);
   const addNoteOption = useMutation(api.clinicalOptions.addNoteOption);
 
-  // Clinical options query
-  const allClinicalOptions = useQuery(api.clinicalOptions.getAllClinicalOptions, clerkId ? { clerkId } : "skip");
+  // Clinical options query — cache in localStorage for offline access
+  const connectionStatus = useConnectionStatus();
+  const isOffline = connectionStatus === "offline";
+  const liveClinicalOptions = useQuery(
+    api.clinicalOptions.getAllClinicalOptions,
+    !isOffline && clerkId ? { clerkId } : "skip",
+  );
+
+  const [cachedClinicalOptions, setCachedClinicalOptions] = useState<any>(() => {
+    if (typeof window === "undefined") return undefined;
+    try {
+      const raw = localStorage.getItem("mermer_clinicalOptions");
+      return raw ? JSON.parse(raw) : undefined;
+    } catch { return undefined; }
+  });
+  useEffect(() => {
+    if (liveClinicalOptions) {
+      try {
+        localStorage.setItem("mermer_clinicalOptions", JSON.stringify(liveClinicalOptions));
+        setCachedClinicalOptions(liveClinicalOptions);
+      } catch {}
+    }
+  }, [liveClinicalOptions]);
+  const allClinicalOptions = liveClinicalOptions ?? cachedClinicalOptions;
+
   const medOptions = allClinicalOptions?.medications;
   const freqOptions = allClinicalOptions?.frequencies;
   const noteOptions = allClinicalOptions?.notes;
@@ -334,7 +359,7 @@ export function VisitCompletionModal({
   const addMeasurementOption = useMutation(api.clinicalOptions.addMeasurementOption);
   const addVitalsOption = useMutation(api.clinicalOptions.addVitalsOption);
 
-  const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
+  const { currentUser } = useCurrentUser();
   const isinstallmentVisit = !!installmentId;
   const { t, lang, dir } = useI18n();
   const dateLocale = lang === "ar" ? "ar-EG" : "en-US";
@@ -521,7 +546,409 @@ export function VisitCompletionModal({
   // ── Save draft to localStorage ─────────────────────────────────────────────
   const saveDraftToStorage = useCallback(() => {
     if (!visitId) return;
-    const draft: DraftState = { notes, diagnosis, measurements, vitals, medic…4992 tokens truncated…                 <div>
+    const draft: DraftState = { notes, diagnosis, measurements, vitals, medications, fuNote, fuTime };
+    try { localStorage.setItem(draftKey(visitId), JSON.stringify(draft)); } catch {}
+  }, [visitId, notes, diagnosis, measurements, vitals, medications, fuNote, fuTime]);
+
+  // ── Clear draft from localStorage ─────────────────────────────────────────
+  const clearDraft = useCallback(() => {
+    if (!visitId) return;
+    try { localStorage.removeItem(draftKey(visitId)); } catch {}
+  }, [visitId]);
+
+  // Sync initial fuTime to the first available working hour once loaded
+  useEffect(() => {
+    if (timeSlots.length > 0 && fuTime === "10:00") {
+      const firstAvailable = timeSlots.find(s => s.isWorkingHour && !s.isReserved);
+      if (firstAvailable) setFuTime(firstAvailable.timeStr);
+    }
+  }, [timeSlots, fuTime]);
+
+  const [isSaving, setIsSaving] = useState(false);
+  const [done, setDone] = useState(false);
+
+  const rxInputRef = useRef<HTMLInputElement>(null);
+  const extrasInputRef = useRef<HTMLInputElement>(null);
+
+  const handleRxFile = useCallback((file: File) => {
+    setRxFile(file);
+    setRxPreviewUrl(URL.createObjectURL(file));
+  }, []);
+
+  const handleSave = async (skip = false) => {
+    // installment visits require a next visit date
+    if (isinstallmentVisit && !nextinstallmentDate) {
+      toast.error(lang === "ar" ? "يرجى اختيار تاريخ الزيارة التالية قبل إتمام هذه الزيارة" : "Please pick the next visit date before completing this visit");
+      return;
+    }
+    if (!isinstallmentVisit && scheduleFollowUp && !fuDate) {
+      toast.error(lang === "ar" ? "يرجى اختيار تاريخ المتابعة" : "Please select a follow-up date");
+      return;
+    }
+    if (!isinstallmentVisit && scheduleFollowUp && fuDate) {
+      const selectedSlot = timeSlots.find(s => s.timeStr === fuTime);
+      if (selectedSlot?.isReserved) {
+        toast.error(lang === "ar" ? "هذا الوقت محجوز مسبقاً." : "This time slot is already reserved.");
+        return;
+      }
+    }
+
+    setIsSaving(true);
+    try {
+      // ── Save any new medication/frequency/note options to DB (parallelized) ──
+      // PERF: Collect all new-option writes and fire them in one Promise.all
+      // instead of 3 sequential awaits per medication row.
+      const savedNames = (medOptions ?? []).map((o: { name: string }) => o.name);
+      const savedFreqs = (freqOptions ?? []).map((o: { name: string }) => o.name);
+      const savedNotes = (noteOptions ?? []).map((o: { name: string }) => o.name);
+      const translatedFreqs = DEFAULT_FREQUENCIES.map((k) => t(k as string) || k);
+      const translatedNotes = DEFAULT_NOTES.map((k) => t(k as string) || k);
+
+      const optionInserts: Promise<unknown>[] = [];
+      for (const med of medications) {
+        if (med.name.trim() && !savedNames.includes(med.name.trim())) {
+          optionInserts.push(addMedicationOption({ clerkId, name: med.name.trim() }));
+        }
+        if (
+          med.frequency.trim() &&
+          !savedFreqs.includes(med.frequency.trim()) &&
+          !translatedFreqs.includes(med.frequency.trim())
+        ) {
+          optionInserts.push(addFrequencyOption({ clerkId, name: med.frequency.trim() }));
+        }
+        if (
+          med.notes.trim() &&
+          !savedNotes.includes(med.notes.trim()) &&
+          !translatedNotes.includes(med.notes.trim())
+        ) {
+          optionInserts.push(addNoteOption({ clerkId, name: med.notes.trim() }));
+        }
+      }
+      await Promise.all(optionInserts);
+
+      // Build structured medication payload (only include rows that have at least a name)
+      const prescribedMedications = medications
+        .filter((m) => m.name.trim())
+        .map((m) => ({
+          name: m.name.trim(),
+          frequency: m.frequency.trim() || undefined,
+          notes: m.notes.trim() || undefined,
+        }));
+
+      let prescriptionImageId: Id<"_storage"> | undefined;
+      const documentIds: Id<"_storage">[] = [];
+
+      if (!skip && rxFile) {
+        const rxUploadUrl = await generateUploadUrl({ clerkId });
+        const rxRes = await fetch(rxUploadUrl, { method: "POST", headers: { "Content-Type": rxFile.type }, body: rxFile });
+        const { storageId } = await rxRes.json();
+        prescriptionImageId = storageId as Id<"_storage">;
+      }
+      // PERF: Upload all extra files in parallel instead of a serial for-loop.
+      // For N docs this cuts upload time from N×latency to max(1 upload).
+      if (extraFiles.length > 0) {
+        const uploadedIds = await Promise.all(
+          extraFiles.map(async (docFile) => {
+            const url = await generateUploadUrl({ clerkId });
+            const res = await fetch(url, { method: "POST", headers: { "Content-Type": docFile.type }, body: docFile });
+            const { storageId } = await res.json();
+            return storageId as Id<"_storage">;
+          })
+        );
+        documentIds.push(...uploadedIds);
+      }
+
+      if (isinstallmentVisit && installmentId) {
+        // installment visit path — single mutation handles everything
+        let nextTs: number | undefined;
+        if (scheduleNextinstallment && nextinstallmentDate) {
+          const [hh, mm] = nextinstallmentTime.split(":").map(Number);
+          const d = new Date(nextinstallmentDate);
+          d.setHours(hh, mm, 0, 0);
+          nextTs = d.getTime();
+        }
+        await completeinstallmentVisit({
+          clerkId,
+          visitId,
+          installmentId,
+          isPaid,
+          notes: notes || undefined,
+          diagnosis: diagnosis || undefined,
+          measurements: measurements || undefined,
+          vitals: vitals || undefined,
+          prescriptionImageId,
+          documentIds: documentIds.length > 0 ? documentIds : undefined,
+          nextVisitDate: nextTs,
+          prescribedMedications: prescribedMedications.length > 0 ? prescribedMedications : undefined,
+        });
+        setDone(true);
+        toast.success(isPaid ? "Visit complete — payment recorded ✓" : "Visit complete — balance added to installment");
+      } else {
+        // Regular visit path — always update notes, status, and medications
+        await addVisitFiles({
+          clerkId,
+          visitId,
+          prescriptionImageId: !skip ? prescriptionImageId : undefined,
+          documentIds: documentIds.length > 0 ? documentIds : undefined,
+          notes: notes || undefined,
+          diagnosis: diagnosis || undefined,
+          measurements: measurements || undefined,
+          vitals: vitals || undefined,
+          status: "completed",
+          prescribedMedications: prescribedMedications.length > 0 ? prescribedMedications : undefined,
+        });
+        if (scheduleFollowUp && fuDate && patientId) {
+          const [hh, mm] = fuTime.split(":").map(Number);
+          const exactDate = new Date(fuDate);
+          exactDate.setHours(hh ?? 10, mm ?? 0, 0, 0);
+          await createFollowUp({ clerkId, patientId, followUpDate: exactDate.getTime(), followUpTime: fuTime, type: "in-person", note: fuNote || undefined, parentVisitId: visitId });
+        }
+        setDone(true);
+        toast.success(scheduleFollowUp ? "Visit complete — follow-up scheduled!" : "Visit recorded");
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast.error(msg || "Failed to complete visit");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const forceClose = () => {
+    setRxFile(null); setRxPreviewUrl(null); setExtraFiles([]);
+    setNotes(""); setDiagnosis(""); setMeasurements(""); setVitals(""); setScheduleFollowUp(false); setFuDate(undefined);
+    setFuTime(timeSlots.find(s => s.isWorkingHour && !s.isReserved)?.timeStr || "10:00");
+    setFuNote(""); setIsPaid(true); setScheduleNextinstallment(true);
+    setNextinstallmentDate(undefined); setNextinstallmentTime("10:00"); setDone(false);
+    setMedications([{ name: "", frequency: "", notes: "" }]);
+    clearDraft();
+    onOpenChange(false);
+  };
+
+  // X button or clicking outside: just save draft, don't submit
+  const handleDismiss = () => {
+    saveDraftToStorage();
+    onOpenChange(false);
+  };
+
+  // After a successful save, clear draft and close fully
+  const handleClose = () => {
+    clearDraft();
+    onComplete?.();
+    forceClose();
+  };
+
+  return (
+    <>
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+        >
+          {/* Backdrop — saves draft, does NOT submit */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={handleDismiss}
+          />
+
+          <motion.div
+            initial={{ y: 40, opacity: 0, scale: 0.97 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: 40, opacity: 0, scale: 0.97 }}
+            transition={{ type: "spring", stiffness: 380, damping: 30 }}
+            className="relative z-10 w-full sm:w-[90vw] sm:max-w-none bg-background rounded-t-2xl sm:rounded-2xl shadow-2xl h-[90vh] max-h-[90vh] flex flex-col overflow-hidden"
+          >
+            <div className="sm:hidden w-12 h-1 rounded-full bg-border mx-auto mt-3 mb-1 shrink-0" />
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-base font-semibold">{t("visit.completeVisit")}</h2>
+                    {tag === "current" && (
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-[#34c759]/15 text-[#34c759] border border-[#34c759]/30 px-2 py-0.5 rounded-full">
+                        {dir === "rtl" ? "الحالي" : "Current"}
+                      </span>
+                    )}
+                    {tag === "next" && (
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-[#007AFF]/15 text-[#007AFF] border border-[#007AFF]/30 px-2 py-0.5 rounded-full">
+                        {dir === "rtl" ? "التالي" : "Next"}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {patientName}{patientAge ? ` · ${patientAge}y` : ""}
+                  </p>
+                </div>
+              </div>
+              {/* X saves draft, does NOT submit */}
+              <button onClick={handleDismiss} className="p-1.5 rounded-lg hover:bg-muted/60 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 p-6 space-y-5">
+              {/* ── Unpaid / Past-Due Warning Banner ── */}
+              {isinstallmentVisit && !done && installmentData && (
+                (installmentData.unpaidBalance ?? 0) > 0 || installmentData.status === "expired"
+              ) && (
+                <motion.div
+                  initial={{ opacity: 0, y: -6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-3 mb-4 mt-[-8px]"
+                >
+                  <div className="flex items-start gap-2.5">
+                    <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0" />
+                    <div>
+                      {(installmentData?.unpaidBalance ?? 0) > 0 && (
+                        <p className="text-sm font-bold text-amber-600">
+                          {t("installments.unpaidBalance") || "Unpaid balance"}: {installmentData!.unpaidBalance!.toLocaleString()} {t("common.currency")}
+                        </p>
+                      )}
+                      {installmentData?.status === "expired" && (
+                        <p className="text-sm font-bold text-amber-600">{t("installments.expired") || "Installment is expired"}</p>
+                      )}
+                      <p className="text-xs text-amber-600/80 mt-0.5">{t("installments.discussWithPatient") || "Discuss with patient before proceeding"}</p>
+                    </div>
+                  </div>
+                  
+                  {(installmentData?.unpaidBalance ?? 0) > 0 && (
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setWaiveConfirm(true); }}
+                      disabled={isSaving}
+                      className="w-full text-sm font-semibold bg-amber-500 text-white px-3 py-2.5 rounded-xl hover:bg-amber-600 transition-colors disabled:opacity-60 flex items-center justify-center gap-2 shadow-sm"
+                    >
+                      {isSaving ? <IOSSpinner size={14} className="text-white" /> : <CheckCircle2 className="w-4 h-4" />}
+                      {t("installments.waive") || "Waive Balance"}
+                    </button>
+                  )}
+                </motion.div>
+              )}
+
+              {/* Done state */}
+              {done && (
+                <motion.div
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  className="flex flex-col items-center py-8"
+                >
+                  <div className="w-16 h-16 rounded-full bg-[#34c759]/10 flex items-center justify-center mb-3">
+                    <CheckCircle2 className="w-8 h-8 text-[#34c759]" />
+                  </div>
+                  <p className="font-semibold text-base">{t("visit.visitComplete")}</p>
+                  <p className="text-sm text-muted-foreground mt-1 text-center">
+                    {scheduleFollowUp ? t("visit.followUpScheduled") : t("visit.savedTimeline")}
+                  </p>
+                  
+                  <div className="mt-6 flex flex-col gap-2 w-full max-w-xs">
+                    {showPrescription && (
+                      <button
+                        onClick={() => window.open(`/print/${visitId}`, '_blank')}
+                        className="flex items-center justify-center gap-2 px-4 py-3 bg-[#007AFF] hover:bg-[#0062cc] text-white rounded-xl transition-colors font-semibold text-sm w-full"
+                      >
+                        <Printer className="w-4 h-4" />
+                        {t("visit.printPrescription")}
+                      </button>
+                    )}
+                    
+                    <button
+                      onClick={handleClose}
+                      className="flex items-center justify-center px-4 py-3 bg-muted hover:bg-muted/80 rounded-xl transition-colors font-semibold text-sm w-full"
+                    >
+                      {t("common.close")}
+                    </button>
+                  </div>
+                </motion.div>
+              )}
+
+              {!done && (
+                <div className="space-y-5">
+
+                  {/* ── Medications Section ─────────────────────────────────── */}
+                  {showPrescription && (
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-xl bg-[#34c759]/10 flex items-center justify-center">
+                          <Pill className="w-3.5 h-3.5 text-[#34c759]" />
+                        </div>
+                        <p className="text-sm font-semibold">{dir === "rtl" ? "الأدوية الموصوفة" : "Prescribed Medications"}</p>
+                        <span className="text-xs text-muted-foreground font-normal">({t("onboarding.optional")})</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={addMedRow}
+                        className="flex items-center gap-1.5 text-xs font-semibold text-[#007AFF] hover:text-[#0062cc] transition-colors px-2.5 py-1.5 rounded-lg hover:bg-[#007AFF]/8"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        {dir === "rtl" ? "إضافة" : "Add"}
+                      </button>
+                    </div>
+
+                    <AnimatePresence initial={false}>
+                      {medications.map((med, idx) => (
+                        <motion.div
+                          key={idx}
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          exit={{ opacity: 0, height: 0 }}
+                          transition={{ duration: 0.18 }}
+                          className="overflow-visible"
+                        >
+                          <div className="border border-border rounded-2xl p-3 mb-2 space-y-2 bg-muted/20">
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                {dir === "rtl" ? "دواء" : "Med"} #{idx + 1}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => removeMedRow(idx)}
+                                className="p-1 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+
+                            {/* Medication name */}
+                            <div>
+                              <p className="text-xs font-medium text-muted-foreground mb-1">{dir === "rtl" ? "اسم الدواء *" : "Medication name *"}</p>
+                              <CreatableCombobox
+                                options={allMedNames}
+                                value={med.name}
+                                onChange={(val) => updateMed(idx, "name", val)}
+                                onCreateOption={(val) => {
+                                  updateMed(idx, "name", val);
+                                }}
+                                placeholder={dir === "rtl" ? "مثل: باراسيتامول، أموكسيسيلين..." : "e.g. Paracetamol, Amoxicillin…"}
+                              />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                              {/* Frequency */}
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground mb-1">{dir === "rtl" ? "كم مرة" : "How often"}</p>
+                                <CreatableCombobox
+                                  options={allFreqNames}
+                                  value={med.frequency}
+                                  onChange={(val) => updateMed(idx, "frequency", val)}
+                                  onCreateOption={(val) => {
+                                    updateMed(idx, "frequency", val);
+                                  }}
+                                  placeholder={dir === "rtl" ? "مثل: مرتين يومياً..." : "e.g. Twice daily…"}
+                                  accentColor="#AF52DE"
+                                />
+                              </div>
+
+                              {/* Notes */}
+                              <div>
                                 <p className="text-xs font-medium text-muted-foreground mb-1">{dir === "rtl" ? "ملاحظات" : "Notes"}</p>
                                 <CreatableCombobox
                                   options={allNoteNames}

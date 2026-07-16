@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
+import { useOfflineQuery } from "@/hooks/use-offline-query";
+import { useConnectionStatus } from "@/components/providers/ConnectionProvider";
 import { api } from "@/convex/_generated/api";
 import { PageHeader } from "@/components/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,11 +25,43 @@ export default function PatientsPage() {
   const [patientTypeFilter, setPatientTypeFilter] = useState<string | undefined>(undefined);
   const [intakeOpen, setIntakeOpen] = useState(false);
 
-  const patientTypeOptions = useQuery(api.patientTypes.listOptions, clerkId ? { clerkId } : "skip");
+  const connectionStatus = useConnectionStatus();
+  const isOffline = connectionStatus === "offline";
 
-  const patients = useQuery(
+  // Patient type options — cache in localStorage for offline
+  const livePatientTypeOptions = useQuery(api.patientTypes.listOptions, !isOffline && clerkId ? { clerkId } : "skip");
+  const [cachedPTO, setCachedPTO] = useState<string[] | undefined>(() => {
+    if (typeof window === "undefined") return undefined;
+    try { const r = localStorage.getItem("mermer_patientTypeOptions"); return r ? JSON.parse(r) : undefined; } catch { return undefined; }
+  });
+  useEffect(() => {
+    if (livePatientTypeOptions) {
+      try { localStorage.setItem("mermer_patientTypeOptions", JSON.stringify(livePatientTypeOptions)); setCachedPTO(livePatientTypeOptions); } catch {}
+    }
+  }, [livePatientTypeOptions]);
+  const patientTypeOptions = livePatientTypeOptions ?? cachedPTO;
+
+  const patients = useOfflineQuery(
     api.patients.searchPatients,
-    clerkId ? { clerkId, search, patientType: patientTypeFilter } : "skip"
+    clerkId ? { clerkId, search, patientType: patientTypeFilter } : "skip",
+    {
+      table: "patients",
+      filter: (records) => {
+        let filtered = records;
+        const needle = search.trim().toLocaleLowerCase();
+        if (needle) {
+          filtered = filtered.filter((p) =>
+            [p.name, p.phone, ...(Array.isArray(p.additionalPhones) ? p.additionalPhones : [])]
+              .some((v) => String(v ?? "").toLocaleLowerCase().includes(needle))
+          );
+        }
+        if (patientTypeFilter) {
+          filtered = filtered.filter((p) => p.patientType === patientTypeFilter);
+        }
+        return filtered;
+      },
+      sort: (a, b) => Number(b.createdAt ?? 0) - Number(a.createdAt ?? 0),
+    }
   );
 
   // Unfiltered count: when there's no search/filter active, patients.length IS the total
@@ -75,7 +109,7 @@ export default function PatientsPage() {
                   <DropdownMenuItem onClick={() => setPatientTypeFilter(undefined)} className="rounded-xl cursor-pointer py-2 px-3 text-sm font-medium">
                     {dir === "rtl" ? "كل الأنواع" : "All Types"}
                   </DropdownMenuItem>
-                  {patientTypeOptions.map((type) => (
+                  {((patientTypeOptions as string[]) || []).map((type: string) => (
                     <DropdownMenuItem key={type} onClick={() => setPatientTypeFilter(type)} className="rounded-xl cursor-pointer py-2 px-3 text-sm">
                       {type}
                     </DropdownMenuItem>

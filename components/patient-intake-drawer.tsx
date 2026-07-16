@@ -5,6 +5,8 @@ import { toWesternDigits } from "@/lib/arabicNumerals";
 import { useConvex, useQuery, useMutation } from "convex/react";
 import { useOfflineMutation } from "@/hooks/use-offline-mutation";
 import { useOfflineQuery } from "@/hooks/use-offline-query";
+import { useCurrentUser } from "@/components/providers/user-provider";
+import { useConnectionStatus } from "@/components/providers/ConnectionProvider";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { toast } from "sonner";
@@ -134,7 +136,9 @@ export function PatientIntakeDrawer({
   const [calOpen, setCalOpen] = useState(false);
 
   // Doctor profile for slot generation
-  const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
+  const { currentUser } = useCurrentUser();
+  const connectionStatus = useConnectionStatus();
+  const isOffline = connectionStatus === "offline";
 
   function isNonWorkingDay(): boolean {
     return false;
@@ -201,7 +205,18 @@ export function PatientIntakeDrawer({
   }, [timeSlots, visitTime]);
 
   // Chronic conditions options
-  const conditionOptions = useQuery(api.chronicConditions.listOptions, clerkId ? { clerkId } : "skip");
+  const liveConditionOptions = useQuery(api.chronicConditions.listOptions, !isOffline && clerkId ? { clerkId } : "skip");
+  const [cachedConditions, setCachedConditions] = useState<any>(() => {
+    if (typeof window === "undefined") return undefined;
+    try { const r = localStorage.getItem("mermer_conditionOptions"); return r ? JSON.parse(r) : undefined; } catch { return undefined; }
+  });
+  useEffect(() => {
+    if (liveConditionOptions) {
+      try { localStorage.setItem("mermer_conditionOptions", JSON.stringify(liveConditionOptions)); setCachedConditions(liveConditionOptions); } catch {}
+    }
+  }, [liveConditionOptions]);
+  const conditionOptions = liveConditionOptions ?? cachedConditions;
+
   const addConditionOption = useMutation(api.chronicConditions.addOption);
 
   const [conditionSearch, setConditionSearch] = useState("");
@@ -209,7 +224,17 @@ export function PatientIntakeDrawer({
   const conditionRef = useRef<HTMLDivElement>(null);
 
   // Patient type options
-  const patientTypeOptions = useQuery(api.patientTypes.listOptions, clerkId ? { clerkId } : "skip");
+  const livePatientTypeOptions = useQuery(api.patientTypes.listOptions, !isOffline && clerkId ? { clerkId } : "skip");
+  const [cachedPatientTypes, setCachedPatientTypes] = useState<any>(() => {
+    if (typeof window === "undefined") return undefined;
+    try { const r = localStorage.getItem("mermer_patientTypeOptions"); return r ? JSON.parse(r) : undefined; } catch { return undefined; }
+  });
+  useEffect(() => {
+    if (livePatientTypeOptions) {
+      try { localStorage.setItem("mermer_patientTypeOptions", JSON.stringify(livePatientTypeOptions)); setCachedPatientTypes(livePatientTypeOptions); } catch {}
+    }
+  }, [livePatientTypeOptions]);
+  const patientTypeOptions = livePatientTypeOptions ?? cachedPatientTypes;
   const addPatientTypeOption = useMutation(api.patientTypes.addOption);
 
   const [patientTypeSearch, setPatientTypeSearch] = useState("");
@@ -220,25 +245,25 @@ export function PatientIntakeDrawer({
     const opts = conditionOptions ?? [];
     if (!conditionSearch.trim()) return opts.slice(0, 15);
     const q = conditionSearch.toLowerCase();
-    return opts.filter((c) => c.toLowerCase().includes(q));
+    return opts.filter((c: string) => c.toLowerCase().includes(q));
   }, [conditionOptions, conditionSearch]);
 
   const canAddCustom =
     conditionSearch.trim().length > 0 &&
-    !filteredConditions.some((c) => c.toLowerCase() === conditionSearch.trim().toLowerCase()) &&
-    !form.chronicConditions.some((c) => c.toLowerCase() === conditionSearch.trim().toLowerCase());
+    !filteredConditions.some((c: string) => c.toLowerCase() === conditionSearch.trim().toLowerCase()) &&
+    !form.chronicConditions.some((c: string) => c.toLowerCase() === conditionSearch.trim().toLowerCase());
 
   const filteredPatientTypes = useMemo(() => {
     const opts = patientTypeOptions ?? [];
     if (!patientTypeSearch.trim()) return opts.slice(0, 15);
     const q = patientTypeSearch.toLowerCase();
-    return opts.filter((c) => c.toLowerCase().includes(q));
+    return opts.filter((c: string) => c.toLowerCase().includes(q));
   }, [patientTypeOptions, patientTypeSearch]);
 
   const canAddCustomPatientType =
     patientTypeSearch.trim().length > 0 &&
-    !filteredPatientTypes.some((c) => c.toLowerCase() === patientTypeSearch.trim().toLowerCase()) &&
-    form.patientType?.toLowerCase() !== patientTypeSearch.trim().toLowerCase();
+    !filteredPatientTypes.some((c: string) => c.toLowerCase() === patientTypeSearch.trim().toLowerCase()) &&
+    !(form.patientType && form.patientType.toLowerCase() === patientTypeSearch.trim().toLowerCase());
 
   useEffect(() => {
     if (!conditionDropdownOpen) return;
@@ -279,7 +304,6 @@ export function PatientIntakeDrawer({
   const addManualAppointment = useOfflineMutation(api.appointments.addManualAppointment, {
     table: "visits",
     operation: "create",
-    syncOperation: "addManualAppointment",
     toLocalRecord: (args) => ({
       ...args,
       status: "confirmed",
@@ -669,7 +693,7 @@ export function PatientIntakeDrawer({
                 transition={{ duration: 0.12 }}
                 className="absolute left-0 right-0 mt-1 bg-background border border-border rounded-xl shadow-lg max-h-40 overflow-y-auto z-30"
               >
-                {filteredPatientTypes.map((c) => {
+                {filteredPatientTypes.map((c: string) => {
                   const selected = form.patientType === c;
                   return (
                     <button
@@ -745,7 +769,7 @@ export function PatientIntakeDrawer({
                 transition={{ duration: 0.12 }}
                 className="absolute left-0 right-0 mt-1 bg-background border border-border rounded-xl shadow-lg max-h-40 overflow-y-auto z-30"
               >
-                {filteredConditions.map((c) => {
+                {filteredConditions.map((c: string) => {
                   const selected = form.chronicConditions.includes(c);
                   return (
                     <button
@@ -965,3 +989,38 @@ export function PatientIntakeDrawer({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => onOpenChange(false)}
+          />
+          {/* Panel */}
+          <motion.div
+            initial={{ y: 20, opacity: 0, scale: 0.97 }}
+            animate={{ y: 0, opacity: 1, scale: 1 }}
+            exit={{ y: 20, opacity: 0, scale: 0.97 }}
+            transition={{ type: "spring", stiffness: 380, damping: 30 }}
+            className="relative z-10 w-full max-w-lg bg-background rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+          >
+            {/* Header */}
+            <div className="flex-none flex items-center justify-between px-6 py-4 border-b border-border">
+              <div>
+                <h2 className="text-base font-semibold">{isEdit ? t("drawer.editPatient") : t("drawer.patientIntake")}</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {isEdit ? t("drawer.updatePatient") : t("drawer.registerPatient")}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => onOpenChange(false)}
+                className="p-2 rounded-xl hover:bg-muted/50 transition-colors text-muted-foreground"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            {formContent}
+            {footerContent}
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}

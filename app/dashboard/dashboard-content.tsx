@@ -1,13 +1,13 @@
 "use client";
 
-import { useQuery, useAction } from "convex/react";
+import { useAction } from "convex/react";
 import { useOfflineQuery } from "@/hooks/use-offline-query";
 import { useOfflineMutation } from "@/hooks/use-offline-mutation";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
 import dynamic from "next/dynamic";
-const VisitCompletionModal = dynamic(() => import("@/components/visit-completion-modal").then(m => m.VisitCompletionModal));
+const VisitCompletionModal: any = dynamic(() => import("@/components/visit-completion-modal").then(m => m.VisitCompletionModal));
 import { TodayAnalytics } from "@/components/dashboard/today-analytics";
 import { PastDueAlerts } from "@/components/dashboard/past-due-alerts";
 import { SortableApptItem } from "@/components/dashboard/sortable-appt-item";
@@ -166,9 +166,20 @@ export default function DashboardPage() {
     return startOfDay(rescheduleDate.getTime());
   }, [rescheduleDate]);
 
-  const rescheduleDateAppointments = useQuery(
+  const rescheduleDateAppointments = useOfflineQuery(
     api.appointments.getAppointmentsByDate,
-    clerkId && rescheduleDateStart ? { clerkId, dayStart: rescheduleDateStart } : "skip"
+    clerkId && rescheduleDateStart ? { clerkId, dayStart: rescheduleDateStart } : "skip",
+    {
+      table: "visits",
+      filter: (records) => {
+        if (!rescheduleDateStart) return [];
+        const dayEnd = rescheduleDateStart + 86400000 - 1;
+        return records.filter(
+          (r) => Number(r.date) >= rescheduleDateStart && Number(r.date) <= dayEnd
+        );
+      },
+      sort: (a, b) => Number(a.date) - Number(b.date),
+    }
   );
 
   const [completionModal, setCompletionModal] = useState<{
@@ -630,7 +641,7 @@ export default function DashboardPage() {
 
       <VisitCompletionModal
         open={!!completionModal}
-        onOpenChange={(v) => !v && setCompletionModal(null)}
+        onOpenChange={(v: boolean) => !v && setCompletionModal(null)}
         clerkId={clerkId}
         visitId={completionModal?.appointmentId as any}
         patientId={completionModal?.patientId}

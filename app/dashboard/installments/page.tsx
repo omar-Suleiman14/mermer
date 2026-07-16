@@ -5,6 +5,7 @@ import { toWesternDigits } from "@/lib/arabicNumerals";
 import { useUser } from "@clerk/nextjs";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { useOfflineQuery } from "@/hooks/use-offline-query";
+import { useCurrentUser } from "@/components/providers/user-provider";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
@@ -193,8 +194,8 @@ function InstallmentForm({
   clerkId: string;
   onClose: () => void;
 }) {
-  const patients = useQuery(api.patients.listPatients, clerkId ? { clerkId } : "skip");
-  const currentUser = useQuery(api.users.getCurrentUser, clerkId ? { clerkId } : "skip");
+  const patients = useOfflineQuery(api.patients.listPatients, clerkId ? { clerkId } : "skip", { table: "patients" });
+  const { currentUser } = useCurrentUser();
   const createinstallment = useMutation(api.installments.createinstallment);
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   const { t, dir } = useI18n();
@@ -237,9 +238,16 @@ function InstallmentForm({
   const slotMin = currentUser?.slotDurationMinutes ?? 30;
 
   const firstVisitDayStart = firstVisitDate ? new Date(firstVisitDate.getFullYear(), firstVisitDate.getMonth(), firstVisitDate.getDate(), 0, 0, 0, 0).getTime() : 0;
-  const existingAppts = useQuery(
+  const existingAppts = useOfflineQuery(
     api.appointments.getAppointmentsByDate,
-    clerkId && firstVisitDate ? { clerkId, dayStart: firstVisitDayStart } : "skip"
+    clerkId && firstVisitDate ? { clerkId, dayStart: firstVisitDayStart } : "skip",
+    {
+      table: "visits",
+      filter: (records) => {
+        const dayEnd = firstVisitDayStart + 86400000 - 1;
+        return records.filter((r) => Number(r.date) >= firstVisitDayStart && Number(r.date) <= dayEnd);
+      },
+    }
   );
   
   const reservedTimes = useMemo(() => {
@@ -435,7 +443,189 @@ function InstallmentForm({
               <input type="text" inputMode="numeric" pattern="[0-9٠-٩]*" value={costPerVisit} onChange={(e) => setCostPerVisit(toWesternDigits(e.target.value))} placeholder="500"
                 className="w-full px-4 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF]" />
             </div>
-     …2478 tokens truncated…} · {(installment.completedVisits ?? 0) - (installment.paidVisits ?? 0)} {t("installments.unpaid").toLowerCase()}</span>
+            <div className="flex flex-col justify-end">
+              {computedVisits !== null ? (
+                <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#34c759]/10 border border-[#34c759]/30">
+                  <CheckCircle2 className="w-4 h-4 text-[#34c759] shrink-0" />
+                  <div>
+                    <p className="text-sm font-bold text-[#34c759]">{computedVisits} {t("installments.visits")}</p>
+                    <p className="text-[10px] text-muted-foreground">{t("installments.toSchedule")}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-muted/40 border border-border">
+                  <Users className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <p className="text-xs text-muted-foreground">{t("installments.enterAmounts")}</p>
+                </div>
+              )}
+            </div>
+          </div>
+          {/* ── First Visit Slot ──────────────────────────────── */}
+          {/* ── First Visit Slot ──────────────────────────────── */}
+          <VisitSlotPicker
+            index={0}
+            date={firstVisitDate}
+            time={firstVisitTime}
+            onDateChange={(d) => setFirstVisitDate(d)}
+            onTimeChange={(t) => setFirstVisitTime(t)}
+            clerkId={clerkId}
+            startHour={startHour}
+            endHour={endHour}
+            slotMin={slotMin}
+            availableDays={(currentUser as any)?.availableDays || []}
+            reservedTimes={reservedTimes}
+          />
+
+          {/* File upload */}
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">{t("installments.installmentDoc")}</label>
+            {installmentFile ? (
+              <div className="flex items-center gap-3 p-3 rounded-xl border border-border bg-muted/30">
+                <FileText className="w-5 h-5 text-[#007AFF] shrink-0" />
+                <span className="text-sm flex-1 truncate">{installmentFile.name}</span>
+                <button onClick={() => setinstallmentFile(null)} className="p-1 rounded-lg hover:bg-muted transition-colors text-muted-foreground hover:text-red-500">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <div onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }} onDragLeave={() => setIsDragging(false)} onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl p-6 flex flex-col items-center gap-2 cursor-pointer transition-all ${isDragging ? "border-[#007AFF] bg-[#007AFF]/5" : "border-border hover:border-[#007AFF]/40 hover:bg-muted/20"}`}>
+                <Upload className={`w-6 h-6 ${isDragging ? "text-[#007AFF]" : "text-muted-foreground"}`} />
+                <p className="text-sm font-medium">{t("installments.dropFile")} <span className="text-[#007AFF]">{t("installments.browse")}</span></p>
+                <p className="text-xs text-muted-foreground">{t("installments.fileInfo")}</p>
+              </div>
+            )}
+            <input ref={fileInputRef} type="file" accept=".pdf,image/*" className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); }} />
+          </div>
+
+          {/* Notes */}
+          <div>
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider block mb-2">{t("installments.notes")}</label>
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder={t("installments.notesPlaceholder")}
+              className="w-full px-4 py-2.5 text-sm bg-background border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007AFF] resize-none" />
+          </div>
+
+
+        </div>
+
+        {/* Footer */}
+        <div className="flex gap-3 px-6 py-4 border-t border-border shrink-0">
+          <button
+            onClick={onClose}
+            className="flex-1 border border-border text-sm font-medium py-2.5 rounded-xl hover:bg-muted/40 transition-colors"
+          >
+            {t("common.cancel")}
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex-1 bg-[#007AFF] text-white text-sm font-semibold py-2.5 rounded-xl hover:bg-[#0062cc] transition-colors disabled:opacity-60 flex items-center justify-center gap-2"
+          >
+            {saving ? (
+              <><IOSSpinner size={15} className="text-white" /> {t("onboarding.saving")}</>
+            ) : (
+              <><CheckCircle2 className="w-4 h-4" /> {t("installments.createinstallment")}</>
+            )}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ── installment View Drawer (read-only) ──────────────────────────────────────
+
+function InstallmentViewDrawer({
+  installment,
+  clerkId,
+  onClose,
+}: {
+  installment: any;
+  clerkId: string;
+  onClose: () => void;
+}) {
+  const waiveUnpaidBalance = useMutation(api.installments.waiveUnpaidBalance);
+  const { t } = useI18n();
+  const [waiving, setWaiving] = useState(false);
+  const [waiveConfirm, setWaiveConfirm] = useState(false);
+
+  async function handleWaive() {
+    setWaiving(true);
+    try {
+      await waiveUnpaidBalance({ clerkId, installmentId: installment._id });
+      toast.success(t("installments.waiveSuccess"));
+      onClose();
+    } catch { toast.error(t("installments.waiveFail")); }
+    finally { setWaiving(false); setWaiveConfirm(false); }
+  }
+
+  const { dir } = useI18n();
+
+  const cfg = STATUS_CONFIG[installment.status as keyof typeof STATUS_CONFIG];
+  const progress = installment.numVisits > 0
+    ? Math.min(100, Math.round(((installment.completedVisits ?? 0) / installment.numVisits) * 100))
+    : 0;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+    >
+      <motion.div
+        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ y: 60, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 60, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 350, damping: 28 }}
+        className="relative z-10 w-full sm:max-w-lg bg-background rounded-t-2xl sm:rounded-2xl overflow-hidden shadow-2xl max-h-[85vh] flex flex-col"
+      >
+        <div className="sm:hidden w-12 h-1 rounded-full bg-border mx-auto mt-3 mb-1" />
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-semibold">{installment.patientName}</h2>
+              <Badge className={`text-[10px] border ${cfg?.color} font-semibold px-2`}>{cfg ? t(`installments.${installment.status}`) : installment.status}</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">{t("installments.installment")} · {fmtDate(installment.startDate, t("common.currency") === "ج.م" ? "ar-EG" : "en-US")}</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-muted/60 transition-colors"><X className="w-4 h-4" /></button>
+        </div>
+
+        <div className="overflow-y-auto flex-1 p-6 space-y-5">
+          {/* Financials */}
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { label: t("installments.total"), value: installment.totalAmount ? `${installment.totalAmount.toLocaleString()} ${t("common.currency")}` : "—" },
+              { label: t("installments.downPayment"), value: installment.downPayment ? `${installment.downPayment.toLocaleString()} ${installment.downPaymentType === "percentage" ? "%" : t("common.currency")}` : "—" },
+              { label: t("installments.costPerVisitShort"), value: installment.costPerVisit ? `${installment.costPerVisit.toLocaleString()} ${t("common.currency")}` : "—" },
+              { label: t("installments.remainingBalance"), value: installment.remainingBalance > 0 ? `${installment.remainingBalance.toLocaleString()} ${t("common.currency")}` : t("installments.settled") },
+            ].map((item) => (
+              <div key={item.label} className="bg-muted/40 rounded-xl p-3">
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-0.5">{item.label}</p>
+                <p className="text-sm font-semibold">{item.value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Visits progress */}
+          {installment.numVisits > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-medium">{t("installments.visitProgress")}</span>
+                <span className="text-muted-foreground">{installment.completedVisits ?? 0} / {installment.numVisits} {t("installments.completed")}</span>
+              </div>
+              <div className="h-2 bg-muted/40 rounded-full overflow-hidden">
+                <div className="h-full bg-[#007AFF] rounded-full transition-all" style={{ width: `${progress}%` }} />
+              </div>
+              <div className="flex justify-between text-[11px] text-muted-foreground">
+                <span>{installment.paidVisits ?? 0} {t("installments.paid")} · {(installment.completedVisits ?? 0) - (installment.paidVisits ?? 0)} {t("installments.unpaid").toLowerCase()}</span>
                 <span>{installment.visitsLeft} {t("installments.remaining")}</span>
               </div>
             </div>
@@ -528,14 +718,7 @@ export default function InstallmentsPage() {
   const { user } = useUser();
   const clerkId = user?.id ?? "";
   const { t, dir } = useI18n();
-  const installments = useOfflineQuery(
-    api.installments.listinstallments,
-    clerkId ? { clerkId } : "skip",
-    {
-      table: "installments",
-      sort: (a, b) => Number(b.createdAt ?? 0) - Number(a.createdAt ?? 0),
-    }
-  );
+  const installments = useOfflineQuery(api.installments.listinstallments, clerkId ? { clerkId } : "skip", { table: "installments" });
   const deleteinstallment = useMutation(api.installments.deleteinstallment);
 
   const [createOpen, setCreateOpen] = useState(false);
