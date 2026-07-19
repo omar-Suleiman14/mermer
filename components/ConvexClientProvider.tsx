@@ -21,6 +21,7 @@ const convex = new ConvexReactClient(convexUrl);
  */
 function SyncEngineInitializer() {
   const { detector, setPendingSyncCount } = useConnection();
+  const { userId } = useAuth();
   const initialized = useRef(false);
 
   // Register mutation functions
@@ -35,7 +36,7 @@ function SyncEngineInitializer() {
   const addToQueueMutation = useMutation(api.queue.addToQueue);
 
   useEffect(() => {
-    if (!detector || initialized.current) return;
+    if (!detector || !userId || initialized.current) return;
     initialized.current = true;
 
     // Register all offline-capable mutations with the sync engine
@@ -71,6 +72,7 @@ function SyncEngineInitializer() {
     initSyncEngine({
       convexClient: convex,
       connectionDetector: detector,
+      ownerClerkId: userId,
       onPendingCountChange: setPendingSyncCount,
       onSyncComplete: () => {
         console.log("[SyncEngine] All changes synced successfully");
@@ -87,7 +89,7 @@ function SyncEngineInitializer() {
       initialized.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [detector]);
+  }, [detector, userId]);
 
   return null;
 }

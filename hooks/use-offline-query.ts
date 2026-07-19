@@ -25,6 +25,8 @@ interface UseOfflineQueryOptions {
   table: OfflineTable;
   /** Filter applied to locally cached records. */
   filter?: (records: OfflineRecord[]) => OfflineRecord[];
+  /** Optional Dexie query callback for performance optimization. */
+  query?: (table: any, ownerClerkId: string) => Promise<OfflineRecord[]>;
   /** Sort applied to locally cached records. */
   sort?: (a: OfflineRecord, b: OfflineRecord) => number;
   /** Max number of local records returned (default: 500). */
@@ -64,11 +66,16 @@ export function useOfflineQuery<Query extends FunctionReference<"query">>(
   const {
     table,
     filter,
+    query: customQuery,
     sort,
     limit = 500,
     select,
     initialLocalValue = [],
   } = options;
+  const ownerClerkId =
+    args !== "skip" && typeof (args as Record<string, unknown>).clerkId === "string"
+      ? (args as Record<string, unknown>).clerkId as string
+      : "";
 
   useEffect(() => {
     if (convexData !== undefined) setLastConvexData(convexData);
@@ -77,9 +84,14 @@ export function useOfflineQuery<Query extends FunctionReference<"query">>(
   // Subscribe to Dexie instead of taking a one-time snapshot. Local creates and
   // updates must be reflected immediately while the device is offline.
   useEffect(() => {
-    const subscription = liveQuery<OfflineRecord[]>(() =>
-      (offlineDb[table] as any).toArray(),
-    ).subscribe({
+    const subscription = liveQuery<OfflineRecord[]>(() => {
+      if (!ownerClerkId) return Promise.resolve([]);
+      if (customQuery) return customQuery(offlineDb[table], ownerClerkId);
+      return (offlineDb[table] as any)
+        .where("_ownerClerkId")
+        .equals(ownerClerkId)
+        .toArray();
+    }).subscribe({
       next(records) {
         setLocalRecords(records);
         setHasLoadedLocal(true);
@@ -94,7 +106,7 @@ export function useOfflineQuery<Query extends FunctionReference<"query">>(
     });
 
     return () => subscription.unsubscribe();
-  }, [table]);
+  }, [table, ownerClerkId]);
 
   const localData = useMemo(() => {
     let records = [...localRecords];
@@ -122,12 +134,12 @@ export function useOfflineQuery<Query extends FunctionReference<"query">>(
       : [convexData];
       
     mirrorInProgress.current = true;
-    void mirrorToDexie(table, recordsToMirror as Record<string, unknown>[]).finally(
+    void mirrorToDexie(table, recordsToMirror as Record<string, unknown>[], ownerClerkId).finally(
       () => {
         mirrorInProgress.current = false;
       },
     );
-  }, [isOnline, convexData, table]);
+  }, [isOnline, convexData, table, ownerClerkId]);
 
   if (isOffline) {
     // Preserve visible server data through the offline transition until Dexie has
@@ -158,6 +170,7 @@ export function useOfflineQuery<Query extends FunctionReference<"query">>(
 async function mirrorToDexie(
   table: OfflineTable,
   records: Record<string, unknown>[],
+  ownerClerkId: string,
 ): Promise<void> {
   if (records.length === 0) return;
   const dexieTable = offlineDb[table];
@@ -167,17 +180,19 @@ async function mirrorToDexie(
       for (const record of records) {
         const serverId = (record._id as string) ?? (record.id as string);
         if (!serverId) continue;
-        const existing = await dexieTable
+        const existing = await (dexieTable as any)
           .where("_serverId")
           .equals(serverId)
+          .filter((candidate: any) => candidate._ownerClerkId === ownerClerkId)
           .first();
 
         if (existing) {
+          if (existing._syncStatus === "pending") continue;
           const strategy = getStrategyForTable(table);
           const { resolved, hadConflict } = resolveConflict(
             existing as any,
             record,
-            Date.now(),
+            existing._updatedAt,
             strategy
           );
 
@@ -196,6 +211,7 @@ async function mirrorToDexie(
           await (dexieTable as any).put({
             ...stripConvexMeta(record),
             _localId: crypto.randomUUID(),
+            _ownerClerkId: ownerClerkId,
             _serverId: serverId,
             _syncStatus: "synced",
             _updatedAt: Date.now(),

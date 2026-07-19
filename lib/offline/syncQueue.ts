@@ -19,6 +19,7 @@ export async function enqueueSyncOp(opts: {
   localId: string;
   serverId: string | null;
   payload: Record<string, unknown>;
+  ownerClerkId: string;
   dependsOnIdempotencyKey?: string;
 }): Promise<string> {
   const idempotencyKey = crypto.randomUUID();
@@ -61,6 +62,7 @@ export async function enqueueSyncOp(opts: {
     localId: opts.localId,
     serverId: opts.serverId,
     payload: opts.payload,
+    ownerClerkId: opts.ownerClerkId,
     createdAt: Date.now(),
     status: "pending",
     retryCount: 0,
@@ -72,21 +74,55 @@ export async function enqueueSyncOp(opts: {
 
 // ─── Query Operations ───────────────────────────────────────────────────────
 
-/** Get all pending entries in FIFO order */
-export async function getPendingEntries(): Promise<SyncQueueEntry[]> {
-  return offlineDb.syncQueue
+/** Get pending entries in FIFO order (limited batch) */
+export async function getPendingEntries(ownerClerkId: string, limit = 10): Promise<SyncQueueEntry[]> {
+  const entries = await offlineDb.syncQueue
     .where("status")
     .equals("pending")
-    .sortBy("createdAt");
+    .filter((entry) => entry.ownerClerkId === ownerClerkId)
+    .limit(limit)
+    .toArray();
+    
+  return entries.sort((a, b) => a.createdAt - b.createdAt);
 }
 
 /** Get count of entries still waiting to sync (excludes permanently failed entries) */
-export async function getPendingCount(): Promise<number> {
+export async function getPendingCount(ownerClerkId: string): Promise<number> {
   const pending = await offlineDb.syncQueue
     .where("status")
     .anyOf(["pending", "in-flight"])
+    .filter((entry) => entry.ownerClerkId === ownerClerkId)
     .count();
   return pending;
+}
+
+/** Returns permanently failed operations for the active user. */
+export async function getFailedCount(ownerClerkId: string): Promise<number> {
+  return offlineDb.syncQueue
+    .where("status")
+    .equals("failed")
+    .filter((entry) => entry.ownerClerkId === ownerClerkId)
+    .count();
+}
+
+/** Whether another queued operation still targets this local record. */
+export async function hasOutstandingEntriesForRecord(
+  ownerClerkId: string,
+  table: string,
+  localId: string,
+  excludingId?: number,
+): Promise<boolean> {
+  const entries = await offlineDb.syncQueue
+    .where("table")
+    .equals(table)
+    .filter((entry) =>
+      entry.ownerClerkId === ownerClerkId &&
+      entry.localId === localId &&
+      entry.id !== excludingId &&
+      (entry.status === "pending" || entry.status === "in-flight")
+    )
+    .toArray();
+  return entries.length > 0;
 }
 
 /** Get all entries for a specific local record */

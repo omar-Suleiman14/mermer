@@ -68,7 +68,7 @@ function resolveLastWriteWins<T extends OfflineMeta & Record<string, unknown>>(
   serverRecord: Record<string, unknown>,
   serverUpdatedAt: number
 ): ConflictResult<T> {
-  const localWins = localRecord._updatedAt >= serverUpdatedAt;
+  const localWins = localRecord._syncStatus === "pending" || localRecord._updatedAt >= serverUpdatedAt;
 
   if (localWins) {
     // Local version is newer — keep it, it will be synced to server
@@ -124,7 +124,7 @@ function resolveFieldMerge<T extends OfflineMeta & Record<string, unknown>>(
 
   const conflictingFields: string[] = [];
   const merged: any = { ...localRecord };
-  const localWins = localRecord._updatedAt >= serverUpdatedAt;
+  const localWins = localRecord._syncStatus === "pending" || localRecord._updatedAt >= serverUpdatedAt;
 
   for (const key of Object.keys(serverRecord)) {
     if (metaFields.has(key)) continue;

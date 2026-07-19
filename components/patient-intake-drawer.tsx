@@ -304,6 +304,7 @@ export function PatientIntakeDrawer({
   const addManualAppointment = useOfflineMutation(api.appointments.addManualAppointment, {
     table: "visits",
     operation: "create",
+    syncOperation: "addManualAppointment",
     toLocalRecord: (args) => ({
       ...args,
       status: "confirmed",
@@ -466,12 +467,16 @@ export function PatientIntakeDrawer({
         });
         toast.success(dir === "rtl" ? "تم تحديث بيانات المريض" : "Patient data updated");
       } else {
-        // Fast path: run lookup while we prepare other data
-        const existingPromise = convex.query(api.patients.findPatientByNameAndPhone, {
-          clerkId,
-          name: form.name.trim(),
-          phone: fullPhone,
-        });
+        // A server duplicate check is useful online, but it must never block
+        // offline creation. The local patient cache remains the source of truth
+        // until the queued create reaches Convex.
+        const existingPromise = isOffline
+          ? Promise.resolve(null)
+          : convex.query(api.patients.findPatientByNameAndPhone, {
+              clerkId,
+              name: form.name.trim(),
+              phone: fullPhone,
+            });
 
         let visitDateMs: number | undefined;
         if (addVisit && visitDate) {

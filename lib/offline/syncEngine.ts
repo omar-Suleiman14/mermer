@@ -3,6 +3,8 @@ import { offlineDb } from "./offlineDb";
 import {
   getPendingEntries,
   getPendingCount,
+  getFailedCount,
+  hasOutstandingEntriesForRecord,
   markInFlight,
   markCompleted,
   markFailed,
@@ -23,6 +25,8 @@ interface SyncEngineConfig {
   convexClient: ConvexReactClient;
   /** The connection detector instance */
   connectionDetector: ConnectionDetector;
+  /** Active Clerk user. Queue entries are never replayed across accounts. */
+  ownerClerkId: string;
   /** Callback when pending sync count changes */
   onPendingCountChange?: (count: number) => void;
   /** Callback when sync completes (queue fully drained) */
@@ -131,7 +135,7 @@ export class SyncEngine {
 
     // If we're already online, check for pending entries
     if (this._config.connectionDetector.status !== "offline") {
-      const pending = await getPendingCount();
+      const pending = await getPendingCount(this._config.ownerClerkId);
       if (pending > 0) {
         void this.sync();
       }
@@ -167,7 +171,7 @@ export class SyncEngine {
 
     try {
       // Only mark as reconnecting when there are actionable entries to drain
-      const actionableCount = await getPendingCount();
+      const actionableCount = await getPendingCount(this._config.ownerClerkId);
       if (actionableCount > 0) {
         this._config.connectionDetector.markReconnecting();
       }
@@ -177,7 +181,7 @@ export class SyncEngine {
 
       // Process entries in FIFO order
       while (!this._isDestroyed) {
-        const entries = await getPendingEntries();
+        const entries = await getPendingEntries(this._config.ownerClerkId);
         if (entries.length === 0) break;
 
         // Check if we're still connected
@@ -198,6 +202,12 @@ export class SyncEngine {
           }
 
           // Check retry limit
+          if (entry.retryCount >= this._config.maxRetries && entry.lastError?.startsWith("Network:")) {
+            // A connection outage is not a data-validation failure. Keep this
+            // operation queued and let the next connectivity event retry it.
+            break;
+          }
+
           if (entry.retryCount >= this._config.maxRetries) {
             console.warn(
               `[SyncEngine] Entry ${entry.idempotencyKey} exceeded max retries, marking failed`
@@ -239,19 +249,24 @@ export class SyncEngine {
       await purgeCompletedEntries();
 
       // Check if everything synced
-      const remaining = await getPendingCount();
-      if (remaining === 0) {
+      const remaining = await getPendingCount(this._config.ownerClerkId);
+      const failed = await getFailedCount(this._config.ownerClerkId);
+      if (remaining === 0 && failed === 0) {
         console.log(
           `[SyncEngine] Sync complete! Processed: ${processedCount}, Failed: ${failedCount}`
         );
         this._config.connectionDetector.markOnline();
         this._config.onSyncComplete();
-      } else {
+      } else if (remaining > 0) {
         console.log(
-          `[SyncEngine] Sync paused. Processed: ${processedCount}, Remaining: ${remaining}`
+          `[SyncEngine] Sync paused. Processed: ${processedCount}, Remaining: ${remaining}, Failed: ${failed}`
         );
         // Schedule a retry for remaining entries
         this._scheduleRetry();
+      } else {
+        // Permanent failures require an explicit user repair/retry; do not
+        // claim success or spin in a background retry loop.
+        this._config.connectionDetector.markOnline();
       }
     } catch (err) {
       console.error("[SyncEngine] Sync cycle error:", err);
@@ -330,20 +345,35 @@ export class SyncEngine {
         await dexieTable.delete(entry.localId);
       }
 
-      // If this was an update, mark as synced
+      // Mark entry as completed
+      await markCompleted(entryId);
+
+      // Do not mark a record synced while a newer queued change exists.
       if (entry.operation === "update" || entry.operation === "updateAppointment" || entry.operation === "swapAppointments") {
         const dexieTable = offlineDb[entry.table as keyof typeof offlineDb] as
           import("dexie").Table<Record<string, unknown>, string>;
-        const localRecord = await dexieTable.get(entry.localId);
-        if (localRecord) {
-          await dexieTable.update(entry.localId, {
-            _syncStatus: "synced",
-          });
+        const localIds = [entry.localId];
+
+        // A swap mutates two local rows while it has one queue entry.
+        if (entry.operation === "swapAppointments" && typeof payload.appointmentId2 === "string") {
+          const second =
+            (await dexieTable.get(payload.appointmentId2)) ??
+            (await dexieTable.where("_serverId").equals(payload.appointmentId2).first());
+          if (second?._localId) localIds.push(second._localId as string);
+        }
+
+        for (const localId of localIds) {
+          const hasMoreChanges = await hasOutstandingEntriesForRecord(
+            this._config.ownerClerkId,
+            entry.table,
+            localId,
+            entryId,
+          );
+          if (!hasMoreChanges) {
+            await dexieTable.update(localId, { _syncStatus: "synced" });
+          }
         }
       }
-
-      // Mark entry as completed
-      await markCompleted(entryId);
 
       console.log(
         `[SyncEngine] ✓ ${entry.table}.${entry.operation} (${entry.idempotencyKey})`
@@ -370,7 +400,7 @@ export class SyncEngine {
         const existing = await offlineDb.syncQueue.get(entryId);
         await offlineDb.syncQueue.update(entryId, {
           status: "pending",
-          lastError: errorMsg,
+          lastError: `Network: ${errorMsg}`,
           retryCount: existing?.retryCount ? existing.retryCount + 1 : 1,
         });
         return false;
@@ -405,7 +435,7 @@ export class SyncEngine {
   }
 
   private async _notifyPendingCount(): Promise<void> {
-    const count = await getPendingCount();
+    const count = await getPendingCount(this._config.ownerClerkId);
     this._config.onPendingCountChange(count);
   }
 

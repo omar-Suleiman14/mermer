@@ -1,7 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v, ConvexError } from "convex/values";
-import { getAuthUser, requireAuthUser, logAction } from "./authHelper";
+import { getAuthUser, requireAuthUser, logAction, hasProcessedSyncOperation, recordSyncOperation } from "./authHelper";
 
 export const getVisitsByPatient = query({
   args: { patientId: v.id("patients"), clerkId: v.string() },
@@ -119,7 +119,6 @@ export const createVisit = mutation({
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
-
     // Denormalize patient info for display
     const patient = await ctx.db.get(args.patientId);
     if (!patient || patient.doctorId !== user._id) throw new ConvexError("Patient not found");
@@ -208,9 +207,13 @@ export const addVisitFiles = mutation({
         )
       )
     ),
+    // Accepted for offline replay. This mutation is a patch, so reapplying the
+    // same payload is safe.
+    _idempotencyKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
+    if (await hasProcessedSyncOperation(ctx, user._id, args._idempotencyKey)) return;
 
     const visit = await ctx.db.get(args.visitId);
     if (!visit || visit.doctorId !== user._id) throw new ConvexError("Not found");
@@ -230,6 +233,7 @@ export const addVisitFiles = mutation({
       ...(args.prescribedMedications !== undefined ? { prescribedMedications: args.prescribedMedications } : {}),
       actionBy: user.actualUserName || "Doctor",
     });
+    await recordSyncOperation(ctx, user._id, args._idempotencyKey);
 
     if (args.status === "completed") {
       await logAction(ctx, user, "Completed Visit", `Completed visit for patient`, args.visitId);

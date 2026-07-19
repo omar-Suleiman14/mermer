@@ -131,6 +131,14 @@ export default defineSchema({
     timestamp: v.number(),
   }).index("by_clinic", ["clinicId"]).index("by_clinic_timestamp", ["clinicId", "timestamp"]),
 
+  // Durable receipts for replayed offline mutations. A receipt is written only
+  // after the domain mutation succeeds, making lost client responses safe to retry.
+  syncOperations: defineTable({
+    doctorId: v.id("users"),
+    key: v.string(),
+    createdAt: v.number(),
+  }).index("by_doctor_key", ["doctorId", "key"]),
+
   patients: defineTable({
     doctorId: v.id("users"),
     name: v.string(),

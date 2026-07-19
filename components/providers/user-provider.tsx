@@ -9,7 +9,7 @@ import { useConnectionStatus } from "@/components/providers/ConnectionProvider";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type CurrentUser = any; // You can import the Doc<"users"> type from convex later
 
-const CACHE_KEY = "mermer_currentUser";
+const CACHE_KEY_PREFIX = "mermer_currentUser:";
 
 interface UserContextType {
   currentUser: CurrentUser | null | undefined;
@@ -42,28 +42,33 @@ export function UserProvider({ children }: { children: ReactNode }) {
     !isOffline && clerkId ? { clerkId } : "skip",
   );
 
-  // Cached user from localStorage (loaded once on mount)
-  const [cachedUser, setCachedUser] = useState<CurrentUser | undefined>(() => {
-    if (typeof window === "undefined") return undefined;
+  const cacheKey = clerkId ? `${CACHE_KEY_PREFIX}${clerkId}` : null;
+  const [cachedUser, setCachedUser] = useState<CurrentUser | undefined>(undefined);
+
+  // Do not reuse the previous browser user's profile while Clerk resolves the
+  // current session. This is especially important on shared clinic devices.
+  useEffect(() => {
+    setCachedUser(undefined);
+    if (!cacheKey || typeof window === "undefined") return;
     try {
-      const raw = localStorage.getItem(CACHE_KEY);
-      return raw ? JSON.parse(raw) : undefined;
+      const raw = localStorage.getItem(cacheKey);
+      setCachedUser(raw ? JSON.parse(raw) : undefined);
     } catch {
-      return undefined;
+      setCachedUser(undefined);
     }
-  });
+  }, [cacheKey]);
 
   // Mirror convex user to localStorage whenever it arrives
   useEffect(() => {
     if (convexUser && convexUser._id) {
       try {
-        localStorage.setItem(CACHE_KEY, JSON.stringify(convexUser));
+        if (cacheKey) localStorage.setItem(cacheKey, JSON.stringify(convexUser));
         setCachedUser(convexUser);
       } catch {
         // localStorage full or unavailable — ignore
       }
     }
-  }, [convexUser]);
+  }, [convexUser, cacheKey]);
 
   // Determine the best available user object
   const currentUser = convexUser ?? cachedUser ?? undefined;

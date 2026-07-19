@@ -138,13 +138,19 @@ export function useOfflineMutation<
           typeof result === "object"
             ? (result as Record<string, unknown>)
             : { _id: result };
-        const serverId = (serverRecord._id as string) ?? (result as string);
+        const serverId = extractServerId(serverRecord, result);
+        if (!serverId) {
+          throw new Error("[useOfflineMutation] Create mutation returned no record ID");
+        }
 
         const localRecord = toLocalRecord
           ? toLocalRecord(args as Record<string, unknown>)
           : (args as Record<string, unknown>);
 
-        const meta = createOfflineMeta(serverId);
+        const meta = createOfflineMeta(
+          serverId,
+          String((args as Record<string, unknown>).clerkId ?? ""),
+        );
 
         await (offlineDb[table] as any).put({
           ...localRecord,
@@ -225,9 +231,10 @@ export function useOfflineMutation<
     args: FunctionArgs<Mutation>,
   ): Promise<OfflineMutationResult> {
     const dexieTable = offlineDb[table];
+    const ownerClerkId = getOwnerClerkId(args as Record<string, unknown>);
 
     if (operation === "create") {
-      const meta = createOfflineMeta();
+      const meta = createOfflineMeta(undefined, ownerClerkId);
       const localRecord = toLocalRecord
         ? toLocalRecord(args as Record<string, unknown>)
         : (args as Record<string, unknown>);
@@ -245,6 +252,7 @@ export function useOfflineMutation<
         localId: meta._localId,
         serverId: null,
         payload: args as Record<string, unknown>,
+        ownerClerkId,
         dependsOnIdempotencyKey,
       });
 
@@ -285,7 +293,7 @@ export function useOfflineMutation<
           });
           await dexieTable.update(second._localId, {
             date: first.date,
-            _syncStatus: "synced",
+            _syncStatus: "pending",
             _updatedAt: now,
             _version: second._version + 1,
           });
@@ -297,6 +305,7 @@ export function useOfflineMutation<
           localId: first._localId,
           serverId: first._serverId,
           payload: args as Record<string, unknown>,
+          ownerClerkId,
           dependsOnIdempotencyKey,
         });
         return {
@@ -338,6 +347,7 @@ export function useOfflineMutation<
           localId: existing._localId,
           serverId: existing._serverId,
           payload: args as Record<string, unknown>,
+          ownerClerkId,
           dependsOnIdempotencyKey,
         });
 
@@ -357,6 +367,7 @@ export function useOfflineMutation<
         localId: targetId,
         serverId: targetId,
         payload: args as Record<string, unknown>,
+        ownerClerkId,
         dependsOnIdempotencyKey,
       });
 
@@ -387,6 +398,7 @@ export function useOfflineMutation<
           localId: existing._localId,
           serverId: existing._serverId,
           payload: args as Record<string, unknown>,
+          ownerClerkId,
           dependsOnIdempotencyKey,
         });
 
@@ -404,6 +416,7 @@ export function useOfflineMutation<
         localId: targetId,
         serverId: targetId,
         payload: args as Record<string, unknown>,
+        ownerClerkId,
         dependsOnIdempotencyKey,
       });
 
@@ -442,6 +455,28 @@ function getTargetId(args: Record<string, unknown>): string | undefined {
     args.patientId,
     args.visitId,
     args.appointmentId,
+  ];
+  return candidates.find((id): id is string => typeof id === "string");
+}
+
+function getOwnerClerkId(args: Record<string, unknown>): string {
+  const clerkId = args.clerkId;
+  if (typeof clerkId !== "string" || !clerkId) {
+    throw new Error("[useOfflineMutation] Offline mutations require clerkId");
+  }
+  return clerkId;
+}
+
+function extractServerId(
+  serverRecord: Record<string, unknown>,
+  result: unknown,
+): string | undefined {
+  const candidates = [
+    serverRecord._id,
+    serverRecord.id,
+    serverRecord.visitId,
+    serverRecord.patientId,
+    result,
   ];
   return candidates.find((id): id is string => typeof id === "string");
 }

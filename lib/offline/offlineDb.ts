@@ -6,6 +6,8 @@ export type SyncStatus = "synced" | "pending" | "conflict";
 
 /** Base fields added to every offline-cached record */
 export interface OfflineMeta {
+  /** Clerk user that owns this browser-cached record. Never expose another user's cache. */
+  _ownerClerkId: string;
   /** Client-side UUID — primary key for offline-created records */
   _localId: string;
   /** Convex server ID — populated after first sync */
@@ -130,6 +132,8 @@ export interface SyncQueueEntry {
   serverId: string | null;
   /** The full mutation arguments to replay */
   payload: Record<string, unknown>;
+  /** Clerk user that created the operation. Prevents cross-account replay on shared devices. */
+  ownerClerkId: string;
   /** When this entry was created (for FIFO ordering) */
   createdAt: number;
   /** Current processing status */
@@ -203,6 +207,19 @@ export class MermerOfflineDB extends Dexie {
       idRemap: "key, table, localId, serverId",
       syncMeta: "key",
     });
+
+    // Owner scoping is deliberately additive: old cache rows have no owner and
+    // are therefore not readable or replayable by a newly signed-in user.
+    this.version(3).stores({
+      patients: "_localId, _serverId, _syncStatus, _ownerClerkId, doctorId, phone, name",
+      visits: "_localId, _serverId, _syncStatus, _ownerClerkId, doctorId, patientId, date",
+      queue: "_localId, _serverId, _syncStatus, _ownerClerkId, doctorId, queueDate",
+      followUps: "_localId, _serverId, _syncStatus, _ownerClerkId, doctorId, patientId, followUpDate",
+      installments: "_localId, _serverId, _syncStatus, _ownerClerkId, doctorId, patientId, status, nextVisitDate",
+      syncQueue: "++id, status, table, idempotencyKey, createdAt, ownerClerkId",
+      idRemap: "key, table, localId, serverId",
+      syncMeta: "key",
+    });
   }
 }
 
@@ -212,8 +229,9 @@ export const offlineDb = new MermerOfflineDB();
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 /** Generate offline metadata for a new record */
-export function createOfflineMeta(serverId?: string): OfflineMeta {
+export function createOfflineMeta(serverId?: string, ownerClerkId: string = ""): OfflineMeta {
   return {
+    _ownerClerkId: ownerClerkId,
     _localId: crypto.randomUUID(),
     _serverId: serverId ?? null,
     _syncStatus: serverId ? "synced" : "pending",

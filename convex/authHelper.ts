@@ -104,6 +104,28 @@ export async function logAction(
   });
 }
 
+/** Check and record durable idempotency receipts for offline mutation replay. */
+export async function hasProcessedSyncOperation(
+  ctx: MutationCtx,
+  doctorId: Id<"users">,
+  key: string | undefined,
+): Promise<boolean> {
+  if (!key) return false;
+  return !!(await ctx.db
+    .query("syncOperations")
+    .withIndex("by_doctor_key", (q) => q.eq("doctorId", doctorId).eq("key", key))
+    .first());
+}
+
+export async function recordSyncOperation(
+  ctx: MutationCtx,
+  doctorId: Id<"users">,
+  key: string | undefined,
+): Promise<void> {
+  if (!key) return;
+  await ctx.db.insert("syncOperations", { doctorId, key, createdAt: Date.now() });
+}
+
 /**
  * Require the authenticated user to be an admin.
  */

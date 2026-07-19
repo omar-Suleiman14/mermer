@@ -46,7 +46,7 @@ export function DataHydrator({ clerkId }: DataHydratorProps) {
 
     hydrating.current = true;
 
-    void hydrateFromServer(hydrationData).finally(() => {
+    void hydrateFromServer({ ...hydrationData, clerkId }).finally(() => {
       lastHydratedAt.current = hydrationData.hydratedAt;
       hydrating.current = false;
     });
@@ -66,16 +66,17 @@ async function hydrateFromServer(data: {
   followUps: Record<string, unknown>[];
   installments: Record<string, unknown>[];
   hydratedAt: number;
+  clerkId: string;
 }): Promise<void> {
   try {
     const startTime = performance.now();
 
     await Promise.all([
-      hydrateTable("patients", data.patients),
-      hydrateTable("visits", data.visits),
-      hydrateTable("queue", data.queue),
-      hydrateTable("followUps", data.followUps),
-      hydrateTable("installments", data.installments),
+      hydrateTable("patients", data.patients, data.clerkId),
+      hydrateTable("visits", data.visits, data.clerkId),
+      hydrateTable("queue", data.queue, data.clerkId),
+      hydrateTable("followUps", data.followUps, data.clerkId),
+      hydrateTable("installments", data.installments, data.clerkId),
     ]);
 
     // Store hydration timestamp
@@ -106,30 +107,42 @@ async function hydrateFromServer(data: {
  */
 async function hydrateTable(
   tableName: "patients" | "visits" | "queue" | "followUps" | "installments",
-  records: Record<string, unknown>[]
+  records: Record<string, unknown>[],
+  ownerClerkId: string,
 ): Promise<void> {
-  if (!records || records.length === 0) return;
+  if (!records) return;
 
   const table = offlineDb[tableName];
+  const serverIds = new Set(records.map((r) => r._id as string).filter(Boolean));
+  if (serverIds.size === 0) return;
 
   await offlineDb.transaction("rw", table, async () => {
+    // 1. Fetch existing records matching these server IDs in bulk
+    const existingRecords = await (table as any)
+      .where("_serverId")
+      .anyOf(Array.from(serverIds))
+      .filter((candidate: any) => candidate._ownerClerkId === ownerClerkId)
+      .toArray();
+
+    const existingMap = new Map<string, any>(existingRecords.map((r: any) => [r._serverId, r]));
+    const puts: any[] = [];
+
+    // 2. Prepare bulk puts
     for (const record of records) {
       const serverId = record._id as string;
       if (!serverId) continue;
 
-      // Check if this record already exists locally
-      const existing = await table
-        .where("_serverId")
-        .equals(serverId)
-        .first();
+      const existing = existingMap.get(serverId);
 
       if (existing) {
-        // Resolve conflict using the table-specific strategy
+        // Queue state is authoritative until its replay succeeds
+        if (existing._syncStatus === "pending") continue;
+
         const strategy = getStrategyForTable(tableName);
         const { resolved, hadConflict } = resolveConflict(
-          existing as any, // Cast to any to bypass strict type checking for the merge
+          existing as any,
           record,
-          Date.now(), // Use current time as the server's update time since we don't have a reliable server update timestamp
+          existing._updatedAt,
           strategy
         );
 
@@ -138,25 +151,43 @@ async function hydrateTable(
         }
 
         const stripped = stripConvexMeta(resolved);
-        await table.update(existing._localId, {
+        puts.push({
           ...stripped,
-          // If the resolver kept local changes, it sets status to pending
           _syncStatus: resolved._syncStatus,
           _updatedAt: Date.now(),
           _version: existing._version + 1,
         });
       } else {
-        // New record from server — insert
-        const meta = createOfflineMeta(serverId);
+        // New record from server
+        const meta = createOfflineMeta(serverId, ownerClerkId);
         const stripped = stripConvexMeta(record);
-
-        await (table as any).put({
+        puts.push({
           ...stripped,
           ...meta,
           _serverId: serverId,
           _syncStatus: "synced",
         });
       }
+    }
+
+    // 3. Execute bulk upsert
+    if (puts.length > 0) {
+      await (table as any).bulkPut(puts);
+    }
+
+    // 4. Deletion-aware caching: remove synced records that are no longer returned
+    // by the server (e.g. deleted or aged out of the 30-day window).
+    const allSyncedRecords = await (table as any)
+      .filter((r: any) => r._ownerClerkId === ownerClerkId && r._syncStatus === "synced" && r._serverId !== null)
+      .toArray();
+      
+    const toDeleteLocalIds = allSyncedRecords
+      .filter((r: any) => !serverIds.has(r._serverId as string))
+      .map((r: any) => r._localId);
+
+    if (toDeleteLocalIds.length > 0) {
+      console.log(`[DataHydrator] Removing ${toDeleteLocalIds.length} stale/deleted records from ${tableName}`);
+      await table.bulkDelete(toDeleteLocalIds);
     }
   });
 }

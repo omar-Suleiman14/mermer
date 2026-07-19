@@ -1,7 +1,7 @@
 import { mutation, query, action, internalMutation, internalQuery } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { Id } from "./_generated/dataModel";
-import { getAuthUser, requireAuthUser, logAction } from "./authHelper";
+import { getAuthUser, requireAuthUser, logAction, hasProcessedSyncOperation, recordSyncOperation } from "./authHelper";
 import { internal } from "./_generated/api";
 import { msgBookingConfirmed, msgAppointmentCancelled, msgRescheduled, calcSlotNumber, fmtTimeAr, fmtDateAr } from "./messageHelpers";
 
@@ -431,9 +431,11 @@ export const swapAppointments = mutation({
     appointmentId2: v.id("visits"),
     expectedDate1: v.optional(v.number()),
     expectedDate2: v.optional(v.number()),
+    _idempotencyKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
+    if (await hasProcessedSyncOperation(ctx, user._id, args._idempotencyKey)) return;
 
     const v1 = await ctx.db.get(args.appointmentId1);
     const v2 = await ctx.db.get(args.appointmentId2);
@@ -450,6 +452,7 @@ export const swapAppointments = mutation({
 
     await ctx.db.patch(v1._id, { date: v2.date });
     await ctx.db.patch(v2._id, { date: v1.date });
+    await recordSyncOperation(ctx, user._id, args._idempotencyKey);
 
     if (user.evolutionInstanceName && user.evolutionApiKey) {
       if (v1.patientPhone) {
@@ -635,9 +638,13 @@ export const updateAppointment = mutation({
       documentIds: v.optional(v.array(v.id("_storage"))),
       date: v.optional(v.number()),
     }),
+    // Updates are patch operations; accepting the replay key prevents Convex
+    // argument validation from rejecting offline queue entries.
+    _idempotencyKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
+    if (await hasProcessedSyncOperation(ctx, user._id, args._idempotencyKey)) return {};
 
     const visit = await ctx.db.get(args.appointmentId);
     if (!visit || visit.doctorId !== user._id) throw new ConvexError("Not authorized");
@@ -731,6 +738,7 @@ export const updateAppointment = mutation({
     }
 
     await ctx.db.patch(args.appointmentId, args.updates);
+    await recordSyncOperation(ctx, user._id, args._idempotencyKey);
 
     // Notify the new NEXT patient in line
     if (args.updates.status === "completed") {
