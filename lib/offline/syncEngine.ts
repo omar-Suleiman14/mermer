@@ -166,8 +166,11 @@ export class SyncEngine {
     console.log("[SyncEngine] Sync started");
 
     try {
-      // Mark as reconnecting while we drain the queue
-      this._config.connectionDetector.markReconnecting();
+      // Only mark as reconnecting when there are actionable entries to drain
+      const actionableCount = await getPendingCount();
+      if (actionableCount > 0) {
+        this._config.connectionDetector.markReconnecting();
+      }
 
       let processedCount = 0;
       let failedCount = 0;
@@ -364,10 +367,11 @@ export class SyncEngine {
         console.warn(
           `[SyncEngine] Network error for ${entry.idempotencyKey}, will retry`
         );
-        // Revert to pending — don't increment retry count for network errors
+        const existing = await offlineDb.syncQueue.get(entryId);
         await offlineDb.syncQueue.update(entryId, {
           status: "pending",
           lastError: errorMsg,
+          retryCount: existing?.retryCount ? existing.retryCount + 1 : 1,
         });
         return false;
       }

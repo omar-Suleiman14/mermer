@@ -5,6 +5,7 @@ import { useQuery } from "convex/react";
 import { liveQuery } from "dexie";
 import { useConnectionStatus } from "@/components/providers/ConnectionProvider";
 import { offlineDb, type OfflineMeta } from "@/lib/offline/offlineDb";
+import { resolveConflict, getStrategyForTable } from "@/lib/offline/conflictResolver";
 import type {
   FunctionReference,
   FunctionArgs,
@@ -110,13 +111,18 @@ export function useOfflineQuery<Query extends FunctionReference<"query">>(
     ) as FunctionReturnType<Query>;
   }, [localRecords, filter, sort, limit, select]);
 
-  // Mirror list queries when online. Single-record queries are expected to be
-  // backed by the corresponding list hydration/query cache.
+  // Mirror list and single-record queries when online to populate offline storage
   useEffect(() => {
-    if (!isOnline || !Array.isArray(convexData) || mirrorInProgress.current)
+    if (!isOnline || convexData === undefined || convexData === null || mirrorInProgress.current)
       return;
+      
+    // Handle both array responses and single object responses
+    const recordsToMirror = Array.isArray(convexData) 
+      ? convexData 
+      : [convexData];
+      
     mirrorInProgress.current = true;
-    void mirrorToDexie(table, convexData as Record<string, unknown>[]).finally(
+    void mirrorToDexie(table, recordsToMirror as Record<string, unknown>[]).finally(
       () => {
         mirrorInProgress.current = false;
       },
@@ -167,11 +173,22 @@ async function mirrorToDexie(
           .first();
 
         if (existing) {
-          if (existing._syncStatus === "pending") continue;
+          const strategy = getStrategyForTable(table);
+          const { resolved, hadConflict } = resolveConflict(
+            existing as any,
+            record,
+            Date.now(),
+            strategy
+          );
+
+          if (hadConflict) {
+            console.log(`[mirrorToDexie] Resolved conflict in ${table} for ${serverId} using ${strategy}`);
+          }
+
           await dexieTable.update(existing._localId, {
-            ...stripConvexMeta(record),
+            ...stripConvexMeta(resolved),
             _serverId: serverId,
-            _syncStatus: "synced",
+            _syncStatus: resolved._syncStatus,
             _updatedAt: Date.now(),
             _version: existing._version + 1,
           });

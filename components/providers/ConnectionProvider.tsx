@@ -5,7 +5,6 @@ import {
   useContext,
   useEffect,
   useState,
-  useRef,
   ReactNode,
   useMemo,
 } from "react";
@@ -47,29 +46,31 @@ export function ConnectionProvider({
 }: ConnectionProviderProps) {
   const [status, setStatus] = useState<ConnectionStatus>("online");
   const [pendingSyncCount, setPendingSyncCount] = useState(0);
-  const detectorRef = useRef<ConnectionDetector | null>(null);
+  const [detector, setDetector] = useState<ConnectionDetector | null>(null);
 
   useEffect(() => {
-    const detector = new ConnectionDetector(convexUrl);
-    detectorRef.current = detector;
+    const det = new ConnectionDetector(convexUrl);
 
     // Set initial status
-    setStatus(detector.status);
+    setStatus(det.status);
 
     // Subscribe to changes
-    const unsubscribe = detector.subscribe((newStatus) => {
+    const unsubscribe = det.subscribe((newStatus) => {
       setStatus(newStatus);
     });
 
     // Expose for debug in dev mode
     if (process.env.NODE_ENV === "development") {
-      (window as unknown as Record<string, unknown>).__connectionDetector = detector;
+      (window as unknown as Record<string, unknown>).__connectionDetector = det;
     }
+
+    // Publish the detector to context consumers (triggers re-render)
+    setDetector(det);
 
     return () => {
       unsubscribe();
-      detector.destroy();
-      detectorRef.current = null;
+      det.destroy();
+      setDetector(null);
     };
   }, [convexUrl]);
 
@@ -78,9 +79,9 @@ export function ConnectionProvider({
       status,
       pendingSyncCount,
       setPendingSyncCount,
-      detector: detectorRef.current,
+      detector,
     }),
-    [status, pendingSyncCount]
+    [status, pendingSyncCount, detector]
   );
 
   return (

@@ -13,7 +13,7 @@ import { enqueueSyncOp } from "@/lib/offline/syncQueue";
 import { isLocalId } from "@/lib/offline/idRemap";
 import type { FunctionReference, FunctionArgs } from "convex/server";
 
-type OfflineTable = "patients" | "visits" | "queue" | "followUps";
+type OfflineTable = "patients" | "visits" | "queue" | "followUps" | "installments";
 
 interface UseOfflineMutationOptions {
   /** Which Dexie table this mutation writes to */

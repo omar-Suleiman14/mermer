@@ -194,16 +194,19 @@ export const createPatient = mutation({
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
 
-    // Idempotency check: if this patient already exists (same doctor + phone),
+    // Idempotency check: if this patient already exists (same doctor + phone + name),
     // return the existing ID instead of creating a duplicate.
     if (args._idempotencyKey) {
-      const existing = await ctx.db
+      const existingByPhone = await ctx.db
         .query("patients")
         .withIndex("by_doctor_phone", (q) =>
           q.eq("doctorId", user._id).eq("phone", args.phone)
         )
-        .first();
-      if (existing) return existing._id;
+        .collect();
+      // Require both phone AND name match to avoid returning the wrong patient
+      // when two patients share a phone number.
+      const exactMatch = existingByPhone.find((p) => p.name === args.name);
+      if (exactMatch) return exactMatch._id;
     }
 
     const patientId = await ctx.db.insert("patients", {

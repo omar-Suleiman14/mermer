@@ -80,11 +80,11 @@ export async function getPendingEntries(): Promise<SyncQueueEntry[]> {
     .sortBy("createdAt");
 }
 
-/** Get count of non-completed entries */
+/** Get count of entries still waiting to sync (excludes permanently failed entries) */
 export async function getPendingCount(): Promise<number> {
   const pending = await offlineDb.syncQueue
     .where("status")
-    .anyOf(["pending", "in-flight", "failed"])
+    .anyOf(["pending", "in-flight"])
     .count();
   return pending;
 }
@@ -127,12 +127,11 @@ export async function markFailed(
   id: number,
   error: string
 ): Promise<void> {
+  const existing = await offlineDb.syncQueue.get(id);
   await offlineDb.syncQueue.update(id, {
     status: "failed",
     lastError: error,
-    retryCount: (await offlineDb.syncQueue.get(id))?.retryCount
-      ? ((await offlineDb.syncQueue.get(id))!.retryCount + 1)
-      : 1,
+    retryCount: existing?.retryCount ? existing.retryCount + 1 : 1,
   });
 }
 

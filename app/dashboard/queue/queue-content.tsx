@@ -4,6 +4,7 @@ import { useState, useMemo, useRef, useEffect, memo, useCallback } from "react";
 import { useCurrentUser } from "@/components/providers/user-provider";
 import { useMutation, useQuery, useAction } from "convex/react";
 import { useOfflineQuery } from "@/hooks/use-offline-query";
+import { useOfflineMutation } from "@/hooks/use-offline-mutation";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
@@ -192,8 +193,27 @@ function SchedulePageInner() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [templatePicker]);
 
-  const updateAppointment = useMutation(api.appointments.updateAppointment);
-  const swapAppointments = useMutation(api.appointments.swapAppointments);
+  const updateAppointmentOffline = useOfflineMutation(api.appointments.updateAppointment, {
+    table: "visits",
+    operation: "update",
+    syncOperation: "updateAppointment",
+    toLocalRecord: (args) => (args.updates as Record<string, unknown>) ?? {},
+  });
+  const swapAppointmentsOffline = useOfflineMutation(api.appointments.swapAppointments, {
+    table: "visits",
+    operation: "update",
+    syncOperation: "swapAppointments",
+    toLocalRecord: () => ({}),
+  });
+
+  // Wrapper: useOfflineMutation returns { id, isOffline }, but the rest of the
+  // component just awaits the call.  The wrappers keep the call-sites unchanged.
+  const updateAppointment = async (args: Parameters<typeof updateAppointmentOffline>[0]) => {
+    await updateAppointmentOffline(args);
+  };
+  const swapAppointments = async (args: Parameters<typeof swapAppointmentsOffline>[0]) => {
+    await swapAppointmentsOffline(args);
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })

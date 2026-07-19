@@ -121,7 +121,7 @@ export interface SyncQueueEntry {
   /** Idempotency key — sent to the server to prevent duplicate operations */
   idempotencyKey: string;
   /** Which Dexie table this operation targets */
-  table: "patients" | "visits" | "queue" | "followUps";
+  table: "patients" | "visits" | "queue" | "followUps" | "installments";
   /** CRUD operation type */
   operation: SyncOperation;
   /** Local UUID of the record being operated on */

@@ -15,6 +15,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useConnectionStatus } from "@/components/providers/ConnectionProvider";
 import { offlineDb, createOfflineMeta } from "@/lib/offline/offlineDb";
+import { resolveConflict, getStrategyForTable } from "@/lib/offline/conflictResolver";
 
 interface DataHydratorProps {
   clerkId: string;
@@ -31,16 +32,22 @@ export function DataHydrator({ clerkId }: DataHydratorProps) {
 
   // Use the full hydration query
   const hydrationData = useQuery(
-    (api as any).sync.getFullHydrationData,
+    api.sync.getFullHydrationData,
     isOnline && clerkId ? { clerkId } : "skip"
   );
+
+  const lastHydratedAt = useRef<number>(0);
 
   useEffect(() => {
     if (!hydrationData || hydrating.current || !isOnline) return;
 
+    // Prevent re-hydrating with the exact same data payload on a reconnect flutter
+    if (hydrationData.hydratedAt === lastHydratedAt.current) return;
+
     hydrating.current = true;
 
     void hydrateFromServer(hydrationData).finally(() => {
+      lastHydratedAt.current = hydrationData.hydratedAt;
       hydrating.current = false;
     });
   }, [hydrationData, isOnline]);
@@ -117,14 +124,24 @@ async function hydrateTable(
         .first();
 
       if (existing) {
-        // Don't overwrite records with pending local changes
-        if (existing._syncStatus === "pending") continue;
+        // Resolve conflict using the table-specific strategy
+        const strategy = getStrategyForTable(tableName);
+        const { resolved, hadConflict } = resolveConflict(
+          existing as any, // Cast to any to bypass strict type checking for the merge
+          record,
+          Date.now(), // Use current time as the server's update time since we don't have a reliable server update timestamp
+          strategy
+        );
 
-        // Update with fresh server data
-        const stripped = stripConvexMeta(record);
+        if (hadConflict) {
+          console.log(`[DataHydrator] Resolved conflict in ${tableName} for ${serverId} using ${strategy}`);
+        }
+
+        const stripped = stripConvexMeta(resolved);
         await table.update(existing._localId, {
           ...stripped,
-          _syncStatus: "synced",
+          // If the resolver kept local changes, it sets status to pending
+          _syncStatus: resolved._syncStatus,
           _updatedAt: Date.now(),
           _version: existing._version + 1,
         });
