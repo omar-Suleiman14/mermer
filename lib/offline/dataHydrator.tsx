@@ -71,12 +71,35 @@ async function hydrateFromServer(data: {
   try {
     const startTime = performance.now();
 
+    // Mirror the windows and caps used by convex/sync.ts getFullHydrationData.
+    // Deletions must never consider records the server query did not cover.
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayStartMs = todayStart.getTime();
+    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
+
     await Promise.all([
-      hydrateTable("patients", data.patients, data.clerkId),
-      hydrateTable("visits", data.visits, data.clerkId),
-      hydrateTable("queue", data.queue, data.clerkId),
-      hydrateTable("followUps", data.followUps, data.clerkId),
-      hydrateTable("installments", data.installments, data.clerkId),
+      hydrateTable("patients", data.patients, data.clerkId, {
+        cap: 500,
+        inServerScope: () => true,
+      }),
+      hydrateTable("visits", data.visits, data.clerkId, {
+        cap: 1000,
+        inServerScope: (r) => typeof r.date === "number" && (r.date as number) >= thirtyDaysAgo,
+      }),
+      hydrateTable("queue", data.queue, data.clerkId, {
+        cap: 500,
+        inServerScope: (r) => r.queueDate === todayStartMs,
+      }),
+      hydrateTable("followUps", data.followUps, data.clerkId, {
+        cap: 200,
+        inServerScope: (r) =>
+          typeof r.followUpDate === "number" && (r.followUpDate as number) >= todayStartMs,
+      }),
+      hydrateTable("installments", data.installments, data.clerkId, {
+        cap: 200,
+        inServerScope: () => true,
+      }),
     ]);
 
     // Store hydration timestamp
@@ -105,10 +128,18 @@ async function hydrateFromServer(data: {
  * Upsert records into a Dexie table from server data.
  * Existing records with pending local changes are preserved.
  */
+interface HydrationScope {
+  /** The server query's take() cap for this table. */
+  cap: number;
+  /** Whether a local record falls inside the window the server query covered. */
+  inServerScope: (record: Record<string, unknown>) => boolean;
+}
+
 async function hydrateTable(
   tableName: "patients" | "visits" | "queue" | "followUps" | "installments",
   records: Record<string, unknown>[],
   ownerClerkId: string,
+  scope: HydrationScope,
 ): Promise<void> {
   if (!records) return;
 
@@ -183,10 +214,24 @@ async function hydrateTable(
       await (table as any).bulkPut(puts);
     }
 
-    // 4. Deletion-aware caching: remove synced records that are no longer returned
-    // by the server (e.g. deleted or aged out of the 30-day window).
+    // 4. Deletion-aware caching: remove synced records that are no longer
+    // returned by the server. If the response hit its cap we cannot tell
+    // "deleted" from "not returned", so skip deletions for this run.
+    if (records.length >= scope.cap) {
+      console.log(
+        `[DataHydrator] ${tableName} response hit its cap (${scope.cap}), skipping deletion pass`
+      );
+      return;
+    }
+
     const allSyncedRecords = await (table as any)
-      .filter((r: any) => r._ownerClerkId === ownerClerkId && r._syncStatus === "synced" && r._serverId !== null)
+      .filter(
+        (r: any) =>
+          r._ownerClerkId === ownerClerkId &&
+          r._syncStatus === "synced" &&
+          r._serverId !== null &&
+          scope.inServerScope(r)
+      )
       .toArray();
       
     const toDeleteLocalIds = allSyncedRecords
