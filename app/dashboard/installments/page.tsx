@@ -5,6 +5,7 @@ import { toWesternDigits } from "@/lib/arabicNumerals";
 import { useUser } from "@clerk/nextjs";
 import { useQuery, useMutation, useAction } from "convex/react";
 import { useOfflineQuery } from "@/hooks/use-offline-query";
+import { useOfflineMutation } from "@/hooks/use-offline-mutation";
 import { useCurrentUser } from "@/components/providers/user-provider";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -196,7 +197,14 @@ function InstallmentForm({
 }) {
   const patients = useOfflineQuery(api.patients.listPatients, clerkId ? { clerkId } : "skip", { table: "patients" });
   const { currentUser } = useCurrentUser();
-  const createinstallment = useMutation(api.installments.createinstallment);
+  const createinstallmentOffline = useOfflineMutation(api.installments.createinstallment, {
+    table: "installments",
+    operation: "create",
+  });
+  // Wrapper to keep signature similar
+  const createinstallment = async (args: Parameters<typeof createinstallmentOffline>[0]) => {
+    return await createinstallmentOffline(args);
+  };
   const generateUploadUrl = useMutation(api.files.generateUploadUrl);
   const { t, dir } = useI18n();
 

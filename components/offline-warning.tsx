@@ -31,7 +31,7 @@ export function OfflineWarning() {
       pendingSyncCount === 0
     ) {
       setShowSyncComplete(true);
-      const timer = setTimeout(() => setShowSyncComplete(false), 3000);
+      const timer = setTimeout(() => setShowSyncComplete(false), 10000);
       return () => clearTimeout(timer);
     }
     prevStatusRef.current = status;
@@ -86,7 +86,7 @@ export function OfflineWarning() {
             >
               <Check className="w-4 h-4 shrink-0" />
               <span className="text-sm font-medium whitespace-nowrap">
-                {lang === "ar" ? "تمت المزامنة ✓" : "All synced ✓"}
+                {lang === "ar" ? "تمت المزامنة " : "All synced "}
               </span>
             </motion.div>
           )}

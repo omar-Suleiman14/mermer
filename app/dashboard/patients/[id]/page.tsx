@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import { useQuery, useMutation, useAction } from "convex/react";
+import { useOfflineQuery } from "@/hooks/use-offline-query";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { PageHeader } from "@/components/page-header";
@@ -67,11 +68,23 @@ export default function PatientProfilePage() {
   } | null>(null);
   const [waiveConfirm, setWaiveConfirm] = useState<Id<"installments"> | null>(null);
 
-  const patient = useQuery(api.patients.getPatient, clerkId ? { patientId, clerkId } : "skip");
-  const visits = useQuery(api.visits.getVisitsByPatient, clerkId ? { patientId, clerkId } : "skip");
-  const installments = useQuery(
+  const patient = useOfflineQuery(api.patients.getPatient, clerkId ? { patientId, clerkId } : "skip", {
+    table: "patients",
+    filter: (records) => records.filter(p => p._serverId === patientId || p._localId === patientId),
+    select: (records) => records[0] ?? null,
+  });
+  const visits = useOfflineQuery(api.visits.getVisitsByPatient, clerkId ? { patientId, clerkId } : "skip", {
+    table: "visits",
+    filter: (records) => records.filter(v => v.patientId === patientId),
+    sort: (a, b) => b.date - a.date,
+  });
+  const installments = useOfflineQuery(
     api.installments.listinstallmentsByPatient,
-    clerkId ? { patientId, clerkId } : "skip"
+    clerkId ? { patientId, clerkId } : "skip",
+    {
+      table: "installments",
+      filter: (records) => records.filter(i => i.patientId === patientId),
+    }
   );
   const messageLogs = useQuery(
     api.whatsappAutomations.getMessageLogs,

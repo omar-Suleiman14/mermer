@@ -240,6 +240,9 @@ export default function DashboardPage() {
     
     setCancellingDay(true);
     try {
+      if (!navigator.onLine) {
+        throw new Error("offline");
+      }
       const res = await cancelDayAutomations({ clinicId: currentUser._id, dateMs: todayTs });
       toast.success(lang === "ar" ? `تم إلغاء ${res.cancelledCount} موعد بنجاح` : `Cancelled ${res.cancelledCount} appointments successfully`);
       if (res.warning) {
@@ -251,12 +254,23 @@ export default function DashboardPage() {
         );
       }
     } catch (err: any) {
-      toast.error(err.message || "Failed to cancel day");
+      if (!navigator.onLine || err.message === "offline" || err.message?.toLowerCase().includes("fetch") || err.message?.toLowerCase().includes("network")) {
+        const toCancel = (todayAppointments || []).filter(v => v.status === "confirmed" || v.status === "pending");
+        let cancelledCount = 0;
+        for (const appt of toCancel) {
+          await cancelAppointment({ clerkId, appointmentId: appt._id, updates: { status: "cancelled" } });
+          cancelledCount++;
+        }
+        toast.success(lang === "ar" ? `تم إلغاء ${cancelledCount} موعد محلياً (غير متصل بالإنترنت)` : `Cancelled ${cancelledCount} appointments locally (offline)`);
+        toast.warning(lang === "ar" ? "لم يتم إرسال رسائل واتساب لأنك غير متصل بالإنترنت" : "WhatsApp messages were not sent because you are offline", { duration: 10000 });
+      } else {
+        toast.error(err.message || "Failed to cancel day");
+      }
     } finally {
       setCancellingDay(false);
       setCancelDayModalOpen(false);
     }
-  }, [currentUser?._id, todayTs, todayAppointments, cancelDayAutomations, lang]);
+  }, [currentUser?._id, todayTs, todayAppointments, cancelDayAutomations, clerkId, cancelAppointment, lang]);
 
   const handleReschedule = useCallback(async () => {
     if (!rescheduleModal || !rescheduleDate) return;
