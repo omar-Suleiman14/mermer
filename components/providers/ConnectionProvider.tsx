@@ -49,6 +49,16 @@ export function ConnectionProvider({
   const [detector, setDetector] = useState<ConnectionDetector | null>(null);
 
   useEffect(() => {
+    // Ask the browser to protect IndexedDB from storage-pressure eviction —
+    // queued offline clinical writes must not be silently deleted.
+    if (typeof navigator !== "undefined" && navigator.storage?.persist) {
+      void navigator.storage.persist().then((granted) => {
+        console.log(
+          `[ConnectionProvider] Persistent storage ${granted ? "granted" : "not granted"}`
+        );
+      });
+    }
+
     const det = new ConnectionDetector(convexUrl);
 
     // Set initial status

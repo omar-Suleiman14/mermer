@@ -161,9 +161,34 @@ export class SyncEngine {
 
   /**
    * Trigger a sync cycle. Drains all pending entries in FIFO order.
-   * Safe to call multiple times — concurrent calls are coalesced.
+   * Safe to call multiple times — concurrent calls are coalesced, and a
+   * Web Lock ensures only one tab drains the shared queue at a time.
    */
   async sync(): Promise<void> {
+    if (this._isSyncing || this._isDestroyed) return;
+
+    // Without this lock, two tabs can both read the same "pending" entry
+    // before either marks it in-flight and replay it twice.
+    if (typeof navigator !== "undefined" && "locks" in navigator) {
+      await navigator.locks.request(
+        "mermer-sync-queue",
+        { ifAvailable: true },
+        async (lock) => {
+          if (!lock) {
+            console.log("[SyncEngine] Another tab holds the sync lock, skipping");
+            return;
+          }
+          await this._drainQueue();
+        }
+      );
+      return;
+    }
+
+    // Fallback for environments without the Web Locks API
+    await this._drainQueue();
+  }
+
+  private async _drainQueue(): Promise<void> {
     if (this._isSyncing || this._isDestroyed) return;
 
     this._isSyncing = true;
