@@ -117,13 +117,27 @@ export async function hasProcessedSyncOperation(
     .first());
 }
 
+/** Fetch the receipt for a replayed operation, including the original result ID. */
+export async function getSyncOperation(
+  ctx: MutationCtx,
+  doctorId: Id<"users">,
+  key: string | undefined,
+): Promise<Doc<"syncOperations"> | null> {
+  if (!key) return null;
+  return await ctx.db
+    .query("syncOperations")
+    .withIndex("by_doctor_key", (q) => q.eq("doctorId", doctorId).eq("key", key))
+    .first();
+}
+
 export async function recordSyncOperation(
   ctx: MutationCtx,
   doctorId: Id<"users">,
   key: string | undefined,
+  resultId?: string,
 ): Promise<void> {
   if (!key) return;
-  await ctx.db.insert("syncOperations", { doctorId, key, createdAt: Date.now() });
+  await ctx.db.insert("syncOperations", { doctorId, key, resultId, createdAt: Date.now() });
 }
 
 /**

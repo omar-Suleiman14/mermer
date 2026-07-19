@@ -1,7 +1,7 @@
 import { mutation, query, action, internalMutation, internalQuery } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
 import { Id } from "./_generated/dataModel";
-import { getAuthUser, requireAuthUser, logAction, hasProcessedSyncOperation, recordSyncOperation } from "./authHelper";
+import { getAuthUser, requireAuthUser, logAction, hasProcessedSyncOperation, getSyncOperation, recordSyncOperation } from "./authHelper";
 import { internal } from "./_generated/api";
 import { msgBookingConfirmed, msgAppointmentCancelled, msgRescheduled, calcSlotNumber, fmtTimeAr, fmtDateAr } from "./messageHelpers";
 
@@ -183,6 +183,7 @@ export const createAppointmentInternal = internalMutation({
       source: "online",
       queueNumber,
       createdAt: Date.now(),
+      updatedAt: Date.now(),
     });
 
     // Send WhatsApp confirmation immediately
@@ -341,8 +342,13 @@ export const addManualAppointment = mutation({
     if (!patient) throw new ConvexError("Patient not found");
     if (patient.doctorId !== doctor._id) throw new ConvexError("Access denied");
 
-    // Idempotency check: if a visit already exists for this patient on the same date
+    // Durable idempotency: a replay with the same key returns the original visit.
     if (args._idempotencyKey) {
+      const receipt = await getSyncOperation(ctx, doctor._id, args._idempotencyKey);
+      if (receipt?.resultId) return { visitId: receipt.resultId as Id<"visits"> };
+
+      // Fallback heuristic for retries that predate the receipt: a visit
+      // already exists for this patient on the same date.
       const existingVisits = await ctx.db
         .query("visits")
         .withIndex("by_doctor_date", (q) =>
@@ -389,7 +395,10 @@ export const addManualAppointment = mutation({
       source: "manual",
       notes: args.notes,
       createdAt: Date.now(),
+      updatedAt: Date.now(),
     });
+
+    await recordSyncOperation(ctx, doctor._id, args._idempotencyKey, visitId);
 
     if (doctor.evolutionInstanceName && doctor.evolutionApiKey) {
       const slotNum = calcSlotNumber(args.date, doctor.workingHoursStart ?? 9, doctor.slotDurationMinutes ?? 30);
@@ -450,8 +459,8 @@ export const swapAppointments = mutation({
       throw new ConvexError("Appointment 2 was modified by another user. Please refresh.");
     }
 
-    await ctx.db.patch(v1._id, { date: v2.date });
-    await ctx.db.patch(v2._id, { date: v1.date });
+    await ctx.db.patch(v1._id, { date: v2.date, updatedAt: Date.now() });
+    await ctx.db.patch(v2._id, { date: v1.date, updatedAt: Date.now() });
     await recordSyncOperation(ctx, user._id, args._idempotencyKey);
 
     if (user.evolutionInstanceName && user.evolutionApiKey) {

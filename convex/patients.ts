@@ -1,7 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
-import { getAuthUser, requireAuthUser, logAction } from "./authHelper";
-import { Doc } from "./_generated/dataModel";
+import { getAuthUser, requireAuthUser, logAction, getSyncOperation, recordSyncOperation } from "./authHelper";
+import { Doc, Id } from "./_generated/dataModel";
 
 // FIX #5: Batch-fetch installments for all patients in one query instead of N+1
 export const listPatients = query({
@@ -194,9 +194,14 @@ export const createPatient = mutation({
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
 
-    // Idempotency check: if this patient already exists (same doctor + phone + name),
-    // return the existing ID instead of creating a duplicate.
+    // Durable idempotency: a receipt is written after a successful create, so
+    // a replay with the same key returns the original ID instead of duplicating.
     if (args._idempotencyKey) {
+      const receipt = await getSyncOperation(ctx, user._id, args._idempotencyKey);
+      if (receipt?.resultId) return receipt.resultId as Id<"patients">;
+
+      // Fallback heuristic for retries that predate the receipt: same doctor +
+      // phone + name means the create already landed.
       const existingByPhone = await ctx.db
         .query("patients")
         .withIndex("by_doctor_phone", (q) =>
@@ -222,8 +227,10 @@ export const createPatient = mutation({
       patientType: args.patientType,
       notes: args.notes,
       createdAt: Date.now(),
+      updatedAt: Date.now(),
     });
 
+    await recordSyncOperation(ctx, user._id, args._idempotencyKey, patientId);
     await logAction(ctx, user, "Added Patient", `Registered new patient: ${args.name}`, patientId);
 
     return patientId;
@@ -264,6 +271,7 @@ export const updatePatient = mutation({
       chronicConditions: args.chronicConditions,
       patientType: args.patientType,
       notes: args.notes,
+      updatedAt: Date.now(),
     });
     await logAction(ctx, user, "Updated Patient", `Updated details for ${args.name}`, args.patientId);
   },

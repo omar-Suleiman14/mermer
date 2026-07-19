@@ -161,9 +161,34 @@ export class SyncEngine {
 
   /**
    * Trigger a sync cycle. Drains all pending entries in FIFO order.
-   * Safe to call multiple times — concurrent calls are coalesced.
+   * Safe to call multiple times — concurrent calls are coalesced, and a
+   * Web Lock ensures only one tab drains the shared queue at a time.
    */
   async sync(): Promise<void> {
+    if (this._isSyncing || this._isDestroyed) return;
+
+    // Without this lock, two tabs can both read the same "pending" entry
+    // before either marks it in-flight and replay it twice.
+    if (typeof navigator !== "undefined" && "locks" in navigator) {
+      await navigator.locks.request(
+        "mermer-sync-queue",
+        { ifAvailable: true },
+        async (lock) => {
+          if (!lock) {
+            console.log("[SyncEngine] Another tab holds the sync lock, skipping");
+            return;
+          }
+          await this._drainQueue();
+        }
+      );
+      return;
+    }
+
+    // Fallback for environments without the Web Locks API
+    await this._drainQueue();
+  }
+
+  private async _drainQueue(): Promise<void> {
     if (this._isSyncing || this._isDestroyed) return;
 
     this._isSyncing = true;
@@ -465,14 +490,13 @@ function isNetworkError(err: unknown): boolean {
 }
 
 function isDuplicateError(err: unknown): boolean {
+  // Replays are handled server-side via durable idempotency receipts, so a
+  // successful replay returns normally instead of throwing. Only explicit
+  // idempotency errors count as duplicates — the previous broad matches
+  // ("conflict", "already exists") could mark genuine validation failures
+  // as completed and silently drop the write.
   if (err instanceof Error) {
-    const msg = err.message.toLowerCase();
-    return (
-      msg.includes("duplicate") ||
-      msg.includes("idempotency") ||
-      msg.includes("already exists") ||
-      msg.includes("conflict")
-    );
+    return err.message.toLowerCase().includes("idempotency");
   }
   return false;
 }

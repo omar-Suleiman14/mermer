@@ -184,6 +184,21 @@ export async function retryEntry(id: number): Promise<void> {
   });
 }
 
+/** Get permanently failed entries for review/retry in the UI (FIFO order). */
+export async function getFailedEntries(ownerClerkId: string): Promise<SyncQueueEntry[]> {
+  const entries = await offlineDb.syncQueue
+    .where("status")
+    .equals("failed")
+    .filter((entry) => entry.ownerClerkId === ownerClerkId)
+    .toArray();
+  return entries.sort((a, b) => a.createdAt - b.createdAt);
+}
+
+/** Permanently discard a failed entry. Only call after explicit user confirmation. */
+export async function discardEntry(id: number): Promise<void> {
+  await offlineDb.syncQueue.delete(id);
+}
+
 /** Reset all in-flight entries to pending (e.g., after crash recovery) */
 export async function recoverInFlightEntries(ownerClerkId: string): Promise<number> {
   const inFlight = await offlineDb.syncQueue
@@ -222,7 +237,11 @@ export async function purgeCompletedEntries(ownerClerkId: string): Promise<numbe
   return ids.length;
 }
 
-/** Remove entries older than a given age (default: 7 days) */
+/**
+ * Remove completed entries older than a given age (default: 7 days).
+ * Failed entries are deliberately NOT purged — they represent unsynced user
+ * data and must only be removed via an explicit user retry or discard.
+ */
 export async function purgeOldEntries(
   maxAgeMs: number = 7 * 24 * 60 * 60 * 1000
 ): Promise<number> {
@@ -231,7 +250,7 @@ export async function purgeOldEntries(
   const old = await offlineDb.syncQueue
     .where("createdAt")
     .below(cutoff)
-    .filter((e) => e.status === "completed" || e.status === "failed")
+    .filter((e) => e.status === "completed")
     .toArray();
 
   const ids = old

@@ -68,16 +68,16 @@ function resolveLastWriteWins<T extends OfflineMeta & Record<string, unknown>>(
   serverRecord: Record<string, unknown>,
   serverUpdatedAt: number
 ): ConflictResult<T> {
-  const localWins = localRecord._syncStatus === "pending" || localRecord._updatedAt >= serverUpdatedAt;
+  // A record only "wins" locally if it has an actual queued change, or its
+  // last local write is strictly newer than the server's. Ties go to the
+  // server — a synced record must never flip to "pending" without a queue
+  // entry behind it, or it gets skipped by every future hydration.
+  const localWins = localRecord._syncStatus === "pending" || localRecord._updatedAt > serverUpdatedAt;
 
   if (localWins) {
-    // Local version is newer — keep it, it will be synced to server
     return {
-      resolved: {
-        ...localRecord,
-        _syncStatus: "pending" as const,
-      } as T,
-      hadConflict: true,
+      resolved: localRecord,
+      hadConflict: localRecord._syncStatus === "pending",
       strategy: "last-write-wins",
     };
   }
@@ -124,7 +124,7 @@ function resolveFieldMerge<T extends OfflineMeta & Record<string, unknown>>(
 
   const conflictingFields: string[] = [];
   const merged: any = { ...localRecord };
-  const localWins = localRecord._syncStatus === "pending" || localRecord._updatedAt >= serverUpdatedAt;
+  const localWins = localRecord._syncStatus === "pending" || localRecord._updatedAt > serverUpdatedAt;
 
   for (const key of Object.keys(serverRecord)) {
     if (metaFields.has(key)) continue;
@@ -160,7 +160,9 @@ function resolveFieldMerge<T extends OfflineMeta & Record<string, unknown>>(
 
   const hadConflict = conflictingFields.length > 0;
 
-  merged._syncStatus = hadConflict && localWins ? "pending" : "synced";
+  // Only records with a queued local change stay "pending"; marking a synced
+  // record "pending" here would orphan it (no queue entry will ever clear it).
+  merged._syncStatus = localRecord._syncStatus === "pending" ? "pending" : "synced";
   merged._updatedAt = Math.max(localRecord._updatedAt, serverUpdatedAt);
   merged._version = localRecord._version + 1;
 
