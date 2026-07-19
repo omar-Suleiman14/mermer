@@ -55,10 +55,10 @@ self.addEventListener("fetch", function (event) {
         const cache = await caches.open(STATIC_CACHE);
         const cached = await cache.match(request);
         if (cached) return cached;
-        
+
         // If neither network nor cache is available
         return new Response(
-          "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>Offline | Clinic</title><style>body{font-family:system-ui,sans-serif;text-align:center;padding:50px 20px;background:#fef2f2;color:#991b1b;margin:0;}h1{font-size:24px;margin-bottom:10px;}p{font-size:16px;line-height:1.5;}</style></head><body><h1>⚡️ لا يوجد اتصال بالإنترنت</h1><p>لقد انقطع الاتصال وتم تحديث الصفحة. يرجى الانتظار حتى عودة الإنترنت ثم قم بتحديث الصفحة مرة أخرى.</p><p style='margin-top:20px;font-size:14px;opacity:0.8;'>You lost connection and refreshed the page. Please wait for the internet to return, then refresh again.</p></body></html>",
+          "<html><head><meta charset='UTF-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>Offline | Clinic</title><style>body{font-family:system-ui,sans-serif;text-align:center;padding:50px 20px;background:#fef2f2;color:#991b1b;margin:0;}h1{font-size:24px;margin-bottom:10px;}p{font-size:16px;line-height:1.5;}</style></head><body><h1> لا يوجد اتصال بالإنترنت</h1><p>لقد انقطع الاتصال وتم تحديث الصفحة. يرجى الانتظار حتى عودة الإنترنت ثم قم بتحديث الصفحة مرة أخرى.</p><p style='margin-top:20px;font-size:14px;opacity:0.8;'>You lost connection and refreshed the page. Please wait for the internet to return, then refresh again.</p></body></html>",
           { headers: { "Content-Type": "text/html" } }
         );
       })
