@@ -115,7 +115,7 @@ export class SyncEngine {
     console.log("[SyncEngine] Starting...");
 
     // Recover entries that were in-flight during a crash/page close
-    const recovered = await recoverInFlightEntries();
+    const recovered = await recoverInFlightEntries(this._config.ownerClerkId);
     if (recovered > 0) {
       console.log(`[SyncEngine] Recovered ${recovered} in-flight entries`);
     }
@@ -246,7 +246,7 @@ export class SyncEngine {
       }
 
       // Clean up completed entries
-      await purgeCompletedEntries();
+      await purgeCompletedEntries(this._config.ownerClerkId);
 
       // Check if everything synced
       const remaining = await getPendingCount(this._config.ownerClerkId);
