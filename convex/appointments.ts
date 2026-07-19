@@ -183,6 +183,7 @@ export const createAppointmentInternal = internalMutation({
       source: "online",
       queueNumber,
       createdAt: Date.now(),
+      updatedAt: Date.now(),
     });
 
     // Send WhatsApp confirmation immediately
@@ -389,6 +390,7 @@ export const addManualAppointment = mutation({
       source: "manual",
       notes: args.notes,
       createdAt: Date.now(),
+      updatedAt: Date.now(),
     });
 
     if (doctor.evolutionInstanceName && doctor.evolutionApiKey) {
@@ -450,8 +452,8 @@ export const swapAppointments = mutation({
       throw new ConvexError("Appointment 2 was modified by another user. Please refresh.");
     }
 
-    await ctx.db.patch(v1._id, { date: v2.date });
-    await ctx.db.patch(v2._id, { date: v1.date });
+    await ctx.db.patch(v1._id, { date: v2.date, updatedAt: Date.now() });
+    await ctx.db.patch(v2._id, { date: v1.date, updatedAt: Date.now() });
     await recordSyncOperation(ctx, user._id, args._idempotencyKey);
 
     if (user.evolutionInstanceName && user.evolutionApiKey) {

@@ -222,6 +222,7 @@ export const createPatient = mutation({
       patientType: args.patientType,
       notes: args.notes,
       createdAt: Date.now(),
+      updatedAt: Date.now(),
     });
 
     await logAction(ctx, user, "Added Patient", `Registered new patient: ${args.name}`, patientId);
@@ -264,6 +265,7 @@ export const updatePatient = mutation({
       chronicConditions: args.chronicConditions,
       patientType: args.patientType,
       notes: args.notes,
+      updatedAt: Date.now(),
     });
     await logAction(ctx, user, "Updated Patient", `Updated details for ${args.name}`, args.patientId);
   },

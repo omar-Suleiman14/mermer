@@ -152,6 +152,8 @@ export default defineSchema({
     notes: v.optional(v.string()),
     gender: v.optional(v.union(v.literal("male"), v.literal("female"), v.literal("other"))),
     createdAt: v.number(),
+    // Server-maintained modification timestamp for offline conflict resolution
+    updatedAt: v.optional(v.number()),
   })
     .index("by_doctor", ["doctorId"])
     .index("by_doctor_phone", ["doctorId", "phone"])
@@ -229,6 +231,8 @@ export default defineSchema({
     documentIds: v.optional(v.array(v.id("_storage"))),
 
     createdAt: v.number(),
+    // Server-maintained modification timestamp for offline conflict resolution
+    updatedAt: v.optional(v.number()),
   })
     .index("by_patient", ["patientId"])
     .index("by_doctor", ["doctorId"])
@@ -254,6 +258,8 @@ export default defineSchema({
     // Denormalized patient info (avoids N reads per queue render)
     patientName: v.optional(v.string()),
     patientPhone: v.optional(v.string()),
+    // Server-maintained modification timestamp for offline conflict resolution
+    updatedAt: v.optional(v.number()),
   })
     .index("by_doctor", ["doctorId"])
     .index("by_doctor_status", ["doctorId", "status"])
@@ -314,6 +320,8 @@ export default defineSchema({
 
     notes: v.optional(v.string()),
     createdAt: v.number(),
+    // Server-maintained modification timestamp for offline conflict resolution
+    updatedAt: v.optional(v.number()),
   })
     .index("by_doctor", ["doctorId"])
     .index("by_patient", ["patientId"])
@@ -338,6 +346,8 @@ export default defineSchema({
 
     status: v.union(v.literal("scheduled"), v.literal("done"), v.literal("cancelled")),
     createdAt: v.number(),
+    // Server-maintained modification timestamp for offline conflict resolution
+    updatedAt: v.optional(v.number()),
   })
     .index("by_doctor", ["doctorId"])
     .index("by_patient", ["patientId"])

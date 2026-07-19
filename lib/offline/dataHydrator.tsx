@@ -139,10 +139,16 @@ async function hydrateTable(
         if (existing._syncStatus === "pending") continue;
 
         const strategy = getStrategyForTable(tableName);
+        // Server-authoritative timestamp: mutations set `updatedAt`; fall back
+        // to Convex's insertion time for records that predate the field.
+        const serverUpdatedAt =
+          (record.updatedAt as number | undefined) ??
+          (record._creationTime as number | undefined) ??
+          0;
         const { resolved, hadConflict } = resolveConflict(
           existing as any,
           record,
-          existing._updatedAt,
+          serverUpdatedAt,
           strategy
         );
 
@@ -154,7 +160,9 @@ async function hydrateTable(
         puts.push({
           ...stripped,
           _syncStatus: resolved._syncStatus,
-          _updatedAt: Date.now(),
+          // Keep the resolved timestamp — stamping Date.now() here would make
+          // the local copy always look newer than the server on the next pass.
+          _updatedAt: resolved._updatedAt,
           _version: existing._version + 1,
         });
       } else {

@@ -163,6 +163,7 @@ export const createVisit = mutation({
       analysisRequested: args.analysisRequested,
       notes: args.notes,
       createdAt: Date.now(),
+      updatedAt: Date.now(),
       actionBy: user.actualUserName || "Doctor",
     });
 
@@ -232,6 +233,7 @@ export const addVisitFiles = mutation({
       ...(args.status !== undefined ? { status: args.status } : {}),
       ...(args.prescribedMedications !== undefined ? { prescribedMedications: args.prescribedMedications } : {}),
       actionBy: user.actualUserName || "Doctor",
+      updatedAt: Date.now(),
     });
     await recordSyncOperation(ctx, user._id, args._idempotencyKey);
 
