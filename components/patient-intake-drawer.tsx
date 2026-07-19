@@ -267,24 +267,24 @@ export function PatientIntakeDrawer({
 
   useEffect(() => {
     if (!conditionDropdownOpen) return;
-    function handle(e: MouseEvent) {
+    function handle(e: PointerEvent) {
       if (conditionRef.current && !conditionRef.current.contains(e.target as Node)) {
         setConditionDropdownOpen(false);
       }
     }
-    document.addEventListener("mousedown", handle);
-    return () => document.removeEventListener("mousedown", handle);
+    document.addEventListener("pointerdown", handle, true);
+    return () => document.removeEventListener("pointerdown", handle, true);
   }, [conditionDropdownOpen]);
 
   useEffect(() => {
     if (!patientTypeDropdownOpen) return;
-    function handle(e: MouseEvent) {
+    function handle(e: PointerEvent) {
       if (patientTypeRef.current && !patientTypeRef.current.contains(e.target as Node)) {
         setPatientTypeDropdownOpen(false);
       }
     }
-    document.addEventListener("mousedown", handle);
-    return () => document.removeEventListener("mousedown", handle);
+    document.addEventListener("pointerdown", handle, true);
+    return () => document.removeEventListener("pointerdown", handle, true);
   }, [patientTypeDropdownOpen]);
 
   const createPatient = useOfflineMutation(api.patients.createPatient, {
@@ -678,8 +678,12 @@ export function PatientIntakeDrawer({
               onChange={(e) => {
                 setPatientTypeSearch(e.target.value);
                 setPatientTypeDropdownOpen(true);
+                setConditionDropdownOpen(false);
               }}
-              onFocus={() => setPatientTypeDropdownOpen(true)}
+              onFocus={() => {
+                setPatientTypeDropdownOpen(true);
+                setConditionDropdownOpen(false);
+              }}
               placeholder={dir === "rtl" ? "ابحث أو أضف نوعًا..." : "Search or add type..."}
               className="flex-1 px-2 py-2.5 text-sm bg-transparent outline-none"
             />
@@ -754,8 +758,12 @@ export function PatientIntakeDrawer({
               onChange={(e) => {
                 setConditionSearch(e.target.value);
                 setConditionDropdownOpen(true);
+                setPatientTypeDropdownOpen(false);
               }}
-              onFocus={() => setConditionDropdownOpen(true)}
+              onFocus={() => {
+                setConditionDropdownOpen(true);
+                setPatientTypeDropdownOpen(false);
+              }}
               placeholder={t("drawer.searchConditions")}
               className="flex-1 px-2 py-2.5 text-sm bg-transparent outline-none"
             />
