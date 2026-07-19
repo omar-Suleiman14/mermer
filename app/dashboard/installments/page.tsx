@@ -200,6 +200,34 @@ function InstallmentForm({
   const createinstallmentOffline = useOfflineMutation(api.installments.createinstallment, {
     table: "installments",
     operation: "create",
+    toLocalRecord: (args: any) => {
+      const patient = patients?.find((p) => p._id === args.patientId);
+      
+      let numVisits = 0;
+      if (args.totalAmount && args.costPerVisit && args.costPerVisit > 0) {
+        const effectiveDown = args.downPayment
+          ? args.downPaymentType === "percentage"
+            ? args.totalAmount * (args.downPayment / 100)
+            : args.downPayment
+          : 0;
+        const remaining = Math.max(0, args.totalAmount - effectiveDown);
+        numVisits = Math.ceil(remaining / args.costPerVisit);
+      } else if (args.visitSchedules && args.visitSchedules.length > 0) {
+        numVisits = args.visitSchedules.length;
+      }
+      
+      return {
+        ...args,
+        patientName: patient?.name || t("common.unknown"),
+        status: "active",
+        createdAt: Date.now(),
+        numVisits,
+        completedVisits: 0,
+        paidVisits: 0,
+        visitsLeft: numVisits,
+        remainingBalance: args.totalAmount || 0,
+      };
+    },
   });
   // Wrapper to keep signature similar
   const createinstallment = async (args: Parameters<typeof createinstallmentOffline>[0]) => {
