@@ -888,8 +888,8 @@ export default function InstallmentsPage() {
                           >
                             {installment.patientName}
                           </Link>
-                          <Badge className={`text-[10px] border ${cfg.color} font-semibold px-2`}>
-                            {t(`installments.${installment.status}`)}
+                          <Badge className={`text-[10px] border ${cfg?.color || "bg-muted text-muted-foreground border-transparent"} font-semibold px-2`}>
+                            {cfg ? t(`installments.${installment.status}`) : installment.status}
                           </Badge>
                         </div>
 

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { useCurrentUser } from "./user-provider";
 import { getFailedEntries, retryEntry, discardEntry } from "@/lib/offline/syncQueue";
 import { getSyncEngine } from "@/lib/offline/syncEngine";
+import { useI18n } from "@/lib/i18n/client";
 
 const POLL_INTERVAL_MS = 30_000;
 
@@ -18,6 +19,7 @@ const POLL_INTERVAL_MS = 30_000;
  */
 export function FailedSyncNotifier() {
   const { clerkId } = useCurrentUser();
+  const { lang } = useI18n();
   const notifiedKeys = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -38,11 +40,21 @@ export function FailedSyncNotifier() {
           const entryId = entry.id;
           const key = entry.idempotencyKey;
 
-          toast.error(`فشل حفظ تغيير غير متزامن (${entry.table} — ${entry.operation})`, {
-            description: entry.lastError ?? "حدث خطأ غير معروف",
+          const isArabic = lang === "ar";
+          const tableNames: Record<string, string> = {
+            installments: isArabic ? "التقسيط" : "installments",
+            visits: isArabic ? "المواعيد" : "visits",
+            patients: isArabic ? "المرضى" : "patients",
+          };
+          const friendlyTable = tableNames[entry.table] || entry.table;
+
+          toast.error(isArabic ? `فشل مزامنة (${friendlyTable})` : `Sync Failed (${friendlyTable})`, {
+            description: isArabic 
+              ? "تعذر حفظ التغييرات بشكل دائم في الخادم السحابي بسبب مشكلة في الاتصال أو الخادم."
+              : "Could not save your changes permanently to the cloud server due to a connection or server issue.",
             duration: Infinity,
             action: {
-              label: "إعادة المحاولة",
+              label: isArabic ? "إعادة المحاولة" : "Retry",
               onClick: () => {
                 void retryEntry(entryId).then(() => {
                   notifiedKeys.current.delete(key);
@@ -51,7 +63,7 @@ export function FailedSyncNotifier() {
               },
             },
             cancel: {
-              label: "تجاهل",
+              label: isArabic ? "تجاهل" : "Dismiss",
               onClick: () => {
                 void discardEntry(entryId);
               },
