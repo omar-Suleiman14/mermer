@@ -19,7 +19,7 @@ interface UseOfflineMutationOptions {
   /** Which Dexie table this mutation writes to */
   table: OfflineTable;
   /**
-   * The CRUD operation type.
+   * The CRUD operation type .
    * - "create": inserts a new record
    * - "update": modifies an existing record (requires serverId or localId in args)
    * - "delete": removes a record
