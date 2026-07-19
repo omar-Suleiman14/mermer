@@ -44,7 +44,12 @@ export async function enqueueSyncOp(opts: {
         const dependency = await offlineDb.syncQueue
           .where("table")
           .equals(sourceTable)
-          .filter((e) => e.localId === val && e.operation === "create")
+          .filter(
+            (e) =>
+              e.ownerClerkId === opts.ownerClerkId &&
+              e.localId === val &&
+              (e.operation === "create" || e.operation === "addManualAppointment"),
+          )
           .first();
 
         if (dependency && dependency.status !== "completed") {
@@ -180,10 +185,11 @@ export async function retryEntry(id: number): Promise<void> {
 }
 
 /** Reset all in-flight entries to pending (e.g., after crash recovery) */
-export async function recoverInFlightEntries(): Promise<number> {
+export async function recoverInFlightEntries(ownerClerkId: string): Promise<number> {
   const inFlight = await offlineDb.syncQueue
     .where("status")
     .equals("in-flight")
+    .filter((entry) => entry.ownerClerkId === ownerClerkId)
     .toArray();
 
   for (const entry of inFlight) {
@@ -201,10 +207,11 @@ export async function recoverInFlightEntries(): Promise<number> {
 // ─── Cleanup ────────────────────────────────────────────────────────────────
 
 /** Remove all completed entries (call periodically to keep DB clean) */
-export async function purgeCompletedEntries(): Promise<number> {
+export async function purgeCompletedEntries(ownerClerkId: string): Promise<number> {
   const completed = await offlineDb.syncQueue
     .where("status")
     .equals("completed")
+    .filter((entry) => entry.ownerClerkId === ownerClerkId)
     .toArray();
 
   const ids = completed
