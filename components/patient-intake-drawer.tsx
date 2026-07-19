@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef, useEffect, useCallback } from "react";
-import { createPortal } from "react-dom";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { toWesternDigits } from "@/lib/arabicNumerals";
 import { useConvex, useQuery, useMutation } from "convex/react";
 import { useOfflineMutation } from "@/hooks/use-offline-mutation";
@@ -223,8 +222,6 @@ export function PatientIntakeDrawer({
   const [conditionSearch, setConditionSearch] = useState("");
   const [conditionDropdownOpen, setConditionDropdownOpen] = useState(false);
   const conditionRef = useRef<HTMLDivElement>(null);
-  const conditionInputWrapRef = useRef<HTMLDivElement>(null);
-  const [conditionRect, setConditionRect] = useState<DOMRect | null>(null);
 
   // Patient type options
   const livePatientTypeOptions = useQuery(api.patientTypes.listOptions, !isOffline && clerkId ? { clerkId } : "skip");
@@ -243,8 +240,6 @@ export function PatientIntakeDrawer({
   const [patientTypeSearch, setPatientTypeSearch] = useState("");
   const [patientTypeDropdownOpen, setPatientTypeDropdownOpen] = useState(false);
   const patientTypeRef = useRef<HTMLDivElement>(null);
-  const patientTypeInputWrapRef = useRef<HTMLDivElement>(null);
-  const [patientTypeRect, setPatientTypeRect] = useState<DOMRect | null>(null);
 
   const filteredConditions = useMemo(() => {
     const opts = conditionOptions ?? [];
@@ -270,61 +265,27 @@ export function PatientIntakeDrawer({
     !filteredPatientTypes.some((c: string) => c.toLowerCase() === patientTypeSearch.trim().toLowerCase()) &&
     !(form.patientType && form.patientType.toLowerCase() === patientTypeSearch.trim().toLowerCase());
 
-  // Update rect whenever dropdown opens or window scrolls/resizes
-  const updateConditionRect = useCallback(() => {
-    if (conditionInputWrapRef.current) {
-      setConditionRect(conditionInputWrapRef.current.getBoundingClientRect());
-    }
-  }, []);
-
-  const updatePatientTypeRect = useCallback(() => {
-    if (patientTypeInputWrapRef.current) {
-      setPatientTypeRect(patientTypeInputWrapRef.current.getBoundingClientRect());
-    }
-  }, []);
-
   useEffect(() => {
     if (!conditionDropdownOpen) return;
-    updateConditionRect();
-    function handle(e: PointerEvent) {
-      const target = e.target as Node;
-      const insideRef = conditionRef.current?.contains(target);
-      // Also check if click is inside the portaled dropdown (has data-condition-portal attr)
-      const insidePortal = (target as Element)?.closest?.("[data-condition-portal]");
-      if (!insideRef && !insidePortal) {
+    function handle(e: MouseEvent) {
+      if (conditionRef.current && !conditionRef.current.contains(e.target as Node)) {
         setConditionDropdownOpen(false);
       }
     }
-    document.addEventListener("pointerdown", handle, true);
-    window.addEventListener("scroll", updateConditionRect, true);
-    window.addEventListener("resize", updateConditionRect);
-    return () => {
-      document.removeEventListener("pointerdown", handle, true);
-      window.removeEventListener("scroll", updateConditionRect, true);
-      window.removeEventListener("resize", updateConditionRect);
-    };
-  }, [conditionDropdownOpen, updateConditionRect]);
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [conditionDropdownOpen]);
 
   useEffect(() => {
     if (!patientTypeDropdownOpen) return;
-    updatePatientTypeRect();
-    function handle(e: PointerEvent) {
-      const target = e.target as Node;
-      const insideRef = patientTypeRef.current?.contains(target);
-      const insidePortal = (target as Element)?.closest?.("[data-patienttype-portal]");
-      if (!insideRef && !insidePortal) {
+    function handle(e: MouseEvent) {
+      if (patientTypeRef.current && !patientTypeRef.current.contains(e.target as Node)) {
         setPatientTypeDropdownOpen(false);
       }
     }
-    document.addEventListener("pointerdown", handle, true);
-    window.addEventListener("scroll", updatePatientTypeRect, true);
-    window.addEventListener("resize", updatePatientTypeRect);
-    return () => {
-      document.removeEventListener("pointerdown", handle, true);
-      window.removeEventListener("scroll", updatePatientTypeRect, true);
-      window.removeEventListener("resize", updatePatientTypeRect);
-    };
-  }, [patientTypeDropdownOpen, updatePatientTypeRect]);
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [patientTypeDropdownOpen]);
 
   const createPatient = useOfflineMutation(api.patients.createPatient, {
     table: "patients",
@@ -709,76 +670,65 @@ export function PatientIntakeDrawer({
             </span>
           </div>
         )}
-        <div ref={patientTypeInputWrapRef} className="flex items-center border border-border rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-[#007AFF] bg-background">
-          <Search className="w-3.5 h-3.5 text-muted-foreground ml-3 shrink-0" />
-          <input
-            value={patientTypeSearch}
-            onChange={(e) => {
-              setPatientTypeSearch(e.target.value);
-              setPatientTypeDropdownOpen(true);
-              setConditionDropdownOpen(false);
-            }}
-            onFocus={() => {
-              setPatientTypeDropdownOpen(true);
-              setConditionDropdownOpen(false);
-            }}
-            placeholder={dir === "rtl" ? "ابحث أو أضف نوعًا..." : "Search or add type..."}
-            className="flex-1 px-2 py-2.5 text-sm bg-transparent outline-none"
-          />
-        </div>
-        <AnimatePresence>
-          {patientTypeDropdownOpen && patientTypeRect && typeof document !== "undefined" && createPortal(
-            <motion.div
-              data-patienttype-portal
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.12 }}
-              style={{
-                position: "fixed",
-                top: patientTypeRect.bottom + 4,
-                left: patientTypeRect.left,
-                width: patientTypeRect.width,
-                zIndex: 99999,
+        <div className="relative">
+          <div className="flex items-center border border-border rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-[#007AFF] bg-background">
+            <Search className="w-3.5 h-3.5 text-muted-foreground ml-3 shrink-0" />
+            <input
+              value={patientTypeSearch}
+              onChange={(e) => {
+                setPatientTypeSearch(e.target.value);
+                setPatientTypeDropdownOpen(true);
               }}
-              className="bg-background border border-border rounded-xl shadow-lg max-h-40 overflow-y-auto"
-            >
-              {filteredPatientTypes.map((c: string) => {
-                const selected = form.patientType === c;
-                return (
+              onFocus={() => setPatientTypeDropdownOpen(true)}
+              placeholder={dir === "rtl" ? "ابحث أو أضف نوعًا..." : "Search or add type..."}
+              className="flex-1 px-2 py-2.5 text-sm bg-transparent outline-none"
+            />
+          </div>
+          <AnimatePresence>
+            {patientTypeDropdownOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.12 }}
+                className="absolute left-0 right-0 mt-1 bg-background border border-border rounded-xl shadow-lg max-h-40 overflow-y-auto z-30"
+              >
+                {filteredPatientTypes.map((c: string) => {
+                  const selected = form.patientType === c;
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => {
+                        set("patientType", c);
+                        setPatientTypeDropdownOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center justify-between"
+                    >
+                      <span className={selected ? "font-semibold" : ""}>{c}</span>
+                      {selected && <Check className="w-3.5 h-3.5 text-[#007AFF]" />}
+                    </button>
+                  );
+                })}
+                {canAddCustomPatientType && (
                   <button
-                    key={c}
                     type="button"
-                    onClick={() => {
-                      set("patientType", c);
-                      setPatientTypeDropdownOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center justify-between"
+                    onClick={addCustomPatientType}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2 text-[#007AFF]"
                   >
-                    <span className={selected ? "font-semibold" : ""}>{c}</span>
-                    {selected && <Check className="w-3.5 h-3.5 text-[#007AFF]" />}
+                    <Plus className="w-3.5 h-3.5" />
+                    {dir === "rtl" ? "إضافة" : "Add"} "{patientTypeSearch.trim()}"
                   </button>
-                );
-              })}
-              {canAddCustomPatientType && (
-                <button
-                  type="button"
-                  onClick={addCustomPatientType}
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2 text-[#007AFF]"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  {dir === "rtl" ? "إضافة" : "Add"} "{patientTypeSearch.trim()}"
-                </button>
-              )}
-              {filteredPatientTypes.length === 0 && !canAddCustomPatientType && (
-                <div className="px-3 py-3 text-sm text-center text-muted-foreground">
-                  {dir === "rtl" ? "لا توجد نتائج." : "No results found."}
-                </div>
-              )}
-            </motion.div>,
-            document.body
-          )}
-        </AnimatePresence>
+                )}
+                {filteredPatientTypes.length === 0 && !canAddCustomPatientType && (
+                  <div className="px-3 py-3 text-sm text-center text-muted-foreground">
+                    {dir === "rtl" ? "لا توجد نتائج." : "No results found."}
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
       {/* Chronic Conditions */}
@@ -796,73 +746,62 @@ export function PatientIntakeDrawer({
             ))}
           </div>
         )}
-        <div ref={conditionInputWrapRef} className="flex items-center border border-border rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-[#007AFF] bg-background">
-          <Search className="w-3.5 h-3.5 text-muted-foreground ml-3 shrink-0" />
-          <input
-            value={conditionSearch}
-            onChange={(e) => {
-              setConditionSearch(e.target.value);
-              setConditionDropdownOpen(true);
-              setPatientTypeDropdownOpen(false);
-            }}
-            onFocus={() => {
-              setConditionDropdownOpen(true);
-              setPatientTypeDropdownOpen(false);
-            }}
-            placeholder={t("drawer.searchConditions")}
-            className="flex-1 px-2 py-2.5 text-sm bg-transparent outline-none"
-          />
-        </div>
-        <AnimatePresence>
-          {conditionDropdownOpen && conditionRect && typeof document !== "undefined" && createPortal(
-            <motion.div
-              data-condition-portal
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.12 }}
-              style={{
-                position: "fixed",
-                top: conditionRect.bottom + 4,
-                left: conditionRect.left,
-                width: conditionRect.width,
-                zIndex: 99999,
+        <div className="relative">
+          <div className="flex items-center border border-border rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-[#007AFF] bg-background">
+            <Search className="w-3.5 h-3.5 text-muted-foreground ml-3 shrink-0" />
+            <input
+              value={conditionSearch}
+              onChange={(e) => {
+                setConditionSearch(e.target.value);
+                setConditionDropdownOpen(true);
               }}
-              className="bg-background border border-border rounded-xl shadow-lg max-h-40 overflow-y-auto"
-            >
-              {filteredConditions.map((c: string) => {
-                const selected = form.chronicConditions.includes(c);
-                return (
+              onFocus={() => setConditionDropdownOpen(true)}
+              placeholder={t("drawer.searchConditions")}
+              className="flex-1 px-2 py-2.5 text-sm bg-transparent outline-none"
+            />
+          </div>
+          <AnimatePresence>
+            {conditionDropdownOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.12 }}
+                className="absolute left-0 right-0 mt-1 bg-background border border-border rounded-xl shadow-lg max-h-40 overflow-y-auto z-30"
+              >
+                {filteredConditions.map((c: string) => {
+                  const selected = form.chronicConditions.includes(c);
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => {
+                        toggleCondition(c);
+                      }}
+                      className={`w-full flex items-center gap-2 px-3 py-2 text-start text-sm transition-colors hover:bg-muted/40 ${selected ? "text-[#007AFF] font-medium" : ""}`}
+                    >
+                      {selected && <Check className="w-3.5 h-3.5 text-[#007AFF] shrink-0" />}
+                      <span className={selected ? "" : "ml-5"}>{c}</span>
+                    </button>
+                  );
+                })}
+                {canAddCustom && (
                   <button
-                    key={c}
                     type="button"
-                    onClick={() => {
-                      toggleCondition(c);
-                    }}
-                    className={`w-full flex items-center gap-2 px-3 py-2 text-start text-sm transition-colors hover:bg-muted/40 ${selected ? "text-[#007AFF] font-medium" : ""}`}
+                    onClick={addCustomCondition}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-start text-sm text-[#007AFF] font-medium hover:bg-[#007AFF]/5 border-t border-border transition-colors"
                   >
-                    {selected && <Check className="w-3.5 h-3.5 text-[#007AFF] shrink-0" />}
-                    <span className={selected ? "" : "ml-5"}>{c}</span>
+                    <Plus className="w-3.5 h-3.5" />
+                    Add &quot;{conditionSearch.trim()}&quot;
                   </button>
-                );
-              })}
-              {canAddCustom && (
-                <button
-                  type="button"
-                  onClick={addCustomCondition}
-                  className="w-full flex items-center gap-2 px-3 py-2.5 text-start text-sm text-[#007AFF] font-medium hover:bg-[#007AFF]/5 border-t border-border transition-colors"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  Add &quot;{conditionSearch.trim()}&quot;
-                </button>
-              )}
-              {filteredConditions.length === 0 && !canAddCustom && (
-                <p className="px-3 py-2 text-xs text-muted-foreground">No conditions found</p>
-              )}
-            </motion.div>,
-            document.body
-          )}
-        </AnimatePresence>
+                )}
+                {filteredConditions.length === 0 && !canAddCustom && (
+                  <p className="px-3 py-2 text-xs text-muted-foreground">No conditions found</p>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
         <p className="text-[11px] text-muted-foreground mt-1">{t("drawer.searchOrAdd")}</p>
       </div>
 
