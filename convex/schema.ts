@@ -136,6 +136,9 @@ export default defineSchema({
   syncOperations: defineTable({
     doctorId: v.id("users"),
     key: v.string(),
+    // ID of the record the original operation created, so replayed creates
+    // can return the original result instead of duplicating it.
+    resultId: v.optional(v.string()),
     createdAt: v.number(),
   }).index("by_doctor_key", ["doctorId", "key"]),
 

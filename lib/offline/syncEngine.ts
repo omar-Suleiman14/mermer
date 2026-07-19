@@ -465,14 +465,13 @@ function isNetworkError(err: unknown): boolean {
 }
 
 function isDuplicateError(err: unknown): boolean {
+  // Replays are handled server-side via durable idempotency receipts, so a
+  // successful replay returns normally instead of throwing. Only explicit
+  // idempotency errors count as duplicates — the previous broad matches
+  // ("conflict", "already exists") could mark genuine validation failures
+  // as completed and silently drop the write.
   if (err instanceof Error) {
-    const msg = err.message.toLowerCase();
-    return (
-      msg.includes("duplicate") ||
-      msg.includes("idempotency") ||
-      msg.includes("already exists") ||
-      msg.includes("conflict")
-    );
+    return err.message.toLowerCase().includes("idempotency");
   }
   return false;
 }

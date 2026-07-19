@@ -1,7 +1,8 @@
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v, ConvexError } from "convex/values";
-import { getAuthUser, requireAuthUser, logAction, hasProcessedSyncOperation, recordSyncOperation } from "./authHelper";
+import { getAuthUser, requireAuthUser, logAction, hasProcessedSyncOperation, getSyncOperation, recordSyncOperation } from "./authHelper";
+import { Id } from "./_generated/dataModel";
 
 export const getVisitsByPatient = query({
   args: { patientId: v.id("patients"), clerkId: v.string() },
@@ -123,7 +124,14 @@ export const createVisit = mutation({
     const patient = await ctx.db.get(args.patientId);
     if (!patient || patient.doctorId !== user._id) throw new ConvexError("Patient not found");
 
-    // Idempotency check: if a visit already exists for this patient on the same date
+    // Durable idempotency: a replay with the same key returns the original visit.
+    if (args._idempotencyKey) {
+      const receipt = await getSyncOperation(ctx, user._id, args._idempotencyKey);
+      if (receipt?.resultId) return receipt.resultId as Id<"visits">;
+    }
+
+    // Fallback heuristic for retries that predate the receipt: a visit already
+    // exists for this patient on the same date.
     if (args._idempotencyKey && args.date) {
       const existingVisits = await ctx.db
         .query("visits")
@@ -167,6 +175,7 @@ export const createVisit = mutation({
       actionBy: user.actualUserName || "Doctor",
     });
 
+    await recordSyncOperation(ctx, user._id, args._idempotencyKey, visitId);
     await logAction(ctx, user, "Created Visit", `Scheduled visit for patient ID: ${args.patientId}`);
     
     if (args.source === "online") {
