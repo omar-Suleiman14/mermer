@@ -1,6 +1,6 @@
 import { mutation, query, action, internalMutation } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
-import { getAuthUser, requireAuthUser } from "./authHelper";
+import { getAuthUser, requireAuthUser, getSyncOperation, recordSyncOperation } from "./authHelper";
 import { internal } from "./_generated/api";
 import { msgInstallmentCreated, calcSlotNumber, fmtTimeAr, fmtDateAr } from "./messageHelpers";
 
@@ -138,10 +138,16 @@ export const createinstallment = mutation({
     installmentFileName: v.optional(v.string()),
     notes: v.optional(v.string()),
     visitSchedules: v.optional(v.array(v.number())),
+    _idempotencyKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
 
+    if (args._idempotencyKey) {
+      const receipt = await getSyncOperation(ctx, user._id, args._idempotencyKey);
+      if (receipt?.resultId) return { id: receipt.resultId as import("./_generated/dataModel").Id<"installments"> };
+    }
+    
     const patient = await ctx.db.get(args.patientId);
     if (!patient || patient.doctorId !== user._id)
       throw new ConvexError("Patient not found");
@@ -250,6 +256,10 @@ export const createinstallment = mutation({
       if (payload) {
         await ctx.scheduler.runAfter(0, internal.whatsappAutomations.sendMessage, payload);
       }
+    }
+
+    if (args._idempotencyKey) {
+      await recordSyncOperation(ctx, user._id, args._idempotencyKey, id);
     }
 
     return { id };

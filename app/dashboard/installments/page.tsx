@@ -351,7 +351,7 @@ function InstallmentForm({
       const [hh, mm] = firstVisitTime.split(":").map(Number);
       const firstTs = new Date(firstVisitDate.getFullYear(), firstVisitDate.getMonth(), firstVisitDate.getDate(), hh, mm, 0, 0);
 
-      const { id } = await createinstallment({
+      const { id, isOffline } = await createinstallment({
         clerkId,
         patientId: selectedPatient.id,
         totalAmount: totalAmount ? Number(totalAmount) : undefined,
@@ -365,10 +365,30 @@ function InstallmentForm({
         visitSchedules: [firstTs.getTime()],
       });
 
-      toast.success(dir === "rtl" ? "تم إنشاء خطة التقسيط" : "Installment plan created");
+      if (isOffline) {
+        const { offlineDb } = await import('../../../lib/offline/offlineDb');
+        offlineDb.visits.put({
+          _localId: crypto.randomUUID(),
+          _syncStatus: 'synced',
+          _ownerClerkId: clerkId,
+          _isOfflineCreated: true,
+          doctorId: currentUser?._id as any,
+          patientId: selectedPatient.id,
+          patientName: selectedPatient.name,
+          patientPhone: selectedPatient.phone,
+          date: firstTs.getTime(),
+          status: 'pending',
+          source: 'installment',
+          installmentId: id as any,
+          notes: 'installment visit',
+          createdAt: Date.now(),
+        } as any);
+      }
+
+      toast.success(dir === 'rtl' ? 'تم إنشاء خطة التقسيط' : 'Installment plan created');
       onClose();
     } catch (e: any) {
-      toast.error(e.message ?? (dir === "rtl" ? "فشل إنشاء التقسيط" : "Failed to create installment"));
+      toast.error(e.message ?? (dir === 'rtl' ? 'فشل إنشاء التقسيط' : 'Failed to create installment'));
     } finally {
       setSaving(false);
     }
