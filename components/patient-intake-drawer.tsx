@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { toWesternDigits } from "@/lib/arabicNumerals";
-import { useConvex, useQuery } from "convex/react";
+import { useConvex, useQuery, useMutation } from "convex/react";
 import { useOfflineMutation } from "@/hooks/use-offline-mutation";
 import { useOfflineQuery } from "@/hooks/use-offline-query";
 import { useCurrentUser } from "@/components/providers/user-provider";
@@ -10,7 +10,7 @@ import { useConnectionStatus } from "@/components/providers/ConnectionProvider";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { toast } from "sonner";
-import { Clock, X, Plus, CalendarIcon, CheckCircle2, Phone, MapPin, MessageCircle } from "lucide-react";
+import { Clock, X, Search, Plus, Check, CalendarIcon, CheckCircle2, Phone, MapPin, MessageCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { IOSSpinner } from "@/components/ui/spinner";
 import { Calendar } from "@/components/ui/calendar";
@@ -217,7 +217,11 @@ export function PatientIntakeDrawer({
   }, [liveConditionOptions]);
   const conditionOptions = liveConditionOptions ?? cachedConditions;
 
+  const addConditionOption = useMutation(api.chronicConditions.addOption);
 
+  const [conditionSearch, setConditionSearch] = useState("");
+  const [conditionDropdownOpen, setConditionDropdownOpen] = useState(false);
+  const conditionRef = useRef<HTMLDivElement>(null);
 
   // Patient type options
   const livePatientTypeOptions = useQuery(api.patientTypes.listOptions, !isOffline && clerkId ? { clerkId } : "skip");
@@ -231,9 +235,57 @@ export function PatientIntakeDrawer({
     }
   }, [livePatientTypeOptions]);
   const patientTypeOptions = livePatientTypeOptions ?? cachedPatientTypes;
+  const addPatientTypeOption = useMutation(api.patientTypes.addOption);
 
+  const [patientTypeSearch, setPatientTypeSearch] = useState("");
+  const [patientTypeDropdownOpen, setPatientTypeDropdownOpen] = useState(false);
+  const patientTypeRef = useRef<HTMLDivElement>(null);
 
+  const filteredConditions = useMemo(() => {
+    const opts = conditionOptions ?? [];
+    if (!conditionSearch.trim()) return opts.slice(0, 15);
+    const q = conditionSearch.toLowerCase();
+    return opts.filter((c: string) => c.toLowerCase().includes(q));
+  }, [conditionOptions, conditionSearch]);
 
+  const canAddCustom =
+    conditionSearch.trim().length > 0 &&
+    !filteredConditions.some((c: string) => c.toLowerCase() === conditionSearch.trim().toLowerCase()) &&
+    !form.chronicConditions.some((c: string) => c.toLowerCase() === conditionSearch.trim().toLowerCase());
+
+  const filteredPatientTypes = useMemo(() => {
+    const opts = patientTypeOptions ?? [];
+    if (!patientTypeSearch.trim()) return opts.slice(0, 15);
+    const q = patientTypeSearch.toLowerCase();
+    return opts.filter((c: string) => c.toLowerCase().includes(q));
+  }, [patientTypeOptions, patientTypeSearch]);
+
+  const canAddCustomPatientType =
+    patientTypeSearch.trim().length > 0 &&
+    !filteredPatientTypes.some((c: string) => c.toLowerCase() === patientTypeSearch.trim().toLowerCase()) &&
+    !(form.patientType && form.patientType.toLowerCase() === patientTypeSearch.trim().toLowerCase());
+
+  useEffect(() => {
+    if (!conditionDropdownOpen) return;
+    function handle(e: MouseEvent) {
+      if (conditionRef.current && !conditionRef.current.contains(e.target as Node)) {
+        setConditionDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [conditionDropdownOpen]);
+
+  useEffect(() => {
+    if (!patientTypeDropdownOpen) return;
+    function handle(e: MouseEvent) {
+      if (patientTypeRef.current && !patientTypeRef.current.contains(e.target as Node)) {
+        setPatientTypeDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [patientTypeDropdownOpen]);
 
   const createPatient = useOfflineMutation(api.patients.createPatient, {
     table: "patients",
@@ -333,6 +385,33 @@ export function PatientIntakeDrawer({
       ...f,
       phones: f.phones.map((p, i) => ({ ...p, isWhatsApp: i === idx })),
     }));
+  }
+
+  function toggleCondition(c: string) {
+    if (form.chronicConditions.includes(c)) {
+      set("chronicConditions", form.chronicConditions.filter((x) => x !== c));
+    } else {
+      set("chronicConditions", [...form.chronicConditions, c]);
+    }
+  }
+
+  async function addCustomCondition() {
+    const trimmed = conditionSearch.trim();
+    if (!trimmed) return;
+    await addConditionOption({ clerkId, name: trimmed });
+    if (!form.chronicConditions.includes(trimmed)) {
+      set("chronicConditions", [...form.chronicConditions, trimmed]);
+    }
+    setConditionSearch("");
+  }
+
+  async function addCustomPatientType() {
+    const trimmed = patientTypeSearch.trim();
+    if (!trimmed) return;
+    await addPatientTypeOption({ clerkId, name: trimmed });
+    set("patientType", trimmed);
+    setPatientTypeSearch("");
+    setPatientTypeDropdownOpen(false);
   }
 
   async function handleSubmit(e?: React.FormEvent) {
@@ -579,37 +658,151 @@ export function PatientIntakeDrawer({
       </div>
 
       {/* Patient Type */}
-      <div>
+      <div ref={patientTypeRef}>
         <label className="text-xs font-medium text-muted-foreground block mb-1.5">{dir === "rtl" ? "نوع المريض *" : "Patient Type *"}</label>
-        <select
-          value={form.patientType ?? ""}
-          onChange={(e) => set("patientType", e.target.value || undefined)}
-          className={inputClass}
-        >
-          <option value="">{dir === "rtl" ? "اختر نوع المريض" : "Select patient type"}</option>
-          {(patientTypeOptions ?? []).map((c: string) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
+        {form.patientType && (
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            <span className="flex items-center gap-1 bg-[#34c759]/10 text-[#34c759] text-xs font-medium px-2 py-0.5 rounded-full">
+              {form.patientType}
+              <button type="button" onClick={() => set("patientType", undefined)} className="hover:text-[#34c759]/70">
+                <X className="w-3 h-3" />
+              </button>
+            </span>
+          </div>
+        )}
+        <div className="relative">
+          <div className="flex items-center border border-border rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-[#007AFF] bg-background">
+            <Search className="w-3.5 h-3.5 text-muted-foreground ml-3 shrink-0" />
+            <input
+              value={patientTypeSearch}
+              onChange={(e) => {
+                setPatientTypeSearch(e.target.value);
+                setPatientTypeDropdownOpen(true);
+              }}
+              onFocus={() => setPatientTypeDropdownOpen(true)}
+              placeholder={dir === "rtl" ? "ابحث أو أضف نوعًا..." : "Search or add type..."}
+              className="flex-1 px-2 py-2.5 text-sm bg-transparent outline-none"
+            />
+          </div>
+          <AnimatePresence>
+            {patientTypeDropdownOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.12 }}
+                className="absolute left-0 right-0 mt-1 bg-background border border-border rounded-xl shadow-lg max-h-40 overflow-y-auto z-30"
+              >
+                {filteredPatientTypes.map((c: string) => {
+                  const selected = form.patientType === c;
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => {
+                        set("patientType", c);
+                        setPatientTypeDropdownOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center justify-between"
+                    >
+                      <span className={selected ? "font-semibold" : ""}>{c}</span>
+                      {selected && <Check className="w-3.5 h-3.5 text-[#007AFF]" />}
+                    </button>
+                  );
+                })}
+                {canAddCustomPatientType && (
+                  <button
+                    type="button"
+                    onClick={addCustomPatientType}
+                    className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex items-center gap-2 text-[#007AFF]"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    {dir === "rtl" ? "إضافة" : "Add"} "{patientTypeSearch.trim()}"
+                  </button>
+                )}
+                {filteredPatientTypes.length === 0 && !canAddCustomPatientType && (
+                  <div className="px-3 py-3 text-sm text-center text-muted-foreground">
+                    {dir === "rtl" ? "لا توجد نتائج." : "No results found."}
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
       {/* Chronic Conditions */}
-      <div>
+      <div ref={conditionRef}>
         <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("drawer.chronicConditions")}</label>
-        <select
-          multiple
-          value={form.chronicConditions}
-          onChange={(e) => {
-            const selected = Array.from(e.target.selectedOptions).map((o) => o.value);
-            set("chronicConditions", selected);
-          }}
-          className={`${inputClass} min-h-[100px]`}
-        >
-          {(conditionOptions ?? []).map((c: string) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
-        <p className="text-[11px] text-muted-foreground mt-1">{dir === "rtl" ? "اضغط مع Ctrl/Cmd لاختيار أكثر من خيار" : "Hold Ctrl / Cmd to select multiple"}</p>
+        {form.chronicConditions.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {form.chronicConditions.map((c) => (
+              <span key={c} className="flex items-center gap-1 bg-[#007AFF]/10 text-[#007AFF] text-xs font-medium px-2 py-0.5 rounded-full">
+                {c}
+                <button type="button" onClick={() => toggleCondition(c)} className="hover:text-[#007AFF]/70">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <div className="relative">
+          <div className="flex items-center border border-border rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-[#007AFF] bg-background">
+            <Search className="w-3.5 h-3.5 text-muted-foreground ml-3 shrink-0" />
+            <input
+              value={conditionSearch}
+              onChange={(e) => {
+                setConditionSearch(e.target.value);
+                setConditionDropdownOpen(true);
+              }}
+              onFocus={() => setConditionDropdownOpen(true)}
+              placeholder={t("drawer.searchConditions")}
+              className="flex-1 px-2 py-2.5 text-sm bg-transparent outline-none"
+            />
+          </div>
+          <AnimatePresence>
+            {conditionDropdownOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.12 }}
+                className="absolute left-0 right-0 mt-1 bg-background border border-border rounded-xl shadow-lg max-h-40 overflow-y-auto z-30"
+              >
+                {filteredConditions.map((c: string) => {
+                  const selected = form.chronicConditions.includes(c);
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => {
+                        toggleCondition(c);
+                      }}
+                      className={`w-full flex items-center gap-2 px-3 py-2 text-start text-sm transition-colors hover:bg-muted/40 ${selected ? "text-[#007AFF] font-medium" : ""}`}
+                    >
+                      {selected && <Check className="w-3.5 h-3.5 text-[#007AFF] shrink-0" />}
+                      <span className={selected ? "" : "ml-5"}>{c}</span>
+                    </button>
+                  );
+                })}
+                {canAddCustom && (
+                  <button
+                    type="button"
+                    onClick={addCustomCondition}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-start text-sm text-[#007AFF] font-medium hover:bg-[#007AFF]/5 border-t border-border transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Add &quot;{conditionSearch.trim()}&quot;
+                  </button>
+                )}
+                {filteredConditions.length === 0 && !canAddCustom && (
+                  <p className="px-3 py-2 text-xs text-muted-foreground">No conditions found</p>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+        <p className="text-[11px] text-muted-foreground mt-1">{t("drawer.searchOrAdd")}</p>
       </div>
 
       {/* Visit section — hidden in edit mode */}
