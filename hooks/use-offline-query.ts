@@ -70,7 +70,7 @@ export function useOfflineQuery<Query extends FunctionReference<"query">>(
     sort,
     limit = 500,
     select,
-    initialLocalValue = [],
+    initialLocalValue = select ? undefined : [],
   } = options;
   const ownerClerkId =
     args !== "skip" && typeof (args as Record<string, unknown>).clerkId === "string"
