@@ -19,6 +19,7 @@ import { IOSSpinner } from "@/components/ui/spinner";
 import { toast } from "sonner";
 import { DataHydrator } from "@/lib/offline/dataHydrator";
 import { FailedMessageNotifier } from "@/components/providers/failed-message-notifier";
+import { FailedSyncNotifier } from "@/components/providers/failed-sync-notifier";
 
 function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
   const { user, isLoaded } = useUser();
@@ -237,6 +238,7 @@ function DashboardLayoutInner({ children }: { children: React.ReactNode }) {
       )}
       <DataHydrator clerkId={clerkId} />
       <FailedMessageNotifier />
+      <FailedSyncNotifier />
     </TooltipProvider>
   );
 }
