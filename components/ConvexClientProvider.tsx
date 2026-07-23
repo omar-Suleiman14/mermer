@@ -35,6 +35,7 @@ function SyncEngineInitializer() {
   const swapAppointmentsMutation = useMutation(api.appointments.swapAppointments);
   const addToQueueMutation = useMutation(api.queue.addToQueue);
   const createInstallmentMutation = useMutation(api.installments.createinstallment);
+  const completeinstallmentVisitMutation = useMutation(api.installments.completeinstallmentVisit);
 
   useEffect(() => {
     if (!detector || !userId || initialized.current) return;
@@ -70,6 +71,9 @@ function SyncEngineInitializer() {
     );
     registerMutation("installments", "create", (args) =>
       createInstallmentMutation(args as Parameters<typeof createInstallmentMutation>[0])
+    );
+    registerMutation("visits", "completeinstallmentVisit", (args) =>
+      completeinstallmentVisitMutation(args as Parameters<typeof completeinstallmentVisitMutation>[0])
     );
 
     // Initialize the sync engine

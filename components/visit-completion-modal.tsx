@@ -315,7 +315,22 @@ export function VisitCompletionModal({
     table: "followUps",
     operation: "create",
   });
-  const completeinstallmentVisit = useMutation(api.installments.completeinstallmentVisit);
+  const completeinstallmentVisit = useOfflineMutation(api.installments.completeinstallmentVisit, {
+    table: "visits",
+    operation: "update",
+    syncOperation: "completeinstallmentVisit",
+    toLocalRecord: (args) => ({
+      status: "completed",
+      isPaid: args.isPaid,
+      notes: args.notes,
+      diagnosis: args.diagnosis,
+      measurements: args.measurements,
+      vitals: args.vitals,
+      prescriptionImageId: args.prescriptionImageId,
+      documentIds: args.documentIds,
+      prescribedMedications: args.prescribedMedications,
+    }),
+  });
   const waiveUnpaidBalance = useMutation(api.installments.waiveUnpaidBalance);
 
   // Clinical options mutations

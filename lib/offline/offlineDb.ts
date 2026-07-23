@@ -115,7 +115,8 @@ export type SyncOperation =
   | "delete"
   | "addManualAppointment"
   | "updateAppointment"
-  | "swapAppointments";
+  | "swapAppointments"
+  | "completeinstallmentVisit";
 export type SyncEntryStatus = "pending" | "in-flight" | "failed" | "completed";
 
 export interface SyncQueueEntry {
