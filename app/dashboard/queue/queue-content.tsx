@@ -323,9 +323,10 @@ function SchedulePageInner() {
           installmentId: visit.installmentId ?? undefined,
           tag: undefined,
         });
+        setInitVisitId(null);
       }
     }
-  }, [initVisitId, rawAppointments]);
+  }, [initVisitId, rawAppointments, completionModal]);
 
   const rescheduleDateStart = useMemo(() => {
     if (!rescheduleDate) return undefined;

@@ -696,8 +696,8 @@ export function VisitCompletionModal({
           nextVisitDate: nextTs,
           prescribedMedications: prescribedMedications.length > 0 ? prescribedMedications : undefined,
         });
-        setDone(true);
         toast.success(isPaid ? "Visit complete — payment recorded ✓" : "Visit complete — balance added to installment");
+        handleClose();
       } else {
         // Regular visit path — always update notes, status, and medications
         await addVisitFiles({
@@ -718,8 +718,12 @@ export function VisitCompletionModal({
           exactDate.setHours(hh ?? 10, mm ?? 0, 0, 0);
           await createFollowUp({ clerkId, patientId, followUpDate: exactDate.getTime(), followUpTime: fuTime, type: "in-person", note: fuNote || undefined, parentVisitId: visitId });
         }
-        setDone(true);
         toast.success(scheduleFollowUp ? "Visit complete — follow-up scheduled!" : "Visit recorded");
+        if (showPrescription) {
+          setDone(true);
+        } else {
+          handleClose();
+        }
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);

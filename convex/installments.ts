@@ -1,6 +1,6 @@
 import { mutation, query, action, internalMutation } from "./_generated/server";
 import { v, ConvexError } from "convex/values";
-import { getAuthUser, requireAuthUser, getSyncOperation, recordSyncOperation } from "./authHelper";
+import { getAuthUser, requireAuthUser, getSyncOperation, recordSyncOperation, hasProcessedSyncOperation } from "./authHelper";
 import { internal } from "./_generated/api";
 import { msgInstallmentCreated, calcSlotNumber, fmtTimeAr, fmtDateAr } from "./messageHelpers";
 
@@ -399,9 +399,14 @@ export const completeinstallmentVisit = mutation({
     ),
     // Next visit scheduling (client computes full timestamp)
     nextVisitDate: v.optional(v.number()),
+    _idempotencyKey: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await requireAuthUser(ctx, args.clerkId);
+
+    if (await hasProcessedSyncOperation(ctx, user._id, args._idempotencyKey)) {
+      return { nextVisitId: undefined, isinstallmentDone: false, unpaidBalance: 0 };
+    }
 
     const visit = await ctx.db.get(args.visitId);
     if (!visit || visit.doctorId !== user._id) throw new ConvexError("Visit not found");
@@ -459,6 +464,8 @@ export const completeinstallmentVisit = mutation({
       nextVisitDate: args.nextVisitDate ?? undefined,
       status: isinstallmentDone ? "expired" : installment.status,
     });
+
+    await recordSyncOperation(ctx, user._id, args._idempotencyKey);
 
     return { nextVisitId, isinstallmentDone, unpaidBalance };
   },
