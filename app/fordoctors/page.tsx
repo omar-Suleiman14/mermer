@@ -32,6 +32,7 @@ import {
   Bell,
   Infinity,
   Headphones,
+  CloudOff,
 } from "lucide-react";
 import { getServerI18n } from "@/lib/i18n/server";
 import dynamic from "next/dynamic";
@@ -48,6 +49,10 @@ export const metadata: Metadata = {
   description:
     "mermer empowers medical professionals with verified public profiles, authentic review tracking, and tools to elevate their online clinical reputation.",
   alternates: { canonical: "https://mermereg.com/fordoctors" },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 const TIERS = [
@@ -272,6 +277,15 @@ const TIERS = [
           "Installs straight to the home screen and behaves like a real mobile app.",
         descriptionAr:
           "يُثبَّت مباشرةً على الشاشة الرئيسية ويتصرف كتطبيق موبايل حقيقي.",
+      },
+      {
+        icon: CloudOff,
+        title: "Full Offline Support",
+        titleAr: "دعم كامل للأوفلاين",
+        description:
+          "Keep working when the internet drops. View queues, navigate seamlessly, and manage installments completely offline.",
+        descriptionAr:
+          "استمر في العمل عند انقطاع الإنترنت. تصفح المواعيد، انتقل بين الصفحات بسلاسة، وأدر الأقساط أوفلاين بالكامل.",
       },
       {
         icon: Palette,
@@ -600,7 +614,7 @@ export default async function ForDoctorsLandingPage() {
           <AnimatedReveal>
             <div className="text-center mb-16">
               <div className="inline-flex items-center gap-2 px-4 py-1.5 mb-6 rounded-full bg-slate-100 dark:bg-zinc-900 text-slate-600 dark:text-zinc-400 text-xs font-semibold tracking-wide border border-slate-200 dark:border-white/10">
-                {isRtl ? "٢٥ ميزة • ٤ مستويات" : "25 features · 4 tiers"}
+                {isRtl ? "٢٦ ميزة • ٤ مستويات" : "26 features · 4 tiers"}
               </div>
               <h2 className="text-4xl md:text-5xl font-medium tracking-tight text-slate-900 dark:text-white mb-4">
                 {isRtl ? "كل شيء مدرج. لا مفاجآت." : "Everything listed. No surprises."}
@@ -714,7 +728,62 @@ export default async function ForDoctorsLandingPage() {
           })}
         </section>
 
-        {/* 5. Final CTA */}
+        {/* 5. Pricing Section */}
+        <section className="px-4 sm:px-6 lg:px-8 py-24 bg-slate-50/50 dark:bg-zinc-900/20 border-y border-slate-100 dark:border-white/5">
+          <AnimatedReveal className="max-w-3xl mx-auto text-center">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 mb-6 rounded-full bg-red-100 dark:bg-red-500/10 text-red-600 dark:text-red-400 text-xs font-semibold tracking-wide border border-red-200 dark:border-red-500/20 uppercase">
+              {isRtl ? "عرض لفترة محدودة" : "Limited Time Offer"}
+            </div>
+            <h2 className="text-4xl md:text-5xl font-medium tracking-tight text-slate-900 dark:text-white mb-6">
+              {isRtl ? "سعر ثابت مدى الحياة." : "Locked-in pricing forever."}
+            </h2>
+            <p className="text-slate-600 dark:text-zinc-400 mb-12 text-lg">
+              {isRtl 
+                ? "انضم الآن وثبّت اشتراكك على السعر المخفض. لن يتغير السعر عليك أبداً حتى بعد انتهاء العرض."
+                : "Join now and lock in the discounted rate. Your price will never increase, even after the offer ends."}
+            </p>
+            
+            <div className="bg-white dark:bg-zinc-950 border border-primary/20 rounded-3xl p-8 md:p-12 shadow-xl shadow-primary/5 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl" />
+              <div className="absolute bottom-0 left-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl" />
+              
+              <div className="relative z-10 flex flex-col items-center">
+                <div className="flex items-center justify-center gap-4 mb-2">
+                  <span className="text-2xl text-slate-400 line-through decoration-red-500/50 decoration-2 font-medium">
+                    {isRtl ? "٢٥٠٠ ج.م" : "2500 EGP"}
+                  </span>
+                  <span className="px-3 py-1 bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 rounded-full text-xs font-bold">
+                    {isRtl ? "توفير ٦٨٪" : "SAVE 68%"}
+                  </span>
+                </div>
+                
+                <div className="flex items-baseline gap-2 mb-4">
+                  <span className="text-6xl md:text-7xl font-bold tracking-tighter text-slate-900 dark:text-white">
+                    {isRtl ? "٨٠٠" : "800"}
+                  </span>
+                  <span className="text-xl font-medium text-slate-500">
+                    {isRtl ? "ج.م / شهرياً" : "EGP / month"}
+                  </span>
+                </div>
+                
+                <p className="text-primary font-semibold mb-8">
+                  {isRtl ? "شامل جميع المميزات السابقة، وجميع التحديثات القادمة." : "Includes all features above, and all future updates."}
+                </p>
+                
+                <Link
+                  href="/sign-in"
+                  prefetch={true}
+                  className="w-full sm:w-auto inline-flex h-14 items-center justify-center gap-2 rounded-full bg-primary px-12 text-base font-medium text-white transition-all hover:bg-primary/90 hover:scale-[0.98] active:scale-95 shadow-lg shadow-primary/20"
+                >
+                  {isRtl ? "احجز السعر المخفض الآن" : "Lock In Your Price Now"}
+                  <ArrowRight className={`w-4 h-4 ${isRtl ? "rotate-180" : ""}`} />
+                </Link>
+              </div>
+            </div>
+          </AnimatedReveal>
+        </section>
+
+        {/* 6. Final CTA */}
         <section className="px-4 sm:px-6 lg:px-8 py-24 mb-12">
           <AnimatedReveal className="max-w-4xl mx-auto text-center bg-slate-50 dark:bg-zinc-900/30 border border-slate-100 dark:border-white/5 rounded-[3rem] p-12 md:p-24 relative overflow-hidden">
             <div className="absolute inset-0 bg-linear-to-tr from-primary/5 to-transparent pointer-events-none" />

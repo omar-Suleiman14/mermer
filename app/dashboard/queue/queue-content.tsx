@@ -105,8 +105,26 @@ function SchedulePageInner() {
   const canCancel = !isAssistant || !hasExplicitPerms || userPerms.includes("appointments.cancel");
 
   const todayTs = startOfDay(Date.now());
-  const initDate = searchParams.get("date");
-  const initVisitId = searchParams.get("visitId");
+  const initDateParam = searchParams.get("date");
+  const initVisitIdParam = searchParams.get("visitId");
+
+  const [initDate, setInitDate] = useState<string | null>(initDateParam);
+  const [initVisitId, setInitVisitId] = useState<string | null>(initVisitIdParam);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const storedDate = sessionStorage.getItem("queue_init_date");
+      const storedVisitId = sessionStorage.getItem("queue_init_visitId");
+      if (storedDate) {
+        setInitDate(storedDate);
+        sessionStorage.removeItem("queue_init_date");
+      }
+      if (storedVisitId) {
+        setInitVisitId(storedVisitId);
+        sessionStorage.removeItem("queue_init_visitId");
+      }
+    }
+  }, []);
 
   // Strip container ref — used to measure how many days fit
   const stripContainerRef = useRef<HTMLDivElement>(null);
@@ -141,7 +159,7 @@ function SchedulePageInner() {
         setWeekOffset(Math.round((d - todayTs) / 86400000));
       }
     }
-  }, [initDate]);
+  }, [initDate, todayTs, selectedDay]);
 
   const [addOpen, setAddOpen] = useState(false);
   const [preselectedSlot, setPreselectedSlot] = useState<number | null>(null);

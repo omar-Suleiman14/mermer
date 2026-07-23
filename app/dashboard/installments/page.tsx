@@ -720,9 +720,13 @@ function InstallmentViewDrawer({
           {/* Next visit */}
           {installment.status === "active" && installment.nextVisitDate && (
             <Link
-              href={`/dashboard/queue?date=${installment.nextVisitDate}${installment.nextVisitId ? `&visitId=${installment.nextVisitId}` : ""}`}
+              href={`/dashboard/queue`}
               prefetch={true}
-              onClick={onClose}
+              onClick={() => {
+                sessionStorage.setItem("queue_init_date", installment.nextVisitDate.toString());
+                if (installment.nextVisitId) sessionStorage.setItem("queue_init_visitId", installment.nextVisitId);
+                onClose();
+              }}
               className="flex items-center gap-2 p-3 rounded-xl bg-[#007AFF]/8 border border-[#007AFF]/20 hover:bg-[#007AFF]/15 transition-colors cursor-pointer"
             >
               <CalendarIcon className="w-4 h-4 text-[#007AFF] shrink-0" />
@@ -955,9 +959,13 @@ export default function InstallmentsPage() {
                           )}
                           {installment.status === "active" && installment.nextVisitDate && (
                             <Link 
-                              href={`/dashboard/queue?date=${installment.nextVisitDate}${installment.nextVisitId ? `&visitId=${installment.nextVisitId}` : ""}`}
+                              href={`/dashboard/queue`}
                               className="text-xs text-muted-foreground flex items-center gap-1 hover:text-[#007AFF] hover:bg-[#007AFF]/5 rounded px-1 -ml-1 transition-colors"
-                              onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                              onClick={(e: React.MouseEvent) => {
+                                e.stopPropagation();
+                                sessionStorage.setItem("queue_init_date", installment.nextVisitDate.toString());
+                                if (installment.nextVisitId) sessionStorage.setItem("queue_init_visitId", installment.nextVisitId);
+                              }}
                             >
                               <CalendarIcon className="w-3 h-3" />
                               {t("installments.next")}: {fmtDate(installment.nextVisitDate, t("common.currency") === "ج.م" ? "ar-EG" : "en-US", true)}
