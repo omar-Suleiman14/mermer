@@ -50,6 +50,7 @@ export const sendMessage = internalAction({
       number: cleanNumber,
       text: textToSend,
       delay: 1200,
+      formatJid: true,
     };
 
     const MAX_RETRIES = 3;

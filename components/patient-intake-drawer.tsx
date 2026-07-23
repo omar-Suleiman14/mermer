@@ -520,6 +520,9 @@ export function PatientIntakeDrawer({
             patientId: patientId as Id<"patients">,
             date: visitDateMs,
             notes: form.notes || undefined,
+            patientName: form.name,
+            patientPhone: fullPhone,
+            patientAge: Number(form.age) || undefined,
           });
           toast.success(existing ? "مريض مسجل — تمت إضافة الزيارة للتاريخ" : "تم إنشاء المريض وجدولة الزيارة");
         } else {

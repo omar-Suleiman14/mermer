@@ -334,6 +334,10 @@ export const addManualAppointment = mutation({
     notes: v.optional(v.string()),
     // Offline sync: idempotency key to prevent duplicate visit creates during retry
     _idempotencyKey: v.optional(v.string()),
+    // Offline sync: optimistic UI fields (ignored by server handler)
+    patientName: v.optional(v.string()),
+    patientPhone: v.optional(v.string()),
+    patientAge: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const doctor = await requireAuthUser(ctx, args.clerkId);

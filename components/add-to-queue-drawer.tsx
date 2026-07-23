@@ -103,11 +103,16 @@ export function AddToQueueDrawer({
 
   async function handleSelectPatient(patientId: Id<"patients">) {
     const bookingTime = preselectedSlot ?? dayTs;
+    const patient = patients?.find((p) => p._id === patientId);
+    
     try {
       await addManualAppointment({
         clerkId,
         patientId,
         date: bookingTime,
+        patientName: patient?.name,
+        patientPhone: patient?.phone,
+        patientAge: patient?.age,
       });
       toast.success(
         preselectedSlot
