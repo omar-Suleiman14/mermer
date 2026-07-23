@@ -351,7 +351,7 @@ function InstallmentForm({
       const [hh, mm] = firstVisitTime.split(":").map(Number);
       const firstTs = new Date(firstVisitDate.getFullYear(), firstVisitDate.getMonth(), firstVisitDate.getDate(), hh, mm, 0, 0);
 
-      const { id, isOffline } = await createinstallment({
+      await createinstallment({
         clerkId,
         patientId: selectedPatient.id,
         totalAmount: totalAmount ? Number(totalAmount) : undefined,
@@ -364,26 +364,6 @@ function InstallmentForm({
         notes: notes || undefined,
         visitSchedules: [firstTs.getTime()],
       });
-
-      if (isOffline) {
-        const { offlineDb } = await import('../../../lib/offline/offlineDb');
-        offlineDb.visits.put({
-          _localId: crypto.randomUUID(),
-          _syncStatus: 'synced',
-          _ownerClerkId: clerkId,
-          _isOfflineCreated: true,
-          doctorId: currentUser?._id as any,
-          patientId: selectedPatient.id,
-          patientName: selectedPatient.name,
-          patientPhone: selectedPatient.phone,
-          date: firstTs.getTime(),
-          status: 'pending',
-          source: 'installment',
-          installmentId: id as any,
-          notes: 'installment visit',
-          createdAt: Date.now(),
-        } as any);
-      }
 
       toast.success(dir === 'rtl' ? 'تم إنشاء خطة التقسيط' : 'Installment plan created');
       onClose();

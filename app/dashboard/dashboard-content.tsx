@@ -108,12 +108,54 @@ export default function DashboardPage() {
     }
   );
 
+  // Fetch offline installment records to synthesise visit-like items for installment
+  // appointments created while offline (real visit only exists server-side after sync).
+  const offlineInstallments = useOfflineQuery(
+    api.installments.listinstallments,
+    clerkId ? { clerkId } : "skip",
+    { table: "installments" }
+  );
+
   const todayVisits = useMemo(() => {
     if (!todayAppointments) return [];
-    return [...todayAppointments]
+    const dayEnd = todayTs + 86400000 - 1;
+    const real = [...todayAppointments]
       .filter((a) => a.status !== "cancelled")
       .sort((a, b) => a.date - b.date);
-  }, [todayAppointments]);
+
+    // Build a set of installmentIds already covered by real visits
+    const coveredInstallmentIds = new Set(
+      real.map((a: any) => a.installmentId).filter(Boolean)
+    );
+
+    // Synthesise virtual visit-like entries from offline installments
+    const synthetic: any[] = [];
+    if (offlineInstallments) {
+      for (const inst of offlineInstallments as any[]) {
+        if (!inst._isOfflineCreated) continue;
+        const schedules: number[] = inst.visitSchedules ?? (inst.startDate ? [inst.startDate] : []);
+        for (const visitDate of schedules) {
+          if (visitDate < todayTs || visitDate > dayEnd) continue;
+          const instId = inst._localId ?? inst._serverId;
+          if (coveredInstallmentIds.has(instId)) continue;
+          synthetic.push({
+            _id: `offline-inst-${instId}-${visitDate}`,
+            _isOfflineSynthetic: true,
+            patientId: inst.patientId,
+            patientName: inst.patientName,
+            patientPhone: inst.patientPhone,
+            date: visitDate,
+            source: "installment",
+            status: "confirmed",
+            installmentId: instId,
+            createdAt: inst.createdAt ?? Date.now(),
+          });
+        }
+      }
+    }
+
+    return [...real, ...synthetic].sort((a, b) => a.date - b.date);
+  }, [todayAppointments, offlineInstallments, todayTs]);
 
   const { currentApptId, nextApptId } = useMemo(() => {
     if (!currentUser || !todayVisits) return { currentApptId: null, nextApptId: null };

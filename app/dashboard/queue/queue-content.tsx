@@ -242,12 +242,57 @@ function SchedulePageInner() {
     }
   );
 
-  // Filter the fetched range to only show appointments for the currently selected day
+  // Fetch offline installment records so we can synthesise visit-like items for
+  // installment appointments created offline (the real visit only exists server-side
+  // after sync, so we derive it from the locally cached installment until then).
+  const offlineInstallments = useOfflineQuery(
+    api.installments.listinstallments,
+    clerkId ? { clerkId } : "skip",
+    { table: "installments" }
+  );
+
+  // Filter the fetched range to only show appointments for the currently selected day.
+  // If a real visit for an offline installment already exists in rangeAppointments,
+  // the synthetic entry is omitted to avoid duplicates.
   const rawAppointments = useMemo(() => {
     if (!rangeAppointments) return undefined;
     const selectedDayEnd = selectedDay + 86400000 - 1;
-    return rangeAppointments.filter((a) => a.date >= selectedDay && a.date <= selectedDayEnd);
-  }, [rangeAppointments, selectedDay]);
+    const real = rangeAppointments.filter((a) => a.date >= selectedDay && a.date <= selectedDayEnd);
+
+    // Build a set of installmentIds already covered by real visits so we don't double-up
+    const coveredInstallmentIds = new Set(
+      real.map((a: any) => a.installmentId).filter(Boolean)
+    );
+
+    // Synthesise virtual visit-like entries from offline installments whose
+    // _isOfflineCreated flag is true (i.e. not yet confirmed by server).
+    const synthetic: any[] = [];
+    if (offlineInstallments) {
+      for (const inst of offlineInstallments as any[]) {
+        if (!inst._isOfflineCreated) continue; // already synced, real visit exists
+        const schedules: number[] = inst.visitSchedules ?? (inst.startDate ? [inst.startDate] : []);
+        for (const visitDate of schedules) {
+          if (visitDate < selectedDay || visitDate > selectedDayEnd) continue;
+          const instId = inst._localId ?? inst._serverId;
+          if (coveredInstallmentIds.has(instId)) continue;
+          synthetic.push({
+            _id: `offline-inst-${instId}-${visitDate}`,
+            _isOfflineSynthetic: true,
+            patientId: inst.patientId,
+            patientName: inst.patientName,
+            patientPhone: inst.patientPhone,
+            date: visitDate,
+            source: "installment",
+            status: "confirmed",
+            installmentId: instId,
+            createdAt: inst.createdAt ?? Date.now(),
+          });
+        }
+      }
+    }
+
+    return [...real, ...synthetic].sort((a, b) => a.date - b.date);
+  }, [rangeAppointments, offlineInstallments, selectedDay]);
 
   useEffect(() => {
     if (initVisitId && rawAppointments && !completionModal) {

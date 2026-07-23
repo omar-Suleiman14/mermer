@@ -55,7 +55,15 @@ export function useOfflineQuery<Query extends FunctionReference<"query">>(
   const connectionStatus = useConnectionStatus();
   const isOnline = connectionStatus === "online";
   const isOffline = connectionStatus === "offline";
-  const shouldSkipConvex = args === "skip" || options.skipConvex || isOffline;
+  const isReconnecting = connectionStatus === "reconnecting";
+
+  // Keep the Convex subscription paused while offline OR reconnecting.
+  // During "reconnecting" the sync engine is draining the queue — if Convex
+  // resumes before the queue is drained it will push stale data (missing
+  // offline-created records) which overrides the correct local Dexie view and
+  // causes the flash-then-disappear bug.  The subscription only resumes once
+  // markOnline() is called (i.e. after all pending ops have been synced).
+  const shouldSkipConvex = args === "skip" || options.skipConvex || isOffline || isReconnecting;
   const convexData = useQuery(query, (shouldSkipConvex ? "skip" : args) as any);
   const [localRecords, setLocalRecords] = useState<OfflineRecord[]>([]);
   const [hasLoadedLocal, setHasLoadedLocal] = useState(false);
@@ -141,24 +149,16 @@ export function useOfflineQuery<Query extends FunctionReference<"query">>(
     );
   }, [isOnline, convexData, table, ownerClerkId]);
 
-  if (isOffline) {
-    // Preserve visible server data through the offline transition until Dexie has
-    // produced its first snapshot, avoiding a transient loading spinner.
+  if (isOffline || isReconnecting) {
+    // While offline or reconnecting (sync is draining), always return local Dexie
+    // data so offline-created records stay visible during the sync window.
     if (!hasLoadedLocal) {
       return lastConvexData ?? (initialLocalValue as FunctionReturnType<Query>);
     }
     return localData;
   }
 
-  if (connectionStatus === "reconnecting") {
-    return (
-      convexData ??
-      (hasLoadedLocal
-        ? localData
-        : (lastConvexData ?? (initialLocalValue as FunctionReturnType<Query>)))
-    );
-  }
-
+  // Fully online: prefer fresh Convex data, fall back to local while loading.
   return (
     convexData ??
     (hasLoadedLocal

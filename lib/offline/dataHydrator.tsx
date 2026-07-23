@@ -224,12 +224,21 @@ async function hydrateTable(
       return;
     }
 
+    // Records synced very recently may not yet appear in the hydration snapshot
+    // (there is a brief window between syncEngine marking a record as synced and
+    // the Convex reactive query re-evaluating with the new data). Protect them so
+    // we don't delete something that was just created offline and synced.
+    const recentlySyncedThreshold = Date.now() - 2 * 60 * 1000; // 2 minutes
+
     const allSyncedRecords = await (table as any)
       .filter(
         (r: any) =>
           r._ownerClerkId === ownerClerkId &&
           r._syncStatus === "synced" &&
           r._serverId !== null &&
+          // Skip records synced very recently — they may not be in the hydration
+          // snapshot yet even though they DO exist on the server.
+          (r._updatedAt ?? 0) < recentlySyncedThreshold &&
           scope.inServerScope(r)
       )
       .toArray();
