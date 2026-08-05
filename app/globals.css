@@ -56,70 +56,70 @@
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   
   --background: #ffffff;
-  --foreground: #000000;
-  --card: #f9f9f9;
-  --card-foreground: #000000;
+  --foreground: #37352f;
+  --card: #ffffff;
+  --card-foreground: #37352f;
   --popover: #ffffff;
-  --popover-foreground: #000000;
+  --popover-foreground: #37352f;
   
-  --primary: #0055FF;
+  --primary: #37352f;
   --primary-foreground: #ffffff;
-  --secondary: #f0f0f0;
-  --secondary-foreground: #000000;
-  --muted: #f0f0f0;
-  --muted-foreground: #737373;
-  --accent: #0055FF;
-  --accent-foreground: #ffffff;
+  --secondary: #f1f1ef;
+  --secondary-foreground: #37352f;
+  --muted: #f1f1ef;
+  --muted-foreground: #787774;
+  --accent: rgba(55, 53, 47, 0.08);
+  --accent-foreground: #37352f;
   
-  --border: rgba(0, 0, 0, 0.08);
-  --input: rgba(0, 0, 0, 0.08);
-  --ring: #0055FF;
+  --border: rgba(55, 53, 47, 0.16);
+  --input: rgba(55, 53, 47, 0.16);
+  --ring: rgba(35, 131, 226, 0.4);
   
-  --radius: 0.3125rem; /* 5px — very subtle corners */
+  --radius: 0.25rem; /* 4px */
   
-  --sidebar: #f9f9f9;
-  --sidebar-foreground: #000000;
-  --sidebar-primary: #0055FF;
+  --sidebar: #f7f7f5;
+  --sidebar-foreground: #37352f;
+  --sidebar-primary: #37352f;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f0f0f0;
-  --sidebar-accent-foreground: #000000;
-  --sidebar-border: rgba(0, 0, 0, 0.08);
-  --sidebar-ring: #0055FF;
+  --sidebar-accent: rgba(55, 53, 47, 0.08);
+  --sidebar-accent-foreground: #37352f;
+  --sidebar-border: transparent;
+  --sidebar-ring: rgba(35, 131, 226, 0.4);
 }
 
 .dark {
-  --background: #000000;
+  --background: #191919;
   --foreground: #ffffff;
-  --card: #0a0a0a;
+  --card: #191919;
   --card-foreground: #ffffff;
-  --popover: #0a0a0a;
+  --popover: #202020;
   --popover-foreground: #ffffff;
   
-  --primary: #0055FF;
-  --primary-foreground: #ffffff;
-  --secondary: #1a1a1a;
+  --primary: #ffffff;
+  --primary-foreground: #191919;
+  --secondary: #2f2f2f;
   --secondary-foreground: #ffffff;
-  --muted: #1a1a1a;
-  --muted-foreground: #a3a3a3;
-  --accent: #0055FF;
+  --muted: #2f2f2f;
+  --muted-foreground: #9b9b9b;
+  --accent: rgba(255, 255, 255, 0.08);
   --accent-foreground: #ffffff;
   
-  --border: rgba(255, 255, 255, 0.1);
-  --input: rgba(255, 255, 255, 0.1);
-  --ring: #0055FF;
+  --border: rgba(255, 255, 255, 0.12);
+  --input: rgba(255, 255, 255, 0.12);
+  --ring: rgba(35, 131, 226, 0.4);
   
-  --sidebar: #0a0a0a;
+  --sidebar: #202020;
   --sidebar-foreground: #ffffff;
-  --sidebar-primary: #0055FF;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #1a1a1a;
+  --sidebar-primary: #ffffff;
+  --sidebar-primary-foreground: #191919;
+  --sidebar-accent: rgba(255, 255, 255, 0.05);
   --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: rgba(255, 255, 255, 0.1);
-  --sidebar-ring: #0055FF;
+  --sidebar-border: transparent;
+  --sidebar-ring: rgba(35, 131, 226, 0.4);
 }
 
-/* ── Global border-radius: exactly 5px everywhere ────────────────────────
-   Every rounded-* class resolves to 5px. Not sharp, not round — just 5px.
+/* ── Global border-radius: exactly 4px everywhere ────────────────────────
+   Every rounded-* class resolves to 4px. Not sharp, not round — just 4px.
    rounded-full is excluded (used intentionally for circles/dots/avatars).
    ─────────────────────────────────────────────────────────────────────── */
 @layer base {
@@ -131,15 +131,15 @@
   .rounded-2xl,
   .rounded-3xl,
   .rounded-4xl {
-    border-radius: 5px !important;
+    border-radius: 4px !important;
   }
 
   /* Top-only (modals that slide up from bottom) */
   .rounded-t-xl,
   .rounded-t-2xl,
   .rounded-t-3xl {
-    border-top-left-radius: 5px !important;
-    border-top-right-radius: 5px !important;
+    border-top-left-radius: 4px !important;
+    border-top-right-radius: 4px !important;
     border-bottom-left-radius: 0 !important;
     border-bottom-right-radius: 0 !important;
   }
@@ -147,22 +147,22 @@
   /* Bottom-only */
   .rounded-b-xl,
   .rounded-b-2xl {
-    border-bottom-left-radius: 5px !important;
-    border-bottom-right-radius: 5px !important;
+    border-bottom-left-radius: 4px !important;
+    border-bottom-right-radius: 4px !important;
     border-top-left-radius: 0 !important;
     border-top-right-radius: 0 !important;
   }
 
   /* Individual corners */
-  .rounded-tl-2xl, .rounded-tl-xl { border-top-left-radius:     5px !important; }
-  .rounded-tr-2xl, .rounded-tr-xl { border-top-right-radius:    5px !important; }
-  .rounded-bl-2xl, .rounded-bl-xl { border-bottom-left-radius:  5px !important; }
-  .rounded-br-2xl, .rounded-br-xl { border-bottom-right-radius: 5px !important; }
+  .rounded-tl-2xl, .rounded-tl-xl { border-top-left-radius:     4px !important; }
+  .rounded-tr-2xl, .rounded-tr-xl { border-top-right-radius:    4px !important; }
+  .rounded-bl-2xl, .rounded-bl-xl { border-bottom-left-radius:  4px !important; }
+  .rounded-br-2xl, .rounded-br-xl { border-bottom-right-radius: 4px !important; }
 
   /* sm:rounded-2xl (responsive prefix applied inline by Tailwind) */
   @media (min-width: 640px) {
-    .sm\:rounded-2xl { border-radius: 5px !important; }
-    .sm\:rounded-xl  { border-radius: 5px !important; }
+    .sm\:rounded-2xl { border-radius: 4px !important; }
+    .sm\:rounded-xl  { border-radius: 4px !important; }
   }
 }
 

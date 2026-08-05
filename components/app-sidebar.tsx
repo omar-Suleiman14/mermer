@@ -99,7 +99,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader className="pb-0">
-        <div className="flex items-center gap-3 px-2 py-3">
+        <div className="flex items-center gap-2 px-1.5 py-1.5 mx-2 mt-2 rounded-[4px] hover:bg-sidebar-accent cursor-pointer transition-colors">
           {/* Clerk UserButton — force popup z-index above SidebarInset */}
           <div
             className="shrink-0"
@@ -123,7 +123,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             />
           </div>
           <div className="overflow-hidden transition-all group-data-[collapsible=icon]:w-0 group-data-[collapsible=icon]:opacity-0">
-            <p className="text-sm font-bold tracking-tight text-[#007AFF] leading-tight truncate">
+            <p className="text-[13px] font-semibold text-foreground leading-tight truncate">
               {currentUser?.name ?? user?.fullName ?? "mermer"}
             </p>
             <p className="text-[11px] text-muted-foreground truncate">
